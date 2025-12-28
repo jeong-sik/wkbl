@@ -90,6 +90,15 @@
                 {% endfor %}
             </select>
         </div>
+        <div class="filter-group">
+            <div class="filter-label">Pager</div>
+            <select class="filter-input" name="pager">
+                <option value="both" {% if pager_mode == "both" %}selected{% endif %}>Top + Bottom</option>
+                <option value="top" {% if pager_mode == "top" %}selected{% endif %}>Top Only</option>
+                <option value="bottom" {% if pager_mode == "bottom" %}selected{% endif %}>Bottom Only</option>
+                <option value="none" {% if pager_mode == "none" %}selected{% endif %}>Hidden</option>
+            </select>
+        </div>
     </section>
 </form>
 

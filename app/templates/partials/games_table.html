@@ -1,6 +1,6 @@
 {% if stats %}
 <div class="data-table">
-    {% if pagination and pagination.total_pages > 1 %}
+    {% if pager_top and pagination and pagination.total_pages > 1 %}
     <div class="pagination top">
         <div class="pagination-info">Showing {{ pagination.start }}-{{ pagination.end }} of {{ pagination.total_count }}</div>
         <div class="pagination-controls">
@@ -36,6 +36,17 @@
             {% else %}
             <span class="pager is-disabled">Last</span>
             {% endif %}
+            <form class="pager-jump" hx-get="/games/table" hx-target="#games-table" hx-swap="innerHTML">
+                <input type="hidden" name="season" value="{{ season }}">
+                <input type="hidden" name="team" value="{{ team }}">
+                <input type="hidden" name="search" value="{{ search }}">
+                <input type="hidden" name="game_no" value="{{ game_no }}">
+                <input type="hidden" name="sort" value="{{ sort }}">
+                <input type="hidden" name="page_size" value="{{ page_size }}">
+                <input type="hidden" name="pager" value="{{ pager_mode }}">
+                <input class="pager-input" type="number" name="page" min="1" max="{{ pagination.total_pages }}" placeholder="Page" aria-label="Jump to page">
+                <button class="pager" type="submit">Go</button>
+            </form>
         </div>
     </div>
     {% endif %}
@@ -89,7 +100,7 @@
         </tbody>
         </table>
     </div>
-{% if pagination and pagination.total_pages > 1 %}
+{% if pager_bottom and pagination and pagination.total_pages > 1 %}
 <div class="pagination">
     <div class="pagination-info">Showing {{ pagination.start }}-{{ pagination.end }} of {{ pagination.total_count }}</div>
     <div class="pagination-controls">
@@ -125,6 +136,17 @@
         {% else %}
         <span class="pager is-disabled">Last</span>
         {% endif %}
+        <form class="pager-jump" hx-get="/games/table" hx-target="#games-table" hx-swap="innerHTML">
+            <input type="hidden" name="season" value="{{ season }}">
+            <input type="hidden" name="team" value="{{ team }}">
+            <input type="hidden" name="search" value="{{ search }}">
+            <input type="hidden" name="game_no" value="{{ game_no }}">
+            <input type="hidden" name="sort" value="{{ sort }}">
+            <input type="hidden" name="page_size" value="{{ page_size }}">
+            <input type="hidden" name="pager" value="{{ pager_mode }}">
+            <input class="pager-input" type="number" name="page" min="1" max="{{ pagination.total_pages }}" placeholder="Page" aria-label="Jump to page">
+            <button class="pager" type="submit">Go</button>
+        </form>
     </div>
 </div>
 {% endif %}
