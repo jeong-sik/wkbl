@@ -865,7 +865,7 @@
                 "standings-table",
             ]);
             if (ids.has(target.id)) {
-                target.scrollIntoView({ behavior: "smooth", block: "start" });
+                window.scrollTo({ top: 0, behavior: "smooth" });
             }
         });
     </script>

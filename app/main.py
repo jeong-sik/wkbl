@@ -49,7 +49,7 @@ TEAM_META = {
 DEFAULT_TEAM_META = {"nick": "???", "logo": "", "color": "#ccc"}
 PLAYER_PNO = {"김단비": "095226", "이명관": "095778", "조수아": "095912", "변하정": "095104", "강이슬": "095263"}
 SEASON_BASE_YEAR = 1979
-DEFAULT_PAGE_SIZE = 50
+DEFAULT_PAGE_SIZE = 40
 MAX_PAGE_SIZE = 200
 MAX_DB_LIMIT = 5000
 
