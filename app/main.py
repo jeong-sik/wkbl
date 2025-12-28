@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request, Response
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pathlib import Path
+from urllib.parse import quote
 import json
 import os
 import re
@@ -30,6 +31,17 @@ if ROSTER_PATH.exists():
             PLAYER_DB = json.load(f)
     except Exception:
         PLAYER_DB = {}
+
+TEAM_META = {
+    "우리은행": {"nick": "WON", "logo": "/static/images/team_05.png", "color": "#005BAA"},
+    "삼성생명": {"nick": "BLU", "logo": "/static/images/team_03.png", "color": "#007AFF"},
+    "신한은행": {"nick": "S-BIRDS", "logo": "/static/images/team_07.png", "color": "#2B3990"},
+    "KB스타즈": {"nick": "STARS", "logo": "/static/images/team_01.png", "color": "#FFCC00"},
+    "하나은행": {"nick": "1Q", "logo": "/static/images/team_09.png", "color": "#009490"},
+    "BNK썸": {"nick": "SUM", "logo": "/static/images/team_11.png", "color": "#D6001C"},
+}
+DEFAULT_TEAM_META = {"nick": "???", "logo": "", "color": "#ccc"}
+PLAYER_PNO = {"김단비": "095226", "이명관": "095778", "조수아": "095912", "변하정": "095104", "강이슬": "095263"}
 
 # 직접 이미지 서빙 (Raw Response)
 @app.get("/static/{file_path:path}")
@@ -73,6 +85,46 @@ def parse_made_att(value) -> tuple[int, int]:
     return c_i(made), c_i(att)
 
 
+def get_team_meta(team: str) -> dict:
+    return TEAM_META.get(team, DEFAULT_TEAM_META)
+
+
+def build_team_url(team: str) -> str:
+    if not team:
+        return ""
+    return f"/team?name={quote(str(team), safe='')}"
+
+
+def build_player_key(name: str, team: str) -> str:
+    if not name or not team:
+        return ""
+    return f"{name}|{team}"
+
+
+def build_player_url(name: str, team: str) -> str:
+    if not name or not team:
+        return ""
+    return f"/player?name={quote(str(name), safe='')}&team={quote(str(team), safe='')}"
+
+
+def build_compare_player_url(name: str, team: str) -> str:
+    key = build_player_key(name, team)
+    if not key:
+        return ""
+    return f"/compare?mode=players&player_a={quote(key, safe='')}"
+
+
+def build_compare_team_url(team: str) -> str:
+    if not team:
+        return ""
+    return f"/compare?mode=teams&team_a={quote(str(team), safe='')}"
+
+
+def get_player_photo(name: str) -> str | None:
+    pno = PLAYER_PNO.get(name)
+    return f"/static/images/player_{pno}.png" if pno else None
+
+
 def get_team_list() -> list[str]:
     if DERIVED_DIR.exists():
         path = DERIVED_DIR / "players_aggregate.csv"
@@ -113,7 +165,14 @@ def load_players_aggregate(
     if sort_by not in allowed:
         sort_by = "pts"
     df = df.sort_values(by=sort_by, ascending=(order == "asc"))
-    return df.to_dict(orient="records")
+    rows = df.to_dict(orient="records")
+    for row in rows:
+        name = str(row.get("name", "")).strip()
+        team = str(row.get("team", "")).strip()
+        row["player_url"] = build_player_url(name, team)
+        row["team_url"] = build_team_url(team)
+        row["compare_url"] = build_compare_player_url(name, team)
+    return rows
 
 
 def load_teams_aggregate(
@@ -131,7 +190,12 @@ def load_teams_aggregate(
     if sort_by not in allowed:
         sort_by = "pts"
     df = df.sort_values(by=sort_by, ascending=(order == "asc"))
-    return df.to_dict(orient="records")
+    rows = df.to_dict(orient="records")
+    for row in rows:
+        team = str(row.get("team", "")).strip()
+        row["team_url"] = build_team_url(team)
+        row["compare_url"] = build_compare_team_url(team)
+    return rows
 
 
 def load_players_games(
@@ -164,6 +228,76 @@ def load_players_games(
         sort_by = "game_no"
     df = df.sort_values(by=sort_by, ascending=(order == "asc"))
     return df.to_dict(orient="records")
+
+
+def load_player_scopes(name: str, team: str) -> dict:
+    if not name or not team:
+        return {}
+    path = DERIVED_DIR / "players_aggregate.csv"
+    if not path.exists():
+        return {}
+    df = pd.read_csv(path)
+    df = df[(df["name"] == name) & (df["team"] == team)]
+    if df.empty:
+        return {}
+    scopes = {}
+    for key in ("per_game", "per_36", "totals"):
+        row = df[df["scope"] == key]
+        if row.empty:
+            continue
+        record = row.iloc[0].to_dict()
+        record["scope_key"] = key
+        record["scope_label"] = scope_label(key)
+        scopes[key] = record
+    return scopes
+
+
+def load_player_game_log(name: str, team: str, limit: int = 12) -> list[dict]:
+    if not name or not team:
+        return []
+    path = DERIVED_DIR / "players_games.csv"
+    if not path.exists():
+        return []
+    df = pd.read_csv(path)
+    df = df[(df["name"] == name) & (df["team"] == team)]
+    if df.empty:
+        return []
+    df = df.sort_values(by="game_no", ascending=False)
+    df["game_label"] = df["game_no"].apply(lambda x: f"#{int(x)}")
+    df["min_display"] = df["min"].fillna("0:00")
+    return df.head(limit).to_dict(orient="records")
+
+
+def load_team_scopes(team: str) -> dict:
+    if not team:
+        return {}
+    path = DERIVED_DIR / "teams_aggregate.csv"
+    if not path.exists():
+        return {}
+    df = pd.read_csv(path)
+    df = df[df["team"] == team]
+    if df.empty:
+        return {}
+    scopes = {}
+    for key in ("per_game", "totals"):
+        row = df[df["scope"] == key]
+        if row.empty:
+            continue
+        record = row.iloc[0].to_dict()
+        record["scope_key"] = key
+        record["scope_label"] = scope_label(key)
+        scopes[key] = record
+    return scopes
+
+
+def load_team_leaders(team: str) -> dict:
+    players = load_players_aggregate(scope="per_game", team_filter=team, sort_by="pts")
+    if not players:
+        return {}
+    leaders = {}
+    for key in ("pts", "reb", "ast"):
+        leaders[key] = max(players, key=lambda row: row.get(key, 0))
+    return leaders
 
 
 def get_player_options() -> list[dict]:
@@ -375,15 +509,6 @@ def load_real_stats(sort_by="eff", team_filter="ALL", pos_filter="ALL", search_q
     }
     sort_key = sort_aliases.get(sort_by, sort_by)
     stats = []
-    PLAYER_PNO = {"김단비": "095226", "이명관": "095778", "조수아": "095912", "변하정": "095104", "강이슬": "095263"}
-    TEAM_META = {
-        "우리은행": {"nick": "WON", "logo": "/static/images/team_05.png", "color": "#005BAA"},
-        "삼성생명": {"nick": "BLU", "logo": "/static/images/team_03.png", "color": "#007AFF"},
-        "신한은행": {"nick": "S-BIRDS", "logo": "/static/images/team_07.png", "color": "#2B3990"},
-        "KB스타즈": {"nick": "STARS", "logo": "/static/images/team_01.png", "color": "#FFCC00"},
-        "하나은행": {"nick": "1Q", "logo": "/static/images/team_09.png", "color": "#009490"},
-        "BNK썸": {"nick": "SUM", "logo": "/static/images/team_11.png", "color": "#D6001C"}
-    }
 
     data_dir = BOX_DIR if BOX_DIR.exists() else DATA_DIR
     if not data_dir.exists():
@@ -425,7 +550,7 @@ def load_real_stats(sort_by="eff", team_filter="ALL", pos_filter="ALL", search_q
                             else:
                                 team = "Unknown"
                     
-                    meta = TEAM_META.get(team, {"nick": "???", "logo": "", "color": "#ccc"})
+                    meta = get_team_meta(team)
                     pno = PLAYER_PNO.get(name)
 
                     min_raw = str(row.get("min", "")).strip()
@@ -564,6 +689,36 @@ async def players_table(
     )
 
 
+@app.get("/player", response_class=HTMLResponse)
+async def player_profile(
+    request: Request,
+    name: str = "",
+    team: str = "",
+    scope: str = "per_game",
+):
+    scopes = load_player_scopes(name, team)
+    primary = scopes.get(scope) or scopes.get("per_game") or next(iter(scopes.values()), None)
+    scope_rows = [scopes[key] for key in ("per_game", "per_36", "totals") if key in scopes]
+    games = load_player_game_log(name, team)
+    team_meta = get_team_meta(team)
+    return templates.TemplateResponse(
+        "player.html",
+        {
+            "request": request,
+            "active_page": "players",
+            "page_title": f"{name} | WKBL Player",
+            "player": primary,
+            "player_photo": get_player_photo(name),
+            "team_meta": team_meta,
+            "scope_rows": scope_rows,
+            "games": games,
+            "compare_url": build_compare_player_url(name, team),
+            "team_url": build_team_url(team),
+            "back_url": f"/players?team={quote(str(team), safe='')}" if team else "/players",
+        },
+    )
+
+
 @app.get("/teams", response_class=HTMLResponse)
 async def teams(
     request: Request,
@@ -598,6 +753,36 @@ async def teams(
             "sort": sort,
             "scopes": scopes,
             "sort_options": sort_options,
+        },
+    )
+
+
+@app.get("/team", response_class=HTMLResponse)
+async def team_profile(
+    request: Request,
+    name: str = "",
+    scope: str = "per_game",
+):
+    scopes = load_team_scopes(name)
+    primary = scopes.get(scope) or scopes.get("per_game") or next(iter(scopes.values()), None)
+    scope_rows = [scopes[key] for key in ("per_game", "totals") if key in scopes]
+    top_players = load_players_aggregate(scope="per_game", team_filter=name, sort_by="pts")[:8]
+    leaders = load_team_leaders(name) if name else {}
+    team_meta = get_team_meta(name)
+    return templates.TemplateResponse(
+        "team.html",
+        {
+            "request": request,
+            "active_page": "teams",
+            "page_title": f"{name} | WKBL Team",
+            "team_name": name,
+            "team_meta": team_meta,
+            "team": primary,
+            "scope_rows": scope_rows,
+            "top_players": top_players,
+            "leaders": leaders,
+            "compare_url": build_compare_team_url(name),
+            "back_url": "/teams",
         },
     )
 

@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+
+{% block content %}
+{% if not player %}
+<div class="empty-state">
+    <h3>Player not found</h3>
+    <p>선수 정보를 찾지 못했습니다. 목록에서 다시 선택하세요.</p>
+</div>
+{% else %}
+<section class="hero">
+    <div class="hero-card">
+        <span class="eyebrow">Player Profile</span>
+        <div class="profile-header">
+            <div class="profile-avatar">
+                {% if player_photo %}
+                <img src="{{ player_photo }}" alt="{{ player.name }}">
+                {% else %}
+                <span>{{ player.name[:1] }}</span>
+                {% endif %}
+            </div>
+            <div>
+                <h1>{{ player.name }}</h1>
+                <p>{{ player.team }} · {{ player.pos }} · GP {{ player.gp }}</p>
+            </div>
+        </div>
+        <div class="hero-actions">
+            <a class="pill accent" href="{{ compare_url }}">Compare</a>
+            <a class="pill" href="{{ back_url }}">Back to Players</a>
+            <span class="pill">{{ team_meta.nick }}</span>
+        </div>
+    </div>
+    <div class="hero-metrics">
+        <div class="metric">
+            <div class="metric-label">Scoring</div>
+            <div class="metric-value">{{ "%.2f"|format(player.pts) }} PTS</div>
+            <div class="metric-sub">MIN {{ "%.1f"|format(player.min_total) }}</div>
+        </div>
+        <div class="metric">
+            <div class="metric-label">Playmaking</div>
+            <div class="metric-value">{{ "%.2f"|format(player.ast) }} AST</div>
+            <div class="metric-sub">REB {{ "%.2f"|format(player.reb) }} · STL {{ "%.2f"|format(player.stl) }}</div>
+        </div>
+        <div class="metric">
+            <div class="metric-label">Shooting</div>
+            <div class="metric-value">{{ "%.1f"|format(player.ts_pct) }} TS%</div>
+            <div class="metric-sub">eFG {{ "%.1f"|format(player.efg_pct) }} · FG {{ "%.1f"|format(player.fg_pct) }}</div>
+        </div>
+    </div>
+</section>
+
+<h2 class="section-title">Season Summary</h2>
+<div class="data-table table-scroll">
+    <table>
+        <thead>
+            <tr>
+                <th>Scope</th>
+                <th>GP</th>
+                <th>MIN</th>
+                <th>PTS</th>
+                <th>REB</th>
+                <th>AST</th>
+                <th>STL</th>
+                <th>BLK</th>
+                <th>TO</th>
+                <th>FG%</th>
+                <th>3P%</th>
+                <th>FT%</th>
+                <th>eFG%</th>
+                <th>TS%</th>
+                <th>EFF</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in scope_rows %}
+            <tr>
+                <td>{{ row.scope_label }}</td>
+                <td>{{ row.gp }}</td>
+                <td>{{ "%.1f"|format(row.min_total) }}</td>
+                <td>{{ "%.2f"|format(row.pts) }}</td>
+                <td>{{ "%.2f"|format(row.reb) }}</td>
+                <td>{{ "%.2f"|format(row.ast) }}</td>
+                <td>{{ "%.2f"|format(row.stl) }}</td>
+                <td>{{ "%.2f"|format(row.blk) }}</td>
+                <td>{{ "%.2f"|format(row.to) }}</td>
+                <td>{{ "%.1f"|format(row.fg_pct) }}</td>
+                <td>{{ "%.1f"|format(row.fg3_pct) }}</td>
+                <td>{{ "%.1f"|format(row.ft_pct) }}</td>
+                <td>{{ "%.1f"|format(row.efg_pct) }}</td>
+                <td>{{ "%.1f"|format(row.ts_pct) }}</td>
+                <td>{{ "%.1f"|format(row.eff) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<h2 class="section-title">Recent Games</h2>
+{% if games %}
+<div class="data-table table-scroll">
+    <table>
+        <thead>
+            <tr>
+                <th>Game</th>
+                <th>Opponent</th>
+                <th>MIN</th>
+                <th>PTS</th>
+                <th>REB</th>
+                <th>AST</th>
+                <th>TS%</th>
+                <th>EFF</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in games %}
+            <tr>
+                <td>{{ row.game_label }}</td>
+                <td>{{ row.opponent }}</td>
+                <td>{{ row.min_display }}</td>
+                <td>{{ row.pts }}</td>
+                <td>{{ row.reb }}</td>
+                <td>{{ row.ast }}</td>
+                <td>{{ "%.1f"|format(row.ts_pct) }}</td>
+                <td>{{ row.eff }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="empty-state">
+    <h3>No game log</h3>
+    <p>선수 경기 데이터가 아직 없습니다.</p>
+</div>
+{% endif %}
+{% endif %}
+{% endblock %}

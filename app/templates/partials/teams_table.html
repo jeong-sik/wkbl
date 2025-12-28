@@ -23,7 +23,7 @@
         <tbody>
             {% for row in stats %}
             <tr>
-                <td>{{ row.team }}</td>
+                <td><a class="table-link" href="{{ row.team_url }}">{{ row.team }}</a></td>
                 <td>{{ row.gp }}</td>
                 <td>{{ "%.1f"|format(row.min_total) }}</td>
                 <td>{{ "%.2f"|format(row.pts) }}</td>

@@ -28,8 +28,8 @@
         <tbody>
             {% for row in stats %}
             <tr>
-                <td>{{ row.name }}</td>
-                <td>{{ row.team }}</td>
+                <td><a class="table-link" href="{{ row.player_url }}">{{ row.name }}</a></td>
+                <td><a class="table-link" href="{{ row.team_url }}">{{ row.team }}</a></td>
                 <td><span class="stat-pill">{{ row.pos }}</span></td>
                 <td>{{ row.gp }}</td>
                 <td>{{ "%.1f"|format(row.min_total) }}</td>
