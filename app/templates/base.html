@@ -643,22 +643,30 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 16px;
-            padding: 16px 20px;
-            border-top: 1px solid var(--line);
-            background: rgba(255, 255, 255, 0.7);
+            gap: 16px 20px;
+            padding: 14px 16px;
+            margin: 14px 16px;
+            border-radius: 18px;
+            border: 1px solid rgba(255, 107, 44, 0.18);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(239, 228, 214, 0.86));
+            box-shadow: 0 12px 26px rgba(26, 26, 26, 0.12);
+            backdrop-filter: blur(8px);
         }
 
         .pagination.top {
-            border-top: none;
-            border-bottom: 1px solid var(--line);
+            margin-top: 16px;
         }
 
         .pagination-info {
+            font-family: "JetBrains Mono", monospace;
             font-size: 12px;
             color: var(--ink-muted);
-            letter-spacing: 0.12em;
+            letter-spacing: 0.16em;
             text-transform: uppercase;
+            padding: 6px 10px;
+            border-radius: 999px;
+            border: 1px solid rgba(15, 76, 129, 0.2);
+            background: rgba(15, 76, 129, 0.08);
         }
 
         .pagination-controls {
@@ -666,6 +674,7 @@
             align-items: center;
             gap: 8px;
             flex-wrap: wrap;
+            justify-content: flex-end;
         }
 
         .pager-jump {
@@ -678,13 +687,14 @@
             width: 64px;
             padding: 6px 8px;
             border-radius: 999px;
-            border: 1px solid var(--line);
+            border: 1px solid rgba(15, 76, 129, 0.2);
             font-size: 11px;
             font-weight: 700;
             text-align: center;
             letter-spacing: 0.08em;
             background: #fff;
             color: var(--ink);
+            box-shadow: inset 0 2px 6px rgba(26, 26, 26, 0.08);
         }
 
         .pagination-pages {
@@ -692,39 +702,49 @@
             align-items: center;
             gap: 6px;
             flex-wrap: wrap;
+            padding: 4px 6px;
+            border-radius: 999px;
+            border: 1px solid rgba(26, 26, 26, 0.08);
+            background: rgba(255, 255, 255, 0.6);
         }
 
         .pager {
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            padding: 6px 12px;
+            padding: 6px 14px;
             border-radius: 999px;
-            border: 1px solid var(--line);
+            border: 1px solid rgba(26, 26, 26, 0.12);
             text-decoration: none;
             font-size: 11px;
             font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 0.14em;
+            letter-spacing: 0.12em;
             color: var(--ink);
             background: #fff;
+            box-shadow: 0 6px 12px rgba(26, 26, 26, 0.12);
+            transition: transform 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
         }
 
         .pager:hover {
             color: var(--accent);
             border-color: var(--accent);
+            transform: translateY(-1px);
+            box-shadow: 0 10px 20px rgba(255, 107, 44, 0.2);
         }
 
         .pager.is-disabled {
-            opacity: 0.4;
+            opacity: 0.45;
             pointer-events: none;
+            box-shadow: none;
         }
 
         .pager.is-current {
-            background: var(--accent-2);
-            border-color: var(--accent-2);
+            background: linear-gradient(135deg, var(--accent-2), #1a86c4);
+            border-color: transparent;
             color: #fff;
             pointer-events: none;
+            box-shadow: 0 12px 22px rgba(15, 76, 129, 0.35);
         }
 
         .pager.is-ellipsis {
@@ -732,15 +752,17 @@
             border-color: transparent;
             color: var(--ink-muted);
             pointer-events: none;
-            padding: 0 4px;
+            padding: 0 6px;
+            box-shadow: none;
         }
 
         .pager-status {
             font-size: 11px;
             font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 0.14em;
+            letter-spacing: 0.18em;
             color: var(--ink-muted);
+            font-family: "JetBrains Mono", monospace;
         }
 
         .stat-pill {
@@ -884,6 +906,24 @@
             .data-table td {
                 padding: 10px;
                 font-size: 11px;
+            }
+
+            .pagination {
+                flex-direction: column;
+                align-items: flex-start;
+                margin: 12px;
+                gap: 12px;
+            }
+
+            .pagination-controls {
+                justify-content: flex-start;
+            }
+
+            .pagination-pages {
+                width: 100%;
+                overflow-x: auto;
+                flex-wrap: nowrap;
+                padding: 6px;
             }
         }
 
