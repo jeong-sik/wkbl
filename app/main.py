@@ -756,6 +756,35 @@ def load_boxscore(game_key: str) -> dict:
     return {"summary": summary, "teams": team_rows}
 
 
+def paginate_boxscore_teams(
+    teams: list[dict],
+    page: int,
+    page_size: int,
+    pager_mode: str,
+    game_key: str,
+) -> tuple[list[dict], dict | None]:
+    if not teams:
+        return teams, None
+    max_rows = max(len(team.get("rows") or []) for team in teams)
+    dummy_rows = [None] * max_rows
+    _, pagination = paginate_items(
+        dummy_rows,
+        page,
+        page_size,
+        base_path="/boxscore",
+        table_path="/boxscore/table",
+        params={"game_key": game_key, "pager": pager_mode},
+    )
+    if not pagination or pagination["total_count"] == 0:
+        return teams, pagination
+    start_idx = max(pagination["start"] - 1, 0)
+    end_idx = pagination["end"]
+    for team in teams:
+        rows = team.get("rows") or []
+        team["rows"] = rows[start_idx:end_idx]
+    return teams, pagination
+
+
 def get_player_options(season: str = "ALL") -> list[dict]:
     path = DERIVED_DIR / "players_aggregate.csv"
     if not path.exists():
@@ -1987,18 +2016,7 @@ async def boxscore(
     pager_bottom = pager_mode in ("bottom", "both")
     data = load_boxscore(game_key)
     teams = data.get("teams") or []
-    for team in teams:
-        rows = team.get("rows") or []
-        paged_rows, pagination = paginate_items(
-            rows,
-            page,
-            page_size,
-            base_path="/boxscore",
-            table_path="/boxscore",
-            params={"game_key": game_key, "pager": pager_mode},
-        )
-        team["rows"] = paged_rows
-        team["pagination"] = pagination
+    teams, pagination = paginate_boxscore_teams(teams, page, page_size, pager_mode, game_key)
     response = templates.TemplateResponse(
         "boxscore.html",
         {
@@ -2007,11 +2025,45 @@ async def boxscore(
             "page_title": "WKBL Boxscore",
             **data,
             "teams": teams,
-            "pagination": teams[0]["pagination"] if teams else None,
+            "pagination": pagination,
             "page_size": page_size,
             "pager_mode": pager_mode,
             "pager_top": pager_top,
             "pager_bottom": pager_bottom,
+        },
+    )
+    response.set_cookie("wkbl_page_size", str(page_size), max_age=31536000, samesite="lax")
+    response.set_cookie("wkbl_pager", pager_mode, max_age=31536000, samesite="lax")
+    return response
+
+
+@app.get("/boxscore/table", response_class=HTMLResponse)
+async def boxscore_table(
+    request: Request,
+    game_key: str = "",
+    page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
+    pager: str = DEFAULT_PAGER_MODE,
+):
+    page_size = resolve_page_size(request, page_size)
+    pager_mode = resolve_pager_mode(request, pager)
+    pager_top = pager_mode in ("top", "both")
+    pager_bottom = pager_mode in ("bottom", "both")
+    data = load_boxscore(game_key)
+    teams = data.get("teams") or []
+    teams, pagination = paginate_boxscore_teams(teams, page, page_size, pager_mode, game_key)
+    response = templates.TemplateResponse(
+        "partials/boxscore_tables.html",
+        {
+            "request": request,
+            "teams": teams,
+            "summary": data.get("summary"),
+            "pagination": pagination,
+            "page_size": page_size,
+            "pager_mode": pager_mode,
+            "pager_top": pager_top,
+            "pager_bottom": pager_bottom,
+            "game_key": game_key,
         },
     )
     response.set_cookie("wkbl_page_size", str(page_size), max_age=31536000, samesite="lax")

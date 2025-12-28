@@ -374,6 +374,14 @@
             gap: 16px;
         }
 
+        .filter-hint {
+            margin-bottom: 12px;
+            font-size: 12px;
+            color: var(--ink-muted);
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
         .player-card {
             position: relative;
             background: var(--surface);
@@ -902,6 +910,9 @@
                 "games-table",
                 "boxscores-table",
                 "standings-table",
+                "stats-body",
+                "player-games-table",
+                "boxscore-tables",
             ]);
             if (ids.has(target.id)) {
                 window.scrollTo({ top: 0, behavior: "smooth" });

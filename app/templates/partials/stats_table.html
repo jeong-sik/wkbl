@@ -49,6 +49,10 @@
 </div>
 {% endif %}
 
+{% if pagination %}
+<div class="filter-hint">Rows per page: {{ page_size }} · Page {{ pagination.page }} / {{ pagination.total_pages }}</div>
+{% endif %}
+
 <div class="stat-cards">
 {% for player in stats %}
 <article class="player-card" style="--team-color: {{ player.color }}; --delay: {{ loop.index0 * 60 }}ms;">
