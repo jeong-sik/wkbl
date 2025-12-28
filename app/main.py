@@ -52,7 +52,7 @@ SEASON_BASE_YEAR = 1979
 DEFAULT_PAGE_SIZE = 40
 MAX_PAGE_SIZE = 200
 MAX_DB_LIMIT = 5000
-DEFAULT_PAGER_MODE = "both"
+DEFAULT_PAGER_MODE = "bottom"
 
 # 직접 이미지 서빙 (Raw Response)
 @app.get("/static/{file_path:path}")

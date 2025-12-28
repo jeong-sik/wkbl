@@ -878,6 +878,18 @@
         }
     </style>
     <script>
+        document.addEventListener("keydown", (event) => {
+            if (event.key !== "Enter") return;
+            const target = event.target;
+            if (!(target instanceof HTMLElement)) return;
+            if (!target.classList.contains("pager-input")) return;
+            event.preventDefault();
+            const form = target.closest("form");
+            if (form instanceof HTMLFormElement) {
+                form.requestSubmit();
+            }
+        });
+
         document.addEventListener("htmx:afterSwap", (event) => {
             const target = event.detail && event.detail.target ? event.detail.target : null;
             if (!target) return;

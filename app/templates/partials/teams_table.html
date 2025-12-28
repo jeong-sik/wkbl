@@ -42,8 +42,8 @@
                 <input type="hidden" name="sort" value="{{ sort }}">
                 <input type="hidden" name="page_size" value="{{ page_size }}">
                 <input type="hidden" name="pager" value="{{ pager_mode }}">
-                <input class="pager-input" type="number" name="page" min="1" max="{{ pagination.total_pages }}" placeholder="Page" aria-label="Jump to page">
-                <button class="pager" type="submit">Go</button>
+                <input class="pager-input" type="number" name="page" min="1" max="{{ pagination.total_pages }}" placeholder="Page" aria-label="Jump to page" inputmode="numeric" pattern="[0-9]*">
+                <button class="pager" type="submit">Jump</button>
             </form>
         </div>
     </div>
@@ -136,8 +136,8 @@
             <input type="hidden" name="sort" value="{{ sort }}">
             <input type="hidden" name="page_size" value="{{ page_size }}">
             <input type="hidden" name="pager" value="{{ pager_mode }}">
-            <input class="pager-input" type="number" name="page" min="1" max="{{ pagination.total_pages }}" placeholder="Page" aria-label="Jump to page">
-            <button class="pager" type="submit">Go</button>
+            <input class="pager-input" type="number" name="page" min="1" max="{{ pagination.total_pages }}" placeholder="Page" aria-label="Jump to page" inputmode="numeric" pattern="[0-9]*">
+            <button class="pager" type="submit">Jump</button>
         </form>
     </div>
 </div>
