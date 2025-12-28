@@ -42,6 +42,7 @@
 </section>
 
 <form id="games-filter" hx-get="/games/table" hx-target="#games-table" hx-trigger="change, keyup delay:250ms">
+    <input type="hidden" name="page_size" value="{{ page_size }}">
     <section class="filters">
         <div class="filter-group">
             <div class="filter-label">Search Player</div>

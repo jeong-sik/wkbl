@@ -41,6 +41,7 @@
 </section>
 
 <form id="boxscores-filter" hx-get="/boxscores/table" hx-target="#boxscores-table" hx-trigger="change, keyup delay:250ms">
+    <input type="hidden" name="page_size" value="{{ page_size }}">
     <section class="filters">
         <div class="filter-group">
             <div class="filter-label">Season</div>

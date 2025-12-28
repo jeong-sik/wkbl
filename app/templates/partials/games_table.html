@@ -1,6 +1,7 @@
 {% if stats %}
-<div class="data-table table-scroll">
-    <table>
+<div class="data-table">
+    <div class="table-scroll">
+        <table>
         <thead>
             <tr>
                 <th>Game</th>
@@ -47,8 +48,27 @@
             </tr>
             {% endfor %}
         </tbody>
-    </table>
+        </table>
+    </div>
+{% if pagination and pagination.total_pages > 1 %}
+<div class="pagination">
+    <div class="pagination-info">Showing {{ pagination.start }}-{{ pagination.end }} of {{ pagination.total_count }}</div>
+    <div class="pagination-controls">
+        {% if pagination.prev %}
+        <a class="pager" href="{{ pagination.prev.href }}" hx-get="{{ pagination.prev.hx }}" hx-target="#games-table" hx-swap="innerHTML">Prev</a>
+        {% else %}
+        <span class="pager is-disabled">Prev</span>
+        {% endif %}
+        <span class="pager-status">Page {{ pagination.page }} / {{ pagination.total_pages }}</span>
+        {% if pagination.next %}
+        <a class="pager" href="{{ pagination.next.href }}" hx-get="{{ pagination.next.hx }}" hx-target="#games-table" hx-swap="innerHTML">Next</a>
+        {% else %}
+        <span class="pager is-disabled">Next</span>
+        {% endif %}
+    </div>
 </div>
+{% endif %}
+    </div>
 {% else %}
 <div class="empty-state">
     <h3>No game logs found</h3>

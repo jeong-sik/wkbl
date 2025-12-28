@@ -31,6 +31,7 @@
 </section>
 
 <form id="standings-filter" hx-get="/standings/table" hx-target="#standings-table" hx-trigger="change">
+    <input type="hidden" name="page_size" value="{{ page_size }}">
     <section class="filters">
         <div class="filter-group">
             <div class="filter-label">Season</div>

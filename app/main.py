@@ -2,10 +2,11 @@ from fastapi import FastAPI, Request, Response
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pathlib import Path
-from urllib.parse import quote
+from urllib.parse import quote, urlencode
 import json
 import os
 import re
+import math
 import mimetypes
 import pandas as pd
 
@@ -48,6 +49,9 @@ TEAM_META = {
 DEFAULT_TEAM_META = {"nick": "???", "logo": "", "color": "#ccc"}
 PLAYER_PNO = {"김단비": "095226", "이명관": "095778", "조수아": "095912", "변하정": "095104", "강이슬": "095263"}
 SEASON_BASE_YEAR = 1979
+DEFAULT_PAGE_SIZE = 50
+MAX_PAGE_SIZE = 200
+MAX_DB_LIMIT = 5000
 
 # 직접 이미지 서빙 (Raw Response)
 @app.get("/static/{file_path:path}")
@@ -213,6 +217,73 @@ def scope_label(scope: str) -> str:
     return labels.get(scope, "Per Game")
 
 
+def normalize_int(value: str | int, default: int, min_value: int, max_value: int) -> int:
+    try:
+        parsed = int(str(value).strip())
+    except Exception:
+        return default
+    if parsed < min_value:
+        return min_value
+    if parsed > max_value:
+        return max_value
+    return parsed
+
+
+def normalize_page(value: str | int) -> int:
+    return normalize_int(value, 1, 1, 1_000_000)
+
+
+def normalize_page_size(value: str | int) -> int:
+    return normalize_int(value, DEFAULT_PAGE_SIZE, 1, MAX_PAGE_SIZE)
+
+
+def build_page_url(path: str, params: dict) -> str:
+    filtered = {key: value for key, value in params.items() if value not in (None, "")}
+    query = urlencode(filtered, doseq=True)
+    return f"{path}?{query}" if query else path
+
+
+def paginate_items(
+    items: list[dict],
+    page: str | int,
+    page_size: str | int,
+    base_path: str,
+    table_path: str,
+    params: dict,
+) -> tuple[list[dict], dict]:
+    page = normalize_page(page)
+    page_size = normalize_page_size(page_size)
+    total_count = len(items)
+    total_pages = max(1, math.ceil(total_count / page_size)) if total_count else 1
+    if page > total_pages:
+        page = total_pages
+    start = (page - 1) * page_size
+    end = min(start + page_size, total_count)
+    pagination = {
+        "page": page,
+        "page_size": page_size,
+        "total_count": total_count,
+        "total_pages": total_pages,
+        "start": start + 1 if total_count else 0,
+        "end": end,
+    }
+    if total_count and page > 1:
+        prev_params = params.copy()
+        prev_params.update({"page": page - 1, "page_size": page_size})
+        pagination["prev"] = {
+            "href": build_page_url(base_path, prev_params),
+            "hx": build_page_url(table_path, prev_params),
+        }
+    if total_count and page < total_pages:
+        next_params = params.copy()
+        next_params.update({"page": page + 1, "page_size": page_size})
+        pagination["next"] = {
+            "href": build_page_url(base_path, next_params),
+            "hx": build_page_url(table_path, next_params),
+        }
+    return items[start:end], pagination
+
+
 def load_players_aggregate(
     season: str = "ALL",
     scope: str = "per_game",
@@ -298,6 +369,7 @@ def load_players_db(
     search_query: str,
     sort_by: str,
     season: str,
+    limit: int = MAX_DB_LIMIT,
 ) -> list[dict]:
     if db is None:
         return []
@@ -307,6 +379,7 @@ def load_players_db(
             team_filter=team_filter,
             search_query=search_query,
             sort_by=sort_by,
+            limit=limit,
         )
     except Exception:
         return []
@@ -957,6 +1030,8 @@ async def players(
     team: str = "ALL",
     search: str = "",
     sort: str = "pts",
+    page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
 ):
     scopes = [("per_game", "Per Game"), ("per_36", "Per 36"), ("totals", "Totals")]
     sort_options = [
@@ -973,8 +1048,22 @@ async def players(
     ]
     season = resolve_season(season, allow_all=True)
     seasons = season_options(include_all=True)
+    params = {
+        "season": season,
+        "scope": scope,
+        "team": team,
+        "search": search,
+        "sort": sort,
+    }
     if should_use_db_players(season):
-        stats = load_players_db(scope=scope, team_filter=team, search_query=search, sort_by=sort, season=season)
+        full_stats = load_players_db(
+            scope=scope,
+            team_filter=team,
+            search_query=search,
+            sort_by=sort,
+            season=season,
+            limit=MAX_DB_LIMIT,
+        )
         teams = []
         if db is not None:
             try:
@@ -984,9 +1073,23 @@ async def players(
         if not teams:
             teams = get_team_list(season)
     else:
-        stats = load_players_aggregate(season=season, scope=scope, team_filter=team, search_query=search, sort_by=sort)
+        full_stats = load_players_aggregate(
+            season=season,
+            scope=scope,
+            team_filter=team,
+            search_query=search,
+            sort_by=sort,
+        )
         teams = get_team_list(season)
-    leader = stats[0] if stats else None
+    leader = full_stats[0] if full_stats else None
+    stats, pagination = paginate_items(
+        full_stats,
+        page,
+        page_size,
+        base_path="/players",
+        table_path="/players/table",
+        params=params,
+    )
     return templates.TemplateResponse(
         "players.html",
         {
@@ -995,7 +1098,7 @@ async def players(
             "page_title": "WKBL Players",
             "stats": stats,
             "leader": leader,
-            "total_count": len(stats),
+            "total_count": pagination["total_count"],
             "season": season,
             "seasons": seasons,
             "season_label": season_label(season),
@@ -1007,6 +1110,8 @@ async def players(
             "sort": sort,
             "scopes": scopes,
             "sort_options": sort_options,
+            "pagination": pagination,
+            "page_size": pagination["page_size"],
         },
     )
 
@@ -1019,15 +1124,55 @@ async def players_table(
     team: str = "ALL",
     search: str = "",
     sort: str = "pts",
+    page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
 ):
     season = resolve_season(season, allow_all=True)
+    params = {
+        "season": season,
+        "scope": scope,
+        "team": team,
+        "search": search,
+        "sort": sort,
+    }
     if should_use_db_players(season):
-        stats = load_players_db(scope=scope, team_filter=team, search_query=search, sort_by=sort, season=season)
+        full_stats = load_players_db(
+            scope=scope,
+            team_filter=team,
+            search_query=search,
+            sort_by=sort,
+            season=season,
+            limit=MAX_DB_LIMIT,
+        )
     else:
-        stats = load_players_aggregate(season=season, scope=scope, team_filter=team, search_query=search, sort_by=sort)
+        full_stats = load_players_aggregate(
+            season=season,
+            scope=scope,
+            team_filter=team,
+            search_query=search,
+            sort_by=sort,
+        )
+    stats, pagination = paginate_items(
+        full_stats,
+        page,
+        page_size,
+        base_path="/players",
+        table_path="/players/table",
+        params=params,
+    )
     return templates.TemplateResponse(
         "partials/players_table.html",
-        {"request": request, "stats": stats, "scope": scope},
+        {
+            "request": request,
+            "stats": stats,
+            "scope": scope,
+            "season": season,
+            "team": team,
+            "search": search,
+            "sort": sort,
+            "pagination": pagination,
+            "page_size": pagination["page_size"],
+        },
     )
 
 
@@ -1071,6 +1216,8 @@ async def teams(
     season: str = "",
     scope: str = "per_game",
     sort: str = "pts",
+    page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
 ):
     scopes = [("per_game", "Per Game"), ("totals", "Totals")]
     sort_options = [
@@ -1086,8 +1233,16 @@ async def teams(
     ]
     season = resolve_season(season, allow_all=True)
     seasons = season_options(include_all=True)
-    stats = load_teams_aggregate(season=season, scope=scope, sort_by=sort)
-    leader = stats[0] if stats else None
+    full_stats = load_teams_aggregate(season=season, scope=scope, sort_by=sort)
+    leader = full_stats[0] if full_stats else None
+    stats, pagination = paginate_items(
+        full_stats,
+        page,
+        page_size,
+        base_path="/teams",
+        table_path="/teams/table",
+        params={"season": season, "scope": scope, "sort": sort},
+    )
     return templates.TemplateResponse(
         "teams.html",
         {
@@ -1096,7 +1251,7 @@ async def teams(
             "page_title": "WKBL Teams",
             "stats": stats,
             "leader": leader,
-            "total_count": len(stats),
+            "total_count": pagination["total_count"],
             "season": season,
             "seasons": seasons,
             "season_label": season_label(season),
@@ -1105,6 +1260,8 @@ async def teams(
             "sort": sort,
             "scopes": scopes,
             "sort_options": sort_options,
+            "pagination": pagination,
+            "page_size": pagination["page_size"],
         },
     )
 
@@ -1149,12 +1306,30 @@ async def teams_table(
     season: str = "",
     scope: str = "per_game",
     sort: str = "pts",
+    page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
 ):
     season = resolve_season(season, allow_all=True)
-    stats = load_teams_aggregate(season=season, scope=scope, sort_by=sort)
+    full_stats = load_teams_aggregate(season=season, scope=scope, sort_by=sort)
+    stats, pagination = paginate_items(
+        full_stats,
+        page,
+        page_size,
+        base_path="/teams",
+        table_path="/teams/table",
+        params={"season": season, "scope": scope, "sort": sort},
+    )
     return templates.TemplateResponse(
         "partials/teams_table.html",
-        {"request": request, "stats": stats},
+        {
+            "request": request,
+            "stats": stats,
+            "season": season,
+            "scope": scope,
+            "sort": sort,
+            "pagination": pagination,
+            "page_size": pagination["page_size"],
+        },
     )
 
 
@@ -1162,10 +1337,20 @@ async def teams_table(
 async def standings(
     request: Request,
     season: str = "",
+    page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
 ):
     season = resolve_season(season)
     seasons = season_options(include_all=False)
-    stats = load_standings(season)
+    full_stats = load_standings(season)
+    stats, pagination = paginate_items(
+        full_stats,
+        page,
+        page_size,
+        base_path="/standings",
+        table_path="/standings/table",
+        params={"season": season},
+    )
     return templates.TemplateResponse(
         "standings.html",
         {
@@ -1176,7 +1361,9 @@ async def standings(
             "season": season,
             "season_label": season_label(season),
             "seasons": seasons,
-            "total_count": len(stats),
+            "total_count": pagination["total_count"],
+            "pagination": pagination,
+            "page_size": pagination["page_size"],
         },
     )
 
@@ -1185,12 +1372,28 @@ async def standings(
 async def standings_table(
     request: Request,
     season: str = "",
+    page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
 ):
     season = resolve_season(season)
-    stats = load_standings(season)
+    full_stats = load_standings(season)
+    stats, pagination = paginate_items(
+        full_stats,
+        page,
+        page_size,
+        base_path="/standings",
+        table_path="/standings/table",
+        params={"season": season},
+    )
     return templates.TemplateResponse(
         "partials/standings_table.html",
-        {"request": request, "stats": stats},
+        {
+            "request": request,
+            "stats": stats,
+            "season": season,
+            "pagination": pagination,
+            "page_size": pagination["page_size"],
+        },
     )
 
 
@@ -1202,6 +1405,8 @@ async def games(
     search: str = "",
     game_no: str = "",
     sort: str = "game_no",
+    page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
 ):
     sort_options = [
         ("game_no", "Game No"),
@@ -1213,8 +1418,28 @@ async def games(
     ]
     season = resolve_season(season, allow_all=True)
     seasons = season_options(include_all=True)
-    stats = load_players_games(season=season, team_filter=team, search_query=search, game_no=game_no, sort_by=sort)
-    leader = stats[0] if stats else None
+    full_stats = load_players_games(
+        season=season,
+        team_filter=team,
+        search_query=search,
+        game_no=game_no,
+        sort_by=sort,
+    )
+    leader = full_stats[0] if full_stats else None
+    stats, pagination = paginate_items(
+        full_stats,
+        page,
+        page_size,
+        base_path="/games",
+        table_path="/games/table",
+        params={
+            "season": season,
+            "team": team,
+            "search": search,
+            "game_no": game_no,
+            "sort": sort,
+        },
+    )
     return templates.TemplateResponse(
         "games.html",
         {
@@ -1223,7 +1448,7 @@ async def games(
             "page_title": "WKBL Game Log",
             "stats": stats,
             "leader": leader,
-            "total_count": len(stats),
+            "total_count": pagination["total_count"],
             "season": season,
             "seasons": seasons,
             "season_label": season_label(season),
@@ -1233,6 +1458,8 @@ async def games(
             "game_no": game_no,
             "sort": sort,
             "sort_options": sort_options,
+            "pagination": pagination,
+            "page_size": pagination["page_size"],
         },
     )
 
@@ -1245,12 +1472,44 @@ async def games_table(
     search: str = "",
     game_no: str = "",
     sort: str = "game_no",
+    page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
 ):
     season = resolve_season(season, allow_all=True)
-    stats = load_players_games(season=season, team_filter=team, search_query=search, game_no=game_no, sort_by=sort)
+    full_stats = load_players_games(
+        season=season,
+        team_filter=team,
+        search_query=search,
+        game_no=game_no,
+        sort_by=sort,
+    )
+    stats, pagination = paginate_items(
+        full_stats,
+        page,
+        page_size,
+        base_path="/games",
+        table_path="/games/table",
+        params={
+            "season": season,
+            "team": team,
+            "search": search,
+            "game_no": game_no,
+            "sort": sort,
+        },
+    )
     return templates.TemplateResponse(
         "partials/games_table.html",
-        {"request": request, "stats": stats},
+        {
+            "request": request,
+            "stats": stats,
+            "season": season,
+            "team": team,
+            "search": search,
+            "game_no": game_no,
+            "sort": sort,
+            "pagination": pagination,
+            "page_size": pagination["page_size"],
+        },
     )
 
 
@@ -1261,6 +1520,8 @@ async def boxscores(
     team: str = "ALL",
     search: str = "",
     sort: str = "game_no",
+    page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
 ):
     sort_options = [
         ("game_no", "Game No"),
@@ -1270,8 +1531,26 @@ async def boxscores(
     ]
     season = resolve_season(season, allow_all=True)
     seasons = season_options(include_all=True)
-    stats = load_game_summary(season=season, team_filter=team, search_query=search, sort_by=sort)
-    leader = stats[0] if stats else None
+    full_stats = load_game_summary(
+        season=season,
+        team_filter=team,
+        search_query=search,
+        sort_by=sort,
+    )
+    leader = full_stats[0] if full_stats else None
+    stats, pagination = paginate_items(
+        full_stats,
+        page,
+        page_size,
+        base_path="/boxscores",
+        table_path="/boxscores/table",
+        params={
+            "season": season,
+            "team": team,
+            "search": search,
+            "sort": sort,
+        },
+    )
     return templates.TemplateResponse(
         "boxscores.html",
         {
@@ -1280,7 +1559,7 @@ async def boxscores(
             "page_title": "WKBL Boxscores",
             "stats": stats,
             "leader": leader,
-            "total_count": len(stats),
+            "total_count": pagination["total_count"],
             "season": season,
             "seasons": seasons,
             "season_label": season_label(season),
@@ -1289,6 +1568,8 @@ async def boxscores(
             "search": search,
             "sort": sort,
             "sort_options": sort_options,
+            "pagination": pagination,
+            "page_size": pagination["page_size"],
         },
     )
 
@@ -1300,12 +1581,41 @@ async def boxscores_table(
     team: str = "ALL",
     search: str = "",
     sort: str = "game_no",
+    page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
 ):
     season = resolve_season(season, allow_all=True)
-    stats = load_game_summary(season=season, team_filter=team, search_query=search, sort_by=sort)
+    full_stats = load_game_summary(
+        season=season,
+        team_filter=team,
+        search_query=search,
+        sort_by=sort,
+    )
+    stats, pagination = paginate_items(
+        full_stats,
+        page,
+        page_size,
+        base_path="/boxscores",
+        table_path="/boxscores/table",
+        params={
+            "season": season,
+            "team": team,
+            "search": search,
+            "sort": sort,
+        },
+    )
     return templates.TemplateResponse(
         "partials/boxscores_table.html",
-        {"request": request, "stats": stats},
+        {
+            "request": request,
+            "stats": stats,
+            "season": season,
+            "team": team,
+            "search": search,
+            "sort": sort,
+            "pagination": pagination,
+            "page_size": pagination["page_size"],
+        },
     )
 
 
