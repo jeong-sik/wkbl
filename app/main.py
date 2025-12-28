@@ -89,35 +89,49 @@ def get_team_meta(team: str) -> dict:
     return TEAM_META.get(team, DEFAULT_TEAM_META)
 
 
-def build_team_url(team: str) -> str:
+def build_team_url(team: str, season: str = "") -> str:
     if not team:
         return ""
-    return f"/team?name={quote(str(team), safe='')}"
+    url = f"/team?name={quote(str(team), safe='')}"
+    if season and season != "ALL":
+        url += f"&season={quote(str(season), safe='')}"
+    return url
 
 
-def build_player_key(name: str, team: str) -> str:
+def build_player_key(name: str, team: str, season: str = "") -> str:
     if not name or not team:
         return ""
+    if season:
+        return f"{name}|{team}|{season}"
     return f"{name}|{team}"
 
 
-def build_player_url(name: str, team: str) -> str:
+def build_player_url(name: str, team: str, season: str = "") -> str:
     if not name or not team:
         return ""
-    return f"/player?name={quote(str(name), safe='')}&team={quote(str(team), safe='')}"
+    url = f"/player?name={quote(str(name), safe='')}&team={quote(str(team), safe='')}"
+    if season and season != "ALL":
+        url += f"&season={quote(str(season), safe='')}"
+    return url
 
 
-def build_compare_player_url(name: str, team: str) -> str:
-    key = build_player_key(name, team)
+def build_compare_player_url(name: str, team: str, season: str = "") -> str:
+    key = build_player_key(name, team, season)
     if not key:
         return ""
-    return f"/compare?mode=players&player_a={quote(key, safe='')}"
+    url = f"/compare?mode=players&player_a={quote(key, safe='')}"
+    if season and season != "ALL":
+        url += f"&season={quote(str(season), safe='')}"
+    return url
 
 
-def build_compare_team_url(team: str) -> str:
+def build_compare_team_url(team: str, season: str = "") -> str:
     if not team:
         return ""
-    return f"/compare?mode=teams&team_a={quote(str(team), safe='')}"
+    url = f"/compare?mode=teams&team_a={quote(str(team), safe='')}"
+    if season and season != "ALL":
+        url += f"&season={quote(str(season), safe='')}"
+    return url
 
 
 def get_player_photo(name: str) -> str | None:
@@ -125,14 +139,41 @@ def get_player_photo(name: str) -> str | None:
     return f"/static/images/player_{pno}.png" if pno else None
 
 
-def get_team_list() -> list[str]:
+def get_team_list(season: str = "ALL") -> list[str]:
     if DERIVED_DIR.exists():
         path = DERIVED_DIR / "players_aggregate.csv"
         if path.exists():
             df = pd.read_csv(path)
+            if season and season != "ALL":
+                df = df[df["season_gu"].astype(str).str.zfill(3) == str(season)]
             teams = sorted(df["team"].dropna().unique().tolist())
             return teams
     return sorted(["우리은행", "삼성생명", "신한은행", "KB스타즈", "하나은행", "BNK썸"])
+
+
+def get_season_list() -> list[str]:
+    candidates = [
+        DERIVED_DIR / "players_aggregate.csv",
+        DERIVED_DIR / "teams_aggregate.csv",
+        DERIVED_DIR / "players_games.csv",
+    ]
+    for path in candidates:
+        if path.exists():
+            df = pd.read_csv(path)
+            if "season_gu" not in df.columns:
+                continue
+            seasons = {str(s).zfill(3) for s in df["season_gu"].dropna().unique().tolist()}
+            return sorted(seasons, key=lambda x: int(x))
+    return []
+
+
+def resolve_season(season: str, allow_all: bool = False) -> str:
+    if season == "ALL" and allow_all:
+        return "ALL"
+    if season and season != "ALL":
+        return str(season).zfill(3)
+    seasons = get_season_list()
+    return seasons[-1] if seasons else "ALL"
 
 
 def scope_label(scope: str) -> str:
@@ -145,6 +186,7 @@ def scope_label(scope: str) -> str:
 
 
 def load_players_aggregate(
+    season: str = "ALL",
     scope: str = "per_game",
     team_filter: str = "ALL",
     search_query: str = "",
@@ -155,6 +197,8 @@ def load_players_aggregate(
     if not path.exists():
         return []
     df = pd.read_csv(path)
+    if season and season != "ALL":
+        df = df[df["season_gu"].astype(str).str.zfill(3) == str(season)]
     df = df[df["scope"] == scope]
     if team_filter != "ALL":
         df = df[df["team"] == team_filter]
@@ -169,13 +213,15 @@ def load_players_aggregate(
     for row in rows:
         name = str(row.get("name", "")).strip()
         team = str(row.get("team", "")).strip()
-        row["player_url"] = build_player_url(name, team)
-        row["team_url"] = build_team_url(team)
-        row["compare_url"] = build_compare_player_url(name, team)
+        season_val = str(row.get("season_gu", "")).zfill(3)
+        row["player_url"] = build_player_url(name, team, season_val)
+        row["team_url"] = build_team_url(team, season_val)
+        row["compare_url"] = build_compare_player_url(name, team, season_val)
     return rows
 
 
 def load_teams_aggregate(
+    season: str = "ALL",
     scope: str = "per_game",
     sort_by: str = "pts",
     order: str = "desc",
@@ -184,21 +230,29 @@ def load_teams_aggregate(
     if not path.exists():
         return []
     df = pd.read_csv(path)
+    if season and season != "ALL":
+        df = df[df["season_gu"].astype(str).str.zfill(3) == str(season)]
     df = df[df["scope"] == scope]
+    if "margin" not in df.columns:
+        df["margin"] = 0
+    if "pts_against" not in df.columns:
+        df["pts_against"] = 0
 
-    allowed = {"pts", "reb", "ast", "stl", "blk", "to", "fg_pct", "fg3_pct", "ts_pct", "efg_pct", "eff", "min_total"}
+    allowed = {"pts", "reb", "ast", "stl", "blk", "to", "fg_pct", "fg3_pct", "ts_pct", "efg_pct", "eff", "min_total", "margin"}
     if sort_by not in allowed:
         sort_by = "pts"
     df = df.sort_values(by=sort_by, ascending=(order == "asc"))
     rows = df.to_dict(orient="records")
     for row in rows:
         team = str(row.get("team", "")).strip()
-        row["team_url"] = build_team_url(team)
-        row["compare_url"] = build_compare_team_url(team)
+        season_val = str(row.get("season_gu", "")).zfill(3)
+        row["team_url"] = build_team_url(team, season_val)
+        row["compare_url"] = build_compare_team_url(team, season_val)
     return rows
 
 
 def load_players_games(
+    season: str = "ALL",
     team_filter: str = "ALL",
     search_query: str = "",
     game_no: str = "",
@@ -209,6 +263,8 @@ def load_players_games(
     if not path.exists():
         return []
     df = pd.read_csv(path)
+    if season and season != "ALL":
+        df = df[df["season_gu"].astype(str).str.zfill(3) == str(season)]
     if team_filter != "ALL":
         df = df[df["team"] == team_filter]
     if search_query:
@@ -222,6 +278,8 @@ def load_players_games(
 
     df["game_label"] = df["game_no"].apply(lambda x: f"#{int(x)}")
     df["min_display"] = df["min"].fillna("0:00")
+    if "game_key" in df.columns:
+        df["boxscore_url"] = df["game_key"].apply(lambda x: f"/boxscore?game_key={quote(str(x), safe='')}")
 
     allowed = {"game_no", "pts", "reb", "ast", "eff", "ts_pct"}
     if sort_by not in allowed:
@@ -230,13 +288,15 @@ def load_players_games(
     return df.to_dict(orient="records")
 
 
-def load_player_scopes(name: str, team: str) -> dict:
+def load_player_scopes(name: str, team: str, season: str) -> dict:
     if not name or not team:
         return {}
     path = DERIVED_DIR / "players_aggregate.csv"
     if not path.exists():
         return {}
     df = pd.read_csv(path)
+    if season and season != "ALL":
+        df = df[df["season_gu"].astype(str).str.zfill(3) == str(season)]
     df = df[(df["name"] == name) & (df["team"] == team)]
     if df.empty:
         return {}
@@ -252,29 +312,37 @@ def load_player_scopes(name: str, team: str) -> dict:
     return scopes
 
 
-def load_player_game_log(name: str, team: str, limit: int = 12) -> list[dict]:
+def load_player_game_log(name: str, team: str, season: str, limit: int = 12) -> list[dict]:
     if not name or not team:
         return []
     path = DERIVED_DIR / "players_games.csv"
     if not path.exists():
         return []
     df = pd.read_csv(path)
+    if season and season != "ALL":
+        df = df[df["season_gu"].astype(str).str.zfill(3) == str(season)]
     df = df[(df["name"] == name) & (df["team"] == team)]
     if df.empty:
         return []
-    df = df.sort_values(by="game_no", ascending=False)
+    df = df.sort_values(by=["ym", "game_no"], ascending=False)
     df["game_label"] = df["game_no"].apply(lambda x: f"#{int(x)}")
     df["min_display"] = df["min"].fillna("0:00")
     return df.head(limit).to_dict(orient="records")
 
 
-def load_team_scopes(team: str) -> dict:
+def load_team_scopes(team: str, season: str) -> dict:
     if not team:
         return {}
     path = DERIVED_DIR / "teams_aggregate.csv"
     if not path.exists():
         return {}
     df = pd.read_csv(path)
+    if "margin" not in df.columns:
+        df["margin"] = 0
+    if "pts_against" not in df.columns:
+        df["pts_against"] = 0
+    if season and season != "ALL":
+        df = df[df["season_gu"].astype(str).str.zfill(3) == str(season)]
     df = df[df["team"] == team]
     if df.empty:
         return {}
@@ -290,8 +358,8 @@ def load_team_scopes(team: str) -> dict:
     return scopes
 
 
-def load_team_leaders(team: str) -> dict:
-    players = load_players_aggregate(scope="per_game", team_filter=team, sort_by="pts")
+def load_team_leaders(team: str, season: str) -> dict:
+    players = load_players_aggregate(season=season, scope="per_game", team_filter=team, sort_by="pts")
     if not players:
         return {}
     leaders = {}
@@ -300,52 +368,173 @@ def load_team_leaders(team: str) -> dict:
     return leaders
 
 
-def get_player_options() -> list[dict]:
+def load_game_summary(
+    season: str = "ALL",
+    team_filter: str = "ALL",
+    search_query: str = "",
+    sort_by: str = "game_no",
+    order: str = "desc",
+) -> list[dict]:
+    path = DERIVED_DIR / "games_summary.csv"
+    if not path.exists():
+        return []
+    df = pd.read_csv(path)
+    if season and season != "ALL":
+        df = df[df["season_gu"].astype(str).str.zfill(3) == str(season)]
+    if team_filter != "ALL":
+        df = df[(df["team_a"] == team_filter) | (df["team_b"] == team_filter)]
+    if search_query:
+        df = df[
+            df["team_a"].str.contains(search_query, case=False, na=False)
+            | df["team_b"].str.contains(search_query, case=False, na=False)
+        ]
+
+    allowed = {"game_no", "margin", "pts_a", "pts_b"}
+    if sort_by not in allowed:
+        sort_by = "game_no"
+    df = df.sort_values(by=sort_by, ascending=(order == "asc"))
+
+    df["game_label"] = df["game_no"].apply(lambda x: f"#{int(x)}")
+    df["boxscore_url"] = df["game_key"].apply(lambda x: f"/boxscore?game_key={quote(str(x), safe='')}")
+    return df.to_dict(orient="records")
+
+
+def load_boxscore(game_key: str) -> dict:
+    if not game_key:
+        return {}
+    path = DERIVED_DIR / "players_games.csv"
+    if not path.exists():
+        return {}
+    df = pd.read_csv(path)
+    df = df[df["game_key"].astype(str) == str(game_key)]
+    if df.empty:
+        return {}
+
+    df["min_display"] = df["min"].fillna("0:00")
+    df["season_gu"] = df["season_gu"].astype(str).str.zfill(3)
+    df["game_label"] = df["game_no"].apply(lambda x: f"#{int(x)}")
+
+    team_rows = []
+    for team, group in df.groupby("team"):
+        totals = {
+            "min_total": round(group["min_dec"].sum(), 1),
+            "pts": int(group["pts"].sum()),
+            "reb": int(group["reb"].sum()),
+            "ast": int(group["ast"].sum()),
+            "stl": int(group["stl"].sum()),
+            "blk": int(group["blk"].sum()),
+            "to": int(group["to"].sum()),
+            "fg2_m": int(group["fg2_m"].sum()),
+            "fg2_a": int(group["fg2_a"].sum()),
+            "fg3_m": int(group["fg3_m"].sum()),
+            "fg3_a": int(group["fg3_a"].sum()),
+            "ft_m": int(group["ft_m"].sum()),
+            "ft_a": int(group["ft_a"].sum()),
+        }
+        totals["fg_m"] = totals["fg2_m"] + totals["fg3_m"]
+        totals["fg_a"] = totals["fg2_a"] + totals["fg3_a"]
+        totals["fg2_display"] = f"{totals['fg2_m']}-{totals['fg2_a']}"
+        totals["fg3_display"] = f"{totals['fg3_m']}-{totals['fg3_a']}"
+        totals["ft_display"] = f"{totals['ft_m']}-{totals['ft_a']}"
+        totals["fg_pct"] = pct(totals["fg_m"], totals["fg_a"])
+        totals["fg3_pct"] = pct(totals["fg3_m"], totals["fg3_a"])
+        totals["ft_pct"] = pct(totals["ft_m"], totals["ft_a"])
+        totals["efg_pct"] = pct(totals["fg_m"] + 0.5 * totals["fg3_m"], totals["fg_a"])
+        totals["ts_pct"] = pct(totals["pts"], 2 * (totals["fg_a"] + 0.44 * totals["ft_a"]))
+
+        rows = group.sort_values(by="min_dec", ascending=False).to_dict(orient="records")
+        team_rows.append(
+            {
+                "team": team,
+                "meta": get_team_meta(team),
+                "rows": rows,
+                "totals": totals,
+            }
+        )
+
+    team_rows.sort(key=lambda r: r["totals"]["pts"], reverse=True)
+    top = team_rows[0]
+    bottom = team_rows[1] if len(team_rows) > 1 else None
+
+    header = df.iloc[0]
+    summary = {
+        "season_gu": header["season_gu"],
+        "game_label": header["game_label"],
+        "game_key": header["game_key"],
+        "game_no": int(header["game_no"]),
+        "ym": str(header.get("ym", "")),
+    }
+
+    if bottom:
+        summary["scoreline"] = f"{top['team']} {top['totals']['pts']} - {bottom['totals']['pts']} {bottom['team']}"
+        summary["margin"] = top["totals"]["pts"] - bottom["totals"]["pts"]
+    else:
+        summary["scoreline"] = f"{top['team']} {top['totals']['pts']}"
+        summary["margin"] = 0
+
+    return {"summary": summary, "teams": team_rows}
+
+
+def get_player_options(season: str = "ALL") -> list[dict]:
     path = DERIVED_DIR / "players_aggregate.csv"
     if not path.exists():
         return []
     df = pd.read_csv(path)
+    if season and season != "ALL":
+        df = df[df["season_gu"].astype(str).str.zfill(3) == str(season)]
     df = df[df["scope"] == "totals"].sort_values(["team", "name"])
     options = []
     for _, row in df.iterrows():
         name = str(row["name"]).strip()
         team = str(row["team"]).strip()
-        value = f"{name}|{team}"
-        label = f"{name} ({team})"
+        season_val = str(row.get("season_gu", "")).zfill(3)
+        value = f"{name}|{team}|{season_val}"
+        label = f"{name} ({team}) · {season_val}"
         options.append({"value": value, "label": label})
     return options
 
 
-def find_player(scope: str, key: str) -> dict | None:
+def find_player(scope: str, key: str, season: str = "") -> dict | None:
     if not key or "|" not in key:
         return None
-    name, team = key.split("|", 1)
+    parts = key.split("|")
+    if len(parts) == 3:
+        name, team, season_key = parts
+    else:
+        name, team = parts[0], parts[1]
+        season_key = season
     path = DERIVED_DIR / "players_aggregate.csv"
     if not path.exists():
         return None
     df = pd.read_csv(path)
+    if season_key and season_key != "ALL":
+        df = df[df["season_gu"].astype(str).str.zfill(3) == str(season_key)]
     df = df[(df["scope"] == scope) & (df["name"] == name) & (df["team"] == team)]
     if df.empty:
         return None
     return df.iloc[0].to_dict()
 
 
-def get_team_options() -> list[dict]:
+def get_team_options(season: str = "ALL") -> list[dict]:
     path = DERIVED_DIR / "teams_aggregate.csv"
     if not path.exists():
         return []
     df = pd.read_csv(path)
+    if season and season != "ALL":
+        df = df[df["season_gu"].astype(str).str.zfill(3) == str(season)]
     teams = sorted(df["team"].dropna().unique().tolist())
     return [{"value": team, "label": team} for team in teams]
 
 
-def find_team(scope: str, team: str) -> dict | None:
+def find_team(scope: str, team: str, season: str = "") -> dict | None:
     if not team:
         return None
     path = DERIVED_DIR / "teams_aggregate.csv"
     if not path.exists():
         return None
     df = pd.read_csv(path)
+    if season and season != "ALL":
+        df = df[df["season_gu"].astype(str).str.zfill(3) == str(season)]
     df = df[(df["scope"] == scope) & (df["team"] == team)]
     if df.empty:
         return None
@@ -366,7 +555,16 @@ def to_float(value) -> float:
         return 0.0
 
 
-def build_compare_metrics(left: dict, right: dict) -> list[dict]:
+def pct(made: float, att: float) -> float:
+    try:
+        if att <= 0:
+            return 0.0
+        return round((made / att) * 100, 1)
+    except Exception:
+        return 0.0
+
+
+def build_compare_metrics(left: dict, right: dict, mode: str = "players") -> list[dict]:
     configs = [
         ("GP", "gp", 0, False),
         ("MIN", "min_total", 1, False),
@@ -383,6 +581,8 @@ def build_compare_metrics(left: dict, right: dict) -> list[dict]:
         ("TS%", "ts_pct", 1, False),
         ("EFF", "eff", 1, True),
     ]
+    if mode == "teams":
+        configs.append(("MARGIN", "margin", 1, True))
 
     metrics = []
     for label, key, digits, abs_bar in configs:
@@ -412,12 +612,17 @@ def build_compare_metrics(left: dict, right: dict) -> list[dict]:
 def compare_context(
     mode: str,
     scope: str,
+    season: str,
     player_a: str = "",
     player_b: str = "",
     team_a: str = "",
     team_b: str = "",
 ) -> dict:
     mode = "teams" if mode == "teams" else "players"
+    season = resolve_season(season)
+    seasons = get_season_list()
+    if not seasons and season:
+        seasons = [season]
     player_scopes = [("per_game", "Per Game"), ("per_36", "Per 36"), ("totals", "Totals")]
     team_scopes = [("per_game", "Per Game"), ("totals", "Totals")]
 
@@ -430,9 +635,9 @@ def compare_context(
         scope = "per_game"
 
     if mode == "teams":
-        options = get_team_options()
-        left = find_team(scope, team_a)
-        right = find_team(scope, team_b)
+        options = get_team_options(season)
+        left = find_team(scope, team_a, season)
+        right = find_team(scope, team_b, season)
         select_label = "Team"
         select_name_a = "team_a"
         select_name_b = "team_b"
@@ -445,9 +650,9 @@ def compare_context(
         left_label = left.get("team") if left else "Team A"
         right_label = right.get("team") if right else "Team B"
     else:
-        options = get_player_options()
-        left = find_player(scope, player_a)
-        right = find_player(scope, player_b)
+        options = get_player_options(season)
+        left = find_player(scope, player_a, season)
+        right = find_player(scope, player_b, season)
         select_label = "Player"
         select_name_a = "player_a"
         select_name_b = "player_b"
@@ -460,19 +665,19 @@ def compare_context(
         left_label = f"{left.get('name')} ({left.get('team')})" if left else "Player A"
         right_label = f"{right.get('name')} ({right.get('team')})" if right else "Player B"
 
-    metrics = build_compare_metrics(left, right) if left and right else []
+    metrics = build_compare_metrics(left, right, mode) if left and right else []
 
     player_scope = scope if scope in player_scope_keys else "per_game"
     team_scope = scope if scope in team_scope_keys else "per_game"
     mode_switch = [
         {
             "label": "Players",
-            "url": f"/compare?mode=players&scope={player_scope}",
+            "url": f"/compare?mode=players&scope={player_scope}&season={season}",
             "active": mode == "players",
         },
         {
             "label": "Teams",
-            "url": f"/compare?mode=teams&scope={team_scope}",
+            "url": f"/compare?mode=teams&scope={team_scope}&season={season}",
             "active": mode == "teams",
         },
     ]
@@ -480,6 +685,8 @@ def compare_context(
     return {
         "mode": mode,
         "scope": scope,
+        "season": season,
+        "seasons": seasons,
         "scope_label": scope_label(scope),
         "scopes": scopes,
         "options": options,
@@ -513,7 +720,7 @@ def load_real_stats(sort_by="eff", team_filter="ALL", pos_filter="ALL", search_q
     data_dir = BOX_DIR if BOX_DIR.exists() else DATA_DIR
     if not data_dir.exists():
         return []
-    files = sorted(data_dir.glob("*.csv"))
+    files = sorted(data_dir.rglob("*.csv"))
     for f in files:
         try:
             df = pd.read_csv(f)
@@ -634,6 +841,7 @@ async def refresh(request: Request, sort: str = "eff", team: str = "ALL", pos: s
 @app.get("/players", response_class=HTMLResponse)
 async def players(
     request: Request,
+    season: str = "",
     scope: str = "per_game",
     team: str = "ALL",
     search: str = "",
@@ -642,6 +850,7 @@ async def players(
     scopes = [("per_game", "Per Game"), ("per_36", "Per 36"), ("totals", "Totals")]
     sort_options = [
         ("pts", "PTS"),
+        ("margin", "Margin"),
         ("reb", "REB"),
         ("ast", "AST"),
         ("stl", "STL"),
@@ -651,7 +860,9 @@ async def players(
         ("fg3_pct", "3P%"),
         ("min_total", "MIN"),
     ]
-    stats = load_players_aggregate(scope=scope, team_filter=team, search_query=search, sort_by=sort)
+    season = resolve_season(season, allow_all=True)
+    seasons = ["ALL"] + get_season_list()
+    stats = load_players_aggregate(season=season, scope=scope, team_filter=team, search_query=search, sort_by=sort)
     leader = stats[0] if stats else None
     return templates.TemplateResponse(
         "players.html",
@@ -662,10 +873,12 @@ async def players(
             "stats": stats,
             "leader": leader,
             "total_count": len(stats),
+            "season": season,
+            "seasons": seasons,
             "scope": scope,
             "scope_label": scope_label(scope),
             "team": team,
-            "teams": get_team_list(),
+            "teams": get_team_list(season),
             "search": search,
             "sort": sort,
             "scopes": scopes,
@@ -677,12 +890,14 @@ async def players(
 @app.get("/players/table", response_class=HTMLResponse)
 async def players_table(
     request: Request,
+    season: str = "",
     scope: str = "per_game",
     team: str = "ALL",
     search: str = "",
     sort: str = "pts",
 ):
-    stats = load_players_aggregate(scope=scope, team_filter=team, search_query=search, sort_by=sort)
+    season = resolve_season(season, allow_all=True)
+    stats = load_players_aggregate(season=season, scope=scope, team_filter=team, search_query=search, sort_by=sort)
     return templates.TemplateResponse(
         "partials/players_table.html",
         {"request": request, "stats": stats, "scope": scope},
@@ -694,12 +909,14 @@ async def player_profile(
     request: Request,
     name: str = "",
     team: str = "",
+    season: str = "",
     scope: str = "per_game",
 ):
-    scopes = load_player_scopes(name, team)
+    season = resolve_season(season)
+    scopes = load_player_scopes(name, team, season)
     primary = scopes.get(scope) or scopes.get("per_game") or next(iter(scopes.values()), None)
     scope_rows = [scopes[key] for key in ("per_game", "per_36", "totals") if key in scopes]
-    games = load_player_game_log(name, team)
+    games = load_player_game_log(name, team, season)
     team_meta = get_team_meta(team)
     return templates.TemplateResponse(
         "player.html",
@@ -712,9 +929,10 @@ async def player_profile(
             "team_meta": team_meta,
             "scope_rows": scope_rows,
             "games": games,
-            "compare_url": build_compare_player_url(name, team),
-            "team_url": build_team_url(team),
-            "back_url": f"/players?team={quote(str(team), safe='')}" if team else "/players",
+            "season": season,
+            "compare_url": build_compare_player_url(name, team, season),
+            "team_url": build_team_url(team, season),
+            "back_url": f"/players?season={season}&team={quote(str(team), safe='')}" if team else f"/players?season={season}",
         },
     )
 
@@ -722,6 +940,7 @@ async def player_profile(
 @app.get("/teams", response_class=HTMLResponse)
 async def teams(
     request: Request,
+    season: str = "",
     scope: str = "per_game",
     sort: str = "pts",
 ):
@@ -737,7 +956,9 @@ async def teams(
         ("fg3_pct", "3P%"),
         ("min_total", "MIN"),
     ]
-    stats = load_teams_aggregate(scope=scope, sort_by=sort)
+    season = resolve_season(season, allow_all=True)
+    seasons = ["ALL"] + get_season_list()
+    stats = load_teams_aggregate(season=season, scope=scope, sort_by=sort)
     leader = stats[0] if stats else None
     return templates.TemplateResponse(
         "teams.html",
@@ -748,6 +969,8 @@ async def teams(
             "stats": stats,
             "leader": leader,
             "total_count": len(stats),
+            "season": season,
+            "seasons": seasons,
             "scope": scope,
             "scope_label": scope_label(scope),
             "sort": sort,
@@ -761,13 +984,15 @@ async def teams(
 async def team_profile(
     request: Request,
     name: str = "",
+    season: str = "",
     scope: str = "per_game",
 ):
-    scopes = load_team_scopes(name)
+    season = resolve_season(season)
+    scopes = load_team_scopes(name, season)
     primary = scopes.get(scope) or scopes.get("per_game") or next(iter(scopes.values()), None)
     scope_rows = [scopes[key] for key in ("per_game", "totals") if key in scopes]
-    top_players = load_players_aggregate(scope="per_game", team_filter=name, sort_by="pts")[:8]
-    leaders = load_team_leaders(name) if name else {}
+    top_players = load_players_aggregate(season=season, scope="per_game", team_filter=name, sort_by="pts")[:8]
+    leaders = load_team_leaders(name, season) if name else {}
     team_meta = get_team_meta(name)
     return templates.TemplateResponse(
         "team.html",
@@ -781,8 +1006,9 @@ async def team_profile(
             "scope_rows": scope_rows,
             "top_players": top_players,
             "leaders": leaders,
-            "compare_url": build_compare_team_url(name),
-            "back_url": "/teams",
+            "season": season,
+            "compare_url": build_compare_team_url(name, season),
+            "back_url": f"/teams?season={season}",
         },
     )
 
@@ -790,10 +1016,12 @@ async def team_profile(
 @app.get("/teams/table", response_class=HTMLResponse)
 async def teams_table(
     request: Request,
+    season: str = "",
     scope: str = "per_game",
     sort: str = "pts",
 ):
-    stats = load_teams_aggregate(scope=scope, sort_by=sort)
+    season = resolve_season(season, allow_all=True)
+    stats = load_teams_aggregate(season=season, scope=scope, sort_by=sort)
     return templates.TemplateResponse(
         "partials/teams_table.html",
         {"request": request, "stats": stats},
@@ -803,6 +1031,7 @@ async def teams_table(
 @app.get("/games", response_class=HTMLResponse)
 async def games(
     request: Request,
+    season: str = "",
     team: str = "ALL",
     search: str = "",
     game_no: str = "",
@@ -816,7 +1045,9 @@ async def games(
         ("eff", "EFF"),
         ("ts_pct", "TS%"),
     ]
-    stats = load_players_games(team_filter=team, search_query=search, game_no=game_no, sort_by=sort)
+    season = resolve_season(season, allow_all=True)
+    seasons = ["ALL"] + get_season_list()
+    stats = load_players_games(season=season, team_filter=team, search_query=search, game_no=game_no, sort_by=sort)
     leader = stats[0] if stats else None
     return templates.TemplateResponse(
         "games.html",
@@ -827,7 +1058,9 @@ async def games(
             "stats": stats,
             "leader": leader,
             "total_count": len(stats),
-            "teams": get_team_list(),
+            "season": season,
+            "seasons": seasons,
+            "teams": get_team_list(season),
             "team": team,
             "search": search,
             "game_no": game_no,
@@ -840,15 +1073,88 @@ async def games(
 @app.get("/games/table", response_class=HTMLResponse)
 async def games_table(
     request: Request,
+    season: str = "",
     team: str = "ALL",
     search: str = "",
     game_no: str = "",
     sort: str = "game_no",
 ):
-    stats = load_players_games(team_filter=team, search_query=search, game_no=game_no, sort_by=sort)
+    season = resolve_season(season, allow_all=True)
+    stats = load_players_games(season=season, team_filter=team, search_query=search, game_no=game_no, sort_by=sort)
     return templates.TemplateResponse(
         "partials/games_table.html",
         {"request": request, "stats": stats},
+    )
+
+
+@app.get("/boxscores", response_class=HTMLResponse)
+async def boxscores(
+    request: Request,
+    season: str = "",
+    team: str = "ALL",
+    search: str = "",
+    sort: str = "game_no",
+):
+    sort_options = [
+        ("game_no", "Game No"),
+        ("margin", "Margin"),
+        ("pts_a", "Score A"),
+        ("pts_b", "Score B"),
+    ]
+    season = resolve_season(season, allow_all=True)
+    seasons = ["ALL"] + get_season_list()
+    stats = load_game_summary(season=season, team_filter=team, search_query=search, sort_by=sort)
+    leader = stats[0] if stats else None
+    return templates.TemplateResponse(
+        "boxscores.html",
+        {
+            "request": request,
+            "active_page": "boxscores",
+            "page_title": "WKBL Boxscores",
+            "stats": stats,
+            "leader": leader,
+            "total_count": len(stats),
+            "season": season,
+            "seasons": seasons,
+            "teams": get_team_list(season),
+            "team": team,
+            "search": search,
+            "sort": sort,
+            "sort_options": sort_options,
+        },
+    )
+
+
+@app.get("/boxscores/table", response_class=HTMLResponse)
+async def boxscores_table(
+    request: Request,
+    season: str = "",
+    team: str = "ALL",
+    search: str = "",
+    sort: str = "game_no",
+):
+    season = resolve_season(season, allow_all=True)
+    stats = load_game_summary(season=season, team_filter=team, search_query=search, sort_by=sort)
+    return templates.TemplateResponse(
+        "partials/boxscores_table.html",
+        {"request": request, "stats": stats},
+    )
+
+
+@app.get("/boxscore", response_class=HTMLResponse)
+async def boxscore(
+    request: Request,
+    game_key: str = "",
+):
+    data = load_boxscore(game_key)
+    return templates.TemplateResponse(
+        "boxscore.html",
+        {
+            "request": request,
+            "active_page": "boxscores",
+            "page_title": "WKBL Boxscore",
+            **data,
+        },
     )
 
 
@@ -856,6 +1162,7 @@ async def games_table(
 async def compare(
     request: Request,
     mode: str = "players",
+    season: str = "",
     scope: str = "per_game",
     player_a: str = "",
     player_b: str = "",
@@ -865,6 +1172,7 @@ async def compare(
     context = compare_context(
         mode=mode,
         scope=scope,
+        season=season,
         player_a=player_a,
         player_b=player_b,
         team_a=team_a,
@@ -885,6 +1193,7 @@ async def compare(
 async def compare_table(
     request: Request,
     mode: str = "players",
+    season: str = "",
     scope: str = "per_game",
     player_a: str = "",
     player_b: str = "",
@@ -894,6 +1203,7 @@ async def compare_table(
     context = compare_context(
         mode=mode,
         scope=scope,
+        season=season,
         player_a=player_a,
         player_b=player_b,
         team_a=team_a,

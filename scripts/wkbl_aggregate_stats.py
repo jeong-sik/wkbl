@@ -120,7 +120,7 @@ def mode_or_empty(series: pd.Series) -> str:
 
 def load_games(input_dir: Path) -> pd.DataFrame:
     rows = []
-    for file in sorted(input_dir.glob("*.csv")):
+    for file in sorted(input_dir.rglob("*.csv")):
         df = pd.read_csv(file)
         df["team"] = df["team"].apply(normalize_team)
         df["name"] = df["name"].astype(str).str.strip()
@@ -140,6 +140,8 @@ def load_games(input_dir: Path) -> pd.DataFrame:
         df["game_key"] = (
             df["season_gu"].astype(str)
             + "-"
+            + df["game_type"].astype(str)
+            + "-"
             + df["ym"].astype(str)
             + "-"
             + df["game_no"].astype(str)
@@ -158,6 +160,8 @@ def load_games(input_dir: Path) -> pd.DataFrame:
     games = add_eff(games)
     games["game_no"] = games["game_no"].astype(int)
     games["season_gu"] = games["season_gu"].astype(str).str.zfill(3)
+    games["game_type"] = games["game_type"].astype(str)
+    games["ym"] = games["ym"].astype(str)
 
     teams_by_game = games.groupby("game_key")["team"].unique().to_dict()
     opponent_map = {}
@@ -245,7 +249,81 @@ def aggregate_players(games: pd.DataFrame) -> pd.DataFrame:
     return pd.concat([totals, per_game, per_36], ignore_index=True)
 
 
-def aggregate_teams(games: pd.DataFrame) -> pd.DataFrame:
+def build_team_games(games: pd.DataFrame) -> pd.DataFrame:
+    group = games.groupby(
+        ["season_gu", "game_type", "ym", "game_no", "game_key", "team"], as_index=False
+    )
+    team_games = group.agg(
+        min_total=("min_dec", "sum"),
+        fg2_m=("fg2_m", "sum"),
+        fg2_a=("fg2_a", "sum"),
+        fg3_m=("fg3_m", "sum"),
+        fg3_a=("fg3_a", "sum"),
+        ft_m=("ft_m", "sum"),
+        ft_a=("ft_a", "sum"),
+        reb_off=("reb_off", "sum"),
+        reb_def=("reb_def", "sum"),
+        reb=("reb", "sum"),
+        ast=("ast", "sum"),
+        pf=("pf", "sum"),
+        stl=("stl", "sum"),
+        to=("to", "sum"),
+        blk=("blk", "sum"),
+        pts=("pts", "sum"),
+    )
+    team_games = add_shooting(team_games)
+    team_games = add_eff(team_games)
+
+    team_games = team_games.rename(columns={"pts": "pts_for"})
+    scores = team_games[["game_key", "team", "pts_for"]]
+    opponents = scores.rename(columns={"team": "opponent", "pts_for": "pts_against"})
+    team_games = team_games.merge(opponents, on="game_key", how="left")
+    team_games = team_games[team_games["team"] != team_games["opponent"]]
+    team_games["margin"] = team_games["pts_for"] - team_games["pts_against"]
+    team_games["win"] = team_games["margin"] > 0
+    team_games["pts"] = team_games["pts_for"]
+    return team_games
+
+
+def build_games_summary(team_games: pd.DataFrame) -> pd.DataFrame:
+    rows = []
+    for _, group in team_games.groupby("game_key"):
+        if len(group) != 2:
+            continue
+        left, right = group.iloc[0], group.iloc[1]
+        team_rows = sorted(
+            [left, right],
+            key=lambda r: str(r["team"]),
+        )
+        team_a, team_b = team_rows
+        pts_a = int(team_a["pts_for"])
+        pts_b = int(team_b["pts_for"])
+        rows.append(
+            {
+                "season_gu": team_a["season_gu"],
+                "game_type": team_a["game_type"],
+                "ym": team_a["ym"],
+                "game_no": int(team_a["game_no"]),
+                "game_key": team_a["game_key"],
+                "team_a": team_a["team"],
+                "team_b": team_b["team"],
+                "pts_a": pts_a,
+                "pts_b": pts_b,
+                "margin": pts_a - pts_b,
+                "winner": team_a["team"] if pts_a >= pts_b else team_b["team"],
+            }
+        )
+    if not rows:
+        return pd.DataFrame()
+    summary = pd.DataFrame(rows)
+    summary["game_no"] = summary["game_no"].astype(int)
+    summary["season_gu"] = summary["season_gu"].astype(str).str.zfill(3)
+    summary["game_type"] = summary["game_type"].astype(str)
+    summary["ym"] = summary["ym"].astype(str)
+    return summary
+
+
+def aggregate_teams(games: pd.DataFrame, team_games: pd.DataFrame) -> pd.DataFrame:
     group = games.groupby(["season_gu", "team"], as_index=False)
     totals = group.agg(
         gp=("game_key", "nunique"),
@@ -300,6 +378,25 @@ def aggregate_teams(games: pd.DataFrame) -> pd.DataFrame:
     per_game = add_shooting(per_game)
     per_game = add_eff(per_game)
 
+    margin_df = (
+        team_games.groupby(["season_gu", "team"], as_index=False)
+        .agg(gp=("game_key", "nunique"), pts_against=("pts_against", "sum"), margin_total=("margin", "sum"))
+    )
+    margin_df["margin_per_game"] = margin_df.apply(
+        lambda r: round(r["margin_total"] / r["gp"], 2) if r["gp"] else 0.0, axis=1
+    )
+    margin_df["pts_against_per_game"] = margin_df.apply(
+        lambda r: round(r["pts_against"] / r["gp"], 2) if r["gp"] else 0.0, axis=1
+    )
+    totals = totals.merge(margin_df, on=["season_gu", "team"], how="left")
+    per_game = per_game.merge(margin_df, on=["season_gu", "team"], how="left")
+    totals = totals.rename(columns={"gp_x": "gp"}).drop(columns=["gp_y"], errors="ignore")
+    per_game = per_game.rename(columns={"gp_x": "gp"}).drop(columns=["gp_y"], errors="ignore")
+    totals["margin"] = totals["margin_total"].fillna(0)
+    per_game["margin"] = per_game["margin_per_game"].fillna(0)
+    totals["pts_against"] = totals["pts_against"].fillna(0)
+    per_game["pts_against"] = per_game["pts_against_per_game"].fillna(0)
+
     totals["scope"] = "totals"
     per_game["scope"] = "per_game"
     return pd.concat([totals, per_game], ignore_index=True)
@@ -321,14 +418,23 @@ def main() -> None:
     if games.empty:
         raise SystemExit("no game data found")
 
+    team_games = build_team_games(games)
+    games_summary = build_games_summary(team_games)
     players = aggregate_players(games)
-    teams = aggregate_teams(games)
+    teams = aggregate_teams(games, team_games)
 
     save(games, args.output_dir, "players_games.csv")
+    if not team_games.empty:
+        save(team_games, args.output_dir, "team_games.csv")
+    if not games_summary.empty:
+        save(games_summary, args.output_dir, "games_summary.csv")
     save(players, args.output_dir, "players_aggregate.csv")
     save(teams, args.output_dir, "teams_aggregate.csv")
 
-    print(f"saved {len(games)} game rows, {len(players)} player rows, {len(teams)} team rows")
+    print(
+        f"saved {len(games)} game rows, {len(players)} player rows, "
+        f"{len(teams)} team rows, {len(team_games)} team-game rows"
+    )
 
 
 if __name__ == "__main__":

@@ -3,31 +3,30 @@
 {% block content %}
 <section class="hero">
     <div class="hero-card">
-        <span class="eyebrow">Players Hub</span>
-        <h1>Season Leaders</h1>
-        <p>선수별 시즌 누적과 per-game, per-36까지 한 번에 비교합니다. 정렬과 필터로 원하는 구간만 빠르게 추출하세요.</p>
+        <span class="eyebrow">Boxscores</span>
+        <h1>Game Results</h1>
+        <p>시즌별 득점과 박스스코어를 한눈에 확인하세요. 팀 필터로 원하는 경기만 빠르게 찾을 수 있습니다.</p>
         <div class="hero-actions">
-            <span class="pill accent">{{ scope_label }}</span>
-            <span class="pill">Season {{ season }}</span>
-            <span class="pill">{{ total_count }} Players</span>
+            <span class="pill accent">Season {{ season }}</span>
+            <span class="pill">{{ total_count }} Games</span>
         </div>
     </div>
     <div class="hero-metrics">
         <div class="metric">
-            <div class="metric-label">Top Scorer</div>
+            <div class="metric-label">Latest</div>
             {% if leader %}
-            <div class="metric-value">{{ leader.name }}</div>
-            <div class="metric-sub">{{ leader.team }} · {{ leader.pts }} PTS</div>
+            <div class="metric-value">{{ leader.game_label }}</div>
+            <div class="metric-sub">{{ leader.team_a }} vs {{ leader.team_b }}</div>
             {% else %}
             <div class="metric-value">No data</div>
             <div class="metric-sub">Collect season data first.</div>
             {% endif %}
         </div>
         <div class="metric">
-            <div class="metric-label">Efficiency</div>
+            <div class="metric-label">Margin</div>
             {% if leader %}
-            <div class="metric-value">{{ "%.1f"|format(leader.ts_pct) }} TS%</div>
-            <div class="metric-sub">eFG {{ "%.1f"|format(leader.efg_pct) }} · EFF {{ leader.eff }}</div>
+            <div class="metric-value">{{ "%.1f"|format(leader.margin) }}</div>
+            <div class="metric-sub">{{ leader.winner }} wins</div>
             {% else %}
             <div class="metric-value">--</div>
             <div class="metric-sub">--</div>
@@ -35,18 +34,14 @@
         </div>
         <div class="metric">
             <div class="metric-label">Focus</div>
-            <div class="metric-value">Shot Quality</div>
-            <div class="metric-sub">FG%, 3P%, TS% + POS & GP</div>
+            <div class="metric-value">Scoreboard</div>
+            <div class="metric-sub">Boxscore per game</div>
         </div>
     </div>
 </section>
 
-<form id="players-filter" hx-get="/players/table" hx-target="#players-table" hx-trigger="change, keyup delay:250ms">
+<form id="boxscores-filter" hx-get="/boxscores/table" hx-target="#boxscores-table" hx-trigger="change, keyup delay:250ms">
     <section class="filters">
-        <div class="filter-group">
-            <div class="filter-label">Search</div>
-            <input class="filter-input" type="search" name="search" placeholder="Search player..." value="{{ search }}" aria-label="Search player">
-        </div>
         <div class="filter-group">
             <div class="filter-label">Season</div>
             <select class="filter-input" name="season">
@@ -54,14 +49,6 @@
                 <option value="{{ value }}" {% if value == season %}selected{% endif %}>
                     {% if value == "ALL" %}ALL{% else %}{{ value|int }}{% endif %}
                 </option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="filter-group">
-            <div class="filter-label">Scope</div>
-            <select class="filter-input" name="scope">
-                {% for value, label in scopes %}
-                <option value="{{ value }}" {% if value == scope %}selected{% endif %}>{{ label }}</option>
                 {% endfor %}
             </select>
         </div>
@@ -75,6 +62,10 @@
             </select>
         </div>
         <div class="filter-group">
+            <div class="filter-label">Search</div>
+            <input class="filter-input" type="search" name="search" placeholder="Search team..." value="{{ search }}" aria-label="Search team">
+        </div>
+        <div class="filter-group">
             <div class="filter-label">Sort</div>
             <select class="filter-input" name="sort">
                 {% for value, label in sort_options %}
@@ -85,7 +76,7 @@
     </section>
 </form>
 
-<section id="players-table">
-    {% include 'partials/players_table.html' %}
+<section id="boxscores-table">
+    {% include 'partials/boxscores_table.html' %}
 </section>
 {% endblock %}

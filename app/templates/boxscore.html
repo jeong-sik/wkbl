@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block content %}
+{% if not summary %}
+<div class="empty-state">
+    <h3>Boxscore not found</h3>
+    <p>경기 데이터를 찾지 못했습니다.</p>
+</div>
+{% else %}
+<section class="hero">
+    <div class="hero-card">
+        <span class="eyebrow">Boxscore</span>
+        <h1>{{ summary.scoreline }}</h1>
+        <p>Game {{ summary.game_label }} · Season {{ summary.season_gu }}</p>
+        <div class="hero-actions">
+            <a class="pill accent" href="/boxscores?season={{ summary.season_gu }}">Back to Boxscores</a>
+            <span class="pill">Margin {{ summary.margin }}</span>
+        </div>
+    </div>
+    <div class="hero-metrics">
+        <div class="metric">
+            <div class="metric-label">Game Key</div>
+            <div class="metric-value">{{ summary.game_key }}</div>
+            <div class="metric-sub">YM {{ summary.ym }}</div>
+        </div>
+        <div class="metric">
+            <div class="metric-label">Format</div>
+            <div class="metric-value">Full Box</div>
+            <div class="metric-sub">Team totals + player splits</div>
+        </div>
+        <div class="metric">
+            <div class="metric-label">Focus</div>
+            <div class="metric-value">Shot Mix</div>
+            <div class="metric-sub">2P / 3P / FT</div>
+        </div>
+    </div>
+</section>
+
+{% for team in teams %}
+<h2 class="section-title">{{ team.team }} · {{ team.totals.pts }} PTS</h2>
+<div class="data-table table-scroll">
+    <table>
+        <thead>
+            <tr>
+                <th>Player</th>
+                <th>Pos</th>
+                <th>MIN</th>
+                <th>FG2</th>
+                <th>FG3</th>
+                <th>FT</th>
+                <th>REB</th>
+                <th>AST</th>
+                <th>STL</th>
+                <th>BLK</th>
+                <th>TO</th>
+                <th>PTS</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in team.rows %}
+            <tr>
+                <td>{{ row.name }}</td>
+                <td><span class="stat-pill">{{ row.pos }}</span></td>
+                <td>{{ row.min_display }}</td>
+                <td>{{ row.fg2 }}</td>
+                <td>{{ row.fg3 }}</td>
+                <td>{{ row.ft }}</td>
+                <td>{{ row.reb }}</td>
+                <td>{{ row.ast }}</td>
+                <td>{{ row.stl }}</td>
+                <td>{{ row.blk }}</td>
+                <td>{{ row.to }}</td>
+                <td>{{ row.pts }}</td>
+            </tr>
+            {% endfor %}
+            <tr>
+                <td><strong>Totals</strong></td>
+                <td>-</td>
+                <td>{{ "%.1f"|format(team.totals.min_total) }}</td>
+                <td>{{ team.totals.fg2_display }}</td>
+                <td>{{ team.totals.fg3_display }}</td>
+                <td>{{ team.totals.ft_display }}</td>
+                <td>{{ team.totals.reb }}</td>
+                <td>{{ team.totals.ast }}</td>
+                <td>{{ team.totals.stl }}</td>
+                <td>{{ team.totals.blk }}</td>
+                <td>{{ team.totals.to }}</td>
+                <td>{{ team.totals.pts }}</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+{% endfor %}
+{% endif %}
+{% endblock %}

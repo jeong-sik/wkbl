@@ -1,0 +1,33 @@
+{% if stats %}
+<div class="data-table table-scroll">
+    <table>
+        <thead>
+            <tr>
+                <th>Game</th>
+                <th>Matchup</th>
+                <th>Score</th>
+                <th>Margin</th>
+                <th>Winner</th>
+                <th>Boxscore</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in stats %}
+            <tr>
+                <td>{{ row.game_label }}</td>
+                <td>{{ row.team_a }} vs {{ row.team_b }}</td>
+                <td>{{ row.pts_a }} - {{ row.pts_b }}</td>
+                <td>{{ row.margin }}</td>
+                <td>{{ row.winner }}</td>
+                <td><a class="table-link" href="{{ row.boxscore_url }}">View</a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="empty-state">
+    <h3>No boxscores found</h3>
+    <p>데이터를 수집한 뒤 다시 확인해주세요.</p>
+</div>
+{% endif %}

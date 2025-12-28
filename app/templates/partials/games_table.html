@@ -23,7 +23,13 @@
         <tbody>
             {% for row in stats %}
             <tr>
-                <td>{{ row.game_label }}</td>
+                <td>
+                    {% if row.boxscore_url %}
+                    <a class="table-link" href="{{ row.boxscore_url }}">{{ row.game_label }}</a>
+                    {% else %}
+                    {{ row.game_label }}
+                    {% endif %}
+                </td>
                 <td>{{ row.name }}</td>
                 <td>{{ row.team }}</td>
                 <td>{{ row.opponent or "-" }}</td>

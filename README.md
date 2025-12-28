@@ -21,6 +21,12 @@ python3 scripts/wkbl_ajax_collector.py
 python3 scripts/wkbl_aggregate_stats.py
 ```
 
+### 10년치 백필 (옵션)
+```bash
+python3 scripts/wkbl_ajax_collector.py --years 10
+python3 scripts/wkbl_aggregate_stats.py
+```
+
 ## 실행
 ```bash
 python3 app/main.py
@@ -33,6 +39,8 @@ uvicorn app.main:app --reload
 - `/players` 선수 집계
 - `/teams` 팀 집계
 - `/games` 게임 로그
+- `/boxscores` 박스스코어 목록
+- `/boxscore?game_key=...` 박스스코어 상세
 - `/compare` 선수 비교
 
 ## 메모

@@ -7,6 +7,7 @@
                 <th>GP</th>
                 <th>MIN</th>
                 <th>PTS</th>
+                <th>Margin</th>
                 <th>REB</th>
                 <th>AST</th>
                 <th>STL</th>
@@ -27,6 +28,7 @@
                 <td>{{ row.gp }}</td>
                 <td>{{ "%.1f"|format(row.min_total) }}</td>
                 <td>{{ "%.2f"|format(row.pts) }}</td>
+                <td>{{ "%.2f"|format(row.margin) }}</td>
                 <td>{{ "%.2f"|format(row.reb) }}</td>
                 <td>{{ "%.2f"|format(row.ast) }}</td>
                 <td>{{ "%.2f"|format(row.stl) }}</td>

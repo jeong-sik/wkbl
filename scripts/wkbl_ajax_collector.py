@@ -43,14 +43,28 @@ def post(url: str, data: dict, session: requests.Session) -> str:
     return res.text
 
 
-def get_season_and_months(session: requests.Session) -> tuple[str, list[str]]:
+def get_available_seasons(session: requests.Session) -> list[str]:
+    html = fetch(SCHEDULE_URL, session)
+    soup = BeautifulSoup(html, "html.parser")
+    seasons = [opt.get("value") for opt in soup.select("#season_gu option")]
+    seasons = [s for s in seasons if s and s.isdigit()]
+    return seasons
+
+
+def get_current_season(session: requests.Session) -> str:
     html = fetch(SCHEDULE_URL, session)
     soup = BeautifulSoup(html, "html.parser")
     season_opt = soup.select_one("#season_gu option[selected]")
-    season_gu = season_opt.get("value") if season_opt else ""
+    return season_opt.get("value") if season_opt else ""
+
+
+def get_months_for_season(season_gu: str, session: requests.Session) -> list[str]:
+    url = f"{SCHEDULE_URL}?gun=1&season_gu={season_gu}&viewType=2"
+    html = fetch(url, session)
+    soup = BeautifulSoup(html, "html.parser")
     months = [opt.get("value") for opt in soup.select("#ym option")]
     months = [m for m in months if m and m.isdigit()]
-    return season_gu, sorted(set(months))
+    return sorted(set(months))
 
 
 def get_schedule_links(season_gu: str, ym: str, session: requests.Session) -> list[str]:
@@ -132,12 +146,20 @@ def fetch_game_players(params: dict, session: requests.Session) -> list[pd.DataF
     return [left_df, right_df]
 
 
-def collect(season_gu: str, months: list[str], sleep: float) -> None:
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
+def collect(
+    season_gu: str,
+    months: list[str],
+    sleep: float,
+    overwrite: bool,
+    output_root: Path,
+) -> None:
+    season_dir = output_root / str(season_gu)
+    season_dir.mkdir(parents=True, exist_ok=True)
 
     session = requests.Session()
     seen = set()
     saved = 0
+    skipped = 0
 
     for ym in months:
         links = get_schedule_links(season_gu, ym, session)
@@ -160,34 +182,53 @@ def collect(season_gu: str, months: list[str], sleep: float) -> None:
 
             for df in tables:
                 team_slug = re.sub(r"\s+", "_", df["team"].iloc[0])
-                out = OUT_DIR / f"game_{params['game_no']}_{team_slug}.csv"
+                out = season_dir / f"game_{params['game_no']}_type{params['game_type']}_{team_slug}.csv"
+                if out.exists() and not overwrite:
+                    skipped += 1
+                    continue
                 df.to_csv(out, index=False)
                 saved += 1
 
             time.sleep(sleep)
 
-    print(f"saved {saved} files to {OUT_DIR}")
+    print(f"saved {saved} files to {season_dir} (skipped {skipped})")
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--season", default="", help="season_gu override")
+    parser.add_argument("--season", default="", help="season_gu override (single season)")
+    parser.add_argument("--seasons", default="", help="comma-separated season_gu list")
+    parser.add_argument("--years", type=int, default=0, help="latest N seasons")
     parser.add_argument("--months", default="", help="comma-separated ym list")
+    parser.add_argument("--overwrite", action="store_true", help="overwrite existing files")
     parser.add_argument("--sleep", type=float, default=0.2, help="delay between requests")
     args = parser.parse_args()
 
     session = requests.Session()
-    season_gu, months = get_season_and_months(session)
+    available_seasons = get_available_seasons(session)
 
+    seasons: list[str] = []
     if args.season:
-        season_gu = args.season
-    if args.months:
-        months = [m.strip() for m in args.months.split(",") if m.strip()]
+        seasons = [args.season]
+    elif args.seasons:
+        seasons = [s.strip() for s in args.seasons.split(",") if s.strip()]
+    elif args.years:
+        seasons = sorted(set(available_seasons), key=lambda s: int(s))[-args.years :]
+    else:
+        current = get_current_season(session)
+        seasons = [current] if current else []
 
-    if not season_gu or not months:
-        raise SystemExit("season_gu/months not found")
+    months_override = [m.strip() for m in args.months.split(",") if m.strip()] if args.months else []
 
-    collect(season_gu, months, args.sleep)
+    if not seasons:
+        raise SystemExit("season_gu not found")
+
+    for season_gu in seasons:
+        months = months_override or get_months_for_season(season_gu, session)
+        if not months:
+            print(f"skip season_gu={season_gu}: no months")
+            continue
+        collect(season_gu, months, args.sleep, args.overwrite, OUT_DIR)
 
 
 if __name__ == "__main__":
