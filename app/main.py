@@ -281,7 +281,56 @@ def paginate_items(
             "href": build_page_url(base_path, next_params),
             "hx": build_page_url(table_path, next_params),
         }
+    pagination["pages"] = build_page_buttons(
+        base_path=base_path,
+        table_path=table_path,
+        params=params,
+        page=page,
+        page_size=page_size,
+        total_pages=total_pages,
+    )
     return items[start:end], pagination
+
+
+def build_page_buttons(
+    base_path: str,
+    table_path: str,
+    params: dict,
+    page: int,
+    page_size: int,
+    total_pages: int,
+    window: int = 2,
+) -> list[dict]:
+    if total_pages <= 1:
+        return []
+    if total_pages <= 7:
+        numbers: list[int | None] = list(range(1, total_pages + 1))
+    else:
+        start = max(2, page - window)
+        end = min(total_pages - 1, page + window)
+        numbers = [1]
+        if start > 2:
+            numbers.append(None)
+        numbers.extend(range(start, end + 1))
+        if end < total_pages - 1:
+            numbers.append(None)
+        numbers.append(total_pages)
+    pages: list[dict] = []
+    for number in numbers:
+        if number is None:
+            pages.append({"ellipsis": True})
+            continue
+        page_params = params.copy()
+        page_params.update({"page": number, "page_size": page_size})
+        pages.append(
+            {
+                "num": number,
+                "is_current": number == page,
+                "href": build_page_url(base_path, page_params),
+                "hx": build_page_url(table_path, page_params),
+            }
+        )
+    return pages
 
 
 def load_players_aggregate(

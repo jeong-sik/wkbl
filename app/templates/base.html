@@ -645,6 +645,13 @@
             flex-wrap: wrap;
         }
 
+        .pagination-pages {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
         .pager {
             display: inline-flex;
             align-items: center;
@@ -669,6 +676,21 @@
         .pager.is-disabled {
             opacity: 0.4;
             pointer-events: none;
+        }
+
+        .pager.is-current {
+            background: var(--accent-2);
+            border-color: var(--accent-2);
+            color: #fff;
+            pointer-events: none;
+        }
+
+        .pager.is-ellipsis {
+            background: transparent;
+            border-color: transparent;
+            color: var(--ink-muted);
+            pointer-events: none;
+            padding: 0 4px;
         }
 
         .pager-status {

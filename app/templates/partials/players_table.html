@@ -63,6 +63,17 @@
         {% else %}
         <span class="pager is-disabled">Prev</span>
         {% endif %}
+        <div class="pagination-pages">
+            {% for item in pagination.pages %}
+                {% if item.ellipsis %}
+                <span class="pager is-ellipsis">...</span>
+                {% elif item.is_current %}
+                <span class="pager is-current" aria-current="page">{{ item.num }}</span>
+                {% else %}
+                <a class="pager" href="{{ item.href }}" hx-get="{{ item.hx }}" hx-target="#players-table" hx-swap="innerHTML">{{ item.num }}</a>
+                {% endif %}
+            {% endfor %}
+        </div>
         <span class="pager-status">Page {{ pagination.page }} / {{ pagination.total_pages }}</span>
         {% if pagination.next %}
         <a class="pager" href="{{ pagination.next.href }}" hx-get="{{ pagination.next.hx }}" hx-target="#players-table" hx-swap="innerHTML">Next</a>
