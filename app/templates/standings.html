@@ -31,13 +31,20 @@
 </section>
 
 <form id="standings-filter" hx-get="/standings/table" hx-target="#standings-table" hx-trigger="change">
-    <input type="hidden" name="page_size" value="{{ page_size }}">
     <section class="filters">
         <div class="filter-group">
             <div class="filter-label">Season</div>
             <select class="filter-input" name="season">
                 {% for opt in seasons %}
                 <option value="{{ opt.value }}" {% if opt.value == season %}selected{% endif %}>{{ opt.label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-group">
+            <div class="filter-label">Rows</div>
+            <select class="filter-input" name="page_size">
+                {% for size in [25, 50, 100, 200] %}
+                <option value="{{ size }}" {% if size == page_size %}selected{% endif %}>{{ size }}/page</option>
                 {% endfor %}
             </select>
         </div>

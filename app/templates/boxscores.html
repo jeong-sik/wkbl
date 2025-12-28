@@ -41,7 +41,6 @@
 </section>
 
 <form id="boxscores-filter" hx-get="/boxscores/table" hx-target="#boxscores-table" hx-trigger="change, keyup delay:250ms">
-    <input type="hidden" name="page_size" value="{{ page_size }}">
     <section class="filters">
         <div class="filter-group">
             <div class="filter-label">Season</div>
@@ -71,6 +70,14 @@
             <select class="filter-input" name="sort">
                 {% for value, label in sort_options %}
                 <option value="{{ value }}" {% if value == sort %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-group">
+            <div class="filter-label">Rows</div>
+            <select class="filter-input" name="page_size">
+                {% for size in [25, 50, 100, 200] %}
+                <option value="{{ size }}" {% if size == page_size %}selected{% endif %}>{{ size }}/page</option>
                 {% endfor %}
             </select>
         </div>

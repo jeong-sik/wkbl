@@ -853,6 +853,22 @@
             }
         }
     </style>
+    <script>
+        document.addEventListener("htmx:afterSwap", (event) => {
+            const target = event.detail && event.detail.target ? event.detail.target : null;
+            if (!target) return;
+            const ids = new Set([
+                "players-table",
+                "teams-table",
+                "games-table",
+                "boxscores-table",
+                "standings-table",
+            ]);
+            if (ids.has(target.id)) {
+                target.scrollIntoView({ behavior: "smooth", block: "start" });
+            }
+        });
+    </script>
 </head>
 <body>
     <div class="page">
