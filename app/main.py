@@ -276,6 +276,7 @@ def paginate_items(
     base_path: str,
     table_path: str,
     params: dict,
+    page_param: str = "page",
 ) -> tuple[list[dict], dict]:
     page = normalize_page(page)
     page_size = normalize_page_size(page_size)
@@ -292,29 +293,30 @@ def paginate_items(
         "total_pages": total_pages,
         "start": start + 1 if total_count else 0,
         "end": end,
+        "page_param": page_param,
     }
     if total_count and page > 1:
         prev_params = params.copy()
-        prev_params.update({"page": page - 1, "page_size": page_size})
+        prev_params.update({page_param: page - 1, "page_size": page_size})
         pagination["prev"] = {
             "href": build_page_url(base_path, prev_params),
             "hx": build_page_url(table_path, prev_params),
         }
         first_params = params.copy()
-        first_params.update({"page": 1, "page_size": page_size})
+        first_params.update({page_param: 1, "page_size": page_size})
         pagination["first"] = {
             "href": build_page_url(base_path, first_params),
             "hx": build_page_url(table_path, first_params),
         }
     if total_count and page < total_pages:
         next_params = params.copy()
-        next_params.update({"page": page + 1, "page_size": page_size})
+        next_params.update({page_param: page + 1, "page_size": page_size})
         pagination["next"] = {
             "href": build_page_url(base_path, next_params),
             "hx": build_page_url(table_path, next_params),
         }
         last_params = params.copy()
-        last_params.update({"page": total_pages, "page_size": page_size})
+        last_params.update({page_param: total_pages, "page_size": page_size})
         pagination["last"] = {
             "href": build_page_url(base_path, last_params),
             "hx": build_page_url(table_path, last_params),
@@ -326,6 +328,7 @@ def paginate_items(
         page=page,
         page_size=page_size,
         total_pages=total_pages,
+        page_param=page_param,
     )
     return items[start:end], pagination
 
@@ -337,6 +340,7 @@ def build_page_buttons(
     page: int,
     page_size: int,
     total_pages: int,
+    page_param: str = "page",
     window: int = 3,
 ) -> list[dict]:
     if total_pages <= 1:
@@ -359,7 +363,7 @@ def build_page_buttons(
             pages.append({"ellipsis": True})
             continue
         page_params = params.copy()
-        page_params.update({"page": number, "page_size": page_size})
+        page_params.update({page_param: number, "page_size": page_size})
         pages.append(
             {
                 "num": number,
@@ -758,31 +762,41 @@ def load_boxscore(game_key: str) -> dict:
 
 def paginate_boxscore_teams(
     teams: list[dict],
-    page: int,
+    page_a: int,
+    page_b: int,
     page_size: int,
     pager_mode: str,
     game_key: str,
-) -> tuple[list[dict], dict | None]:
+) -> list[dict]:
     if not teams:
-        return teams, None
-    max_rows = max(len(team.get("rows") or []) for team in teams)
-    dummy_rows = [None] * max_rows
-    _, pagination = paginate_items(
-        dummy_rows,
-        page,
-        page_size,
-        base_path="/boxscore",
-        table_path="/boxscore/table",
-        params={"game_key": game_key, "pager": pager_mode},
-    )
-    if not pagination or pagination["total_count"] == 0:
-        return teams, pagination
-    start_idx = max(pagination["start"] - 1, 0)
-    end_idx = pagination["end"]
-    for team in teams:
+        return teams
+    page_params = ["page_a", "page_b"]
+    page_values = [page_a, page_b]
+    params = {"game_key": game_key, "pager": pager_mode, "page_a": page_a, "page_b": page_b}
+    for idx, team in enumerate(teams):
+        page_param = page_params[idx] if idx < len(page_params) else page_params[-1]
+        page_value = page_values[idx] if idx < len(page_values) else page_values[-1]
         rows = team.get("rows") or []
-        team["rows"] = rows[start_idx:end_idx]
-    return teams, pagination
+        sliced, pagination = paginate_items(
+            rows,
+            page_value,
+            page_size,
+            base_path="/boxscore",
+            table_path="/boxscore/table",
+            params=params,
+            page_param=page_param,
+        )
+        other_param = None
+        other_page = None
+        if len(page_params) > 1:
+            other_idx = 1 if idx == 0 else 0
+            other_param = page_params[other_idx] if other_idx < len(page_params) else None
+            other_page = page_values[other_idx] if other_idx < len(page_values) else None
+        pagination["other_param"] = other_param
+        pagination["other_page"] = other_page
+        team["rows"] = sliced
+        team["pagination"] = pagination
+    return teams
 
 
 def get_player_options(season: str = "ALL") -> list[dict]:
@@ -1140,9 +1154,9 @@ async def index(
     pager: str = DEFAULT_PAGER_MODE,
 ):
     page_size = resolve_page_size(request, page_size)
-    pager_mode = resolve_pager_mode(request, pager)
-    pager_top = pager_mode in ("top", "both")
-    pager_bottom = pager_mode in ("bottom", "both")
+    pager_mode = "top"
+    pager_top = True
+    pager_bottom = False
     full_stats = load_real_stats(sort_by=sort, team_filter=team, pos_filter=pos, search_query=search)
     stats, pagination = paginate_items(
         full_stats,
@@ -1172,7 +1186,6 @@ async def index(
         },
     )
     response.set_cookie("wkbl_page_size", str(pagination["page_size"]), max_age=31536000, samesite="lax")
-    response.set_cookie("wkbl_pager", pager_mode, max_age=31536000, samesite="lax")
     return response
 
 @app.get("/refresh", response_class=HTMLResponse)
@@ -1187,9 +1200,9 @@ async def refresh(
     pager: str = DEFAULT_PAGER_MODE,
 ):
     page_size = resolve_page_size(request, page_size)
-    pager_mode = resolve_pager_mode(request, pager)
-    pager_top = pager_mode in ("top", "both")
-    pager_bottom = pager_mode in ("bottom", "both")
+    pager_mode = "top"
+    pager_top = True
+    pager_bottom = False
     full_stats = load_real_stats(sort_by=sort, team_filter=team, pos_filter=pos, search_query=search)
     stats, pagination = paginate_items(
         full_stats,
@@ -1216,7 +1229,6 @@ async def refresh(
         },
     )
     response.set_cookie("wkbl_page_size", str(pagination["page_size"]), max_age=31536000, samesite="lax")
-    response.set_cookie("wkbl_pager", pager_mode, max_age=31536000, samesite="lax")
     return response
 
 
@@ -2006,6 +2018,8 @@ async def boxscores_table(
 async def boxscore(
     request: Request,
     game_key: str = "",
+    page_a: int = 1,
+    page_b: int = 1,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
     pager: str = DEFAULT_PAGER_MODE,
@@ -2014,9 +2028,16 @@ async def boxscore(
     pager_mode = resolve_pager_mode(request, pager)
     pager_top = pager_mode in ("top", "both")
     pager_bottom = pager_mode in ("bottom", "both")
+    if (
+        "page_a" not in request.query_params
+        and "page_b" not in request.query_params
+        and "page" in request.query_params
+    ):
+        page_a = page
+        page_b = page
     data = load_boxscore(game_key)
     teams = data.get("teams") or []
-    teams, pagination = paginate_boxscore_teams(teams, page, page_size, pager_mode, game_key)
+    teams = paginate_boxscore_teams(teams, page_a, page_b, page_size, pager_mode, game_key)
     response = templates.TemplateResponse(
         "boxscore.html",
         {
@@ -2025,7 +2046,6 @@ async def boxscore(
             "page_title": "WKBL Boxscore",
             **data,
             "teams": teams,
-            "pagination": pagination,
             "page_size": page_size,
             "pager_mode": pager_mode,
             "pager_top": pager_top,
@@ -2041,6 +2061,8 @@ async def boxscore(
 async def boxscore_table(
     request: Request,
     game_key: str = "",
+    page_a: int = 1,
+    page_b: int = 1,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
     pager: str = DEFAULT_PAGER_MODE,
@@ -2049,16 +2071,22 @@ async def boxscore_table(
     pager_mode = resolve_pager_mode(request, pager)
     pager_top = pager_mode in ("top", "both")
     pager_bottom = pager_mode in ("bottom", "both")
+    if (
+        "page_a" not in request.query_params
+        and "page_b" not in request.query_params
+        and "page" in request.query_params
+    ):
+        page_a = page
+        page_b = page
     data = load_boxscore(game_key)
     teams = data.get("teams") or []
-    teams, pagination = paginate_boxscore_teams(teams, page, page_size, pager_mode, game_key)
+    teams = paginate_boxscore_teams(teams, page_a, page_b, page_size, pager_mode, game_key)
     response = templates.TemplateResponse(
         "partials/boxscore_tables.html",
         {
             "request": request,
             "teams": teams,
             "summary": data.get("summary"),
-            "pagination": pagination,
             "page_size": page_size,
             "pager_mode": pager_mode,
             "pager_top": pager_top,
