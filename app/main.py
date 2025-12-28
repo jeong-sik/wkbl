@@ -9,6 +9,11 @@ import re
 import mimetypes
 import pandas as pd
 
+try:
+    import app.db as db
+except Exception:
+    db = None
+
 app = FastAPI()
 templates = Jinja2Templates(directory="app/templates")
 
@@ -241,6 +246,71 @@ def load_players_aggregate(
         row["team_url"] = build_team_url(team, season_val)
         row["compare_url"] = build_compare_player_url(name, team, season_val)
     return rows
+
+
+def db_available() -> bool:
+    if db is None:
+        return False
+    try:
+        if not hasattr(db, "query_players_aggregate"):
+            return False
+        db_file = getattr(db, "DB_FILE", None)
+        return db_file is not None and Path(db_file).exists()
+    except Exception:
+        return False
+
+
+def normalize_db_players(rows: list[dict], season: str = "ALL") -> list[dict]:
+    for row in rows:
+        name = str(row.get("name", "")).strip()
+        team = str(row.get("team", "")).strip()
+        row["player_url"] = build_player_url(name, team, season)
+        row["team_url"] = build_team_url(team, season)
+        row["compare_url"] = build_compare_player_url(name, team, season)
+        row["pos"] = row.get("pos") or ""
+        gp = c_i(row.get("gp", 0))
+        row["gp"] = gp
+        min_total = float(row.get("min_total") or 0)
+        row["min_total"] = min_total
+        min_avg = row.get("min_avg")
+        if min_avg not in (None, ""):
+            row["min_per_game"] = float(min_avg)
+        else:
+            row["min_per_game"] = min_total / gp if gp else 0.0
+        for key in ("pts", "reb", "ast", "stl", "blk", "to", "eff"):
+            row[key] = float(row.get(key) or 0)
+        for key in ("fg_pct", "fg3_pct", "ft_pct", "efg_pct", "ts_pct"):
+            row[key] = float(row.get(key) or 0)
+    return rows
+
+
+def should_use_db_players(season: str) -> bool:
+    if season and season != "ALL":
+        return False
+    if not db_available():
+        return False
+    return not (DERIVED_DIR / "players_aggregate.csv").exists()
+
+
+def load_players_db(
+    scope: str,
+    team_filter: str,
+    search_query: str,
+    sort_by: str,
+    season: str,
+) -> list[dict]:
+    if db is None:
+        return []
+    try:
+        rows = db.query_players_aggregate(
+            scope=scope,
+            team_filter=team_filter,
+            search_query=search_query,
+            sort_by=sort_by,
+        )
+    except Exception:
+        return []
+    return normalize_db_players(rows or [], season)
 
 
 def load_teams_aggregate(
@@ -871,16 +941,7 @@ async def test():
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
-    stats = load_real_stats()
-    return templates.TemplateResponse(
-        "index.html",
-        {
-            "request": request,
-            "stats": stats,
-            "active_page": "home",
-            "page_title": "WKBL Moneyball Lab",
-        },
-    )
+    return await players(request)
 
 @app.get("/refresh", response_class=HTMLResponse)
 async def refresh(request: Request, sort: str = "eff", team: str = "ALL", pos: str = "ALL", search: str = ""):
@@ -912,7 +973,19 @@ async def players(
     ]
     season = resolve_season(season, allow_all=True)
     seasons = season_options(include_all=True)
-    stats = load_players_aggregate(season=season, scope=scope, team_filter=team, search_query=search, sort_by=sort)
+    if should_use_db_players(season):
+        stats = load_players_db(scope=scope, team_filter=team, search_query=search, sort_by=sort, season=season)
+        teams = []
+        if db is not None:
+            try:
+                teams = db.get_all_teams()
+            except Exception:
+                teams = []
+        if not teams:
+            teams = get_team_list(season)
+    else:
+        stats = load_players_aggregate(season=season, scope=scope, team_filter=team, search_query=search, sort_by=sort)
+        teams = get_team_list(season)
     leader = stats[0] if stats else None
     return templates.TemplateResponse(
         "players.html",
@@ -929,7 +1002,7 @@ async def players(
             "scope": scope,
             "scope_label": scope_label(scope),
             "team": team,
-            "teams": get_team_list(season),
+            "teams": teams,
             "search": search,
             "sort": sort,
             "scopes": scopes,
@@ -948,7 +1021,10 @@ async def players_table(
     sort: str = "pts",
 ):
     season = resolve_season(season, allow_all=True)
-    stats = load_players_aggregate(season=season, scope=scope, team_filter=team, search_query=search, sort_by=sort)
+    if should_use_db_players(season):
+        stats = load_players_db(scope=scope, team_filter=team, search_query=search, sort_by=sort, season=season)
+    else:
+        stats = load_players_aggregate(season=season, scope=scope, team_filter=team, search_query=search, sort_by=sort)
     return templates.TemplateResponse(
         "partials/players_table.html",
         {"request": request, "stats": stats, "scope": scope},
