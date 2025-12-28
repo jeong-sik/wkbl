@@ -1,5 +1,44 @@
 {% if stats %}
 <div class="data-table">
+    {% if pagination and pagination.total_pages > 1 %}
+    <div class="pagination top">
+        <div class="pagination-info">Showing {{ pagination.start }}-{{ pagination.end }} of {{ pagination.total_count }}</div>
+        <div class="pagination-controls">
+            {% if pagination.first %}
+            <a class="pager" href="{{ pagination.first.href }}" hx-get="{{ pagination.first.hx }}" hx-target="#games-table" hx-swap="innerHTML">First</a>
+            {% else %}
+            <span class="pager is-disabled">First</span>
+            {% endif %}
+            {% if pagination.prev %}
+            <a class="pager" href="{{ pagination.prev.href }}" hx-get="{{ pagination.prev.hx }}" hx-target="#games-table" hx-swap="innerHTML">Prev</a>
+            {% else %}
+            <span class="pager is-disabled">Prev</span>
+            {% endif %}
+            <div class="pagination-pages">
+                {% for item in pagination.pages %}
+                    {% if item.ellipsis %}
+                    <span class="pager is-ellipsis">...</span>
+                    {% elif item.is_current %}
+                    <span class="pager is-current" aria-current="page">{{ item.num }}</span>
+                    {% else %}
+                    <a class="pager" href="{{ item.href }}" hx-get="{{ item.hx }}" hx-target="#games-table" hx-swap="innerHTML">{{ item.num }}</a>
+                    {% endif %}
+                {% endfor %}
+            </div>
+            <span class="pager-status">Page {{ pagination.page }} / {{ pagination.total_pages }}</span>
+            {% if pagination.next %}
+            <a class="pager" href="{{ pagination.next.href }}" hx-get="{{ pagination.next.hx }}" hx-target="#games-table" hx-swap="innerHTML">Next</a>
+            {% else %}
+            <span class="pager is-disabled">Next</span>
+            {% endif %}
+            {% if pagination.last %}
+            <a class="pager" href="{{ pagination.last.href }}" hx-get="{{ pagination.last.hx }}" hx-target="#games-table" hx-swap="innerHTML">Last</a>
+            {% else %}
+            <span class="pager is-disabled">Last</span>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
     <div class="table-scroll">
         <table>
         <thead>
