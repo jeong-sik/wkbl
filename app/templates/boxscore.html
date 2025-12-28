@@ -11,7 +11,7 @@
     <div class="hero-card">
         <span class="eyebrow">Boxscore</span>
         <h1>{{ summary.scoreline }}</h1>
-        <p>Game {{ summary.game_label }} · Season {{ summary.season_gu|int }}</p>
+        <p>Game {{ summary.game_label }} · Season {{ summary.season_label }}</p>
         <div class="hero-actions">
             <a class="pill accent" href="/boxscores?season={{ summary.season_gu }}">Back to Boxscores</a>
             <span class="pill">Margin {{ summary.margin }}</span>

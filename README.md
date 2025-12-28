@@ -38,6 +38,7 @@ uvicorn app.main:app --reload
 - `/` 홈 (경기 단일 뷰)
 - `/players` 선수 집계
 - `/teams` 팀 집계
+- `/standings` 시즌 순위표
 - `/games` 게임 로그
 - `/boxscores` 박스스코어 목록
 - `/boxscore?game_key=...` 박스스코어 상세

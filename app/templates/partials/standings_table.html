@@ -1,0 +1,41 @@
+{% if stats %}
+<div class="data-table table-scroll">
+    <table>
+        <thead>
+            <tr>
+                <th>Rank</th>
+                <th>Team</th>
+                <th>GP</th>
+                <th>W</th>
+                <th>L</th>
+                <th>W%</th>
+                <th>GB</th>
+                <th>PF</th>
+                <th>PA</th>
+                <th>Margin/G</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in stats %}
+            <tr>
+                <td>{{ row.rank }}</td>
+                <td><a class="table-link" href="{{ row.team_url }}">{{ row.team }}</a></td>
+                <td>{{ row.gp }}</td>
+                <td>{{ row.wins }}</td>
+                <td>{{ row.losses }}</td>
+                <td>{{ "%.3f"|format(row.win_pct) }}</td>
+                <td>{{ "%.1f"|format(row.gb) }}</td>
+                <td>{{ "%.1f"|format(row.pts_for_per_game) }}</td>
+                <td>{{ "%.1f"|format(row.pts_against_per_game) }}</td>
+                <td>{{ "%.2f"|format(row.margin_per_game) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="empty-state">
+    <h3>No standings found</h3>
+    <p>해당 시즌 데이터가 없습니다.</p>
+</div>
+{% endif %}

@@ -11,7 +11,7 @@
             <a class="pill {% if item.active %}accent{% endif %}" href="{{ item.url }}">{{ item.label }}</a>
             {% endfor %}
             <span class="pill">{{ scope_label }}</span>
-            <span class="pill">Season {{ season }}</span>
+            <span class="pill">Season {{ season_label }}</span>
             <span class="pill">{{ entity_count_label }}</span>
         </div>
     </div>
@@ -40,9 +40,9 @@
         <div class="filter-group">
             <div class="filter-label">Season</div>
             <select class="filter-input" name="season">
-                {% for value in seasons %}
-                <option value="{{ value }}" {% if value == season %}selected{% endif %}>
-                    {% if value == "ALL" %}ALL{% else %}{{ value|int }}{% endif %}
+                {% for opt in seasons %}
+                <option value="{{ opt.value }}" {% if opt.value == season %}selected{% endif %}>
+                    {{ opt.label }}
                 </option>
                 {% endfor %}
             </select>

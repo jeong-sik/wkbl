@@ -323,6 +323,33 @@ def build_games_summary(team_games: pd.DataFrame) -> pd.DataFrame:
     return summary
 
 
+def build_standings(team_games: pd.DataFrame) -> pd.DataFrame:
+    if team_games.empty:
+        return pd.DataFrame()
+    standings = team_games.groupby(["season_gu", "team"], as_index=False).agg(
+        gp=("game_key", "nunique"),
+        wins=("win", "sum"),
+        pts_for=("pts_for", "sum"),
+        pts_against=("pts_against", "sum"),
+        margin_total=("margin", "sum"),
+    )
+    standings["losses"] = standings["gp"] - standings["wins"]
+    standings["win_pct"] = standings.apply(
+        lambda r: round(r["wins"] / r["gp"], 3) if r["gp"] else 0.0, axis=1
+    )
+    standings["margin_per_game"] = standings.apply(
+        lambda r: round(r["margin_total"] / r["gp"], 2) if r["gp"] else 0.0, axis=1
+    )
+    standings["pts_for_per_game"] = standings.apply(
+        lambda r: round(r["pts_for"] / r["gp"], 2) if r["gp"] else 0.0, axis=1
+    )
+    standings["pts_against_per_game"] = standings.apply(
+        lambda r: round(r["pts_against"] / r["gp"], 2) if r["gp"] else 0.0, axis=1
+    )
+    standings["season_gu"] = standings["season_gu"].astype(str).str.zfill(3)
+    return standings
+
+
 def aggregate_teams(games: pd.DataFrame, team_games: pd.DataFrame) -> pd.DataFrame:
     group = games.groupby(["season_gu", "team"], as_index=False)
     totals = group.agg(
@@ -420,6 +447,7 @@ def main() -> None:
 
     team_games = build_team_games(games)
     games_summary = build_games_summary(team_games)
+    standings = build_standings(team_games)
     players = aggregate_players(games)
     teams = aggregate_teams(games, team_games)
 
@@ -428,6 +456,8 @@ def main() -> None:
         save(team_games, args.output_dir, "team_games.csv")
     if not games_summary.empty:
         save(games_summary, args.output_dir, "games_summary.csv")
+    if not standings.empty:
+        save(standings, args.output_dir, "standings.csv")
     save(players, args.output_dir, "players_aggregate.csv")
     save(teams, args.output_dir, "teams_aggregate.csv")
 

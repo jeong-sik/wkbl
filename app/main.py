@@ -42,6 +42,7 @@ TEAM_META = {
 }
 DEFAULT_TEAM_META = {"nick": "???", "logo": "", "color": "#ccc"}
 PLAYER_PNO = {"김단비": "095226", "이명관": "095778", "조수아": "095912", "변하정": "095104", "강이슬": "095263"}
+SEASON_BASE_YEAR = 1979
 
 # 직접 이미지 서빙 (Raw Response)
 @app.get("/static/{file_path:path}")
@@ -87,6 +88,28 @@ def parse_made_att(value) -> tuple[int, int]:
 
 def get_team_meta(team: str) -> dict:
     return TEAM_META.get(team, DEFAULT_TEAM_META)
+
+
+def season_label(code: str) -> str:
+    if not code:
+        return ""
+    if str(code) == "ALL":
+        return "All Seasons"
+    try:
+        year = int(str(code))
+        start = SEASON_BASE_YEAR + year
+        end = (start + 1) % 100
+        return f"{start}-{str(end).zfill(2)}"
+    except Exception:
+        return str(code)
+
+
+def season_options(include_all: bool = True) -> list[dict]:
+    seasons = get_season_list()
+    options = [{"value": code, "label": season_label(code)} for code in seasons]
+    if include_all:
+        return [{"value": "ALL", "label": "All Seasons"}] + options
+    return options
 
 
 def build_team_url(team: str, season: str = "") -> str:
@@ -399,6 +422,33 @@ def load_game_summary(
     return df.to_dict(orient="records")
 
 
+def load_standings(season: str) -> list[dict]:
+    path = DERIVED_DIR / "standings.csv"
+    if not path.exists():
+        return []
+    df = pd.read_csv(path)
+    if "season_gu" not in df.columns:
+        return []
+    df["season_gu"] = df["season_gu"].astype(str).str.zfill(3)
+    if season and season != "ALL":
+        df = df[df["season_gu"] == str(season)]
+    if df.empty:
+        return []
+    df = df.sort_values(by=["win_pct", "margin_per_game", "pts_for"], ascending=[False, False, False])
+    leader = df.iloc[0]
+    df["gb"] = df.apply(
+        lambda r: round(((leader["wins"] - r["wins"]) + (r["losses"] - leader["losses"])) / 2, 1),
+        axis=1,
+    )
+    df["rank"] = range(1, len(df) + 1)
+    rows = df.to_dict(orient="records")
+    for row in rows:
+        team = str(row.get("team", "")).strip()
+        season_val = str(row.get("season_gu", "")).zfill(3)
+        row["team_url"] = build_team_url(team, season_val)
+    return rows
+
+
 def load_boxscore(game_key: str) -> dict:
     if not game_key:
         return {}
@@ -464,6 +514,7 @@ def load_boxscore(game_key: str) -> dict:
         "game_no": int(header["game_no"]),
         "ym": str(header.get("ym", "")),
     }
+    summary["season_label"] = season_label(summary["season_gu"])
 
     if bottom:
         summary["scoreline"] = f"{top['team']} {top['totals']['pts']} - {bottom['totals']['pts']} {bottom['team']}"
@@ -620,9 +671,7 @@ def compare_context(
 ) -> dict:
     mode = "teams" if mode == "teams" else "players"
     season = resolve_season(season)
-    seasons = get_season_list()
-    if not seasons and season:
-        seasons = [season]
+    seasons = season_options(include_all=False)
     player_scopes = [("per_game", "Per Game"), ("per_36", "Per 36"), ("totals", "Totals")]
     team_scopes = [("per_game", "Per Game"), ("totals", "Totals")]
 
@@ -687,6 +736,7 @@ def compare_context(
         "scope": scope,
         "season": season,
         "seasons": seasons,
+        "season_label": season_label(season),
         "scope_label": scope_label(scope),
         "scopes": scopes,
         "options": options,
@@ -861,7 +911,7 @@ async def players(
         ("min_total", "MIN"),
     ]
     season = resolve_season(season, allow_all=True)
-    seasons = ["ALL"] + get_season_list()
+    seasons = season_options(include_all=True)
     stats = load_players_aggregate(season=season, scope=scope, team_filter=team, search_query=search, sort_by=sort)
     leader = stats[0] if stats else None
     return templates.TemplateResponse(
@@ -875,6 +925,7 @@ async def players(
             "total_count": len(stats),
             "season": season,
             "seasons": seasons,
+            "season_label": season_label(season),
             "scope": scope,
             "scope_label": scope_label(scope),
             "team": team,
@@ -930,6 +981,7 @@ async def player_profile(
             "scope_rows": scope_rows,
             "games": games,
             "season": season,
+            "season_label": season_label(season),
             "compare_url": build_compare_player_url(name, team, season),
             "team_url": build_team_url(team, season),
             "back_url": f"/players?season={season}&team={quote(str(team), safe='')}" if team else f"/players?season={season}",
@@ -957,7 +1009,7 @@ async def teams(
         ("min_total", "MIN"),
     ]
     season = resolve_season(season, allow_all=True)
-    seasons = ["ALL"] + get_season_list()
+    seasons = season_options(include_all=True)
     stats = load_teams_aggregate(season=season, scope=scope, sort_by=sort)
     leader = stats[0] if stats else None
     return templates.TemplateResponse(
@@ -971,6 +1023,7 @@ async def teams(
             "total_count": len(stats),
             "season": season,
             "seasons": seasons,
+            "season_label": season_label(season),
             "scope": scope,
             "scope_label": scope_label(scope),
             "sort": sort,
@@ -1007,6 +1060,7 @@ async def team_profile(
             "top_players": top_players,
             "leaders": leaders,
             "season": season,
+            "season_label": season_label(season),
             "compare_url": build_compare_team_url(name, season),
             "back_url": f"/teams?season={season}",
         },
@@ -1024,6 +1078,42 @@ async def teams_table(
     stats = load_teams_aggregate(season=season, scope=scope, sort_by=sort)
     return templates.TemplateResponse(
         "partials/teams_table.html",
+        {"request": request, "stats": stats},
+    )
+
+
+@app.get("/standings", response_class=HTMLResponse)
+async def standings(
+    request: Request,
+    season: str = "",
+):
+    season = resolve_season(season)
+    seasons = season_options(include_all=False)
+    stats = load_standings(season)
+    return templates.TemplateResponse(
+        "standings.html",
+        {
+            "request": request,
+            "active_page": "standings",
+            "page_title": "WKBL Standings",
+            "stats": stats,
+            "season": season,
+            "season_label": season_label(season),
+            "seasons": seasons,
+            "total_count": len(stats),
+        },
+    )
+
+
+@app.get("/standings/table", response_class=HTMLResponse)
+async def standings_table(
+    request: Request,
+    season: str = "",
+):
+    season = resolve_season(season)
+    stats = load_standings(season)
+    return templates.TemplateResponse(
+        "partials/standings_table.html",
         {"request": request, "stats": stats},
     )
 
@@ -1046,7 +1136,7 @@ async def games(
         ("ts_pct", "TS%"),
     ]
     season = resolve_season(season, allow_all=True)
-    seasons = ["ALL"] + get_season_list()
+    seasons = season_options(include_all=True)
     stats = load_players_games(season=season, team_filter=team, search_query=search, game_no=game_no, sort_by=sort)
     leader = stats[0] if stats else None
     return templates.TemplateResponse(
@@ -1060,6 +1150,7 @@ async def games(
             "total_count": len(stats),
             "season": season,
             "seasons": seasons,
+            "season_label": season_label(season),
             "teams": get_team_list(season),
             "team": team,
             "search": search,
@@ -1102,7 +1193,7 @@ async def boxscores(
         ("pts_b", "Score B"),
     ]
     season = resolve_season(season, allow_all=True)
-    seasons = ["ALL"] + get_season_list()
+    seasons = season_options(include_all=True)
     stats = load_game_summary(season=season, team_filter=team, search_query=search, sort_by=sort)
     leader = stats[0] if stats else None
     return templates.TemplateResponse(
@@ -1116,6 +1207,7 @@ async def boxscores(
             "total_count": len(stats),
             "season": season,
             "seasons": seasons,
+            "season_label": season_label(season),
             "teams": get_team_list(season),
             "team": team,
             "search": search,
