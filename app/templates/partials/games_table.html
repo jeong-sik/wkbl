@@ -54,6 +54,11 @@
 <div class="pagination">
     <div class="pagination-info">Showing {{ pagination.start }}-{{ pagination.end }} of {{ pagination.total_count }}</div>
     <div class="pagination-controls">
+        {% if pagination.first %}
+        <a class="pager" href="{{ pagination.first.href }}" hx-get="{{ pagination.first.hx }}" hx-target="#games-table" hx-swap="innerHTML">First</a>
+        {% else %}
+        <span class="pager is-disabled">First</span>
+        {% endif %}
         {% if pagination.prev %}
         <a class="pager" href="{{ pagination.prev.href }}" hx-get="{{ pagination.prev.hx }}" hx-target="#games-table" hx-swap="innerHTML">Prev</a>
         {% else %}
@@ -75,6 +80,11 @@
         <a class="pager" href="{{ pagination.next.href }}" hx-get="{{ pagination.next.hx }}" hx-target="#games-table" hx-swap="innerHTML">Next</a>
         {% else %}
         <span class="pager is-disabled">Next</span>
+        {% endif %}
+        {% if pagination.last %}
+        <a class="pager" href="{{ pagination.last.href }}" hx-get="{{ pagination.last.hx }}" hx-target="#games-table" hx-swap="innerHTML">Last</a>
+        {% else %}
+        <span class="pager is-disabled">Last</span>
         {% endif %}
     </div>
 </div>

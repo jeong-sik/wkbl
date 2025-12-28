@@ -274,12 +274,24 @@ def paginate_items(
             "href": build_page_url(base_path, prev_params),
             "hx": build_page_url(table_path, prev_params),
         }
+        first_params = params.copy()
+        first_params.update({"page": 1, "page_size": page_size})
+        pagination["first"] = {
+            "href": build_page_url(base_path, first_params),
+            "hx": build_page_url(table_path, first_params),
+        }
     if total_count and page < total_pages:
         next_params = params.copy()
         next_params.update({"page": page + 1, "page_size": page_size})
         pagination["next"] = {
             "href": build_page_url(base_path, next_params),
             "hx": build_page_url(table_path, next_params),
+        }
+        last_params = params.copy()
+        last_params.update({"page": total_pages, "page_size": page_size})
+        pagination["last"] = {
+            "href": build_page_url(base_path, last_params),
+            "hx": build_page_url(table_path, last_params),
         }
     pagination["pages"] = build_page_buttons(
         base_path=base_path,
@@ -299,7 +311,7 @@ def build_page_buttons(
     page: int,
     page_size: int,
     total_pages: int,
-    window: int = 2,
+    window: int = 3,
 ) -> list[dict]:
     if total_pages <= 1:
         return []
