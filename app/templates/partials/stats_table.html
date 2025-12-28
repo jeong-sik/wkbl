@@ -3,11 +3,6 @@
     <div class="pagination top"{% if pager_accent %} style="--pager-accent: {{ pager_accent }};"{% endif %}>
         <div class="pagination-info">Showing {{ pagination.start }}-{{ pagination.end }} of {{ pagination.total_count }} · Page {{ pagination.page }} / {{ pagination.total_pages }}</div>
         <div class="pagination-controls">
-            {% if pagination.prev %}
-            <a class="pager pager-nav" href="{{ pagination.prev.href }}" hx-get="{{ pagination.prev.hx }}" hx-target="#stats-body" hx-swap="innerHTML" aria-label="Previous page">&lt;</a>
-            {% else %}
-            <span class="pager is-disabled pager-nav" aria-hidden="true">&lt;</span>
-            {% endif %}
             <div class="pagination-pages">
                 {% for item in pagination.pages %}
                     {% if item.ellipsis %}
@@ -19,11 +14,6 @@
                     {% endif %}
                 {% endfor %}
             </div>
-            {% if pagination.next %}
-            <a class="pager pager-nav" href="{{ pagination.next.href }}" hx-get="{{ pagination.next.hx }}" hx-target="#stats-body" hx-swap="innerHTML" aria-label="Next page">&gt;</a>
-            {% else %}
-            <span class="pager is-disabled pager-nav" aria-hidden="true">&gt;</span>
-            {% endif %}
             <form class="pager-jump" hx-get="/refresh" hx-target="#stats-body" hx-swap="innerHTML">
             <input type="hidden" name="sort" value="{{ sort }}">
             <input type="hidden" name="team" value="{{ team }}">
@@ -133,11 +123,6 @@
 <div class="pagination"{% if pager_accent %} style="--pager-accent: {{ pager_accent }};"{% endif %}>
     <div class="pagination-info">Showing {{ pagination.start }}-{{ pagination.end }} of {{ pagination.total_count }} · Page {{ pagination.page }} / {{ pagination.total_pages }}</div>
     <div class="pagination-controls">
-        {% if pagination.prev %}
-        <a class="pager pager-nav" href="{{ pagination.prev.href }}" hx-get="{{ pagination.prev.hx }}" hx-target="#stats-body" hx-swap="innerHTML" aria-label="Previous page">&lt;</a>
-        {% else %}
-        <span class="pager is-disabled pager-nav" aria-hidden="true">&lt;</span>
-        {% endif %}
         <div class="pagination-pages">
             {% for item in pagination.pages %}
                 {% if item.ellipsis %}
@@ -149,11 +134,6 @@
                 {% endif %}
             {% endfor %}
         </div>
-        {% if pagination.next %}
-        <a class="pager pager-nav" href="{{ pagination.next.href }}" hx-get="{{ pagination.next.hx }}" hx-target="#stats-body" hx-swap="innerHTML" aria-label="Next page">&gt;</a>
-        {% else %}
-        <span class="pager is-disabled pager-nav" aria-hidden="true">&gt;</span>
-        {% endif %}
         <form class="pager-jump" hx-get="/refresh" hx-target="#stats-body" hx-swap="innerHTML">
             <input type="hidden" name="sort" value="{{ sort }}">
             <input type="hidden" name="team" value="{{ team }}">

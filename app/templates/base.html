@@ -23,6 +23,7 @@
             --radius-lg: 24px;
             --radius-md: 18px;
             --radius-sm: 12px;
+            --pager-top-offset: 92px;
         }
 
         * {
@@ -658,7 +659,7 @@
         .pagination.top {
             margin-top: 16px;
             position: sticky;
-            top: 84px;
+            top: var(--pager-top-offset);
             z-index: 6;
         }
 
@@ -731,14 +732,6 @@
             transition: transform 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
         }
 
-        .pager-nav {
-            min-width: 36px;
-            justify-content: center;
-            padding: 6px 10px;
-            font-size: 12px;
-            letter-spacing: 0.08em;
-        }
-
         .pager:hover {
             color: var(--pager-accent);
             border-color: var(--pager-accent);
@@ -767,15 +760,6 @@
             pointer-events: none;
             padding: 0 6px;
             box-shadow: none;
-        }
-
-        .pager-status {
-            font-size: 11px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.18em;
-            color: var(--ink-muted);
-            font-family: "JetBrains Mono", monospace;
         }
 
         @supports (color: color-mix(in srgb, #000, #fff)) {
@@ -963,9 +947,6 @@
                 padding: 6px;
             }
 
-            .pagination.top {
-                top: 72px;
-            }
         }
 
         @media (prefers-reduced-motion: reduce) {
@@ -977,6 +958,13 @@
         }
     </style>
     <script>
+        const updatePagerOffset = () => {
+            const header = document.querySelector(".site-header");
+            if (!header) return;
+            const height = Math.ceil(header.getBoundingClientRect().height);
+            document.documentElement.style.setProperty("--pager-top-offset", `${height + 12}px`);
+        };
+
         document.addEventListener("keydown", (event) => {
             if (event.key !== "Enter") return;
             const target = event.target;
@@ -988,6 +976,9 @@
                 form.requestSubmit();
             }
         });
+
+        window.addEventListener("load", updatePagerOffset);
+        window.addEventListener("resize", updatePagerOffset);
 
         document.addEventListener("htmx:afterSwap", (event) => {
             const target = event.detail && event.detail.target ? event.detail.target : null;
@@ -1005,6 +996,7 @@
             if (ids.has(target.id)) {
                 window.scrollTo({ top: 0, behavior: "smooth" });
             }
+            updatePagerOffset();
         });
     </script>
 </head>
