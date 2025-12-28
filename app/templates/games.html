@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="hero">
+    <div class="hero-card">
+        <span class="eyebrow">Game Log</span>
+        <h1>Player Game Logs</h1>
+        <p>선수별 경기 단위 박스스코어 로그. 상대팀, 경기번호, 효율 지표까지 함께 확인합니다.</p>
+        <div class="hero-actions">
+            <span class="pill accent">Game-by-Game</span>
+            <span class="pill">{{ total_count }} Rows</span>
+        </div>
+    </div>
+    <div class="hero-metrics">
+        <div class="metric">
+            <div class="metric-label">Latest Game</div>
+            {% if leader %}
+            <div class="metric-value">{{ leader.game_label }}</div>
+            <div class="metric-sub">{{ leader.team }} vs {{ leader.opponent }}</div>
+            {% else %}
+            <div class="metric-value">No data</div>
+            <div class="metric-sub">Collect season data first.</div>
+            {% endif %}
+        </div>
+        <div class="metric">
+            <div class="metric-label">Top Scorer</div>
+            {% if leader %}
+            <div class="metric-value">{{ leader.name }}</div>
+            <div class="metric-sub">{{ leader.pts }} PTS · EFF {{ "%.1f"|format(leader.eff) }}</div>
+            {% else %}
+            <div class="metric-value">--</div>
+            <div class="metric-sub">--</div>
+            {% endif %}
+        </div>
+        <div class="metric">
+            <div class="metric-label">Focus</div>
+            <div class="metric-value">Context</div>
+            <div class="metric-sub">Opponent + usage snapshot</div>
+        </div>
+    </div>
+</section>
+
+<form id="games-filter" hx-get="/games/table" hx-target="#games-table" hx-trigger="change, keyup delay:250ms">
+    <section class="filters">
+        <div class="filter-group">
+            <div class="filter-label">Search Player</div>
+            <input class="filter-input" type="search" name="search" placeholder="Search player..." value="{{ search }}" aria-label="Search player">
+        </div>
+        <div class="filter-group">
+            <div class="filter-label">Team</div>
+            <select class="filter-input" name="team">
+                <option value="ALL" {% if team == "ALL" %}selected{% endif %}>ALL TEAMS</option>
+                {% for t in teams %}
+                <option value="{{ t }}" {% if t == team %}selected{% endif %}>{{ t }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-group">
+            <div class="filter-label">Game No</div>
+            <input class="filter-input" type="text" name="game_no" placeholder="# ex) 12" value="{{ game_no }}" aria-label="Game number">
+        </div>
+        <div class="filter-group">
+            <div class="filter-label">Sort</div>
+            <select class="filter-input" name="sort">
+                {% for value, label in sort_options %}
+                <option value="{{ value }}" {% if value == sort %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </section>
+</form>
+
+<section id="games-table">
+    {% include 'partials/games_table.html' %}
+</section>
+{% endblock %}

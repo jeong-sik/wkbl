@@ -1,0 +1,51 @@
+{% if stats %}
+<div class="data-table table-scroll">
+    <table>
+        <thead>
+            <tr>
+                <th>Team</th>
+                <th>GP</th>
+                <th>MIN</th>
+                <th>PTS</th>
+                <th>REB</th>
+                <th>AST</th>
+                <th>STL</th>
+                <th>BLK</th>
+                <th>TO</th>
+                <th>FG%</th>
+                <th>3P%</th>
+                <th>FT%</th>
+                <th>eFG%</th>
+                <th>TS%</th>
+                <th>EFF</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in stats %}
+            <tr>
+                <td>{{ row.team }}</td>
+                <td>{{ row.gp }}</td>
+                <td>{{ "%.1f"|format(row.min_total) }}</td>
+                <td>{{ "%.2f"|format(row.pts) }}</td>
+                <td>{{ "%.2f"|format(row.reb) }}</td>
+                <td>{{ "%.2f"|format(row.ast) }}</td>
+                <td>{{ "%.2f"|format(row.stl) }}</td>
+                <td>{{ "%.2f"|format(row.blk) }}</td>
+                <td>{{ "%.2f"|format(row.to) }}</td>
+                <td>{{ "%.1f"|format(row.fg_pct) }}</td>
+                <td>{{ "%.1f"|format(row.fg3_pct) }}</td>
+                <td>{{ "%.1f"|format(row.ft_pct) }}</td>
+                <td>{{ "%.1f"|format(row.efg_pct) }}</td>
+                <td>{{ "%.1f"|format(row.ts_pct) }}</td>
+                <td>{{ "%.1f"|format(row.eff) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="empty-state">
+    <h3>No team data</h3>
+    <p>박스스코어 수집 후 확인하세요.</p>
+</div>
+{% endif %}

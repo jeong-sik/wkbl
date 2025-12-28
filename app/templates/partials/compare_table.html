@@ -1,0 +1,41 @@
+{% if left and right %}
+<div class="data-table table-scroll">
+    <table>
+        <thead>
+            <tr>
+                <th>Metric</th>
+                <th>{{ left.name }} ({{ left.team }})</th>
+                <th>{{ right.name }} ({{ right.team }})</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in metrics %}
+            <tr>
+                <td>{{ row.label }}</td>
+                <td>
+                    <div class="compare-cell">
+                        <span class="compare-value">{{ row.left_display }}</span>
+                        <div class="compare-bar">
+                            <span style="width: {{ row.left_bar }}%;"></span>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <div class="compare-cell">
+                        <span class="compare-value">{{ row.right_display }}</span>
+                        <div class="compare-bar">
+                            <span style="width: {{ row.right_bar }}%;"></span>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="empty-state">
+    <h3>Select two players</h3>
+    <p>좌측과 우측 선수를 선택하면 비교표가 표시됩니다.</p>
+</div>
+{% endif %}

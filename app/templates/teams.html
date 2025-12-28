@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="hero">
+    <div class="hero-card">
+        <span class="eyebrow">Teams Hub</span>
+        <h1>Team Profiles</h1>
+        <p>팀 단위 누적, per-game 지표를 정리했습니다. 시즌 구성을 빠르게 확인할 수 있습니다.</p>
+        <div class="hero-actions">
+            <span class="pill accent">{{ scope_label }}</span>
+            <span class="pill">{{ total_count }} Teams</span>
+        </div>
+    </div>
+    <div class="hero-metrics">
+        <div class="metric">
+            <div class="metric-label">Top Offense</div>
+            {% if leader %}
+            <div class="metric-value">{{ leader.team }}</div>
+            <div class="metric-sub">{{ leader.pts }} PTS · TS {{ "%.1f"|format(leader.ts_pct) }}</div>
+            {% else %}
+            <div class="metric-value">No data</div>
+            <div class="metric-sub">Collect season data first.</div>
+            {% endif %}
+        </div>
+        <div class="metric">
+            <div class="metric-label">Shot Profile</div>
+            {% if leader %}
+            <div class="metric-value">{{ "%.1f"|format(leader.efg_pct) }} eFG%</div>
+            <div class="metric-sub">FG {{ "%.1f"|format(leader.fg_pct) }} · 3P {{ "%.1f"|format(leader.fg3_pct) }}</div>
+            {% else %}
+            <div class="metric-value">--</div>
+            <div class="metric-sub">--</div>
+            {% endif %}
+        </div>
+        <div class="metric">
+            <div class="metric-label">Focus</div>
+            <div class="metric-value">Pace Ready</div>
+            <div class="metric-sub">Possession metrics next step</div>
+        </div>
+    </div>
+</section>
+
+<form id="teams-filter" hx-get="/teams/table" hx-target="#teams-table" hx-trigger="change">
+    <section class="filters">
+        <div class="filter-group">
+            <div class="filter-label">Scope</div>
+            <select class="filter-input" name="scope">
+                {% for value, label in scopes %}
+                <option value="{{ value }}" {% if value == scope %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-group">
+            <div class="filter-label">Sort</div>
+            <select class="filter-input" name="sort">
+                {% for value, label in sort_options %}
+                <option value="{{ value }}" {% if value == sort %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </section>
+</form>
+
+<section id="teams-table">
+    {% include 'partials/teams_table.html' %}
+</section>
+{% endblock %}

@@ -1,0 +1,84 @@
+{% if stats %}
+{% for player in stats %}
+<article class="player-card" style="--team-color: {{ player.color }}; --delay: {{ loop.index0 * 60 }}ms;">
+    <div class="card-main">
+        <div class="game-tag">{{ player.game }}</div>
+        <div class="team-logo">
+            <img src="{{ player.logo }}" alt="{{ player.team }} logo">
+        </div>
+        <div class="player-photo">
+            {% if player.photo %}
+            <img src="{{ player.photo }}" alt="{{ player.name }} portrait">
+            {% else %}
+            <span>{{ player.name[0] }}</span>
+            {% endif %}
+        </div>
+        <div class="player-info">
+            <div class="player-name">{{ player.name }}</div>
+            <div class="player-meta">
+                <span>{{ player.team }}</span>
+                <span>·</span>
+                <span>{{ player.nick }}</span>
+                <span class="pos-badge">{{ player.pos }}</span>
+                <span>{{ player.min_display }} MIN</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="card-stats">
+        <div class="stat">
+            <span>PTS</span>
+            <strong class="highlight">{{ player.pts }}</strong>
+        </div>
+        <div class="stat">
+            <span>FG%</span>
+            <strong>{{ "%.1f"|format(player.fg_pct) }}</strong>
+        </div>
+        <div class="stat">
+            <span>REB</span>
+            <strong>{{ player.reb }}</strong>
+        </div>
+        <div class="stat">
+            <span>AST</span>
+            <strong>{{ player.ast }}</strong>
+        </div>
+        <div class="stat">
+            <span>STL</span>
+            <strong>{{ player.stl }}</strong>
+        </div>
+        <div class="stat">
+            <span>BLK</span>
+            <strong>{{ player.blk }}</strong>
+        </div>
+        <div class="stat">
+            <span>TO</span>
+            <strong>{{ player.to }}</strong>
+        </div>
+    </div>
+
+    <div class="card-impact">
+        <div class="impact-label">Impact</div>
+        <div class="impact-meter">
+            <div class="meter-half meter-neg">
+                {% if player.eff_neg %}
+                <span style="width: {{ player.eff_neg }}%;"></span>
+                {% endif %}
+            </div>
+            <div class="meter-half meter-pos">
+                {% if player.eff_pos %}
+                <span style="width: {{ player.eff_pos }}%;"></span>
+                {% endif %}
+            </div>
+        </div>
+        <div class="impact-value {% if player.eff > 0 %}eff-positive{% elif player.eff < 0 %}eff-negative{% else %}eff-neutral{% endif %}">
+            {{ "+" if player.eff > 0 }}{{ player.eff }}
+        </div>
+    </div>
+</article>
+{% endfor %}
+{% else %}
+<div class="empty-state">
+    <h3>No stats found</h3>
+    <p>CSV 데이터를 `data/wkbl/`에 넣으면 바로 표시됩니다.</p>
+</div>
+{% endif %}

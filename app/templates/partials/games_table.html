@@ -1,0 +1,51 @@
+{% if stats %}
+<div class="data-table table-scroll">
+    <table>
+        <thead>
+            <tr>
+                <th>Game</th>
+                <th>Player</th>
+                <th>Team</th>
+                <th>Opp</th>
+                <th>Pos</th>
+                <th>MIN</th>
+                <th>PTS</th>
+                <th>REB</th>
+                <th>AST</th>
+                <th>STL</th>
+                <th>BLK</th>
+                <th>TO</th>
+                <th>FG%</th>
+                <th>TS%</th>
+                <th>EFF</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in stats %}
+            <tr>
+                <td>{{ row.game_label }}</td>
+                <td>{{ row.name }}</td>
+                <td>{{ row.team }}</td>
+                <td>{{ row.opponent or "-" }}</td>
+                <td><span class="stat-pill">{{ row.pos }}</span></td>
+                <td>{{ row.min_display }}</td>
+                <td>{{ row.pts }}</td>
+                <td>{{ row.reb }}</td>
+                <td>{{ row.ast }}</td>
+                <td>{{ row.stl }}</td>
+                <td>{{ row.blk }}</td>
+                <td>{{ row.to }}</td>
+                <td>{{ "%.1f"|format(row.fg_pct) }}</td>
+                <td>{{ "%.1f"|format(row.ts_pct) }}</td>
+                <td>{{ "%.1f"|format(row.eff) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="empty-state">
+    <h3>No game logs found</h3>
+    <p>필터를 조정하거나 데이터를 먼저 수집하세요.</p>
+</div>
+{% endif %}
