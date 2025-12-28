@@ -99,6 +99,12 @@ def parse_made_att(value) -> tuple[int, int]:
 def get_team_meta(team: str) -> dict:
     return TEAM_META.get(team, DEFAULT_TEAM_META)
 
+def resolve_pager_accent(team: str) -> str | None:
+    if not team or team == "ALL":
+        return None
+    color = get_team_meta(team).get("color")
+    return color or None
+
 
 def season_label(code: str) -> str:
     if not code:
@@ -1227,6 +1233,7 @@ async def index(
     pager_mode = "both"
     pager_top = True
     pager_bottom = True
+    pager_accent = resolve_pager_accent(team)
     full_stats, data_label = load_real_stats(sort_by=sort, team_filter=team, pos_filter=pos, search_query=search)
     stats, pagination = paginate_items(
         full_stats,
@@ -1251,6 +1258,7 @@ async def index(
             "pagination": pagination,
             "page_size": pagination["page_size"],
             "data_label": data_label,
+            "pager_accent": pager_accent,
             "pager_mode": pager_mode,
             "pager_top": pager_top,
             "pager_bottom": pager_bottom,
@@ -1274,6 +1282,7 @@ async def refresh(
     pager_mode = "both"
     pager_top = True
     pager_bottom = True
+    pager_accent = resolve_pager_accent(team)
     full_stats, data_label = load_real_stats(sort_by=sort, team_filter=team, pos_filter=pos, search_query=search)
     stats, pagination = paginate_items(
         full_stats,
@@ -1295,6 +1304,7 @@ async def refresh(
             "pagination": pagination,
             "page_size": pagination["page_size"],
             "data_label": data_label,
+            "pager_accent": pager_accent,
             "pager_mode": pager_mode,
             "pager_top": pager_top,
             "pager_bottom": pager_bottom,
@@ -1335,6 +1345,7 @@ async def players(
     pager_mode = resolve_pager_mode(request, pager)
     pager_top = pager_mode in ("top", "both")
     pager_bottom = pager_mode in ("bottom", "both")
+    pager_accent = resolve_pager_accent(team)
     params = {
         "season": season,
         "scope": scope,
@@ -1400,6 +1411,7 @@ async def players(
             "sort_options": sort_options,
             "pagination": pagination,
             "page_size": pagination["page_size"],
+            "pager_accent": pager_accent,
             "pager_mode": pager_mode,
             "pager_top": pager_top,
             "pager_bottom": pager_bottom,
@@ -1427,6 +1439,7 @@ async def players_table(
     pager_mode = resolve_pager_mode(request, pager)
     pager_top = pager_mode in ("top", "both")
     pager_bottom = pager_mode in ("bottom", "both")
+    pager_accent = resolve_pager_accent(team)
     params = {
         "season": season,
         "scope": scope,
@@ -1472,6 +1485,7 @@ async def players_table(
             "sort": sort,
             "pagination": pagination,
             "page_size": pagination["page_size"],
+            "pager_accent": pager_accent,
             "pager_mode": pager_mode,
             "pager_top": pager_top,
             "pager_bottom": pager_bottom,
@@ -1511,6 +1525,7 @@ async def player_profile(
         params={"name": name, "team": team, "season": season, "scope": scope, "pager": pager_mode},
     )
     team_meta = get_team_meta(team)
+    pager_accent = team_meta.get("color")
     response = templates.TemplateResponse(
         "player.html",
         {
@@ -1524,6 +1539,7 @@ async def player_profile(
             "games": games,
             "pagination": pagination,
             "page_size": pagination["page_size"],
+            "pager_accent": pager_accent,
             "pager_mode": pager_mode,
             "pager_top": pager_top,
             "pager_bottom": pager_bottom,
@@ -1555,6 +1571,7 @@ async def player_games_table(
     pager_mode = resolve_pager_mode(request, pager)
     pager_top = pager_mode in ("top", "both")
     pager_bottom = pager_mode in ("bottom", "both")
+    pager_accent = resolve_pager_accent(team)
     full_games = load_player_game_log(name, team, season)
     games, pagination = paginate_items(
         full_games,
@@ -1571,6 +1588,7 @@ async def player_games_table(
             "games": games,
             "pagination": pagination,
             "page_size": pagination["page_size"],
+            "pager_accent": pager_accent,
             "pager_mode": pager_mode,
             "pager_top": pager_top,
             "pager_bottom": pager_bottom,
@@ -1613,6 +1631,7 @@ async def teams(
     pager_mode = resolve_pager_mode(request, pager)
     pager_top = pager_mode in ("top", "both")
     pager_bottom = pager_mode in ("bottom", "both")
+    pager_accent = None
     full_stats = load_teams_aggregate(season=season, scope=scope, sort_by=sort)
     leader = full_stats[0] if full_stats else None
     stats, pagination = paginate_items(
@@ -1642,6 +1661,7 @@ async def teams(
             "sort_options": sort_options,
             "pagination": pagination,
             "page_size": pagination["page_size"],
+            "pager_accent": pager_accent,
             "pager_mode": pager_mode,
             "pager_top": pager_top,
             "pager_bottom": pager_bottom,
@@ -1701,6 +1721,7 @@ async def teams_table(
     pager_mode = resolve_pager_mode(request, pager)
     pager_top = pager_mode in ("top", "both")
     pager_bottom = pager_mode in ("bottom", "both")
+    pager_accent = None
     full_stats = load_teams_aggregate(season=season, scope=scope, sort_by=sort)
     stats, pagination = paginate_items(
         full_stats,
@@ -1720,6 +1741,7 @@ async def teams_table(
             "sort": sort,
             "pagination": pagination,
             "page_size": pagination["page_size"],
+            "pager_accent": pager_accent,
             "pager_mode": pager_mode,
             "pager_top": pager_top,
             "pager_bottom": pager_bottom,
@@ -1744,6 +1766,7 @@ async def standings(
     pager_mode = resolve_pager_mode(request, pager)
     pager_top = pager_mode in ("top", "both")
     pager_bottom = pager_mode in ("bottom", "both")
+    pager_accent = None
     full_stats = load_standings(season)
     stats, pagination = paginate_items(
         full_stats,
@@ -1766,6 +1789,7 @@ async def standings(
             "total_count": pagination["total_count"],
             "pagination": pagination,
             "page_size": pagination["page_size"],
+            "pager_accent": pager_accent,
             "pager_mode": pager_mode,
             "pager_top": pager_top,
             "pager_bottom": pager_bottom,
@@ -1789,6 +1813,7 @@ async def standings_table(
     pager_mode = resolve_pager_mode(request, pager)
     pager_top = pager_mode in ("top", "both")
     pager_bottom = pager_mode in ("bottom", "both")
+    pager_accent = None
     full_stats = load_standings(season)
     stats, pagination = paginate_items(
         full_stats,
@@ -1806,6 +1831,7 @@ async def standings_table(
             "season": season,
             "pagination": pagination,
             "page_size": pagination["page_size"],
+            "pager_accent": pager_accent,
             "pager_mode": pager_mode,
             "pager_top": pager_top,
             "pager_bottom": pager_bottom,
@@ -1842,6 +1868,7 @@ async def games(
     pager_mode = resolve_pager_mode(request, pager)
     pager_top = pager_mode in ("top", "both")
     pager_bottom = pager_mode in ("bottom", "both")
+    pager_accent = resolve_pager_accent(team)
     full_stats = load_players_games(
         season=season,
         team_filter=team,
@@ -1885,6 +1912,7 @@ async def games(
             "sort_options": sort_options,
             "pagination": pagination,
             "page_size": pagination["page_size"],
+            "pager_accent": pager_accent,
             "pager_mode": pager_mode,
             "pager_top": pager_top,
             "pager_bottom": pager_bottom,
@@ -1912,6 +1940,7 @@ async def games_table(
     pager_mode = resolve_pager_mode(request, pager)
     pager_top = pager_mode in ("top", "both")
     pager_bottom = pager_mode in ("bottom", "both")
+    pager_accent = resolve_pager_accent(team)
     full_stats = load_players_games(
         season=season,
         team_filter=team,
@@ -1946,6 +1975,7 @@ async def games_table(
             "sort": sort,
             "pagination": pagination,
             "page_size": pagination["page_size"],
+            "pager_accent": pager_accent,
             "pager_mode": pager_mode,
             "pager_top": pager_top,
             "pager_bottom": pager_bottom,
@@ -1979,6 +2009,7 @@ async def boxscores(
     pager_mode = resolve_pager_mode(request, pager)
     pager_top = pager_mode in ("top", "both")
     pager_bottom = pager_mode in ("bottom", "both")
+    pager_accent = resolve_pager_accent(team)
     full_stats = load_game_summary(
         season=season,
         team_filter=team,
@@ -2019,6 +2050,7 @@ async def boxscores(
             "sort_options": sort_options,
             "pagination": pagination,
             "page_size": pagination["page_size"],
+            "pager_accent": pager_accent,
             "pager_mode": pager_mode,
             "pager_top": pager_top,
             "pager_bottom": pager_bottom,
@@ -2045,6 +2077,7 @@ async def boxscores_table(
     pager_mode = resolve_pager_mode(request, pager)
     pager_top = pager_mode in ("top", "both")
     pager_bottom = pager_mode in ("bottom", "both")
+    pager_accent = resolve_pager_accent(team)
     full_stats = load_game_summary(
         season=season,
         team_filter=team,
@@ -2076,6 +2109,7 @@ async def boxscores_table(
             "sort": sort,
             "pagination": pagination,
             "page_size": pagination["page_size"],
+            "pager_accent": pager_accent,
             "pager_mode": pager_mode,
             "pager_top": pager_top,
             "pager_bottom": pager_bottom,

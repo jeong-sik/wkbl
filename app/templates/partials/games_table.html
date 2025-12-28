@@ -1,18 +1,13 @@
 {% if stats %}
 <div class="data-table">
     {% if pager_top and pagination and pagination.total_pages > 1 %}
-    <div class="pagination top">
-        <div class="pagination-info">Showing {{ pagination.start }}-{{ pagination.end }} of {{ pagination.total_count }}</div>
+    <div class="pagination top"{% if pager_accent %} style="--pager-accent: {{ pager_accent }};"{% endif %}>
+        <div class="pagination-info">Showing {{ pagination.start }}-{{ pagination.end }} of {{ pagination.total_count }} · Page {{ pagination.page }} / {{ pagination.total_pages }}</div>
         <div class="pagination-controls">
-            {% if pagination.first %}
-            <a class="pager" href="{{ pagination.first.href }}" hx-get="{{ pagination.first.hx }}" hx-target="#games-table" hx-swap="innerHTML">First</a>
-            {% else %}
-            <span class="pager is-disabled">First</span>
-            {% endif %}
             {% if pagination.prev %}
-            <a class="pager" href="{{ pagination.prev.href }}" hx-get="{{ pagination.prev.hx }}" hx-target="#games-table" hx-swap="innerHTML">Prev</a>
+            <a class="pager pager-nav" href="{{ pagination.prev.href }}" hx-get="{{ pagination.prev.hx }}" hx-target="#games-table" hx-swap="innerHTML" aria-label="Previous page">&lt;</a>
             {% else %}
-            <span class="pager is-disabled">Prev</span>
+            <span class="pager is-disabled pager-nav" aria-hidden="true">&lt;</span>
             {% endif %}
             <div class="pagination-pages">
                 {% for item in pagination.pages %}
@@ -25,16 +20,10 @@
                     {% endif %}
                 {% endfor %}
             </div>
-            <span class="pager-status">Page {{ pagination.page }} / {{ pagination.total_pages }}</span>
             {% if pagination.next %}
-            <a class="pager" href="{{ pagination.next.href }}" hx-get="{{ pagination.next.hx }}" hx-target="#games-table" hx-swap="innerHTML">Next</a>
+            <a class="pager pager-nav" href="{{ pagination.next.href }}" hx-get="{{ pagination.next.hx }}" hx-target="#games-table" hx-swap="innerHTML" aria-label="Next page">&gt;</a>
             {% else %}
-            <span class="pager is-disabled">Next</span>
-            {% endif %}
-            {% if pagination.last %}
-            <a class="pager" href="{{ pagination.last.href }}" hx-get="{{ pagination.last.hx }}" hx-target="#games-table" hx-swap="innerHTML">Last</a>
-            {% else %}
-            <span class="pager is-disabled">Last</span>
+            <span class="pager is-disabled pager-nav" aria-hidden="true">&gt;</span>
             {% endif %}
             <form class="pager-jump" hx-get="/games/table" hx-target="#games-table" hx-swap="innerHTML">
                 <input type="hidden" name="season" value="{{ season }}">
@@ -101,18 +90,13 @@
         </table>
     </div>
 {% if pager_bottom and pagination and pagination.total_pages > 1 %}
-<div class="pagination">
-    <div class="pagination-info">Showing {{ pagination.start }}-{{ pagination.end }} of {{ pagination.total_count }}</div>
+<div class="pagination"{% if pager_accent %} style="--pager-accent: {{ pager_accent }};"{% endif %}>
+    <div class="pagination-info">Showing {{ pagination.start }}-{{ pagination.end }} of {{ pagination.total_count }} · Page {{ pagination.page }} / {{ pagination.total_pages }}</div>
     <div class="pagination-controls">
-        {% if pagination.first %}
-        <a class="pager" href="{{ pagination.first.href }}" hx-get="{{ pagination.first.hx }}" hx-target="#games-table" hx-swap="innerHTML">First</a>
-        {% else %}
-        <span class="pager is-disabled">First</span>
-        {% endif %}
         {% if pagination.prev %}
-        <a class="pager" href="{{ pagination.prev.href }}" hx-get="{{ pagination.prev.hx }}" hx-target="#games-table" hx-swap="innerHTML">Prev</a>
+        <a class="pager pager-nav" href="{{ pagination.prev.href }}" hx-get="{{ pagination.prev.hx }}" hx-target="#games-table" hx-swap="innerHTML" aria-label="Previous page">&lt;</a>
         {% else %}
-        <span class="pager is-disabled">Prev</span>
+        <span class="pager is-disabled pager-nav" aria-hidden="true">&lt;</span>
         {% endif %}
         <div class="pagination-pages">
             {% for item in pagination.pages %}
@@ -125,16 +109,10 @@
                 {% endif %}
             {% endfor %}
         </div>
-        <span class="pager-status">Page {{ pagination.page }} / {{ pagination.total_pages }}</span>
         {% if pagination.next %}
-        <a class="pager" href="{{ pagination.next.href }}" hx-get="{{ pagination.next.hx }}" hx-target="#games-table" hx-swap="innerHTML">Next</a>
+        <a class="pager pager-nav" href="{{ pagination.next.href }}" hx-get="{{ pagination.next.hx }}" hx-target="#games-table" hx-swap="innerHTML" aria-label="Next page">&gt;</a>
         {% else %}
-        <span class="pager is-disabled">Next</span>
-        {% endif %}
-        {% if pagination.last %}
-        <a class="pager" href="{{ pagination.last.href }}" hx-get="{{ pagination.last.hx }}" hx-target="#games-table" hx-swap="innerHTML">Last</a>
-        {% else %}
-        <span class="pager is-disabled">Last</span>
+        <span class="pager is-disabled pager-nav" aria-hidden="true">&gt;</span>
         {% endif %}
         <form class="pager-jump" hx-get="/games/table" hx-target="#games-table" hx-swap="innerHTML">
             <input type="hidden" name="season" value="{{ season }}">

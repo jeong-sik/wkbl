@@ -640,6 +640,7 @@
         }
 
         .pagination {
+            --pager-accent: var(--accent);
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -648,6 +649,7 @@
             margin: 14px 16px;
             border-radius: 18px;
             border: 1px solid rgba(255, 107, 44, 0.18);
+            border-left: 4px solid var(--pager-accent);
             background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(239, 228, 214, 0.86));
             box-shadow: 0 12px 26px rgba(26, 26, 26, 0.12);
             backdrop-filter: blur(8px);
@@ -655,6 +657,9 @@
 
         .pagination.top {
             margin-top: 16px;
+            position: sticky;
+            top: 84px;
+            z-index: 6;
         }
 
         .pagination-info {
@@ -726,9 +731,17 @@
             transition: transform 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
         }
 
+        .pager-nav {
+            min-width: 36px;
+            justify-content: center;
+            padding: 6px 10px;
+            font-size: 12px;
+            letter-spacing: 0.08em;
+        }
+
         .pager:hover {
-            color: var(--accent);
-            border-color: var(--accent);
+            color: var(--pager-accent);
+            border-color: var(--pager-accent);
             transform: translateY(-1px);
             box-shadow: 0 10px 20px rgba(255, 107, 44, 0.2);
         }
@@ -740,8 +753,8 @@
         }
 
         .pager.is-current {
-            background: linear-gradient(135deg, var(--accent-2), #1a86c4);
-            border-color: transparent;
+            background: var(--pager-accent);
+            border-color: var(--pager-accent);
             color: #fff;
             pointer-events: none;
             box-shadow: 0 12px 22px rgba(15, 76, 129, 0.35);
@@ -763,6 +776,30 @@
             letter-spacing: 0.18em;
             color: var(--ink-muted);
             font-family: "JetBrains Mono", monospace;
+        }
+
+        @supports (color: color-mix(in srgb, #000, #fff)) {
+            .pagination {
+                border-color: color-mix(in srgb, var(--pager-accent) 30%, transparent);
+                background: linear-gradient(
+                    135deg,
+                    color-mix(in srgb, var(--pager-accent) 10%, #fff),
+                    color-mix(in srgb, var(--pager-accent) 14%, var(--surface-strong))
+                );
+            }
+
+            .pagination-info {
+                border-color: color-mix(in srgb, var(--pager-accent) 32%, transparent);
+                background: color-mix(in srgb, var(--pager-accent) 12%, #fff);
+            }
+
+            .pager:hover {
+                box-shadow: 0 10px 20px color-mix(in srgb, var(--pager-accent) 35%, transparent);
+            }
+
+            .pager.is-current {
+                box-shadow: 0 12px 22px color-mix(in srgb, var(--pager-accent) 45%, transparent);
+            }
         }
 
         .stat-pill {
@@ -924,6 +961,10 @@
                 overflow-x: auto;
                 flex-wrap: nowrap;
                 padding: 6px;
+            }
+
+            .pagination.top {
+                top: 72px;
             }
         }
 
