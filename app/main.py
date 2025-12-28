@@ -196,6 +196,28 @@ def find_player(scope: str, key: str) -> dict | None:
     return df.iloc[0].to_dict()
 
 
+def get_team_options() -> list[dict]:
+    path = DERIVED_DIR / "teams_aggregate.csv"
+    if not path.exists():
+        return []
+    df = pd.read_csv(path)
+    teams = sorted(df["team"].dropna().unique().tolist())
+    return [{"value": team, "label": team} for team in teams]
+
+
+def find_team(scope: str, team: str) -> dict | None:
+    if not team:
+        return None
+    path = DERIVED_DIR / "teams_aggregate.csv"
+    if not path.exists():
+        return None
+    df = pd.read_csv(path)
+    df = df[(df["scope"] == scope) & (df["team"] == team)]
+    if df.empty:
+        return None
+    return df.iloc[0].to_dict()
+
+
 def format_metric(value, digits: int = 1) -> str:
     try:
         return f"{float(value):.{digits}f}"
@@ -251,6 +273,97 @@ def build_compare_metrics(left: dict, right: dict) -> list[dict]:
             }
         )
     return metrics
+
+
+def compare_context(
+    mode: str,
+    scope: str,
+    player_a: str = "",
+    player_b: str = "",
+    team_a: str = "",
+    team_b: str = "",
+) -> dict:
+    mode = "teams" if mode == "teams" else "players"
+    player_scopes = [("per_game", "Per Game"), ("per_36", "Per 36"), ("totals", "Totals")]
+    team_scopes = [("per_game", "Per Game"), ("totals", "Totals")]
+
+    player_scope_keys = [value for value, _ in player_scopes]
+    team_scope_keys = [value for value, _ in team_scopes]
+
+    if mode == "teams" and scope not in team_scope_keys:
+        scope = "per_game"
+    if mode == "players" and scope not in player_scope_keys:
+        scope = "per_game"
+
+    if mode == "teams":
+        options = get_team_options()
+        left = find_team(scope, team_a)
+        right = find_team(scope, team_b)
+        select_label = "Team"
+        select_name_a = "team_a"
+        select_name_b = "team_b"
+        selected_a = team_a
+        selected_b = team_b
+        compare_title = "Team vs Team"
+        compare_desc = "팀 단위 per-game, totals 지표를 비교합니다. 시즌 전반의 생산성을 확인하세요."
+        entity_count_label = f"{len(options)} Teams"
+        scopes = team_scopes
+        left_label = left.get("team") if left else "Team A"
+        right_label = right.get("team") if right else "Team B"
+    else:
+        options = get_player_options()
+        left = find_player(scope, player_a)
+        right = find_player(scope, player_b)
+        select_label = "Player"
+        select_name_a = "player_a"
+        select_name_b = "player_b"
+        selected_a = player_a
+        selected_b = player_b
+        compare_title = "Player vs Player"
+        compare_desc = "basketball-reference 스타일로 기본 지표를 나란히 비교합니다. scope를 바꿔 per-game과 per-36을 확인하세요."
+        entity_count_label = f"{len(options)} Players"
+        scopes = player_scopes
+        left_label = f"{left.get('name')} ({left.get('team')})" if left else "Player A"
+        right_label = f"{right.get('name')} ({right.get('team')})" if right else "Player B"
+
+    metrics = build_compare_metrics(left, right) if left and right else []
+
+    player_scope = scope if scope in player_scope_keys else "per_game"
+    team_scope = scope if scope in team_scope_keys else "per_game"
+    mode_switch = [
+        {
+            "label": "Players",
+            "url": f"/compare?mode=players&scope={player_scope}",
+            "active": mode == "players",
+        },
+        {
+            "label": "Teams",
+            "url": f"/compare?mode=teams&scope={team_scope}",
+            "active": mode == "teams",
+        },
+    ]
+
+    return {
+        "mode": mode,
+        "scope": scope,
+        "scope_label": scope_label(scope),
+        "scopes": scopes,
+        "options": options,
+        "selected_a": selected_a,
+        "selected_b": selected_b,
+        "select_label": select_label,
+        "select_name_a": select_name_a,
+        "select_name_b": select_name_b,
+        "compare_title": compare_title,
+        "compare_desc": compare_desc,
+        "entity_count_label": entity_count_label,
+        "left_label": left_label,
+        "right_label": right_label,
+        "metrics": metrics,
+        "left": left,
+        "right": right,
+        "mode_switch": mode_switch,
+    }
 
 def load_real_stats(sort_by="eff", team_filter="ALL", pos_filter="ALL", search_query=""):
     sort_aliases = {
@@ -557,33 +670,28 @@ async def games_table(
 @app.get("/compare", response_class=HTMLResponse)
 async def compare(
     request: Request,
+    mode: str = "players",
     scope: str = "per_game",
     player_a: str = "",
     player_b: str = "",
+    team_a: str = "",
+    team_b: str = "",
 ):
-    scopes = [("per_game", "Per Game"), ("per_36", "Per 36"), ("totals", "Totals")]
-    player_options = get_player_options()
-    left = find_player(scope, player_a)
-    right = find_player(scope, player_b)
-
-    metrics = build_compare_metrics(left, right) if left and right else []
-
+    context = compare_context(
+        mode=mode,
+        scope=scope,
+        player_a=player_a,
+        player_b=player_b,
+        team_a=team_a,
+        team_b=team_b,
+    )
     return templates.TemplateResponse(
         "compare.html",
         {
             "request": request,
             "active_page": "compare",
             "page_title": "WKBL Compare",
-            "scope": scope,
-            "scope_label": scope_label(scope),
-            "player_a": player_a,
-            "player_b": player_b,
-            "player_options": player_options,
-            "player_count": len(player_options),
-            "scopes": scopes,
-            "left": left,
-            "right": right,
-            "metrics": metrics,
+            **context,
         },
     )
 
@@ -591,16 +699,24 @@ async def compare(
 @app.get("/compare/table", response_class=HTMLResponse)
 async def compare_table(
     request: Request,
+    mode: str = "players",
     scope: str = "per_game",
     player_a: str = "",
     player_b: str = "",
+    team_a: str = "",
+    team_b: str = "",
 ):
-    left = find_player(scope, player_a)
-    right = find_player(scope, player_b)
-    metrics = build_compare_metrics(left, right) if left and right else []
+    context = compare_context(
+        mode=mode,
+        scope=scope,
+        player_a=player_a,
+        player_b=player_b,
+        team_a=team_a,
+        team_b=team_b,
+    )
     return templates.TemplateResponse(
         "partials/compare_table.html",
-        {"request": request, "left": left, "right": right, "metrics": metrics},
+        {"request": request, **context},
     )
 
 if __name__ == "__main__":

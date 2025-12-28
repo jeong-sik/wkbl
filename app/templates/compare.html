@@ -4,11 +4,14 @@
 <section class="hero">
     <div class="hero-card">
         <span class="eyebrow">Compare</span>
-        <h1>Player vs Player</h1>
-        <p>basketball-reference 스타일로 기본 지표를 나란히 비교합니다. scope를 바꿔 per-game과 per-36을 확인하세요.</p>
+        <h1>{{ compare_title }}</h1>
+        <p>{{ compare_desc }}</p>
         <div class="hero-actions">
-            <span class="pill accent">{{ scope_label }}</span>
-            <span class="pill">{{ player_count }} Players</span>
+            {% for item in mode_switch %}
+            <a class="pill {% if item.active %}accent{% endif %}" href="{{ item.url }}">{{ item.label }}</a>
+            {% endfor %}
+            <span class="pill">{{ scope_label }}</span>
+            <span class="pill">{{ entity_count_label }}</span>
         </div>
     </div>
     <div class="hero-metrics">
@@ -20,17 +23,18 @@
         <div class="metric">
             <div class="metric-label">Scope</div>
             <div class="metric-value">{{ scope_label }}</div>
-            <div class="metric-sub">Totals / Per Game / Per 36</div>
+            <div class="metric-sub">Totals / Per Game{% if mode == 'players' %} / Per 36{% endif %}</div>
         </div>
         <div class="metric">
             <div class="metric-label">Hint</div>
             <div class="metric-value">Choose two</div>
-            <div class="metric-sub">팀 이동도 같이 보입니다</div>
+            <div class="metric-sub">이중 선택으로 비교</div>
         </div>
     </div>
 </section>
 
 <form id="compare-form" hx-get="/compare/table" hx-target="#compare-table" hx-trigger="change">
+    <input type="hidden" name="mode" value="{{ mode }}">
     <section class="filters">
         <div class="filter-group">
             <div class="filter-label">Scope</div>
@@ -41,20 +45,20 @@
             </select>
         </div>
         <div class="filter-group">
-            <div class="filter-label">Player A</div>
-            <select class="filter-input" name="player_a">
-                <option value="">Select player</option>
-                {% for opt in player_options %}
-                <option value="{{ opt.value }}" {% if opt.value == player_a %}selected{% endif %}>{{ opt.label }}</option>
+            <div class="filter-label">{{ select_label }} A</div>
+            <select class="filter-input" name="{{ select_name_a }}">
+                <option value="">Select {{ select_label | lower }}</option>
+                {% for opt in options %}
+                <option value="{{ opt.value }}" {% if opt.value == selected_a %}selected{% endif %}>{{ opt.label }}</option>
                 {% endfor %}
             </select>
         </div>
         <div class="filter-group">
-            <div class="filter-label">Player B</div>
-            <select class="filter-input" name="player_b">
-                <option value="">Select player</option>
-                {% for opt in player_options %}
-                <option value="{{ opt.value }}" {% if opt.value == player_b %}selected{% endif %}>{{ opt.label }}</option>
+            <div class="filter-label">{{ select_label }} B</div>
+            <select class="filter-input" name="{{ select_name_b }}">
+                <option value="">Select {{ select_label | lower }}</option>
+                {% for opt in options %}
+                <option value="{{ opt.value }}" {% if opt.value == selected_b %}selected{% endif %}>{{ opt.label }}</option>
                 {% endfor %}
             </select>
         </div>

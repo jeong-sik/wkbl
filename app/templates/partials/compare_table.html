@@ -4,8 +4,8 @@
         <thead>
             <tr>
                 <th>Metric</th>
-                <th>{{ left.name }} ({{ left.team }})</th>
-                <th>{{ right.name }} ({{ right.team }})</th>
+                <th>{{ left_label }}</th>
+                <th>{{ right_label }}</th>
             </tr>
         </thead>
         <tbody>
@@ -35,7 +35,7 @@
 </div>
 {% else %}
 <div class="empty-state">
-    <h3>Select two players</h3>
-    <p>좌측과 우측 선수를 선택하면 비교표가 표시됩니다.</p>
+    <h3>Select two {{ select_label | lower }}s</h3>
+    <p>좌측과 우측 항목을 선택하면 비교표가 표시됩니다.</p>
 </div>
 {% endif %}
