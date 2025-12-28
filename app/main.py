@@ -1224,9 +1224,9 @@ async def index(
     pager: str = DEFAULT_PAGER_MODE,
 ):
     page_size = resolve_page_size(request, page_size)
-    pager_mode = "top"
+    pager_mode = "both"
     pager_top = True
-    pager_bottom = False
+    pager_bottom = True
     full_stats, data_label = load_real_stats(sort_by=sort, team_filter=team, pos_filter=pos, search_query=search)
     stats, pagination = paginate_items(
         full_stats,
@@ -1271,9 +1271,9 @@ async def refresh(
     pager: str = DEFAULT_PAGER_MODE,
 ):
     page_size = resolve_page_size(request, page_size)
-    pager_mode = "top"
+    pager_mode = "both"
     pager_top = True
-    pager_bottom = False
+    pager_bottom = True
     full_stats, data_label = load_real_stats(sort_by=sort, team_filter=team, pos_filter=pos, search_query=search)
     stats, pagination = paginate_items(
         full_stats,
