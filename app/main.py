@@ -1029,20 +1029,83 @@ def compare_context(
         "mode_switch": mode_switch,
     }
 
+def build_home_stats_from_aggregate(rows: list[dict], season: str) -> list[dict]:
+    stats = []
+    game_label = season_label(season) or "Per Game"
+    for row in rows:
+        name = str(row.get("name", "")).strip()
+        team = str(row.get("team", "")).strip()
+        pos = str(row.get("pos", "")).strip()
+        if pos == "nan":
+            pos = ""
+        meta = get_team_meta(team)
+        eff = float(row.get("eff") or 0)
+        eff_bar = min(int(abs(eff) / 40 * 100), 100)
+        min_per_game = float(row.get("min_per_game") or row.get("min_total") or 0)
+        stats.append(
+            {
+                "game": game_label,
+                "name": name,
+                "team": team,
+                "nick": meta["nick"],
+                "logo": meta["logo"],
+                "color": meta["color"],
+                "photo": get_player_photo(name),
+                "pos": pos,
+                "min": min_per_game,
+                "min_display": f"{min_per_game:.1f}",
+                "pts": round(float(row.get("pts") or 0), 1),
+                "reb": round(float(row.get("reb") or 0), 1),
+                "ast": round(float(row.get("ast") or 0), 1),
+                "stl": round(float(row.get("stl") or 0), 1),
+                "blk": round(float(row.get("blk") or 0), 1),
+                "to": round(float(row.get("to") or 0), 1),
+                "fg_pct": round(float(row.get("fg_pct") or 0), 1),
+                "eff": round(eff, 1),
+                "eff_pos": eff_bar if eff > 0 else 0,
+                "eff_neg": eff_bar if eff < 0 else 0,
+            }
+        )
+    return stats
+
+
 def load_real_stats(sort_by="eff", team_filter="ALL", pos_filter="ALL", search_query=""):
     sort_aliases = {
         "points": "pts",
         "point": "pts",
         "minutes": "min",
         "minute": "min",
+        "min": "min",
         "turnovers": "to",
     }
-    sort_key = sort_aliases.get(sort_by, sort_by)
-    stats = []
+    raw_sort_key = sort_aliases.get(sort_by, sort_by)
+    derived_sort_key = {
+        **sort_aliases,
+        "minutes": "min_total",
+        "minute": "min_total",
+        "min": "min_total",
+    }.get(sort_by, sort_by)
 
+    derived_path = DERIVED_DIR / "players_aggregate.csv"
+    if derived_path.exists():
+        season = resolve_season("", allow_all=True)
+        rows = load_players_aggregate(
+            season=season,
+            scope="per_game",
+            team_filter=team_filter,
+            search_query=search_query,
+            sort_by=derived_sort_key,
+        )
+        stats = build_home_stats_from_aggregate(rows, season)
+        if pos_filter != "ALL":
+            stats = [s for s in stats if s["pos"] == pos_filter]
+        label = f"{season_label(season)} · Per Game · Aggregate"
+        return stats, label
+
+    stats = []
     data_dir = BOX_DIR if BOX_DIR.exists() else DATA_DIR
     if not data_dir.exists():
-        return []
+        return [], "No data"
     files = sorted(data_dir.rglob("*.csv"))
     for f in files:
         try:
@@ -1058,12 +1121,12 @@ def load_real_stats(sort_by="eff", team_filter="ALL", pos_filter="ALL", search_q
             filename = f.name
             game_match = re.search(r"game_(\d+)", filename)
             game_label = f"#{game_match.group(1)}" if game_match else "#--"
-            
+
             for _, row in df.iterrows():
                 name = str(row.get("name", "")).strip()
                 if not name or name in ["합계", "Total", "팀합계", "선수", "nan"]:
                     continue
-                
+
                 try:
                     # 1. 팀 식별 (CSV 우선)
                     team = str(row.get("team", "")).strip()
@@ -1079,7 +1142,7 @@ def load_real_stats(sort_by="eff", team_filter="ALL", pos_filter="ALL", search_q
                                 team = "삼성생명"
                             else:
                                 team = "Unknown"
-                    
+
                     meta = get_team_meta(team)
                     pno = PLAYER_PNO.get(name)
 
@@ -1104,39 +1167,46 @@ def load_real_stats(sort_by="eff", team_filter="ALL", pos_filter="ALL", search_q
                     eff = pts + reb + ast + stl + blk - to - ((fg_att - fg_made) + (ft_a - ft_m))
                     eff_bar = min(int(abs(eff) / 40 * 100), 100)
 
-                    stats.append({
-                        "game": game_label,
-                        "name": name,
-                        "team": team,
-                        "nick": meta["nick"],
-                        "logo": meta["logo"],
-                        "color": meta["color"],
-                        "photo": f"/static/images/player_{pno}.png" if pno else None,
-                        "pos": str(row.get("pos", "")).strip(),
-                        "min": min_value,
-                        "min_display": min_display,
-                        "pts": pts,
-                        "reb": reb,
-                        "ast": ast,
-                        "stl": stl,
-                        "blk": blk,
-                        "to": to,
-                        "fg_pct": fg_pct,
-                        "eff": eff,
-                        "eff_pos": eff_bar if eff > 0 else 0,
-                        "eff_neg": eff_bar if eff < 0 else 0,
-                    })
-                except: continue
-        except: continue
-            
+                    stats.append(
+                        {
+                            "game": game_label,
+                            "name": name,
+                            "team": team,
+                            "nick": meta["nick"],
+                            "logo": meta["logo"],
+                            "color": meta["color"],
+                            "photo": f"/static/images/player_{pno}.png" if pno else None,
+                            "pos": str(row.get("pos", "")).strip(),
+                            "min": min_value,
+                            "min_display": min_display,
+                            "pts": pts,
+                            "reb": reb,
+                            "ast": ast,
+                            "stl": stl,
+                            "blk": blk,
+                            "to": to,
+                            "fg_pct": fg_pct,
+                            "eff": eff,
+                            "eff_pos": eff_bar if eff > 0 else 0,
+                            "eff_neg": eff_bar if eff < 0 else 0,
+                        }
+                    )
+                except Exception:
+                    continue
+        except Exception:
+            continue
+
     # 필터링
-    if team_filter != "ALL": stats = [s for s in stats if s['team'] == team_filter]
-    if pos_filter != "ALL": stats = [s for s in stats if s['pos'] == pos_filter]
-    if search_query: stats = [s for s in stats if search_query.lower() in s['name'].lower()]
+    if team_filter != "ALL":
+        stats = [s for s in stats if s["team"] == team_filter]
+    if pos_filter != "ALL":
+        stats = [s for s in stats if s["pos"] == pos_filter]
+    if search_query:
+        stats = [s for s in stats if search_query.lower() in s["name"].lower()]
 
     # 정렬
-    stats.sort(key=lambda x: x.get(sort_key, 0), reverse=True)
-    return stats
+    stats.sort(key=lambda x: x.get(raw_sort_key, 0), reverse=True)
+    return stats, "Boxscore rows · Single-game"
 
 @app.get("/test")
 async def test():
@@ -1157,7 +1227,7 @@ async def index(
     pager_mode = "top"
     pager_top = True
     pager_bottom = False
-    full_stats = load_real_stats(sort_by=sort, team_filter=team, pos_filter=pos, search_query=search)
+    full_stats, data_label = load_real_stats(sort_by=sort, team_filter=team, pos_filter=pos, search_query=search)
     stats, pagination = paginate_items(
         full_stats,
         page,
@@ -1180,6 +1250,7 @@ async def index(
             "search": search,
             "pagination": pagination,
             "page_size": pagination["page_size"],
+            "data_label": data_label,
             "pager_mode": pager_mode,
             "pager_top": pager_top,
             "pager_bottom": pager_bottom,
@@ -1203,7 +1274,7 @@ async def refresh(
     pager_mode = "top"
     pager_top = True
     pager_bottom = False
-    full_stats = load_real_stats(sort_by=sort, team_filter=team, pos_filter=pos, search_query=search)
+    full_stats, data_label = load_real_stats(sort_by=sort, team_filter=team, pos_filter=pos, search_query=search)
     stats, pagination = paginate_items(
         full_stats,
         page,
@@ -1223,6 +1294,7 @@ async def refresh(
             "search": search,
             "pagination": pagination,
             "page_size": pagination["page_size"],
+            "data_label": data_label,
             "pager_mode": pager_mode,
             "pager_top": pager_top,
             "pager_bottom": pager_bottom,

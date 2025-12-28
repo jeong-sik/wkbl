@@ -50,7 +50,10 @@
 {% endif %}
 
 {% if pagination %}
-<div class="filter-hint">Rows per page: {{ page_size }} · Page {{ pagination.page }} / {{ pagination.total_pages }}</div>
+<div class="filter-hint">
+    Rows per page: {{ page_size }} · Page {{ pagination.page }} / {{ pagination.total_pages }}
+    {% if data_label %}· {{ data_label }}{% endif %}
+</div>
 {% endif %}
 
 <div class="stat-cards">
@@ -59,11 +62,15 @@
     <div class="card-main">
         <div class="game-tag">{{ player.game }}</div>
         <div class="team-logo">
-            <img src="{{ player.logo }}" alt="{{ player.team }} logo">
+            {% if player.logo %}
+            <img src="{{ player.logo }}" alt="{{ player.team }} logo" loading="lazy" decoding="async">
+            {% else %}
+            <span>{{ player.nick if player.nick else "WK" }}</span>
+            {% endif %}
         </div>
         <div class="player-photo">
             {% if player.photo %}
-            <img src="{{ player.photo }}" alt="{{ player.name }} portrait">
+            <img src="{{ player.photo }}" alt="{{ player.name }} portrait" loading="lazy" decoding="async">
             {% else %}
             <span>{{ player.name[0] }}</span>
             {% endif %}
