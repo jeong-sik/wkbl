@@ -95,43 +95,9 @@
     </table>
 </div>
 
-<h2 class="section-title">Recent Games</h2>
-{% if games %}
-<div class="data-table table-scroll">
-    <table>
-        <thead>
-            <tr>
-                <th>Game</th>
-                <th>Opponent</th>
-                <th>MIN</th>
-                <th>PTS</th>
-                <th>REB</th>
-                <th>AST</th>
-                <th>TS%</th>
-                <th>EFF</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for row in games %}
-            <tr>
-                <td>{{ row.game_label }}</td>
-                <td>{{ row.opponent }}</td>
-                <td>{{ row.min_display }}</td>
-                <td>{{ row.pts }}</td>
-                <td>{{ row.reb }}</td>
-                <td>{{ row.ast }}</td>
-                <td>{{ "%.1f"|format(row.ts_pct) }}</td>
-                <td>{{ row.eff }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
-{% else %}
-<div class="empty-state">
-    <h3>No game log</h3>
-    <p>선수 경기 데이터가 아직 없습니다.</p>
-</div>
-{% endif %}
+<h2 class="section-title">Game Log</h2>
+<section id="player-games-table">
+    {% include 'partials/player_games_table.html' %}
+</section>
 {% endif %}
 {% endblock %}

@@ -565,7 +565,7 @@ def load_player_scopes(name: str, team: str, season: str) -> dict:
     return scopes
 
 
-def load_player_game_log(name: str, team: str, season: str, limit: int = 12) -> list[dict]:
+def load_player_game_log(name: str, team: str, season: str) -> list[dict]:
     if not name or not team:
         return []
     path = DERIVED_DIR / "players_games.csv"
@@ -580,7 +580,7 @@ def load_player_game_log(name: str, team: str, season: str, limit: int = 12) -> 
     df = df.sort_values(by=["ym", "game_no"], ascending=False)
     df["game_label"] = df["game_no"].apply(lambda x: f"#{int(x)}")
     df["min_display"] = df["min"].fillna("0:00")
-    return df.head(limit).to_dict(orient="records")
+    return df.to_dict(orient="records")
 
 
 def load_team_scopes(team: str, season: str) -> dict:
@@ -1100,13 +1100,95 @@ async def test():
     return HTMLResponse("<h1>OK</h1>")
 
 @app.get("/", response_class=HTMLResponse)
-async def index(request: Request):
-    return await players(request)
+async def index(
+    request: Request,
+    sort: str = "eff",
+    team: str = "ALL",
+    pos: str = "ALL",
+    search: str = "",
+    page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
+    pager: str = DEFAULT_PAGER_MODE,
+):
+    page_size = resolve_page_size(request, page_size)
+    pager_mode = resolve_pager_mode(request, pager)
+    pager_top = pager_mode in ("top", "both")
+    pager_bottom = pager_mode in ("bottom", "both")
+    full_stats = load_real_stats(sort_by=sort, team_filter=team, pos_filter=pos, search_query=search)
+    stats, pagination = paginate_items(
+        full_stats,
+        page,
+        page_size,
+        base_path="/",
+        table_path="/refresh",
+        params={"sort": sort, "team": team, "pos": pos, "search": search, "pager": pager_mode},
+    )
+    response = templates.TemplateResponse(
+        "index.html",
+        {
+            "request": request,
+            "active_page": "home",
+            "page_title": "WKBL Moneyball Lab",
+            "stats": stats,
+            "total_count": pagination["total_count"],
+            "sort": sort,
+            "team": team,
+            "pos": pos,
+            "search": search,
+            "pagination": pagination,
+            "page_size": pagination["page_size"],
+            "pager_mode": pager_mode,
+            "pager_top": pager_top,
+            "pager_bottom": pager_bottom,
+        },
+    )
+    response.set_cookie("wkbl_page_size", str(pagination["page_size"]), max_age=31536000, samesite="lax")
+    response.set_cookie("wkbl_pager", pager_mode, max_age=31536000, samesite="lax")
+    return response
 
 @app.get("/refresh", response_class=HTMLResponse)
-async def refresh(request: Request, sort: str = "eff", team: str = "ALL", pos: str = "ALL", search: str = ""):
-    stats = load_real_stats(sort_by=sort, team_filter=team, pos_filter=pos, search_query=search)
-    return templates.TemplateResponse("partials/stats_table.html", {"request": request, "stats": stats})
+async def refresh(
+    request: Request,
+    sort: str = "eff",
+    team: str = "ALL",
+    pos: str = "ALL",
+    search: str = "",
+    page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
+    pager: str = DEFAULT_PAGER_MODE,
+):
+    page_size = resolve_page_size(request, page_size)
+    pager_mode = resolve_pager_mode(request, pager)
+    pager_top = pager_mode in ("top", "both")
+    pager_bottom = pager_mode in ("bottom", "both")
+    full_stats = load_real_stats(sort_by=sort, team_filter=team, pos_filter=pos, search_query=search)
+    stats, pagination = paginate_items(
+        full_stats,
+        page,
+        page_size,
+        base_path="/",
+        table_path="/refresh",
+        params={"sort": sort, "team": team, "pos": pos, "search": search, "pager": pager_mode},
+    )
+    response = templates.TemplateResponse(
+        "partials/stats_table.html",
+        {
+            "request": request,
+            "stats": stats,
+            "sort": sort,
+            "team": team,
+            "pos": pos,
+            "search": search,
+            "pagination": pagination,
+            "page_size": pagination["page_size"],
+            "pager_mode": pager_mode,
+            "pager_top": pager_top,
+            "pager_bottom": pager_bottom,
+        },
+    )
+    response.set_cookie("wkbl_page_size", str(pagination["page_size"]), max_age=31536000, samesite="lax")
+    response.set_cookie("wkbl_pager", pager_mode, max_age=31536000, samesite="lax")
+    return response
 
 
 @app.get("/players", response_class=HTMLResponse)
@@ -1294,14 +1376,29 @@ async def player_profile(
     team: str = "",
     season: str = "",
     scope: str = "per_game",
+    page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
+    pager: str = DEFAULT_PAGER_MODE,
 ):
     season = resolve_season(season)
     scopes = load_player_scopes(name, team, season)
     primary = scopes.get(scope) or scopes.get("per_game") or next(iter(scopes.values()), None)
     scope_rows = [scopes[key] for key in ("per_game", "per_36", "totals") if key in scopes]
-    games = load_player_game_log(name, team, season)
+    page_size = resolve_page_size(request, page_size)
+    pager_mode = resolve_pager_mode(request, pager)
+    pager_top = pager_mode in ("top", "both")
+    pager_bottom = pager_mode in ("bottom", "both")
+    full_games = load_player_game_log(name, team, season)
+    games, pagination = paginate_items(
+        full_games,
+        page,
+        page_size,
+        base_path="/player",
+        table_path="/player/games/table",
+        params={"name": name, "team": team, "season": season, "scope": scope, "pager": pager_mode},
+    )
     team_meta = get_team_meta(team)
-    return templates.TemplateResponse(
+    response = templates.TemplateResponse(
         "player.html",
         {
             "request": request,
@@ -1312,6 +1409,11 @@ async def player_profile(
             "team_meta": team_meta,
             "scope_rows": scope_rows,
             "games": games,
+            "pagination": pagination,
+            "page_size": pagination["page_size"],
+            "pager_mode": pager_mode,
+            "pager_top": pager_top,
+            "pager_bottom": pager_bottom,
             "season": season,
             "season_label": season_label(season),
             "compare_url": build_compare_player_url(name, team, season),
@@ -1319,6 +1421,55 @@ async def player_profile(
             "back_url": f"/players?season={season}&team={quote(str(team), safe='')}" if team else f"/players?season={season}",
         },
     )
+    response.set_cookie("wkbl_page_size", str(pagination["page_size"]), max_age=31536000, samesite="lax")
+    response.set_cookie("wkbl_pager", pager_mode, max_age=31536000, samesite="lax")
+    return response
+
+
+@app.get("/player/games/table", response_class=HTMLResponse)
+async def player_games_table(
+    request: Request,
+    name: str = "",
+    team: str = "",
+    season: str = "",
+    scope: str = "per_game",
+    page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
+    pager: str = DEFAULT_PAGER_MODE,
+):
+    season = resolve_season(season)
+    page_size = resolve_page_size(request, page_size)
+    pager_mode = resolve_pager_mode(request, pager)
+    pager_top = pager_mode in ("top", "both")
+    pager_bottom = pager_mode in ("bottom", "both")
+    full_games = load_player_game_log(name, team, season)
+    games, pagination = paginate_items(
+        full_games,
+        page,
+        page_size,
+        base_path="/player",
+        table_path="/player/games/table",
+        params={"name": name, "team": team, "season": season, "scope": scope, "pager": pager_mode},
+    )
+    response = templates.TemplateResponse(
+        "partials/player_games_table.html",
+        {
+            "request": request,
+            "games": games,
+            "pagination": pagination,
+            "page_size": pagination["page_size"],
+            "pager_mode": pager_mode,
+            "pager_top": pager_top,
+            "pager_bottom": pager_bottom,
+            "name": name,
+            "team": team,
+            "season": season,
+            "scope": scope,
+        },
+    )
+    response.set_cookie("wkbl_page_size", str(pagination["page_size"]), max_age=31536000, samesite="lax")
+    response.set_cookie("wkbl_pager", pager_mode, max_age=31536000, samesite="lax")
+    return response
 
 
 @app.get("/teams", response_class=HTMLResponse)
@@ -1826,17 +1977,46 @@ async def boxscores_table(
 async def boxscore(
     request: Request,
     game_key: str = "",
+    page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
+    pager: str = DEFAULT_PAGER_MODE,
 ):
+    page_size = resolve_page_size(request, page_size)
+    pager_mode = resolve_pager_mode(request, pager)
+    pager_top = pager_mode in ("top", "both")
+    pager_bottom = pager_mode in ("bottom", "both")
     data = load_boxscore(game_key)
-    return templates.TemplateResponse(
+    teams = data.get("teams") or []
+    for team in teams:
+        rows = team.get("rows") or []
+        paged_rows, pagination = paginate_items(
+            rows,
+            page,
+            page_size,
+            base_path="/boxscore",
+            table_path="/boxscore",
+            params={"game_key": game_key, "pager": pager_mode},
+        )
+        team["rows"] = paged_rows
+        team["pagination"] = pagination
+    response = templates.TemplateResponse(
         "boxscore.html",
         {
             "request": request,
             "active_page": "boxscores",
             "page_title": "WKBL Boxscore",
             **data,
+            "teams": teams,
+            "pagination": teams[0]["pagination"] if teams else None,
+            "page_size": page_size,
+            "pager_mode": pager_mode,
+            "pager_top": pager_top,
+            "pager_bottom": pager_bottom,
         },
     )
+    response.set_cookie("wkbl_page_size", str(page_size), max_age=31536000, samesite="lax")
+    response.set_cookie("wkbl_pager", pager_mode, max_age=31536000, samesite="lax")
+    return response
 
 
 @app.get("/compare", response_class=HTMLResponse)

@@ -8,7 +8,7 @@
         <p>한 경기 안에서 선수별 임팩트를 한눈에 보는 WKBL 데이터 렌즈. 실제 박스스코어에서 핵심 지표만 뽑아 빠르게 비교합니다.</p>
         <div class="hero-actions">
             <span class="pill accent">Live CSV Feed</span>
-            <span class="pill">{{ stats|length }} Players</span>
+            <span class="pill">{{ total_count }} Players</span>
         </div>
     </div>
     <div class="hero-metrics">
@@ -39,11 +39,13 @@
     <input type="hidden" name="team" id="input-team" value="ALL">
     <input type="hidden" name="pos" id="input-pos" value="ALL">
     <input type="hidden" name="sort" id="input-sort" value="eff">
+    <input type="hidden" name="page" id="input-page" value="{{ pagination.page if pagination else 1 }}">
+    <input type="hidden" name="pager" value="{{ pager_mode }}">
 
     <section class="filters">
         <div class="filter-group">
             <div class="filter-label">Search</div>
-            <input class="filter-input" type="search" name="search" placeholder="Search player..." onkeyup="htmx.trigger('#filter-form', 'search-update')" aria-label="Search player">
+            <input class="filter-input" type="search" name="search" placeholder="Search player..." oninput="resetPage()" onkeyup="htmx.trigger('#filter-form', 'search-update')" aria-label="Search player">
         </div>
         <div class="filter-group">
             <div class="filter-label">Teams</div>
@@ -73,6 +75,14 @@
                 <button type="button" class="chip sort" data-filter="sort" data-value="min" onclick="updateSort('min')">MIN</button>
             </div>
         </div>
+        <div class="filter-group">
+            <div class="filter-label">Rows</div>
+            <select class="filter-input" name="page_size" onchange="resetPage()">
+                {% for size in [20, 40, 80] %}
+                <option value="{{ size }}" {% if size == page_size %}selected{% endif %}>{{ size }}/page</option>
+                {% endfor %}
+            </select>
+        </div>
     </section>
 </form>
 
@@ -93,13 +103,19 @@
         });
     }
 
+    function resetPage() {
+        document.getElementById('input-page').value = 1;
+    }
+
     function updateFilter(type, value) {
+        resetPage();
         document.getElementById('input-' + type).value = value;
         setActive(type, value);
         htmx.trigger('#filter-form', 'change');
     }
 
     function updateSort(column) {
+        resetPage();
         document.getElementById('input-sort').value = column;
         setActive('sort', column);
         htmx.trigger('#filter-form', 'change');
