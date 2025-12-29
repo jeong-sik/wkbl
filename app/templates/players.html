@@ -66,6 +66,14 @@
             </select>
         </div>
         <div class="filter-group">
+            <div class="filter-label">Min Minutes</div>
+            <select class="filter-input" name="min_minutes">
+                {% for value, label in [(0, 'All Minutes'), (50, '50+'), (100, '100+'), (200, '200+'), (400, '400+')] %}
+                <option value="{{ value }}" {% if value == min_minutes %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-group">
             <div class="filter-label">Team</div>
             <select class="filter-input" name="team">
                 <option value="ALL" {% if team == "ALL" %}selected{% endif %}>ALL TEAMS</option>
