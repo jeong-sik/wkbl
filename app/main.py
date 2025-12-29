@@ -1100,7 +1100,23 @@ def pct(made: float, att: float) -> float:
         return 0.0
 
 
-def build_compare_metrics(left: dict, right: dict, mode: str = "players") -> list[dict]:
+def build_compare_metrics(left: dict, right: dict, mode: str = "players", scope: str = "per_game") -> list[dict]:
+    scope = scope if scope in ("per_game", "per_36", "totals") else "per_game"
+    rate_suffix = ""
+    if scope == "per_game":
+        rate_suffix = "/G"
+    elif scope == "per_36":
+        rate_suffix = "/36"
+    rate_keys = {"pts", "reb", "ast", "stl", "blk", "to"}
+    def label_for(label: str, key: str) -> str:
+        if key == "min_total":
+            return f"MIN{rate_suffix}" if scope == "per_game" else "MIN"
+        if key == "margin":
+            return f"{label}{rate_suffix}" if scope == "per_game" else label
+        if key in rate_keys and rate_suffix:
+            return f"{label}{rate_suffix}"
+        return label
+
     configs = [
         ("GP", "gp", 0, False),
         ("MIN", "min_total", 1, False),
@@ -1122,6 +1138,7 @@ def build_compare_metrics(left: dict, right: dict, mode: str = "players") -> lis
 
     metrics = []
     for label, key, digits, abs_bar in configs:
+        label = label_for(label, key)
         left_val = to_float(left.get(key, 0))
         right_val = to_float(right.get(key, 0))
         bar_left = abs(left_val) if abs_bar else max(left_val, 0)
@@ -1200,7 +1217,7 @@ def compare_context(
         left_label = f"{left.get('name')} ({left.get('team')})" if left else "Player A"
         right_label = f"{right.get('name')} ({right.get('team')})" if right else "Player B"
 
-    metrics = build_compare_metrics(left, right, mode) if left and right else []
+    metrics = build_compare_metrics(left, right, mode, scope) if left and right else []
 
     player_scope = scope if scope in player_scope_keys else "per_game"
     team_scope = scope if scope in team_scope_keys else "per_game"
