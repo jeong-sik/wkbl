@@ -26,6 +26,8 @@ python3 scripts/wkbl_aggregate_stats.py
 python3 scripts/wkbl_refresh_all.py
 # collector 옵션 전달 (예: 10년치)
 python3 scripts/wkbl_refresh_all.py -- --years 10
+# 로스터 이미지 매핑까지 업데이트
+python3 scripts/wkbl_refresh_all.py --update-roster -- --years 10
 ```
 
 ## 데이터 QA
@@ -33,6 +35,12 @@ python3 scripts/wkbl_refresh_all.py -- --years 10
 python3 scripts/wkbl_data_qa.py
 ```
 보고서 경로: `data/wkbl/qa/qa_report.json`, `data/wkbl/qa/qa_report.md`
+
+## 로스터 이미지 매핑
+```bash
+python3 scripts/wkbl_roster_live.py
+```
+WKBL 현역/은퇴/외국인 선수 목록에서 pno를 수집해 `data/wkbl/roster_db.json`을 갱신합니다.
 
 ## 스케줄러 (launchd)
 ```bash

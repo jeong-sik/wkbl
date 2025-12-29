@@ -11,6 +11,6 @@ mkdir -p "$LOG_DIR"
 {
   echo "=== WKBL refresh start: $(date -u +%Y-%m-%dT%H:%M:%SZ) ==="
   cd "$ROOT_DIR"
-  python3 scripts/wkbl_refresh_all.py -- --years 10
+  python3 scripts/wkbl_refresh_all.py --update-roster -- --years 10
   echo "=== WKBL refresh end: $(date -u +%Y-%m-%dT%H:%M:%SZ) ==="
 } >> "$LOG_FILE" 2>&1

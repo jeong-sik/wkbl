@@ -76,6 +76,7 @@ DEFAULT_PAGE_SIZE = 40
 MAX_PAGE_SIZE = 200
 MAX_DB_LIMIT = 5000
 DEFAULT_PAGER_MODE = "bottom"
+DEFAULT_PER36_MIN_MINUTES = 100
 
 # 직접 이미지 서빙 (Raw Response)
 @app.get("/static/{file_path:path}")
@@ -159,6 +160,24 @@ def resolve_pager_accent(team: str) -> str | None:
         return None
     color = get_team_meta(team).get("color")
     return color or None
+
+
+def resolve_min_minutes(scope: str, value: int) -> int:
+    min_minutes = max(c_i(value), 0)
+    if min_minutes == 0 and scope == "per_36":
+        return DEFAULT_PER36_MIN_MINUTES
+    return min_minutes
+
+
+def filter_min_minutes(rows: list[dict], min_minutes: int) -> list[dict]:
+    if min_minutes <= 0:
+        return rows
+    filtered = []
+    for row in rows:
+        minutes = float(row.get("min_total") or 0)
+        if minutes >= min_minutes:
+            filtered.append(row)
+    return filtered
 
 
 def season_label(code: str) -> str:
@@ -1389,6 +1408,7 @@ async def players(
     team: str = "ALL",
     search: str = "",
     sort: str = "pts",
+    min_minutes: int = 0,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
     pager: str = DEFAULT_PAGER_MODE,
@@ -1413,12 +1433,14 @@ async def players(
     pager_top = pager_mode in ("top", "both")
     pager_bottom = pager_mode in ("bottom", "both")
     pager_accent = resolve_pager_accent(team)
+    min_minutes = resolve_min_minutes(scope, min_minutes)
     params = {
         "season": season,
         "scope": scope,
         "team": team,
         "search": search,
         "sort": sort,
+        "min_minutes": min_minutes,
         "pager": pager_mode,
     }
     if should_use_db_players(season):
@@ -1447,6 +1469,7 @@ async def players(
             sort_by=sort,
         )
         teams = get_team_list(season)
+    full_stats = filter_min_minutes(full_stats, min_minutes)
     leader = full_stats[0] if full_stats else None
     stats, pagination = paginate_items(
         full_stats,
@@ -1474,6 +1497,7 @@ async def players(
             "teams": teams,
             "search": search,
             "sort": sort,
+            "min_minutes": min_minutes,
             "scopes": scopes,
             "sort_options": sort_options,
             "pagination": pagination,
@@ -1497,6 +1521,7 @@ async def players_table(
     team: str = "ALL",
     search: str = "",
     sort: str = "pts",
+    min_minutes: int = 0,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
     pager: str = DEFAULT_PAGER_MODE,
@@ -1507,12 +1532,14 @@ async def players_table(
     pager_top = pager_mode in ("top", "both")
     pager_bottom = pager_mode in ("bottom", "both")
     pager_accent = resolve_pager_accent(team)
+    min_minutes = resolve_min_minutes(scope, min_minutes)
     params = {
         "season": season,
         "scope": scope,
         "team": team,
         "search": search,
         "sort": sort,
+        "min_minutes": min_minutes,
         "pager": pager_mode,
     }
     if should_use_db_players(season):
@@ -1532,6 +1559,7 @@ async def players_table(
             search_query=search,
             sort_by=sort,
         )
+    full_stats = filter_min_minutes(full_stats, min_minutes)
     stats, pagination = paginate_items(
         full_stats,
         page,
@@ -1550,6 +1578,7 @@ async def players_table(
             "team": team,
             "search": search,
             "sort": sort,
+            "min_minutes": min_minutes,
             "pagination": pagination,
             "page_size": pagination["page_size"],
             "pager_accent": pager_accent,

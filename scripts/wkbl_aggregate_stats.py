@@ -252,8 +252,8 @@ def aggregate_players(games: pd.DataFrame) -> pd.DataFrame:
     base_minutes = totals["min_total"].replace(0, pd.NA)
     for col in rate_cols:
         if col == "min_total":
-            # Keep original minutes for scaling; display as 36 for per-36 scope.
-            per_36[col] = base_minutes.notna().astype(float) * 36.0
+            # Keep actual total minutes; per-36 values are scaled separately.
+            per_36[col] = totals[col]
             continue
         per_36[col] = ((totals[col] / base_minutes) * 36).fillna(0.0).round(2)
     per_36 = add_shooting(per_36)

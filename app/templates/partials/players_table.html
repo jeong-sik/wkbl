@@ -21,6 +21,7 @@
                 <input type="hidden" name="team" value="{{ team }}">
                 <input type="hidden" name="search" value="{{ search }}">
                 <input type="hidden" name="sort" value="{{ sort }}">
+                <input type="hidden" name="min_minutes" value="{{ min_minutes }}">
                 <input type="hidden" name="page_size" value="{{ page_size }}">
                 <input type="hidden" name="pager" value="{{ pager_mode }}">
                 <input class="pager-input" type="number" name="page" min="1" max="{{ pagination.total_pages }}" value="{{ pagination.page }}" placeholder="Page" aria-label="Jump to page" inputmode="numeric" pattern="[0-9]*">
@@ -104,6 +105,7 @@
             <input type="hidden" name="team" value="{{ team }}">
             <input type="hidden" name="search" value="{{ search }}">
             <input type="hidden" name="sort" value="{{ sort }}">
+            <input type="hidden" name="min_minutes" value="{{ min_minutes }}">
             <input type="hidden" name="page_size" value="{{ page_size }}">
             <input type="hidden" name="pager" value="{{ pager_mode }}">
             <input class="pager-input" type="number" name="page" min="1" max="{{ pagination.total_pages }}" value="{{ pagination.page }}" placeholder="Page" aria-label="Jump to page" inputmode="numeric" pattern="[0-9]*">
