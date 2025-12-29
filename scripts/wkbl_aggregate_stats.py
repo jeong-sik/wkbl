@@ -413,15 +413,13 @@ def build_standings(team_games: pd.DataFrame) -> pd.DataFrame:
     standings["win_pct"] = standings.apply(
         lambda r: round(r["wins"] / r["gp"], 3) if r["gp"] else 0.0, axis=1
     )
-    standings["margin_per_game"] = standings.apply(
-        lambda r: round(r["margin_total"] / r["gp"], 2) if r["gp"] else 0.0, axis=1
-    )
     standings["pts_for_per_game"] = standings.apply(
         lambda r: round(r["pts_for"] / r["gp"], 2) if r["gp"] else 0.0, axis=1
     )
     standings["pts_against_per_game"] = standings.apply(
         lambda r: round(r["pts_against"] / r["gp"], 2) if r["gp"] else 0.0, axis=1
     )
+    standings["margin_per_game"] = (standings["pts_for_per_game"] - standings["pts_against_per_game"]).round(2)
     standings["season_gu"] = standings["season_gu"].astype(str).str.zfill(3)
     return standings
 
@@ -496,9 +494,9 @@ def aggregate_teams(games: pd.DataFrame, team_games: pd.DataFrame) -> pd.DataFra
     totals = totals.rename(columns={"gp_x": "gp"}).drop(columns=["gp_y"], errors="ignore")
     per_game = per_game.rename(columns={"gp_x": "gp"}).drop(columns=["gp_y"], errors="ignore")
     totals["margin"] = totals["margin_total"].fillna(0)
-    per_game["margin"] = per_game["margin_per_game"].fillna(0)
     totals["pts_against"] = totals["pts_against"].fillna(0)
     per_game["pts_against"] = per_game["pts_against_per_game"].fillna(0)
+    per_game["margin"] = (per_game["pts"] - per_game["pts_against"]).round(2)
 
     totals["scope"] = "totals"
     per_game["scope"] = "per_game"
