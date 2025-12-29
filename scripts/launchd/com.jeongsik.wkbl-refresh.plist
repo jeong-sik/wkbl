@@ -8,10 +8,10 @@
     <array>
       <string>/bin/bash</string>
       <string>-lc</string>
-      <string>/Users/dancer/me/workspace/yousleepwhen/wkbl/.worktrees/feat/wkbl-qa-page/scripts/run_wkbl_refresh.sh</string>
+      <string>/Users/dancer/me/workspace/yousleepwhen/wkbl/scripts/run_wkbl_refresh.sh</string>
     </array>
     <key>WorkingDirectory</key>
-    <string>/Users/dancer/me/workspace/yousleepwhen/wkbl/.worktrees/feat/wkbl-qa-page</string>
+    <string>/Users/dancer/me/workspace/yousleepwhen/wkbl</string>
     <key>StartCalendarInterval</key>
     <dict>
       <key>Hour</key>
