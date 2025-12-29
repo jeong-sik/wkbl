@@ -1416,7 +1416,6 @@ async def players(
     scopes = [("per_game", "Per Game"), ("per_36", "Per 36"), ("totals", "Totals")]
     sort_options = [
         ("pts", "PTS"),
-        ("margin", "Margin"),
         ("reb", "REB"),
         ("ast", "AST"),
         ("stl", "STL"),
