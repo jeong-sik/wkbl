@@ -104,4 +104,27 @@
 <section id="players-table">
     {% include 'partials/players_table.html' %}
 </section>
+
+<script>
+    const playersForm = document.getElementById("players-filter");
+    const scopeSelect = playersForm?.querySelector('select[name="scope"]');
+    const minutesSelect = playersForm?.querySelector('select[name="min_minutes"]');
+
+    const syncMinMinutes = () => {
+        if (!scopeSelect || !minutesSelect) return;
+        if (scopeSelect.value === "per_36" && Number(minutesSelect.value) === 0) {
+            minutesSelect.value = "100";
+        }
+    };
+
+    if (scopeSelect && minutesSelect) {
+        scopeSelect.addEventListener("change", syncMinMinutes, { capture: true });
+    }
+
+    document.addEventListener("htmx:configRequest", (event) => {
+        if (event.target === playersForm) {
+            syncMinMinutes();
+        }
+    });
+</script>
 {% endblock %}
