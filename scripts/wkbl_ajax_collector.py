@@ -20,6 +20,9 @@ AJAX_RESULT_URL = f"{BASE_URL}/game/ajax/ajax_game_result_2.asp"
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 OUT_DIR = ROOT_DIR / "data" / "wkbl" / "box"
+REQUEST_TIMEOUT = (5, 20)
+REQUEST_RETRIES = 3
+REQUEST_BACKOFF = 0.6
 
 HEADERS = {
     "User-Agent": (
@@ -29,18 +32,30 @@ HEADERS = {
 }
 
 
+def request_with_retry(method: str, url: str, session: requests.Session, **kwargs) -> str:
+    last_exc = None
+    for attempt in range(1, REQUEST_RETRIES + 1):
+        try:
+            res = session.request(method, url, timeout=REQUEST_TIMEOUT, **kwargs)
+            res.raise_for_status()
+            res.encoding = res.apparent_encoding
+            return res.text
+        except requests.RequestException as exc:
+            last_exc = exc
+            if attempt == REQUEST_RETRIES:
+                raise
+            time.sleep(REQUEST_BACKOFF * attempt)
+    if last_exc:
+        raise last_exc
+    raise RuntimeError("request failed without exception")
+
+
 def fetch(url: str, session: requests.Session) -> str:
-    res = session.get(url, headers=HEADERS)
-    res.raise_for_status()
-    res.encoding = res.apparent_encoding
-    return res.text
+    return request_with_retry("GET", url, session, headers=HEADERS)
 
 
 def post(url: str, data: dict, session: requests.Session) -> str:
-    res = session.post(url, data=data, headers=HEADERS)
-    res.raise_for_status()
-    res.encoding = res.apparent_encoding
-    return res.text
+    return request_with_retry("POST", url, session, data=data, headers=HEADERS)
 
 
 def get_available_seasons(session: requests.Session) -> list[str]:
@@ -160,6 +175,9 @@ def collect(
     seen = set()
     saved = 0
     skipped = 0
+    processed = 0
+
+    print(f"[{season_gu}] months={len(months)}", flush=True)
 
     for ym in months:
         links = get_schedule_links(season_gu, ym, session)
@@ -190,6 +208,12 @@ def collect(
                 saved += 1
 
             time.sleep(sleep)
+            processed += 1
+            if processed % 25 == 0:
+                print(
+                    f"[{season_gu}] processed {processed} games (saved {saved}, skipped {skipped})",
+                    flush=True,
+                )
 
     print(f"saved {saved} files to {season_dir} (skipped {skipped})")
 
