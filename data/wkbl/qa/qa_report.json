@@ -1,9 +1,9 @@
 {
-  "generated_at": "2025-12-29T05:38:38.350764+00:00",
+  "generated_at": "2025-12-29T13:11:11.278360+00:00",
   "sources": {
-    "meta_file": "/Users/dancer/me/workspace/yousleepwhen/.worktrees/wkbl-fixes-2024-12-29/data/wkbl/meta/all_games_list.json",
-    "players_games": "/Users/dancer/me/workspace/yousleepwhen/.worktrees/wkbl-fixes-2024-12-29/data/wkbl/derived/players_games.csv",
-    "team_games": "/Users/dancer/me/workspace/yousleepwhen/.worktrees/wkbl-fixes-2024-12-29/data/wkbl/derived/team_games.csv"
+    "meta_file": "/Users/dancer/me/workspace/yousleepwhen/.worktrees/wkbl-refactor-2024-12-29/data/wkbl/meta/all_games_list.json",
+    "players_games": "/Users/dancer/me/workspace/yousleepwhen/.worktrees/wkbl-refactor-2024-12-29/data/wkbl/derived/players_games.csv",
+    "team_games": "/Users/dancer/me/workspace/yousleepwhen/.worktrees/wkbl-refactor-2024-12-29/data/wkbl/derived/team_games.csv"
   },
   "coverage": {
     "meta_available": false,
