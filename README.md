@@ -21,6 +21,19 @@ python3 scripts/wkbl_ajax_collector.py
 python3 scripts/wkbl_aggregate_stats.py
 ```
 
+## 데이터 갱신 파이프라인
+```bash
+python3 scripts/wkbl_refresh_all.py
+# collector 옵션 전달 (예: 10년치)
+python3 scripts/wkbl_refresh_all.py -- --years 10
+```
+
+## 데이터 QA
+```bash
+python3 scripts/wkbl_data_qa.py
+```
+보고서 경로: `data/wkbl/qa/qa_report.json`, `data/wkbl/qa/qa_report.md`
+
 ### 10년치 백필 (옵션)
 ```bash
 python3 scripts/wkbl_ajax_collector.py --years 10
@@ -43,6 +56,9 @@ uvicorn app.main:app --reload
 - `/boxscores` 박스스코어 목록
 - `/boxscore?game_key=...` 박스스코어 상세
 - `/compare` 선수 비교
+- `/qa` 데이터 QA 대시보드
+- `/qa.json` QA JSON
+- `/qa.md` QA Markdown
 
 ## 메모
 - WKBL 공식 사이트 AJAX 엔드포인트를 사용합니다.

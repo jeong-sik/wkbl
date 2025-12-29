@@ -32,6 +32,7 @@ STATIC_DIR = BASE_DIR / "static"
 ROSTER_PATH = DATA_DIR / "roster_db.json"
 QA_DIR = DATA_DIR / "qa"
 QA_REPORT_PATH = QA_DIR / "qa_report.json"
+QA_REPORT_MD_PATH = QA_DIR / "qa_report.md"
 
 PLAYER_DB = {}
 PHOTO_BY_NAME_TEAM = {}
@@ -2358,6 +2359,16 @@ async def qa_report_json():
     if isinstance(report, dict) and report.get("error"):
         status_code = 404
     return JSONResponse(report, status_code=status_code)
+
+
+@app.get("/qa.md")
+async def qa_report_markdown():
+    if not QA_REPORT_MD_PATH.exists():
+        return Response(content="QA report not found", status_code=404)
+    return Response(
+        content=QA_REPORT_MD_PATH.read_text(encoding="utf-8"),
+        media_type="text/markdown; charset=utf-8",
+    )
 
 
 @app.get("/compare", response_class=HTMLResponse)
