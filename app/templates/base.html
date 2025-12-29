@@ -469,7 +469,8 @@
             overflow: hidden;
         }
 
-        .player-photo img {
+        .player-photo img.player-img,
+        .profile-avatar img.player-img {
             width: 100%;
             height: 100%;
             object-fit: cover;
@@ -485,8 +486,26 @@
             display: inline;
         }
 
-        .player-photo.no-photo img,
-        .profile-avatar.no-photo img {
+        .player-photo.no-photo img.player-img,
+        .profile-avatar.no-photo img.player-img {
+            display: none;
+        }
+
+        .player-photo img.fallback-logo,
+        .profile-avatar img.fallback-logo {
+            width: 70%;
+            height: 70%;
+            object-fit: contain;
+            display: none;
+        }
+
+        .player-photo.no-photo.has-fallback img.fallback-logo,
+        .profile-avatar.no-photo.has-fallback img.fallback-logo {
+            display: block;
+        }
+
+        .player-photo.no-photo.has-fallback span,
+        .profile-avatar.no-photo.has-fallback span {
             display: none;
         }
 
