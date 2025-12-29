@@ -47,10 +47,11 @@
             <span>{{ player.nick if player.nick else "WK" }}</span>
             {% endif %}
         </div>
-        <div class="player-photo {% if player.photo %}has-photo{% elif player.logo %}no-photo has-fallback{% else %}no-photo{% endif %}">
+        <div class="player-photo {% if player.photo %}has-photo{% else %}no-photo{% endif %}{% if player.logo %} has-fallback{% endif %}">
             {% if player.photo %}
             <img class="player-img" src="{{ player.photo }}" alt="{{ player.name }} portrait" loading="lazy" decoding="async">
-            {% elif player.logo %}
+            {% endif %}
+            {% if player.logo %}
             <img class="fallback-logo" src="{{ player.logo }}" alt="{{ player.team }} logo" loading="lazy" decoding="async">
             {% endif %}
             <span>{{ player.name[:1] }}</span>
