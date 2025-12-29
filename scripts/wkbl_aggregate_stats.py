@@ -71,6 +71,15 @@ def normalize_team(name: str) -> str:
     text = str(name).strip()
     return TEAM_MAP.get(text, text)
 
+def iter_game_files(input_dir: Path) -> list[Path]:
+    season_dirs = [p for p in input_dir.iterdir() if p.is_dir() and p.name.isdigit()]
+    if season_dirs:
+        files: list[Path] = []
+        for season_dir in sorted(season_dirs):
+            files.extend(sorted(season_dir.rglob("*.csv")))
+        return files
+    return sorted(input_dir.rglob("*.csv"))
+
 
 def add_shooting(df: pd.DataFrame) -> pd.DataFrame:
     df["fg_m"] = df["fg2_m"] + df["fg3_m"]
@@ -120,10 +129,12 @@ def mode_or_empty(series: pd.Series) -> str:
 
 def load_games(input_dir: Path) -> pd.DataFrame:
     rows = []
-    for file in sorted(input_dir.rglob("*.csv")):
+    for file in iter_game_files(input_dir):
         df = pd.read_csv(file)
-        df["team"] = df["team"].apply(normalize_team)
         df["name"] = df["name"].astype(str).str.strip()
+        df = df[df["name"].ne("")]
+        df = df[~df["name"].str.contains(r"(?:합계|Total)", case=False, na=False)]
+        df["team"] = df["team"].apply(normalize_team)
         df["pos"] = df["pos"].astype(str).str.strip()
         df["min_dec"] = df["min"].apply(parse_minutes)
 
