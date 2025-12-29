@@ -3,6 +3,8 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from pathlib import Path
 from urllib.parse import quote, urlencode
+import hashlib
+import html
 import json
 import os
 import re
@@ -34,11 +36,14 @@ QA_DIR = DATA_DIR / "qa"
 QA_REPORT_PATH = QA_DIR / "qa_report.json"
 QA_REPORT_MD_PATH = QA_DIR / "qa_report.md"
 PHOTO_BLACKLIST_PATH = DATA_DIR / "photo_blacklist.json"
+PHOTO_OVERRIDE_PATH = DATA_DIR / "photo_overrides.json"
 
 PLAYER_DB = {}
 PHOTO_BY_NAME_TEAM = {}
 PHOTO_BY_NAME = {}
 PHOTO_BLACKLIST: set[str] = set()
+PHOTO_OVERRIDE_BY_NAME_TEAM = {}
+PHOTO_OVERRIDE_BY_NAME = {}
 if ROSTER_PATH.exists():
     try:
         with ROSTER_PATH.open("r", encoding="utf-8") as f:
@@ -62,6 +67,16 @@ if PHOTO_BLACKLIST_PATH.exists():
     except Exception:
         PHOTO_BLACKLIST = set()
 
+if PHOTO_OVERRIDE_PATH.exists():
+    try:
+        data = json.loads(PHOTO_OVERRIDE_PATH.read_text(encoding="utf-8"))
+        if isinstance(data, dict):
+            PHOTO_OVERRIDE_BY_NAME_TEAM = data.get("photo_by_name_team", {}) or {}
+            PHOTO_OVERRIDE_BY_NAME = data.get("photo_by_name", {}) or {}
+    except Exception:
+        PHOTO_OVERRIDE_BY_NAME_TEAM = {}
+        PHOTO_OVERRIDE_BY_NAME = {}
+
 TEAM_META = {
     "우리은행": {"nick": "WON", "logo": "/static/images/team_05.png", "color": "#005BAA"},
     "삼성생명": {"nick": "BLU", "logo": "/static/images/team_03.png", "color": "#007AFF"},
@@ -71,6 +86,16 @@ TEAM_META = {
     "BNK썸": {"nick": "SUM", "logo": "/static/images/team_11.png", "color": "#D6001C"},
 }
 DEFAULT_TEAM_META = {"nick": "???", "logo": "", "color": "#ccc"}
+TEAM_COLOR_POOL = [
+    "#0F4C81",
+    "#FF6B2C",
+    "#0F9D8A",
+    "#6B4EFF",
+    "#D64545",
+    "#2FBF71",
+    "#FFB400",
+    "#6B6259",
+]
 PLAYER_PNO = {"김단비": "095226", "이명관": "095778", "조수아": "095912", "변하정": "095104", "강이슬": "095263"}
 TEAM_ALIAS = {
     "BNK 썸": "BNK썸",
@@ -103,6 +128,19 @@ def serve_static(file_path: str):
         media_type, _ = mimetypes.guess_type(full_path.name)
         return Response(content=content, media_type=media_type or "application/octet-stream")
     return Response(content="Not Found", status_code=404)
+
+
+@app.get("/team-logo")
+def team_logo(name: str = "", size: int = 64):
+    size = max(32, min(int(size or 64), 256))
+    label = team_abbr(name)
+    color = team_color_from_name(name)
+    safe_label = html.escape(label)
+    svg = f"""<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 64 64" role="img" aria-label="{safe_label} logo">
+<rect width="64" height="64" rx="18" fill="{color}"/>
+<text x="32" y="38" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="700" fill="#ffffff">{safe_label}</text>
+</svg>"""
+    return Response(content=svg, media_type="image/svg+xml")
 
 def c_i(value) -> int:
     try:
@@ -158,8 +196,40 @@ def load_qa_report() -> dict:
         return {"error": "Failed to parse QA report", "path": str(QA_REPORT_PATH)}
 
 
+def team_abbr(team: str) -> str:
+    if not team:
+        return "WK"
+    ascii_only = "".join(ch for ch in str(team) if ch.isascii() and ch.isalnum())
+    if ascii_only:
+        return ascii_only[:6].upper()
+    return str(team).strip()[:4]
+
+
+def team_color_from_name(team: str) -> str:
+    if not team:
+        return DEFAULT_TEAM_META["color"]
+    digest = hashlib.md5(str(team).encode("utf-8")).hexdigest()
+    idx = int(digest[:2], 16) % len(TEAM_COLOR_POOL)
+    return TEAM_COLOR_POOL[idx]
+
+
+def team_logo_url(team: str) -> str:
+    if not team:
+        return ""
+    return f"/team-logo?name={quote(str(team), safe='')}"
+
+
 def get_team_meta(team: str) -> dict:
-    return TEAM_META.get(team, DEFAULT_TEAM_META)
+    meta = TEAM_META.get(team)
+    if meta:
+        return meta
+    if not team:
+        return DEFAULT_TEAM_META
+    return {
+        "nick": team_abbr(team),
+        "logo": team_logo_url(team),
+        "color": team_color_from_name(team),
+    }
 
 def normalize_team_name(team: str) -> str:
     text = str(team).strip()
@@ -257,11 +327,39 @@ def build_compare_team_url(team: str, season: str = "") -> str:
     return url
 
 
+def resolve_photo_override(value) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    if not text:
+        return None
+    if text.isdigit():
+        pno = text
+        if pno in PHOTO_BLACKLIST:
+            return None
+        local = STATIC_DIR / "images" / f"player_{pno}.png"
+        if local.exists():
+            return f"/static/images/player_{pno}.png"
+        return f"{WKBL_BASE_URL}/static/images/player/pimg/m_{pno}.jpg?ver=0.3"
+    if text.startswith("http://") or text.startswith("https://") or text.startswith("/"):
+        return text
+    return None
+
+
 def get_player_photo(name: str, team: str = "") -> str | None:
     if not name:
         return None
     normalized_team = normalize_team_name(team) if team else ""
     pno = None
+    if normalized_team:
+        override = PHOTO_OVERRIDE_BY_NAME_TEAM.get(f"{name}|{normalized_team}")
+        override_url = resolve_photo_override(override)
+        if override_url:
+            return override_url
+    override = PHOTO_OVERRIDE_BY_NAME.get(name)
+    override_url = resolve_photo_override(override)
+    if override_url:
+        return override_url
     if normalized_team:
         pno = PHOTO_BY_NAME_TEAM.get(f"{name}|{normalized_team}")
     if not pno:
