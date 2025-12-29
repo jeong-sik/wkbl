@@ -1,5 +1,11 @@
 {% if stats %}
 <div class="data-table">
+    {% set rate_suffix = '' %}
+    {% if scope == 'per_game' %}
+        {% set rate_suffix = '/G' %}
+    {% elif scope == 'per_36' %}
+        {% set rate_suffix = '/36' %}
+    {% endif %}
     {% if pager_top and pagination and pagination.total_pages > 1 %}
     <div class="pagination top"{% if pager_accent %} style="--pager-accent: {{ pager_accent }};"{% endif %}>
         <div class="pagination-info">Showing {{ pagination.start }}-{{ pagination.end }} of {{ pagination.total_count }} · Page {{ pagination.page }} / {{ pagination.total_pages }}</div>
@@ -33,14 +39,18 @@
             <tr>
                 <th>Team</th>
                 <th>GP</th>
-                <th>MIN</th>
-                <th>PTS</th>
-                <th>Margin</th>
-                <th>REB</th>
-                <th>AST</th>
-                <th>STL</th>
-                <th>BLK</th>
-                <th>TO</th>
+                {% if scope == 'per_game' %}
+                <th>MIN/G</th>
+                {% else %}
+                <th>MIN (Total)</th>
+                {% endif %}
+                <th>PTS{{ rate_suffix }}</th>
+                <th>Margin{% if scope == 'per_game' %}/G{% endif %}</th>
+                <th>REB{{ rate_suffix }}</th>
+                <th>AST{{ rate_suffix }}</th>
+                <th>STL{{ rate_suffix }}</th>
+                <th>BLK{{ rate_suffix }}</th>
+                <th>TO{{ rate_suffix }}</th>
                 <th>FG%</th>
                 <th>3P%</th>
                 <th>FT%</th>
