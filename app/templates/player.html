@@ -11,12 +11,11 @@
     <div class="hero-card">
         <span class="eyebrow">Player Profile</span>
         <div class="profile-header">
-            <div class="profile-avatar">
+            <div class="profile-avatar {% if player_photo %}has-photo{% else %}no-photo{% endif %}">
                 {% if player_photo %}
-                <img src="{{ player_photo }}" alt="{{ player.name }}">
-                {% else %}
-                <span>{{ player.name[:1] }}</span>
+                <img src="{{ player_photo }}" alt="{{ player.name }}" loading="lazy" decoding="async">
                 {% endif %}
+                <span>{{ player.name[:1] }}</span>
             </div>
             <div>
                 <h1>{{ player.name }}</h1>

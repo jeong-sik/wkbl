@@ -470,6 +470,21 @@
             object-fit: cover;
         }
 
+        .player-photo span,
+        .profile-avatar span {
+            display: none;
+        }
+
+        .player-photo.no-photo span,
+        .profile-avatar.no-photo span {
+            display: inline;
+        }
+
+        .player-photo.no-photo img,
+        .profile-avatar.no-photo img {
+            display: none;
+        }
+
         .player-info {
             min-width: 0;
         }
@@ -965,6 +980,20 @@
             document.documentElement.style.setProperty("--pager-top-offset", `${height + 12}px`);
         };
 
+        const initPhotoFallbacks = () => {
+            const images = document.querySelectorAll(".player-photo img, .profile-avatar img");
+            images.forEach((img) => {
+                if (img.dataset.fallbackBound === "true") return;
+                img.dataset.fallbackBound = "true";
+                img.addEventListener("error", () => {
+                    const wrapper = img.closest(".player-photo, .profile-avatar");
+                    if (wrapper) {
+                        wrapper.classList.add("no-photo");
+                    }
+                });
+            });
+        };
+
         document.addEventListener("keydown", (event) => {
             if (event.key !== "Enter") return;
             const target = event.target;
@@ -977,7 +1006,10 @@
             }
         });
 
-        window.addEventListener("load", updatePagerOffset);
+        window.addEventListener("load", () => {
+            updatePagerOffset();
+            initPhotoFallbacks();
+        });
         window.addEventListener("resize", updatePagerOffset);
 
         document.addEventListener("htmx:afterSwap", (event) => {
@@ -997,6 +1029,7 @@
                 window.scrollTo({ top: 0, behavior: "smooth" });
             }
             updatePagerOffset();
+            initPhotoFallbacks();
         });
     </script>
 </head>

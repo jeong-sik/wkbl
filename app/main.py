@@ -25,18 +25,29 @@ if not DATA_DIR.exists():
     fallback = ME_ROOT / "data" / "wkbl"
     if fallback.exists():
         DATA_DIR = fallback
+WKBL_BASE_URL = "https://www.wkbl.or.kr"
 BOX_DIR = DATA_DIR / "box"
 DERIVED_DIR = DATA_DIR / "derived"
 STATIC_DIR = BASE_DIR / "static"
 ROSTER_PATH = DATA_DIR / "roster_db.json"
 
 PLAYER_DB = {}
+PHOTO_BY_NAME_TEAM = {}
+PHOTO_BY_NAME = {}
 if ROSTER_PATH.exists():
     try:
         with ROSTER_PATH.open("r", encoding="utf-8") as f:
-            PLAYER_DB = json.load(f)
+            roster = json.load(f)
+            if isinstance(roster, dict) and "team_by_name" in roster:
+                PLAYER_DB = roster.get("team_by_name", {})
+                PHOTO_BY_NAME_TEAM = roster.get("photo_by_name_team", {})
+                PHOTO_BY_NAME = roster.get("photo_by_name", {})
+            elif isinstance(roster, dict):
+                PLAYER_DB = roster
     except Exception:
         PLAYER_DB = {}
+        PHOTO_BY_NAME_TEAM = {}
+        PHOTO_BY_NAME = {}
 
 TEAM_META = {
     "우리은행": {"nick": "WON", "logo": "/static/images/team_05.png", "color": "#005BAA"},
@@ -48,6 +59,15 @@ TEAM_META = {
 }
 DEFAULT_TEAM_META = {"nick": "???", "logo": "", "color": "#ccc"}
 PLAYER_PNO = {"김단비": "095226", "이명관": "095778", "조수아": "095912", "변하정": "095104", "강이슬": "095263"}
+TEAM_ALIAS = {
+    "BNK 썸": "BNK썸",
+    "BNK  썸": "BNK썸",
+    "KB 스타즈": "KB스타즈",
+    "우리 은행": "우리은행",
+    "하나 은행": "하나은행",
+    "신한 은행": "신한은행",
+    "삼성 생명": "삼성생명",
+}
 SEASON_BASE_YEAR = 1979
 DEFAULT_PAGE_SIZE = 40
 MAX_PAGE_SIZE = 200
@@ -98,6 +118,10 @@ def parse_made_att(value) -> tuple[int, int]:
 
 def get_team_meta(team: str) -> dict:
     return TEAM_META.get(team, DEFAULT_TEAM_META)
+
+def normalize_team_name(team: str) -> str:
+    text = str(team).strip()
+    return TEAM_ALIAS.get(text, text)
 
 def resolve_pager_accent(team: str) -> str | None:
     if not team or team == "ALL":
@@ -173,9 +197,21 @@ def build_compare_team_url(team: str, season: str = "") -> str:
     return url
 
 
-def get_player_photo(name: str) -> str | None:
-    pno = PLAYER_PNO.get(name)
-    return f"/static/images/player_{pno}.png" if pno else None
+def get_player_photo(name: str, team: str = "") -> str | None:
+    if not name:
+        return None
+    normalized_team = normalize_team_name(team) if team else ""
+    pno = None
+    if normalized_team:
+        pno = PHOTO_BY_NAME_TEAM.get(f"{name}|{normalized_team}")
+    if not pno:
+        pno = PHOTO_BY_NAME.get(name) or PLAYER_PNO.get(name)
+    if not pno:
+        return None
+    local = STATIC_DIR / "images" / f"player_{pno}.png"
+    if local.exists():
+        return f"/static/images/player_{pno}.png"
+    return f"{WKBL_BASE_URL}/static/images/player/pimg/m_{pno}.jpg?ver=0.3"
 
 
 def get_team_list(season: str = "ALL") -> list[str]:
@@ -1056,7 +1092,7 @@ def build_home_stats_from_aggregate(rows: list[dict], season: str) -> list[dict]
                 "nick": meta["nick"],
                 "logo": meta["logo"],
                 "color": meta["color"],
-                "photo": get_player_photo(name),
+                "photo": get_player_photo(name, team),
                 "pos": pos,
                 "min": min_per_game,
                 "min_display": f"{min_per_game:.1f}",
@@ -1533,7 +1569,7 @@ async def player_profile(
             "active_page": "players",
             "page_title": f"{name} | WKBL Player",
             "player": primary,
-            "player_photo": get_player_photo(name),
+            "player_photo": get_player_photo(name, team),
             "team_meta": team_meta,
             "scope_rows": scope_rows,
             "games": games,

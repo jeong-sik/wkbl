@@ -47,12 +47,11 @@
             <span>{{ player.nick if player.nick else "WK" }}</span>
             {% endif %}
         </div>
-        <div class="player-photo">
+        <div class="player-photo {% if player.photo %}has-photo{% else %}no-photo{% endif %}">
             {% if player.photo %}
             <img src="{{ player.photo }}" alt="{{ player.name }} portrait" loading="lazy" decoding="async">
-            {% else %}
-            <span>{{ player.name[0] }}</span>
             {% endif %}
+            <span>{{ player.name[:1] }}</span>
         </div>
         <div class="player-info">
             <div class="player-name">{{ player.name }}</div>
