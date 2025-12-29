@@ -27,6 +27,7 @@ def main() -> None:
     parser.add_argument("--skip-aggregate", action="store_true", help="Skip aggregation step.")
     parser.add_argument("--skip-qa", action="store_true", help="Skip QA report step.")
     parser.add_argument("--update-roster", action="store_true", help="Refresh roster_db.json from WKBL live lists.")
+    parser.add_argument("--audit-photos", action="store_true", help="Build photo blacklist for missing images.")
     parser.add_argument("--qa-meta-file", default="", help="Optional meta file path for QA.")
     parser.add_argument("collector_args", nargs=argparse.REMAINDER, help="Args passed to wkbl_ajax_collector.py.")
     args = parser.parse_args()
@@ -53,6 +54,9 @@ def main() -> None:
 
     if args.update_roster:
         run_step([python, "scripts/wkbl_roster_live.py"])
+
+    if args.audit_photos:
+        run_step([python, "scripts/wkbl_photo_audit.py"])
 
 
 if __name__ == "__main__":

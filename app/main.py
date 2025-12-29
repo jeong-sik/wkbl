@@ -33,10 +33,12 @@ ROSTER_PATH = DATA_DIR / "roster_db.json"
 QA_DIR = DATA_DIR / "qa"
 QA_REPORT_PATH = QA_DIR / "qa_report.json"
 QA_REPORT_MD_PATH = QA_DIR / "qa_report.md"
+PHOTO_BLACKLIST_PATH = DATA_DIR / "photo_blacklist.json"
 
 PLAYER_DB = {}
 PHOTO_BY_NAME_TEAM = {}
 PHOTO_BY_NAME = {}
+PHOTO_BLACKLIST: set[str] = set()
 if ROSTER_PATH.exists():
     try:
         with ROSTER_PATH.open("r", encoding="utf-8") as f:
@@ -51,6 +53,14 @@ if ROSTER_PATH.exists():
         PLAYER_DB = {}
         PHOTO_BY_NAME_TEAM = {}
         PHOTO_BY_NAME = {}
+
+if PHOTO_BLACKLIST_PATH.exists():
+    try:
+        data = json.loads(PHOTO_BLACKLIST_PATH.read_text(encoding="utf-8"))
+        invalid = data.get("invalid_pnos", []) if isinstance(data, dict) else []
+        PHOTO_BLACKLIST = {str(pno) for pno in invalid}
+    except Exception:
+        PHOTO_BLACKLIST = set()
 
 TEAM_META = {
     "우리은행": {"nick": "WON", "logo": "/static/images/team_05.png", "color": "#005BAA"},
@@ -257,6 +267,8 @@ def get_player_photo(name: str, team: str = "") -> str | None:
     if not pno:
         pno = PHOTO_BY_NAME.get(name) or PLAYER_PNO.get(name)
     if not pno:
+        return None
+    if pno in PHOTO_BLACKLIST:
         return None
     local = STATIC_DIR / "images" / f"player_{pno}.png"
     if local.exists():
