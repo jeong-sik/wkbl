@@ -78,7 +78,7 @@
         <div class="filter-group">
             <div class="filter-label">Rows</div>
             <select class="filter-input" name="page_size" onchange="resetPage()">
-                {% for size in [20, 40, 80] %}
+                {% for size in home_page_sizes %}
                 <option value="{{ size }}" {% if size == page_size %}selected{% endif %}>{{ size }}/page</option>
                 {% endfor %}
             </select>
