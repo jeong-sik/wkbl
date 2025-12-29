@@ -1,318 +1,318 @@
 {
-  "generated_at": "2025-12-29T02:25:36.211173+00:00",
+  "generated_at": "2025-12-29T03:45:03.682038+00:00",
   "sources": {
-    "meta_file": "/Users/dancer/me/workspace/yousleepwhen/wkbl/.worktrees/data/backfill/data/wkbl/meta/all_games_list.json",
-    "players_games": "/Users/dancer/me/workspace/yousleepwhen/wkbl/.worktrees/data/backfill/data/wkbl/derived/players_games.csv",
-    "team_games": "/Users/dancer/me/workspace/yousleepwhen/wkbl/.worktrees/data/backfill/data/wkbl/derived/team_games.csv"
+    "meta_file": "/Users/dancer/me/workspace/yousleepwhen/wkbl/.worktrees/feat/wkbl-qa-page/data/wkbl/meta/all_games_list.json",
+    "players_games": "/Users/dancer/me/workspace/yousleepwhen/wkbl/.worktrees/feat/wkbl-qa-page/data/wkbl/derived/players_games.csv",
+    "team_games": "/Users/dancer/me/workspace/yousleepwhen/wkbl/.worktrees/feat/wkbl-qa-page/data/wkbl/derived/team_games.csv"
   },
   "coverage": {
-    "meta_available": true,
-    "expected_games": 2874,
+    "meta_available": false,
+    "expected_games": 0,
     "actual_games": 2874,
     "missing_games": 0,
     "extra_games": 0,
-    "coverage_pct": 100.0,
+    "coverage_pct": 0.0,
     "by_season": [
       {
         "season": "1",
-        "expected": 20,
+        "expected": 0,
         "actual": 20,
         "missing": 0,
-        "coverage_pct": 100.0
+        "coverage_pct": 0.0
       },
       {
         "season": "2",
-        "expected": 15,
+        "expected": 0,
         "actual": 15,
         "missing": 0,
-        "coverage_pct": 100.0
+        "coverage_pct": 0.0
       },
       {
         "season": "3",
-        "expected": 45,
+        "expected": 0,
         "actual": 45,
         "missing": 0,
-        "coverage_pct": 100.0
+        "coverage_pct": 0.0
       },
       {
         "season": "5",
-        "expected": 20,
+        "expected": 0,
         "actual": 20,
         "missing": 0,
-        "coverage_pct": 100.0
+        "coverage_pct": 0.0
       },
       {
         "season": "6",
-        "expected": 60,
+        "expected": 0,
         "actual": 60,
         "missing": 0,
-        "coverage_pct": 100.0
+        "coverage_pct": 0.0
       },
       {
         "season": "7",
-        "expected": 30,
+        "expected": 0,
         "actual": 30,
         "missing": 0,
-        "coverage_pct": 100.0
+        "coverage_pct": 0.0
       },
       {
         "season": "8",
-        "expected": 75,
+        "expected": 0,
         "actual": 75,
         "missing": 0,
-        "coverage_pct": 100.0
+        "coverage_pct": 0.0
       },
       {
         "season": "9",
-        "expected": 58,
+        "expected": 0,
         "actual": 58,
         "missing": 0,
-        "coverage_pct": 100.0
+        "coverage_pct": 0.0
       },
       {
         "season": "11",
-        "expected": 45,
+        "expected": 0,
         "actual": 45,
         "missing": 0,
-        "coverage_pct": 100.0
+        "coverage_pct": 0.0
       },
       {
         "season": "12",
-        "expected": 61,
+        "expected": 0,
         "actual": 61,
         "missing": 0,
-        "coverage_pct": 100.0
+        "coverage_pct": 0.0
       },
       {
         "season": "13",
-        "expected": 60,
+        "expected": 0,
         "actual": 60,
         "missing": 0,
-        "coverage_pct": 100.0
+        "coverage_pct": 0.0
       },
       {
         "season": "15",
-        "expected": 61,
+        "expected": 0,
         "actual": 61,
         "missing": 0,
-        "coverage_pct": 100.0
+        "coverage_pct": 0.0
       },
       {
         "season": "16",
-        "expected": 30,
+        "expected": 0,
         "actual": 30,
         "missing": 0,
-        "coverage_pct": 100.0
+        "coverage_pct": 0.0
       },
       {
         "season": "17",
-        "expected": 57,
+        "expected": 0,
         "actual": 57,
         "missing": 0,
-        "coverage_pct": 100.0
+        "coverage_pct": 0.0
       },
       {
         "season": "18",
-        "expected": 15,
+        "expected": 0,
         "actual": 15,
         "missing": 0,
-        "coverage_pct": 100.0
+        "coverage_pct": 0.0
       },
       {
         "season": "19",
-        "expected": 61,
+        "expected": 0,
         "actual": 61,
         "missing": 0,
-        "coverage_pct": 100.0
+        "coverage_pct": 0.0
       },
       {
         "season": "20",
-        "expected": 49,
+        "expected": 0,
         "actual": 49,
         "missing": 0,
-        "coverage_pct": 100.0
+        "coverage_pct": 0.0
       },
       {
         "season": "21",
-        "expected": 45,
+        "expected": 0,
         "actual": 45,
         "missing": 0,
-        "coverage_pct": 100.0
+        "coverage_pct": 0.0
       },
       {
         "season": "22",
-        "expected": 15,
+        "expected": 0,
         "actual": 15,
         "missing": 0,
-        "coverage_pct": 100.0
+        "coverage_pct": 0.0
       },
       {
         "season": "23",
-        "expected": 62,
+        "expected": 0,
         "actual": 62,
         "missing": 0,
-        "coverage_pct": 100.0
+        "coverage_pct": 0.0
       },
       {
         "season": "24",
-        "expected": 15,
+        "expected": 0,
         "actual": 15,
         "missing": 0,
-        "coverage_pct": 100.0
+        "coverage_pct": 0.0
       },
       {
         "season": "25",
-        "expected": 106,
+        "expected": 0,
         "actual": 106,
         "missing": 0,
-        "coverage_pct": 100.0
+        "coverage_pct": 0.0
       },
       {
         "season": "26",
-        "expected": 30,
+        "expected": 0,
         "actual": 30,
         "missing": 0,
-        "coverage_pct": 100.0
+        "coverage_pct": 0.0
       },
       {
         "season": "27",
-        "expected": 121,
+        "expected": 0,
         "actual": 121,
         "missing": 0,
-        "coverage_pct": 100.0
+        "coverage_pct": 0.0
       },
       {
         "season": "28",
-        "expected": 20,
+        "expected": 0,
         "actual": 20,
         "missing": 0,
-        "coverage_pct": 100.0
+        "coverage_pct": 0.0
       },
       {
         "season": "29",
-        "expected": 121,
+        "expected": 0,
         "actual": 121,
         "missing": 0,
-        "coverage_pct": 100.0
+        "coverage_pct": 0.0
       },
       {
         "season": "30",
-        "expected": 15,
+        "expected": 0,
         "actual": 15,
         "missing": 0,
-        "coverage_pct": 100.0
+        "coverage_pct": 0.0
       },
       {
         "season": "31",
-        "expected": 106,
+        "expected": 0,
         "actual": 106,
         "missing": 0,
-        "coverage_pct": 100.0
+        "coverage_pct": 0.0
       },
       {
         "season": "32",
-        "expected": 124,
+        "expected": 0,
         "actual": 124,
         "missing": 0,
-        "coverage_pct": 100.0
+        "coverage_pct": 0.0
       },
       {
         "season": "33",
-        "expected": 112,
+        "expected": 0,
         "actual": 112,
         "missing": 0,
-        "coverage_pct": 100.0
+        "coverage_pct": 0.0
       },
       {
         "season": "34",
-        "expected": 105,
+        "expected": 0,
         "actual": 105,
         "missing": 0,
-        "coverage_pct": 100.0
+        "coverage_pct": 0.0
       },
       {
         "season": "35",
-        "expected": 112,
+        "expected": 0,
         "actual": 112,
         "missing": 0,
-        "coverage_pct": 100.0
+        "coverage_pct": 0.0
       },
       {
         "season": "36",
-        "expected": 106,
+        "expected": 0,
         "actual": 106,
         "missing": 0,
-        "coverage_pct": 100.0
+        "coverage_pct": 0.0
       },
       {
         "season": "37",
-        "expected": 106,
+        "expected": 0,
         "actual": 106,
         "missing": 0,
-        "coverage_pct": 100.0
+        "coverage_pct": 0.0
       },
       {
         "season": "38",
-        "expected": 112,
+        "expected": 0,
         "actual": 112,
         "missing": 0,
-        "coverage_pct": 100.0
+        "coverage_pct": 0.0
       },
       {
         "season": "39",
-        "expected": 106,
+        "expected": 0,
         "actual": 106,
         "missing": 0,
-        "coverage_pct": 100.0
+        "coverage_pct": 0.0
       },
       {
         "season": "40",
-        "expected": 83,
+        "expected": 0,
         "actual": 83,
         "missing": 0,
-        "coverage_pct": 100.0
+        "coverage_pct": 0.0
       },
       {
         "season": "41",
-        "expected": 90,
+        "expected": 0,
         "actual": 90,
         "missing": 0,
-        "coverage_pct": 100.0
+        "coverage_pct": 0.0
       },
       {
         "season": "42",
-        "expected": 90,
+        "expected": 0,
         "actual": 90,
         "missing": 0,
-        "coverage_pct": 100.0
+        "coverage_pct": 0.0
       },
       {
         "season": "43",
-        "expected": 91,
+        "expected": 0,
         "actual": 91,
         "missing": 0,
-        "coverage_pct": 100.0
+        "coverage_pct": 0.0
       },
       {
         "season": "44",
-        "expected": 91,
+        "expected": 0,
         "actual": 91,
         "missing": 0,
-        "coverage_pct": 100.0
+        "coverage_pct": 0.0
       },
       {
         "season": "45",
-        "expected": 91,
+        "expected": 0,
         "actual": 91,
         "missing": 0,
-        "coverage_pct": 100.0
+        "coverage_pct": 0.0
       },
       {
         "season": "46",
-        "expected": 37,
+        "expected": 0,
         "actual": 37,
         "missing": 0,
-        "coverage_pct": 100.0
+        "coverage_pct": 0.0
       }
     ],
     "missing_sample": [],
