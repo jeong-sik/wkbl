@@ -48,6 +48,21 @@ python3 scripts/wkbl_photo_audit.py
 ```
 누락된 WKBL 이미지(pno)를 `data/wkbl/photo_blacklist.json`에 기록합니다.
 
+## 사진 수동 매핑
+`data/wkbl/photo_overrides.json`에서 특정 선수의 사진을 직접 지정할 수 있습니다.
+```json
+{
+  "photo_by_name_team": {
+    "홍길동|우리은행": "https://example.com/player.png",
+    "Jane Doe|ENEOS": "095999"
+  },
+  "photo_by_name": {
+    "홍길동": "https://example.com/player.png"
+  }
+}
+```
+값이 숫자면 pno로 처리하고, URL이면 그대로 사용합니다.
+
 ## 스케줄러 (launchd)
 ```bash
 cp scripts/launchd/com.jeongsik.wkbl-refresh.plist ~/Library/LaunchAgents/
