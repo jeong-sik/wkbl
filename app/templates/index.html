@@ -44,6 +44,16 @@
 
     <section class="filters">
         <div class="filter-group">
+            <div class="filter-label">Season</div>
+            <select class="filter-input" name="season" onchange="resetPage()">
+                {% for opt in seasons %}
+                <option value="{{ opt.value }}" {% if opt.value == season %}selected{% endif %}>
+                    {{ opt.label }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-group">
             <div class="filter-label">Search</div>
             <input class="filter-input" type="search" name="search" placeholder="Search player..." oninput="resetPage()" onkeyup="htmx.trigger('#filter-form', 'search-update')" aria-label="Search player">
         </div>

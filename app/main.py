@@ -1332,7 +1332,7 @@ def build_home_stats_from_aggregate(rows: list[dict], season: str) -> list[dict]
     return stats
 
 
-def load_real_stats(sort_by="eff", team_filter="ALL", pos_filter="ALL", search_query=""):
+def load_real_stats(sort_by="eff", team_filter="ALL", pos_filter="ALL", search_query="", season: str = ""):
     sort_aliases = {
         "points": "pts",
         "point": "pts",
@@ -1351,7 +1351,7 @@ def load_real_stats(sort_by="eff", team_filter="ALL", pos_filter="ALL", search_q
 
     derived_path = DERIVED_DIR / "players_aggregate.csv"
     if derived_path.exists():
-        season = resolve_season("", allow_all=True)
+        season = resolve_season(season, allow_all=True)
         rows = load_players_aggregate(
             season=season,
             scope="per_game",
@@ -1478,6 +1478,7 @@ async def test():
 @app.get("/", response_class=HTMLResponse)
 async def index(
     request: Request,
+    season: str = "",
     sort: str = "eff",
     team: str = "ALL",
     pos: str = "ALL",
@@ -1492,14 +1493,22 @@ async def index(
     pager_top = True
     pager_bottom = True
     pager_accent = resolve_pager_accent(team)
-    full_stats, data_label = load_real_stats(sort_by=sort, team_filter=team, pos_filter=pos, search_query=search)
+    season = resolve_season(season, allow_all=True)
+    seasons = season_options(include_all=True)
+    full_stats, data_label = load_real_stats(
+        sort_by=sort,
+        team_filter=team,
+        pos_filter=pos,
+        search_query=search,
+        season=season,
+    )
     stats, pagination = paginate_items(
         full_stats,
         page,
         page_size,
         base_path="/",
         table_path="/refresh",
-        params={"sort": sort, "team": team, "pos": pos, "search": search, "pager": pager_mode},
+        params={"season": season, "sort": sort, "team": team, "pos": pos, "search": search, "pager": pager_mode},
     )
     response = templates.TemplateResponse(
         "index.html",
@@ -1509,6 +1518,9 @@ async def index(
             "page_title": "WKBL Moneyball Lab",
             "stats": stats,
             "total_count": pagination["total_count"],
+            "season": season,
+            "seasons": seasons,
+            "season_label": season_label(season),
             "sort": sort,
             "team": team,
             "pos": pos,
@@ -1529,6 +1541,7 @@ async def index(
 @app.get("/refresh", response_class=HTMLResponse)
 async def refresh(
     request: Request,
+    season: str = "",
     sort: str = "eff",
     team: str = "ALL",
     pos: str = "ALL",
@@ -1543,20 +1556,28 @@ async def refresh(
     pager_top = True
     pager_bottom = True
     pager_accent = resolve_pager_accent(team)
-    full_stats, data_label = load_real_stats(sort_by=sort, team_filter=team, pos_filter=pos, search_query=search)
+    season = resolve_season(season, allow_all=True)
+    full_stats, data_label = load_real_stats(
+        sort_by=sort,
+        team_filter=team,
+        pos_filter=pos,
+        search_query=search,
+        season=season,
+    )
     stats, pagination = paginate_items(
         full_stats,
         page,
         page_size,
         base_path="/",
         table_path="/refresh",
-        params={"sort": sort, "team": team, "pos": pos, "search": search, "pager": pager_mode},
+        params={"season": season, "sort": sort, "team": team, "pos": pos, "search": search, "pager": pager_mode},
     )
     response = templates.TemplateResponse(
         "partials/stats_table.html",
         {
             "request": request,
             "stats": stats,
+            "season": season,
             "sort": sort,
             "team": team,
             "pos": pos,
