@@ -112,6 +112,7 @@ MAX_PAGE_SIZE = 200
 MAX_DB_LIMIT = 5000
 DEFAULT_PAGER_MODE = "bottom"
 DEFAULT_PER36_MIN_MINUTES = 100
+HOME_PAGE_SIZES = (20, 40, 80)
 
 # 직접 이미지 서빙 (Raw Response)
 @app.get("/static/{file_path:path}")
@@ -461,6 +462,15 @@ def normalize_page(value: str | int) -> int:
 
 def normalize_page_size(value: str | int) -> int:
     return normalize_int(value, DEFAULT_PAGE_SIZE, 1, MAX_PAGE_SIZE)
+
+def clamp_page_size(value: int, choices: tuple[int, ...]) -> int:
+    if not choices:
+        return value
+    if value in choices:
+        return value
+    if DEFAULT_PAGE_SIZE in choices:
+        return DEFAULT_PAGE_SIZE
+    return choices[0]
 
 
 def resolve_page_size(request: Request, page_size: int) -> int:
@@ -1477,6 +1487,7 @@ async def index(
     pager: str = DEFAULT_PAGER_MODE,
 ):
     page_size = resolve_page_size(request, page_size)
+    page_size = clamp_page_size(page_size, HOME_PAGE_SIZES)
     pager_mode = "both"
     pager_top = True
     pager_bottom = True
@@ -1504,6 +1515,7 @@ async def index(
             "search": search,
             "pagination": pagination,
             "page_size": pagination["page_size"],
+            "home_page_sizes": HOME_PAGE_SIZES,
             "data_label": data_label,
             "pager_accent": pager_accent,
             "pager_mode": pager_mode,
@@ -1526,6 +1538,7 @@ async def refresh(
     pager: str = DEFAULT_PAGER_MODE,
 ):
     page_size = resolve_page_size(request, page_size)
+    page_size = clamp_page_size(page_size, HOME_PAGE_SIZES)
     pager_mode = "both"
     pager_top = True
     pager_bottom = True
