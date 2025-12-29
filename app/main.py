@@ -655,6 +655,10 @@ def load_player_scopes(name: str, team: str, season: str) -> dict:
         if row.empty:
             continue
         record = row.iloc[0].to_dict()
+        if key == "per_36":
+            min_total = float(record.get("min_total") or 0)
+            if min_total < DEFAULT_PER36_MIN_MINUTES:
+                continue
         record["scope_key"] = key
         record["scope_label"] = scope_label(key)
         scopes[key] = record
@@ -891,7 +895,7 @@ def paginate_boxscore_teams(
     return teams
 
 
-def get_player_options(season: str = "ALL") -> list[dict]:
+def get_player_options(season: str = "ALL", min_minutes: int = 0) -> list[dict]:
     path = DERIVED_DIR / "players_aggregate.csv"
     if not path.exists():
         return []
@@ -899,6 +903,9 @@ def get_player_options(season: str = "ALL") -> list[dict]:
     if season and season != "ALL":
         df = df[df["season_gu"].astype(str).str.zfill(3) == str(season)]
     df = df[df["scope"] == "totals"].sort_values(["team", "name"])
+    if min_minutes > 0:
+        df["min_total"] = pd.to_numeric(df["min_total"], errors="coerce").fillna(0)
+        df = df[df["min_total"] >= min_minutes]
     options = []
     for _, row in df.iterrows():
         name = str(row["name"]).strip()
@@ -910,7 +917,7 @@ def get_player_options(season: str = "ALL") -> list[dict]:
     return options
 
 
-def find_player(scope: str, key: str, season: str = "") -> dict | None:
+def find_player(scope: str, key: str, season: str = "", min_minutes: int = 0) -> dict | None:
     if not key or "|" not in key:
         return None
     parts = key.split("|")
@@ -926,6 +933,9 @@ def find_player(scope: str, key: str, season: str = "") -> dict | None:
     if season_key and season_key != "ALL":
         df = df[df["season_gu"].astype(str).str.zfill(3) == str(season_key)]
     df = df[(df["scope"] == scope) & (df["name"] == name) & (df["team"] == team)]
+    if scope == "per_36" and min_minutes > 0:
+        df["min_total"] = pd.to_numeric(df["min_total"], errors="coerce").fillna(0)
+        df = df[df["min_total"] >= min_minutes]
     if df.empty:
         return None
     return df.iloc[0].to_dict()
@@ -1064,9 +1074,10 @@ def compare_context(
         left_label = left.get("team") if left else "Team A"
         right_label = right.get("team") if right else "Team B"
     else:
-        options = get_player_options(season)
-        left = find_player(scope, player_a, season)
-        right = find_player(scope, player_b, season)
+        min_minutes = DEFAULT_PER36_MIN_MINUTES if scope == "per_36" else 0
+        options = get_player_options(season, min_minutes=min_minutes)
+        left = find_player(scope, player_a, season, min_minutes=min_minutes)
+        right = find_player(scope, player_b, season, min_minutes=min_minutes)
         select_label = "Player"
         select_name_a = "player_a"
         select_name_b = "player_b"
