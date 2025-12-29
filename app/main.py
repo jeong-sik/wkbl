@@ -363,7 +363,15 @@ def get_player_photo(name: str, team: str = "") -> str | None:
     if normalized_team:
         pno = PHOTO_BY_NAME_TEAM.get(f"{name}|{normalized_team}")
     if not pno:
-        pno = PHOTO_BY_NAME.get(name) or PLAYER_PNO.get(name)
+        allow_name_only = True
+        if normalized_team:
+            roster_team = normalize_team_name(PLAYER_DB.get(name, "")) if PLAYER_DB else ""
+            if roster_team and roster_team != normalized_team:
+                allow_name_only = False
+        if allow_name_only:
+            pno = PHOTO_BY_NAME.get(name)
+        if not pno:
+            pno = PLAYER_PNO.get(name)
     if not pno:
         return None
     if pno in PHOTO_BLACKLIST:

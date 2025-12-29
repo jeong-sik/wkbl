@@ -28,6 +28,8 @@ python3 scripts/wkbl_refresh_all.py
 python3 scripts/wkbl_refresh_all.py -- --years 10
 # 로스터 이미지 매핑까지 업데이트
 python3 scripts/wkbl_refresh_all.py --update-roster --audit-photos -- --years 10
+# 올스타/해외팀 경기까지 포함해서 집계
+python3 scripts/wkbl_refresh_all.py --include-special -- --years 10
 ```
 
 ## 데이터 QA

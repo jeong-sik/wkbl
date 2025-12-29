@@ -26,6 +26,31 @@ TEAM_MAP = {
     "삼성 생명": "삼성생명",
 }
 
+SPECIAL_GAME_TYPES = {8, 10}
+SPECIAL_TEAMS = {
+    "Chanson",
+    "ENEOS",
+    "JOMO",
+    "Liaoning",
+    "남부선발",
+    "대만올스타",
+    "동부선발",
+    "북경수강",
+    "블루스타",
+    "사랑팀",
+    "서부선발",
+    "여유만만",
+    "일본 올스타",
+    "중국요녕",
+    "중부선발",
+    "질풍가도",
+    "캐세이",
+    "토요타",
+    "핑크스타",
+    "한국 올스타",
+    "희망팀",
+}
+
 NUMERIC_COLS = [
     "reb_off",
     "reb_def",
@@ -70,6 +95,15 @@ def parse_made_att(value: str) -> tuple[int, int]:
 def normalize_team(name: str) -> str:
     text = str(name).strip()
     return TEAM_MAP.get(text, text)
+
+def is_special_game_type(value) -> bool:
+    try:
+        return int(str(value).strip()) in SPECIAL_GAME_TYPES
+    except Exception:
+        return False
+
+def is_special_team(name: str) -> bool:
+    return str(name).strip() in SPECIAL_TEAMS
 
 def iter_game_files(input_dir: Path) -> list[Path]:
     season_dirs = [p for p in input_dir.iterdir() if p.is_dir() and p.name.isdigit()]
@@ -127,7 +161,7 @@ def mode_or_empty(series: pd.Series) -> str:
     return str(mode.iloc[0]) if not mode.empty else str(series.iloc[0])
 
 
-def load_games(input_dir: Path) -> pd.DataFrame:
+def load_games(input_dir: Path, include_special: bool = False) -> pd.DataFrame:
     rows = []
     for file in iter_game_files(input_dir):
         df = pd.read_csv(file)
@@ -169,6 +203,12 @@ def load_games(input_dir: Path) -> pd.DataFrame:
     )
     for col in NUMERIC_COLS:
         games[col] = pd.to_numeric(games[col], errors="coerce").fillna(0).astype(int)
+
+    if not include_special:
+        mask = games["game_type"].apply(is_special_game_type) | games["team"].apply(is_special_team)
+        special_games = set(games.loc[mask, "game_key"].unique().tolist())
+        if special_games:
+            games = games[~games["game_key"].isin(special_games)].copy()
 
     games = add_shooting(games)
     games = add_eff(games)
@@ -455,9 +495,10 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--input-dir", type=Path, default=DEFAULT_INPUT)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT)
+    parser.add_argument("--include-special", action="store_true", help="Include all-star/international games.")
     args = parser.parse_args()
 
-    games = load_games(args.input_dir)
+    games = load_games(args.input_dir, include_special=args.include_special)
     if games.empty:
         raise SystemExit("no game data found")
 
