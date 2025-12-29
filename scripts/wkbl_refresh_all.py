@@ -31,11 +31,14 @@ def main() -> None:
     args = parser.parse_args()
 
     python = sys.executable or "python3"
+    collector_args = list(args.collector_args)
+    if collector_args and collector_args[0] == "--":
+        collector_args = collector_args[1:]
 
     if not args.skip_collect:
         cmd = [python, "scripts/wkbl_ajax_collector.py"]
-        if args.collector_args:
-            cmd.extend(args.collector_args)
+        if collector_args:
+            cmd.extend(collector_args)
         run_step(cmd)
 
     if not args.skip_aggregate:

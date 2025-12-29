@@ -34,6 +34,13 @@ python3 scripts/wkbl_data_qa.py
 ```
 보고서 경로: `data/wkbl/qa/qa_report.json`, `data/wkbl/qa/qa_report.md`
 
+## 스케줄러 (launchd)
+```bash
+cp scripts/launchd/com.jeongsik.wkbl-refresh.plist ~/Library/LaunchAgents/
+launchctl load ~/Library/LaunchAgents/com.jeongsik.wkbl-refresh.plist
+```
+기본 실행 시간: 매일 04:10. 로그는 `~/me/logs/wkbl_refresh.log`와 `~/me/logs/wkbl_refresh.launchd.log`에 저장됩니다.
+
 ### 10년치 백필 (옵션)
 ```bash
 python3 scripts/wkbl_ajax_collector.py --years 10
