@@ -1,0 +1,262 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="hero">
+    <div class="hero-card">
+        <span class="eyebrow">Data QA</span>
+        <h1>Integrity Report</h1>
+        <p>Coverage, duplicates, and outlier checks for WKBL boxscore-derived datasets. Use this to confirm data health before analysis or comparisons.</p>
+        <div class="hero-actions">
+            <span class="pill accent">Coverage {{ summary.coverage_pct | round(1) }}%</span>
+            <span class="pill">Expected {{ summary.expected_games }}</span>
+            <span class="pill">Actual {{ summary.actual_games }}</span>
+        </div>
+    </div>
+    <div class="hero-metrics">
+        <div class="metric">
+            <div class="metric-label">Missing Games</div>
+            <div class="metric-value">{{ summary.missing_games }}</div>
+            <div class="metric-sub">Extra: {{ summary.extra_games }}</div>
+        </div>
+        <div class="metric">
+            <div class="metric-label">Duplicates</div>
+            <div class="metric-value">{{ counts.duplicates_team + counts.duplicates_players }}</div>
+            <div class="metric-sub">Teams: {{ counts.duplicates_team }} / Players: {{ counts.duplicates_players }}</div>
+        </div>
+        <div class="metric">
+            <div class="metric-label">Outliers</div>
+            <div class="metric-value">{{ counts.outliers_iqr }}</div>
+            <div class="metric-sub">Abs PTS: {{ counts.outliers_abs_pts }} / Margin: {{ counts.outliers_abs_margin }}</div>
+        </div>
+    </div>
+</section>
+
+{% if error %}
+<div class="empty-state">
+    <h3>QA report not available</h3>
+    <p>{{ error }}{% if error_path %} / {{ error_path }}{% endif %}</p>
+</div>
+{% else %}
+<section>
+    <h2 class="section-title">Sources</h2>
+    <p class="section-sub">Latest QA run metadata.</p>
+    <div class="qa-grid">
+        <div class="qa-card">
+            <h3>Report</h3>
+            <ul class="qa-list">
+                <li><strong>Generated</strong> <span class="qa-path">{{ generated_at }}</span></li>
+                <li><strong>Meta file</strong> <span class="qa-path">{{ "available" if summary.meta_available else "missing" }}</span></li>
+            </ul>
+        </div>
+        <div class="qa-card">
+            <h3>Data Sources</h3>
+            <ul class="qa-list">
+                {% for item in sources %}
+                <li><strong>{{ item.label }}</strong> <span class="qa-path">{{ item.path }}</span></li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</section>
+
+<section>
+    <h2 class="section-title">Coverage by Season</h2>
+    <p class="section-sub">Expected vs. actual game coverage from meta list.</p>
+    <div class="data-table">
+        <div class="table-scroll">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Season</th>
+                        <th>Expected</th>
+                        <th>Actual</th>
+                        <th>Missing</th>
+                        <th>Coverage</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in coverage_by_season %}
+                    <tr>
+                        <td>{{ row.label }}</td>
+                        <td>{{ row.expected }}</td>
+                        <td>{{ row.actual }}</td>
+                        <td>{{ row.missing }}</td>
+                        <td>{{ row.coverage_pct | round(1) }}%</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
+<section>
+    <h2 class="section-title">Anomalies</h2>
+    <p class="section-sub">Missing/extra games and duplicate rows from QA scan.</p>
+    <div class="qa-grid">
+        <div class="qa-card">
+            <h3>Missing Games</h3>
+            {% if missing_sample %}
+            <ul class="qa-list">
+                {% for key in missing_sample[:12] %}
+                <li><code>{{ key }}</code></li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <div class="stat-pill">None detected</div>
+            {% endif %}
+        </div>
+        <div class="qa-card">
+            <h3>Extra Games</h3>
+            {% if extra_sample %}
+            <ul class="qa-list">
+                {% for key in extra_sample[:12] %}
+                <li><code>{{ key }}</code></li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <div class="stat-pill">None detected</div>
+            {% endif %}
+        </div>
+        <div class="qa-card">
+            <h3>Team Count Anomalies</h3>
+            {% if duplicates_team %}
+            <ul class="qa-list">
+                {% for row in duplicates_team[:10] %}
+                <li><code>{{ row.game_key }}</code> teams={{ row.team_count }}</li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <div class="stat-pill">None detected</div>
+            {% endif %}
+        </div>
+        <div class="qa-card">
+            <h3>Duplicate Players</h3>
+            {% if duplicates_players %}
+            <ul class="qa-list">
+                {% for row in duplicates_players[:10] %}
+                <li><code>{{ row.game_key }}</code> {{ row.team }} {{ row.name }} x{{ row.row_count }}</li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <div class="stat-pill">None detected</div>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<section>
+    <h2 class="section-title">Outliers</h2>
+    <p class="section-sub">IQR-based and absolute threshold checks for team scores.</p>
+
+    <div class="data-table">
+        <div class="table-scroll">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Season</th>
+                        <th>Game</th>
+                        <th>Team</th>
+                        <th>PTS</th>
+                        <th>Opp</th>
+                        <th>Margin</th>
+                        <th>Low</th>
+                        <th>High</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if outliers_iqr %}
+                        {% for row in outliers_iqr[:20] %}
+                        <tr>
+                            <td>{{ row.season }}</td>
+                            <td>{{ row.game_key }}</td>
+                            <td>{{ row.team }}</td>
+                            <td>{{ row.pts_for }}</td>
+                            <td>{{ row.pts_against }}</td>
+                            <td>{{ row.margin }}</td>
+                            <td>{{ row.low_threshold }}</td>
+                            <td>{{ row.high_threshold }}</td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="8">No IQR outliers detected.</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <h3 class="section-title">Absolute Points</h3>
+    <p class="section-sub">Teams scoring below 40 or above 100.</p>
+    <div class="data-table">
+        <div class="table-scroll">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Game</th>
+                        <th>Team</th>
+                        <th>PTS</th>
+                        <th>Opp</th>
+                        <th>Margin</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if outliers_abs_pts %}
+                        {% for row in outliers_abs_pts[:15] %}
+                        <tr>
+                            <td>{{ row.game_key }}</td>
+                            <td>{{ row.team }}</td>
+                            <td>{{ row.pts_for }}</td>
+                            <td>{{ row.pts_against }}</td>
+                            <td>{{ row.margin }}</td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="5">No absolute points outliers detected.</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <h3 class="section-title">Absolute Margin</h3>
+    <p class="section-sub">Games with margin at or above 40.</p>
+    <div class="data-table">
+        <div class="table-scroll">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Game</th>
+                        <th>Team</th>
+                        <th>Margin</th>
+                        <th>PTS</th>
+                        <th>Opp</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if outliers_abs_margin %}
+                        {% for row in outliers_abs_margin[:15] %}
+                        <tr>
+                            <td>{{ row.game_key }}</td>
+                            <td>{{ row.team }}</td>
+                            <td>{{ row.margin }}</td>
+                            <td>{{ row.pts_for }}</td>
+                            <td>{{ row.pts_against }}</td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="5">No absolute margin outliers detected.</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+{% endif %}
+{% endblock %}

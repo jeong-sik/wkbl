@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Request, Response
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from pathlib import Path
 from urllib.parse import quote, urlencode
@@ -30,6 +30,8 @@ BOX_DIR = DATA_DIR / "box"
 DERIVED_DIR = DATA_DIR / "derived"
 STATIC_DIR = BASE_DIR / "static"
 ROSTER_PATH = DATA_DIR / "roster_db.json"
+QA_DIR = DATA_DIR / "qa"
+QA_REPORT_PATH = QA_DIR / "qa_report.json"
 
 PLAYER_DB = {}
 PHOTO_BY_NAME_TEAM = {}
@@ -114,6 +116,34 @@ def parse_made_att(value) -> tuple[int, int]:
         return 0, 0
     made, att = text.split("-", 1)
     return c_i(made), c_i(att)
+
+
+def tidy_source_path(value: str) -> str:
+    if not value:
+        return ""
+    text = str(value)
+    try:
+        path = Path(text)
+    except Exception:
+        return text
+    for base in (DATA_DIR, ME_ROOT):
+        try:
+            return str(path.relative_to(base))
+        except Exception:
+            continue
+    parts = path.parts
+    if len(parts) > 4:
+        return "/".join(parts[-4:])
+    return text
+
+
+def load_qa_report() -> dict:
+    if not QA_REPORT_PATH.exists():
+        return {"error": "QA report not found", "path": str(QA_REPORT_PATH)}
+    try:
+        return json.loads(QA_REPORT_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return {"error": "Failed to parse QA report", "path": str(QA_REPORT_PATH)}
 
 
 def get_team_meta(team: str) -> dict:
@@ -2239,6 +2269,95 @@ async def boxscore_table(
     response.set_cookie("wkbl_page_size", str(page_size), max_age=31536000, samesite="lax")
     response.set_cookie("wkbl_pager", pager_mode, max_age=31536000, samesite="lax")
     return response
+
+
+@app.get("/qa", response_class=HTMLResponse)
+async def qa_report(request: Request):
+    report = load_qa_report()
+    error = report.get("error") if isinstance(report, dict) else "QA report unavailable"
+    coverage = report.get("coverage", {}) if not error else {}
+    duplicates = report.get("duplicates", {}) if not error else {}
+    outliers = report.get("outliers", {}) if not error else {}
+    sources = report.get("sources", {}) if not error else {}
+
+    summary = {
+        "coverage_pct": coverage.get("coverage_pct", 0),
+        "expected_games": coverage.get("expected_games", 0),
+        "actual_games": coverage.get("actual_games", 0),
+        "missing_games": coverage.get("missing_games", 0),
+        "extra_games": coverage.get("extra_games", 0),
+        "meta_available": coverage.get("meta_available", False),
+    }
+
+    coverage_by_season = []
+    by_season = coverage.get("by_season", [])
+    try:
+        by_season = sorted(by_season, key=lambda r: int(r.get("season", 0)))
+    except Exception:
+        by_season = coverage.get("by_season", [])
+    for row in by_season:
+        try:
+            season_code = str(row.get("season", ""))
+            label = season_label(season_code)
+        except Exception:
+            label = str(row.get("season", ""))
+        coverage_by_season.append({**row, "label": label})
+
+    source_labels = {
+        "meta_file": "Meta list",
+        "players_games": "Players game log",
+        "team_games": "Team game log",
+    }
+    source_items = []
+    for key, path in sources.items():
+        label = source_labels.get(key, key.replace("_", " ").title())
+        source_items.append({"label": label, "path": tidy_source_path(path)})
+
+    duplicates_team = duplicates.get("team_count_anomalies", []) if duplicates else []
+    duplicates_players = duplicates.get("player_duplicates", []) if duplicates else []
+    outliers_iqr = outliers.get("iqr", []) if outliers else []
+    outliers_abs_pts = outliers.get("absolute_pts", []) if outliers else []
+    outliers_abs_margin = outliers.get("absolute_margin", []) if outliers else []
+
+    counts = {
+        "duplicates_team": len(duplicates_team),
+        "duplicates_players": len(duplicates_players),
+        "outliers_iqr": len(outliers_iqr),
+        "outliers_abs_pts": len(outliers_abs_pts),
+        "outliers_abs_margin": len(outliers_abs_margin),
+    }
+
+    return templates.TemplateResponse(
+        "qa.html",
+        {
+            "request": request,
+            "active_page": "qa",
+            "page_title": "WKBL Data QA",
+            "error": error if error else None,
+            "error_path": report.get("path") if error else None,
+            "summary": summary,
+            "generated_at": report.get("generated_at", ""),
+            "sources": source_items,
+            "coverage_by_season": coverage_by_season,
+            "missing_sample": coverage.get("missing_sample", []),
+            "extra_sample": coverage.get("extra_sample", []),
+            "duplicates_team": duplicates_team,
+            "duplicates_players": duplicates_players,
+            "outliers_iqr": outliers_iqr,
+            "outliers_abs_pts": outliers_abs_pts,
+            "outliers_abs_margin": outliers_abs_margin,
+            "counts": counts,
+        },
+    )
+
+
+@app.get("/qa.json")
+async def qa_report_json():
+    report = load_qa_report()
+    status_code = 200
+    if isinstance(report, dict) and report.get("error"):
+        status_code = 404
+    return JSONResponse(report, status_code=status_code)
 
 
 @app.get("/compare", response_class=HTMLResponse)
