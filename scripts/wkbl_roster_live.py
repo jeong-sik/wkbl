@@ -59,10 +59,24 @@ def fetch_group(group: str, timeout: int = 20) -> list[tuple[str, str, str]]:
         match = re.search(r"pno=(\d+)", href)
         if not match:
             continue
-        name, team = split_name_team(link.get_text(strip=True))
-        if not name:
+        raw_text = link.get_text(strip=True)
+        base_name, base_team = split_name_team(raw_text)
+        if not base_name:
             continue
-        players.append((team, name, match.group(1)))
+        pno = match.group(1)
+        candidates = {(base_name, base_team)}
+        for attr in ("data-kr", "data-en"):
+            value = link.get(attr)
+            if not value:
+                continue
+            name, team = split_name_team(value)
+            if not name:
+                continue
+            if not team:
+                team = base_team
+            candidates.add((name, team))
+        for name, team in candidates:
+            players.append((team, name, pno))
     return players
 
 
