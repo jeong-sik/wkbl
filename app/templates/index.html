@@ -54,6 +54,16 @@
             </select>
         </div>
         <div class="filter-group">
+            <div class="filter-label">Min Games</div>
+            <select class="filter-input" name="min_games" onchange="resetPage()">
+                {% for min_opt in [0, 5, 10, 15, 20] %}
+                <option value="{{ min_opt }}" {% if min_opt == min_games %}selected{% endif %}>
+                    {% if min_opt == 0 %}All games{% else %}{{ min_opt }}+ games{% endif %}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-group">
             <div class="filter-label">Search</div>
             <input class="filter-input" type="search" name="search" placeholder="Search player..." oninput="resetPage()" onkeyup="htmx.trigger('#filter-form', 'search-update')" aria-label="Search player">
         </div>

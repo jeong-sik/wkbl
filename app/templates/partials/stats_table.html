@@ -17,6 +17,7 @@
             <form class="pager-jump" hx-get="/refresh" hx-target="#stats-body" hx-swap="innerHTML">
             <input type="hidden" name="sort" value="{{ sort }}">
             <input type="hidden" name="season" value="{{ season }}">
+            <input type="hidden" name="min_games" value="{{ min_games }}">
             <input type="hidden" name="team" value="{{ team }}">
             <input type="hidden" name="pos" value="{{ pos }}">
             <input type="hidden" name="search" value="{{ search }}">
@@ -140,6 +141,7 @@
         <form class="pager-jump" hx-get="/refresh" hx-target="#stats-body" hx-swap="innerHTML">
             <input type="hidden" name="sort" value="{{ sort }}">
             <input type="hidden" name="season" value="{{ season }}">
+            <input type="hidden" name="min_games" value="{{ min_games }}">
             <input type="hidden" name="team" value="{{ team }}">
             <input type="hidden" name="pos" value="{{ pos }}">
             <input type="hidden" name="search" value="{{ search }}">
