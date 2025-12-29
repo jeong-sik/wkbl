@@ -164,6 +164,9 @@ def load_games(input_dir: Path) -> pd.DataFrame:
         return pd.DataFrame()
 
     games = pd.concat(rows, ignore_index=True)
+    games = games.drop_duplicates(
+        subset=["season_gu", "game_type", "ym", "game_no", "team", "name"]
+    )
     for col in NUMERIC_COLS:
         games[col] = pd.to_numeric(games[col], errors="coerce").fillna(0).astype(int)
 
