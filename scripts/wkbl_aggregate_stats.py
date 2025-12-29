@@ -27,7 +27,7 @@ TEAM_MAP = {
 }
 
 SPECIAL_GAME_TYPES = {8, 10}
-SPECIAL_TEAMS = {
+SPECIAL_TEAMS_RAW = {
     "Chanson",
     "ENEOS",
     "JOMO",
@@ -63,6 +63,8 @@ NUMERIC_COLS = [
     "pts",
 ]
 
+WHITESPACE_RE = re.compile(r"\s+")
+
 
 def parse_minutes(value: str) -> float:
     text = str(value).strip()
@@ -92,9 +94,17 @@ def parse_made_att(value: str) -> tuple[int, int]:
     return to_int(made), to_int(att)
 
 
+def normalize_text(value: str) -> str:
+    return WHITESPACE_RE.sub(" ", str(value).strip())
+
+
 def normalize_team(name: str) -> str:
-    text = str(name).strip()
+    text = normalize_text(name)
     return TEAM_MAP.get(text, text)
+
+
+SPECIAL_TEAMS = {normalize_text(name) for name in SPECIAL_TEAMS_RAW}
+
 
 def is_special_game_type(value) -> bool:
     try:
@@ -103,7 +113,20 @@ def is_special_game_type(value) -> bool:
         return False
 
 def is_special_team(name: str) -> bool:
-    return str(name).strip() in SPECIAL_TEAMS
+    return normalize_text(name) in SPECIAL_TEAMS
+
+def collect_special_game_keys(games: pd.DataFrame) -> set[str]:
+    game_types = pd.to_numeric(games["game_type"], errors="coerce").fillna(0).astype(int)
+    is_special_type = game_types.isin(SPECIAL_GAME_TYPES)
+    is_special_team_mask = games["team"].apply(is_special_team)
+    mask = is_special_type | is_special_team_mask
+    return set(games.loc[mask, "game_key"].unique().tolist())
+
+def drop_special_games(games: pd.DataFrame) -> pd.DataFrame:
+    special_games = collect_special_game_keys(games)
+    if not special_games:
+        return games
+    return games[~games["game_key"].isin(special_games)].copy()
 
 def iter_game_files(input_dir: Path) -> list[Path]:
     season_dirs = [p for p in input_dir.iterdir() if p.is_dir() and p.name.isdigit()]
@@ -205,10 +228,7 @@ def load_games(input_dir: Path, include_special: bool = False) -> pd.DataFrame:
         games[col] = pd.to_numeric(games[col], errors="coerce").fillna(0).astype(int)
 
     if not include_special:
-        mask = games["game_type"].apply(is_special_game_type) | games["team"].apply(is_special_team)
-        special_games = set(games.loc[mask, "game_key"].unique().tolist())
-        if special_games:
-            games = games[~games["game_key"].isin(special_games)].copy()
+        games = drop_special_games(games)
 
     games = add_shooting(games)
     games = add_eff(games)

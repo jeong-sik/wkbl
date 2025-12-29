@@ -327,6 +327,18 @@ def build_compare_team_url(team: str, season: str = "") -> str:
     return url
 
 
+def resolve_photo_pno_url(pno: str) -> str | None:
+    if not pno:
+        return None
+    pno = str(pno).strip()
+    if not pno or pno in PHOTO_BLACKLIST:
+        return None
+    local = STATIC_DIR / "images" / f"player_{pno}.png"
+    if local.exists():
+        return f"/static/images/player_{pno}.png"
+    return f"{WKBL_BASE_URL}/static/images/player/pimg/m_{pno}.jpg?ver=0.3"
+
+
 def resolve_photo_override(value) -> str | None:
     if value is None:
         return None
@@ -334,23 +346,44 @@ def resolve_photo_override(value) -> str | None:
     if not text:
         return None
     if text.isdigit():
-        pno = text
-        if pno in PHOTO_BLACKLIST:
-            return None
-        local = STATIC_DIR / "images" / f"player_{pno}.png"
-        if local.exists():
-            return f"/static/images/player_{pno}.png"
-        return f"{WKBL_BASE_URL}/static/images/player/pimg/m_{pno}.jpg?ver=0.3"
+        return resolve_photo_pno_url(text)
     if text.startswith("http://") or text.startswith("https://") or text.startswith("/"):
         return text
     return None
+
+
+def resolve_roster_team(name: str) -> str:
+    if not PLAYER_DB:
+        return ""
+    roster_team = PLAYER_DB.get(name, "")
+    return normalize_team_name(roster_team) if roster_team else ""
+
+
+def allow_name_only_photo(name: str, normalized_team: str) -> bool:
+    if not normalized_team:
+        return True
+    roster_team = resolve_roster_team(name)
+    if not roster_team:
+        return True
+    return roster_team == normalized_team
+
+
+def resolve_photo_pno(name: str, normalized_team: str) -> str | None:
+    if normalized_team:
+        pno = PHOTO_BY_NAME_TEAM.get(f"{name}|{normalized_team}")
+        if pno:
+            return str(pno)
+    if allow_name_only_photo(name, normalized_team):
+        pno = PHOTO_BY_NAME.get(name)
+        if pno:
+            return str(pno)
+    return str(PLAYER_PNO.get(name)) if PLAYER_PNO.get(name) else None
 
 
 def get_player_photo(name: str, team: str = "") -> str | None:
     if not name:
         return None
     normalized_team = normalize_team_name(team) if team else ""
-    pno = None
     if normalized_team:
         override = PHOTO_OVERRIDE_BY_NAME_TEAM.get(f"{name}|{normalized_team}")
         override_url = resolve_photo_override(override)
@@ -360,26 +393,8 @@ def get_player_photo(name: str, team: str = "") -> str | None:
     override_url = resolve_photo_override(override)
     if override_url:
         return override_url
-    if normalized_team:
-        pno = PHOTO_BY_NAME_TEAM.get(f"{name}|{normalized_team}")
-    if not pno:
-        allow_name_only = True
-        if normalized_team:
-            roster_team = normalize_team_name(PLAYER_DB.get(name, "")) if PLAYER_DB else ""
-            if roster_team and roster_team != normalized_team:
-                allow_name_only = False
-        if allow_name_only:
-            pno = PHOTO_BY_NAME.get(name)
-        if not pno:
-            pno = PLAYER_PNO.get(name)
-    if not pno:
-        return None
-    if pno in PHOTO_BLACKLIST:
-        return None
-    local = STATIC_DIR / "images" / f"player_{pno}.png"
-    if local.exists():
-        return f"/static/images/player_{pno}.png"
-    return f"{WKBL_BASE_URL}/static/images/player/pimg/m_{pno}.jpg?ver=0.3"
+    pno = resolve_photo_pno(name, normalized_team)
+    return resolve_photo_pno_url(pno)
 
 
 def get_team_list(season: str = "ALL") -> list[str]:
