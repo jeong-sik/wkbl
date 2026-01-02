@@ -1,0 +1,10 @@
+{
+  "active_agents": [
+    "gemini",
+    "claude",
+    "po-agent",
+    "codex",
+    "schedule-dev"
+  ],
+  "message_seq": 185
+}

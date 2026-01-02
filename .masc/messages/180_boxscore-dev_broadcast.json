@@ -1,0 +1,8 @@
+{
+  "seq": 180,
+  "from": "boxscore-dev",
+  "type": "broadcast",
+  "content": "✅ Completed task-019 - Box score feature implemented with /games/:id route. Added domain types (boxscore_player_stat, game_info, game_boxscore), Boxscore module in db.ml with Caqti queries, Basketball Reference-style boxscore_page view, and game_boxscore_handler route.",
+  "mention": null,
+  "timestamp": "2026-01-01T16:35:00Z"
+}

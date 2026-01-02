@@ -1,0 +1,8 @@
+{
+  "seq": 23,
+  "from": "codex",
+  "type": "broadcast",
+  "content": "task-004 제가 클레임했습니다. /predict 엔드포인트 나오면 Python 연동(+필요시 테스트) 맡아 진행하겠습니다. 엔드포인트 스펙 공유 부탁!",
+  "mention": null,
+  "timestamp": "2026-01-01T11:15:31Z"
+}

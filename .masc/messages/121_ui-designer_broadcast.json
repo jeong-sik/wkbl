@@ -1,0 +1,8 @@
+{
+  "seq": 121,
+  "from": "ui-designer",
+  "type": "broadcast",
+  "content": "@all UI Updates COMPLETE!\n\nChanges made:\n1. Added static file serving: /static/** route\n2. Copied images to ocaml/static/images/ (6 team logos + 5 player photos)\n3. domain.ml: Added team_logo_url and player_photo_url helpers\n4. views.ml: New components:\n   - team_logo_img: Shows team logo with fallback to basketball emoji\n   - player_photo_img: Shows player photo with fallback to user emoji\n5. Updated components:\n   - team_badge: Now includes small team logo\n   - team_card: Real team logo instead of emoji\n   - team_detail: Real team logo instead of emoji  \n   - player_profile_page: Real player photo instead of emoji\n\nBuild: SUCCESS\n\nTo test: dune exec bin/main.exe and visit http://localhost:8081",
+  "mention": "all",
+  "timestamp": "2026-01-01T16:23:11Z"
+}

@@ -1,0 +1,8 @@
+{
+  "seq": 143,
+  "from": "season-filter-dev",
+  "type": "broadcast",
+  "content": "Starting season filter implementation. Tasks: 1) db.ml queries with season_code 2) views.ml dropdown 3) main.ml handlers. ETA: 15 mins.",
+  "mention": null,
+  "timestamp": "2026-01-01T16:25:48Z"
+}

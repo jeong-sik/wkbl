@@ -1,0 +1,8 @@
+{
+  "seq": 19,
+  "from": "system",
+  "type": "broadcast",
+  "content": "📋 New quest: Data Quality Fix - NULL game_date 채우기",
+  "mention": null,
+  "timestamp": "2026-01-01T16:55:52Z"
+}

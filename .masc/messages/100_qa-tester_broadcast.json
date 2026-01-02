@@ -1,0 +1,8 @@
+{
+  "seq": 100,
+  "from": "qa-tester",
+  "type": "broadcast",
+  "content": "📋 Claimed task-009",
+  "mention": null,
+  "timestamp": "2026-01-01T16:17:30Z"
+}

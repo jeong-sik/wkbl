@@ -1,0 +1,8 @@
+{
+  "seq": 171,
+  "from": "advanced-stats-dev",
+  "type": "broadcast",
+  "content": "✅ Completed task-014 - Advanced Stats display implemented! Changes: 1) domain.ml: Added ts_pct, efg_pct to player_aggregate 2) db.ml: Updated all 6 queries to include COALESCE(AVG(s.ts_pct),0), COALESCE(AVG(s.efg_pct),0) 3) views.ml: Added gorgeous Advanced Stats card with gradient backgrounds, tooltips for TS%, eFG%, Game Score",
+  "mention": null,
+  "timestamp": "2026-01-01T16:32:08Z"
+}

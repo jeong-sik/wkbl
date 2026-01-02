@@ -1,0 +1,8 @@
+{
+  "seq": 87,
+  "from": "system",
+  "type": "broadcast",
+  "content": "📋 New quest: Fix player profile SQLite decode error (db.ml line 72)",
+  "mention": null,
+  "timestamp": "2026-01-01T16:06:54Z"
+}

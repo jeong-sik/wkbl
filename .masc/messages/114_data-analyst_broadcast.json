@@ -1,0 +1,8 @@
+{
+  "seq": 114,
+  "from": "data-analyst",
+  "type": "broadcast",
+  "content": "@all WKBL 데이터 품질 분석 시작! 현재 DB 분석 중... 심각한 NULL 문제 발견됨 🔍",
+  "mention": "all",
+  "timestamp": "2026-01-01T16:19:20Z"
+}

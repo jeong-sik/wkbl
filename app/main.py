@@ -250,12 +250,16 @@ def resolve_min_minutes(scope: str, value: int) -> int:
     return min_minutes
 
 
-def filter_min_minutes(rows: list[dict], min_minutes: int) -> list[dict]:
+def filter_min_minutes(rows: list[dict], min_minutes: int, scope: str) -> list[dict]:
     if min_minutes <= 0:
         return rows
     filtered = []
+    scope_key = str(scope or "")
     for row in rows:
         minutes = float(row.get("min_total") or 0)
+        if scope_key == "per_game":
+            gp = c_i(row.get("gp", 0))
+            minutes = minutes * gp if gp else minutes
         if minutes >= min_minutes:
             filtered.append(row)
     return filtered
@@ -628,7 +632,7 @@ def load_players_aggregate(
     if team_filter != "ALL":
         df = df[df["team"] == team_filter]
     if search_query:
-        df = df[df["name"].str.contains(search_query, case=False, na=False)]
+        df = df[df["name"].str.contains(search_query, case=False, na=False, regex=False)]
 
     allowed = {"pts", "reb", "ast", "stl", "blk", "to", "fg_pct", "fg3_pct", "ts_pct", "efg_pct", "eff", "min_total"}
     if sort_by not in allowed:
@@ -760,7 +764,7 @@ def load_players_games(
     if team_filter != "ALL":
         df = df[df["team"] == team_filter]
     if search_query:
-        df = df[df["name"].str.contains(search_query, case=False, na=False)]
+        df = df[df["name"].str.contains(search_query, case=False, na=False, regex=False)]
     if game_no:
         try:
             game_val = int(str(game_no).replace("#", ""))
@@ -881,8 +885,8 @@ def load_game_summary(
         df = df[(df["team_a"] == team_filter) | (df["team_b"] == team_filter)]
     if search_query:
         df = df[
-            df["team_a"].str.contains(search_query, case=False, na=False)
-            | df["team_b"].str.contains(search_query, case=False, na=False)
+            df["team_a"].str.contains(search_query, case=False, na=False, regex=False)
+            | df["team_b"].str.contains(search_query, case=False, na=False, regex=False)
         ]
 
     allowed = {"game_no", "margin", "pts_a", "pts_b"}
@@ -1694,7 +1698,7 @@ async def players(
             sort_by=sort,
         )
         teams = get_team_list(season)
-    full_stats = filter_min_minutes(full_stats, min_minutes)
+    full_stats = filter_min_minutes(full_stats, min_minutes, scope)
     leader = full_stats[0] if full_stats else None
     stats, pagination = paginate_items(
         full_stats,
@@ -1784,7 +1788,7 @@ async def players_table(
             search_query=search,
             sort_by=sort,
         )
-    full_stats = filter_min_minutes(full_stats, min_minutes)
+    full_stats = filter_min_minutes(full_stats, min_minutes, scope)
     stats, pagination = paginate_items(
         full_stats,
         page,

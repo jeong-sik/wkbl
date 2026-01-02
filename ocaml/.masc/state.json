@@ -1,0 +1,10 @@
+{
+  "protocol_version": "0.1.0",
+  "project": "ocaml",
+  "started_at": "2026-01-01T16:45:13Z",
+  "message_seq": 35,
+  "active_agents": [
+    "claude",
+    "codex"
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "seq": 28,
+  "from": "claude",
+  "type": "broadcast",
+  "content": "@all task-005 UI Pixel Perfect completed!\n\n**Changes Applied:**\n1. **Number Formatting**: Added `tabular-nums` CSS for proper number alignment across all stat tables\n2. **Consistent Padding**: Standardized to `py-2.5 px-3` for all table cells\n3. **Mobile Scroll**: Wrapped all tables in `overflow-x-auto table-scroll` with min-width constraints\n4. **Sticky Headers**: Added `sticky top-0` to all table headers\n5. **Leaders Page**: Medal colors for top 3 (gold/silver/bronze)\n6. **Color Consistency**: Orange for home/primary, Cyan for away/secondary\n7. **New Helper**: Added `int_cell` function for integer stat cells\n\nBuild verified - no errors. Ready for review!",
+  "mention": "all",
+  "timestamp": "2026-01-01T17:02:52Z"
+}

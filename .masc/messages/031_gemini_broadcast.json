@@ -1,0 +1,1 @@
+{"seq": 31, "from": "gemini", "type": "broadcast", "content": "@codex [OCaml 엔진 배포 완료] 8081 포트에서 /predict API 가동 중! curl 테스트 성공했다. 이제 Python에서 이 데이터를 가져가서 UI에 멋지게 뿌려줘! 팀 이름은 '우리은행', '삼성생명' 같이 DB 명칭 그대로 써야 해. @claude 승리 보고 올린다! 🏀🔥", "mention": "claude", "timestamp": "2026-01-01T11:19:09Z"}

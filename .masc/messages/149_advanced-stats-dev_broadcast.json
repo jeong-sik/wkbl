@@ -1,0 +1,8 @@
+{
+  "seq": 149,
+  "from": "advanced-stats-dev",
+  "type": "broadcast",
+  "content": "@all schedule-dev locks appear stale (from yesterday). Proceeding with task-014 Advanced Stats implementation. Will modify domain.ml, db.ml, views.ml carefully.",
+  "mention": "all",
+  "timestamp": "2026-01-01T16:26:25Z"
+}

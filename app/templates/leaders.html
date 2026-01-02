@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="hero">
+    <div class="hero-card">
+        <span class="eyebrow">League Leaders</span>
+        <h1>카테고리별 TOP 10</h1>
+        <p>득점, 리바운드, 어시스트, 스틸, 블록 각 부문 최고의 선수들을 확인하세요.</p>
+        <div class="hero-actions">
+            <span class="pill accent">{{ season_label }}</span>
+            <span class="pill">{{ scope_label }}</span>
+        </div>
+    </div>
+    <div class="hero-metrics">
+        <div class="metric">
+            <div class="metric-label">Scoring Leader</div>
+            {% if leaders.points %}
+            <div class="metric-value">{{ leaders.points[0].name }}</div>
+            <div class="metric-sub">{{ leaders.points[0].team_name }} · {{ "%.1f"|format(leaders.points[0].avg_points) }} PPG</div>
+            {% else %}
+            <div class="metric-value">--</div>
+            <div class="metric-sub">No data</div>
+            {% endif %}
+        </div>
+        <div class="metric">
+            <div class="metric-label">Rebound Leader</div>
+            {% if leaders.rebounds %}
+            <div class="metric-value">{{ leaders.rebounds[0].name }}</div>
+            <div class="metric-sub">{{ leaders.rebounds[0].team_name }} · {{ "%.1f"|format(leaders.rebounds[0].avg_rebounds) }} RPG</div>
+            {% else %}
+            <div class="metric-value">--</div>
+            <div class="metric-sub">No data</div>
+            {% endif %}
+        </div>
+        <div class="metric">
+            <div class="metric-label">Assist Leader</div>
+            {% if leaders.assists %}
+            <div class="metric-value">{{ leaders.assists[0].name }}</div>
+            <div class="metric-sub">{{ leaders.assists[0].team_name }} · {{ "%.1f"|format(leaders.assists[0].avg_assists) }} APG</div>
+            {% else %}
+            <div class="metric-value">--</div>
+            <div class="metric-sub">No data</div>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<!-- Category Tabs -->
+<section class="filters">
+    <div class="tabs" role="tablist">
+        {% for cat in categories %}
+        <button
+            class="tab {% if cat.value == active_category %}active{% endif %}"
+            role="tab"
+            aria-selected="{{ 'true' if cat.value == active_category else 'false' }}"
+            hx-get="/leaders/table?category={{ cat.value }}"
+            hx-target="#leaders-table"
+            hx-swap="innerHTML"
+            hx-on::after-request="this.closest('.tabs').querySelectorAll('.tab').forEach(t => t.classList.remove('active')); this.classList.add('active')">
+            {{ cat.icon }} {{ cat.label }}
+        </button>
+        {% endfor %}
+    </div>
+</section>
+
+<!-- Leaders Table (HTMX target) -->
+<section id="leaders-table">
+    {% include 'partials/leaders_table.html' %}
+</section>
+
+<style>
+/* Tabs styling - consistent with existing design */
+.tabs {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.tab {
+    padding: 0.75rem 1.25rem;
+    background: var(--card-bg, #1e293b);
+    border: 1px solid var(--border, #334155);
+    border-radius: 0.5rem;
+    color: var(--text-muted, #94a3b8);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.tab:hover {
+    background: var(--card-hover, #334155);
+    color: var(--text, #f1f5f9);
+}
+
+.tab.active {
+    background: var(--accent, #f97316);
+    border-color: var(--accent, #f97316);
+    color: white;
+}
+</style>
+{% endblock %}

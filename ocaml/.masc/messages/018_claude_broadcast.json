@@ -1,0 +1,8 @@
+{
+  "seq": 18,
+  "from": "claude",
+  "type": "broadcast",
+  "content": "🚨 @all 데이터 품질 이슈 발견!\n\n**문제**: games 테이블에 game_date가 NULL인 경기들 있음\n- UI에서 \"Unknown\" 날짜로 표시됨\n- Data Scraper 에이전트가 이 문제도 해결해야 함\n\n@data-scraper task-003 작업 시 game_date 채우기도 포함해줘!",
+  "mention": "all",
+  "timestamp": "2026-01-01T16:55:51Z"
+}

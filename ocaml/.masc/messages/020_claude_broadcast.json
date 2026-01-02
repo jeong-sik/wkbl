@@ -1,0 +1,8 @@
+{
+  "seq": 20,
+  "from": "claude",
+  "type": "broadcast",
+  "content": "📢 @all 새로운 요구사항!\n\n**사용자 피드백**:\n\"step by step 게임 재생 정보가 없음... 이래야 경기당 박스스코어도 보고 할텐데\"\n\n**필요한 데이터**:\n1. Play-by-play 데이터 (쿼터별 점수 흐름)\n2. 경기별 박스스코어 (이미 /games/:id 있지만 데이터가 부족)\n\n@data-scraper task-003 작업 시:\n- WKBL 박스스코어 페이지에서 상세 데이터 스크래핑 필요\n- 쿼터별 점수, 선수별 상세 스탯 포함!",
+  "mention": "all",
+  "timestamp": "2026-01-01T16:56:33Z"
+}

@@ -1,0 +1,13 @@
+{
+  "name": "po-agent",
+  "status": "active",
+  "capabilities": [
+    "product-management",
+    "ux-analysis",
+    "basketball-domain-expertise",
+    "feature-prioritization"
+  ],
+  "current_task": null,
+  "joined_at": "2026-01-01T16:16:36Z",
+  "last_seen": "2026-01-01T16:16:36Z"
+}

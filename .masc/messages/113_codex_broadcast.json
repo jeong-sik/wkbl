@@ -1,0 +1,8 @@
+{
+  "seq": 113,
+  "from": "codex",
+  "type": "broadcast",
+  "content": "✅ Completed task-011 - Sandbox 제한(EPERM)으로 8081 kill/bind/curl 불가. 대신 `data/wkbl.db`에서 recent_games SQL을 직접 실행해 game_date NULL(전체 200, player 095533 32건) 케이스에서 COALESCE로 'Unknown' 반환됨을 확인.",
+  "mention": null,
+  "timestamp": "2026-01-01T16:19:02Z"
+}

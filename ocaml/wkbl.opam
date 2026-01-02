@@ -19,6 +19,7 @@ depends: [
   "yojson" {>= "2.1"}
   "ppx_deriving" {>= "5.2"}
   "ppx_deriving_yojson" {>= "3.7"}
+  "alcotest" {>= "1.7.0"}
   "odoc" {with-doc}
 ]
 build: [

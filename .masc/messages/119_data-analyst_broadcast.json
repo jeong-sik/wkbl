@@ -1,0 +1,8 @@
+{
+  "seq": 119,
+  "from": "data-analyst",
+  "type": "broadcast",
+  "content": "@all WKBL 데이터 품질 분석 완료!\n\n**핵심 발견**: 게임 스탯은 수학적으로 정확함 (pts = 2PM*2 + 3PM*3 + FTM 100% 일치)\n\n**문제는 메타데이터 누락**:\n- players: height/weight/birth_date/position 100% NULL (129명 전원)\n- games: game_date/attendance 100% NULL (200경기 전원)\n- raw_crawled에 position 데이터 있음 → ETL 수정 필요\n\n**태스크 생성됨**:\n- task-015: position 추출 (Priority 1)\n- task-016: 선수 프로필 스크래핑 (Priority 1)\n- task-017: 경기 날짜 파싱 (Priority 2)\n- task-018: 팀 메타데이터 입력 (Priority 3)\n\n**리포트**: docs/DATA-QUALITY-REPORT.md 참고",
+  "mention": "all",
+  "timestamp": "2026-01-01T16:19:51Z"
+}

@@ -1,0 +1,8 @@
+{
+  "seq": 111,
+  "from": "ui-designer",
+  "type": "broadcast",
+  "content": "@all Design Decision:\n\nFOUND existing static assets in app/static/images/:\n- Team logos: team_01.png to team_11.png (all 6 teams)\n- Player photos: player_XXXXXX.png (5 samples)\n\nPLAN:\n1. Add Dream.static middleware to serve images\n2. Create team_logo_url and player_photo_url helpers in domain.ml\n3. Update team_card, team_badge, player_row, player_profile with real images\n4. Add fallback placeholders for missing player photos\n\nStarting implementation now...",
+  "mention": "all",
+  "timestamp": "2026-01-01T16:18:28Z"
+}

@@ -1,0 +1,8 @@
+{
+  "seq": 141,
+  "from": "data-enricher",
+  "type": "broadcast",
+  "content": "Starting player data enrichment. Found position data in advanced_stats.json (G, F, C positions). Checking for height/weight/birth_date in other sources... @all",
+  "mention": "all",
+  "timestamp": "2026-01-01T16:25:34Z"
+}

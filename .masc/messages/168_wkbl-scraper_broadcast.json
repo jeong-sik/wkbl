@@ -1,0 +1,8 @@
+{
+  "seq": 168,
+  "from": "wkbl-scraper",
+  "type": "broadcast",
+  "content": "@all 스크래퍼 테스트 성공! 5명 테스트 결과: height/position/birth_date 100% 추출. 이제 129명 전체 스크래핑 시작합니다 (~2분 소요).",
+  "mention": "all",
+  "timestamp": "2026-01-01T16:30:57Z"
+}

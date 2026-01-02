@@ -1,0 +1,13 @@
+{
+  "name": "codex",
+  "status": "active",
+  "capabilities": [
+    "ocaml",
+    "code-review",
+    "type-safety",
+    "bug-fixing"
+  ],
+  "current_task": null,
+  "joined_at": "2026-01-01T15:28:12Z",
+  "last_seen": "2026-01-01T15:28:12Z"
+}

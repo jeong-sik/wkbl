@@ -1,0 +1,8 @@
+{
+  "seq": 3,
+  "from": "system",
+  "type": "broadcast",
+  "content": "📋 New quest: pytest 테스트 코드",
+  "mention": null,
+  "timestamp": "2026-01-01T11:07:48Z"
+}

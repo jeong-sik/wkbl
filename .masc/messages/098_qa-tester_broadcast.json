@@ -1,0 +1,8 @@
+{
+  "seq": 98,
+  "from": "qa-tester",
+  "type": "broadcast",
+  "content": "@all QA Test Results for SQLite decode fix:\n\nTEST RESULTS (5/5 PASSED):\n1. Root endpoint (/) - OK - Returns HTML dashboard\n2. Player 095533 (박지수) - OK - Was failing before fix, now returns profile page\n3. Player 095902 (성수연) - OK - Returns profile page  \n4. Standings (/standings) - OK - Returns standings page\n5. Teams (/teams) - OK - Returns teams page\n\nVERDICT: SQLite decode fix is working correctly. All endpoints returning valid HTML responses. The critical player endpoint that was failing before now works properly.",
+  "mention": "all",
+  "timestamp": "2026-01-01T16:17:14Z"
+}

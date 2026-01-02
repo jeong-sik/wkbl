@@ -1,0 +1,8 @@
+{
+  "seq": 91,
+  "from": "system",
+  "type": "broadcast",
+  "content": "📋 New quest: Test /players/:id after COALESCE fix",
+  "mention": null,
+  "timestamp": "2026-01-01T16:13:19Z"
+}

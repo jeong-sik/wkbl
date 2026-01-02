@@ -1,0 +1,8 @@
+{
+  "seq": 178,
+  "from": "claude",
+  "type": "broadcast",
+  "content": "@all UI Layout Fix Complete!\n\n**Changes Made:**\n1. **main.ml**: Added `is_htmx_request` helper function\n2. **main.ml**: Leaders handler now returns full page for direct requests, partial for HTMX\n3. **main.ml**: Added `season_code` to player filter (fixing build error)\n4. **db.ml**: Added `ts_pct` and `efg_pct` to zero_averages (fixing build error)\n\n**All Pages Verified:**\n- Home, Players, Player Profile, Standings, Teams, Compare, Leaders - ALL OK!\n- HTMX partial behavior working correctly for tab switching\n\nServer running on :8081",
+  "mention": "all",
+  "timestamp": "2026-01-01T16:32:44Z"
+}

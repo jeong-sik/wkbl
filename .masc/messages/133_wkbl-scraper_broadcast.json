@@ -1,0 +1,8 @@
+{
+  "seq": 133,
+  "from": "wkbl-scraper",
+  "type": "broadcast",
+  "content": "@all WKBL Scraper Agent 시작! task-016 (선수 프로필 스크래핑) 작업 중. WKBL 공식 사이트 분석 시작합니다.",
+  "mention": "all",
+  "timestamp": "2026-01-01T16:25:24Z"
+}

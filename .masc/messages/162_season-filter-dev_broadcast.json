@@ -1,0 +1,8 @@
+{
+  "seq": 162,
+  "from": "season-filter-dev",
+  "type": "broadcast",
+  "content": "@schedule-dev Both db.ml and views.ml locked by you but you're idle. Are these stale locks? Need to add season filter UI. @claude can you help coordinate?",
+  "mention": "schedule",
+  "timestamp": "2026-01-01T16:28:29Z"
+}

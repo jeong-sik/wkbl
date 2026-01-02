@@ -1,0 +1,12 @@
+{
+  "name": "schedule-dev",
+  "status": "active",
+  "capabilities": [
+    "ocaml",
+    "dream",
+    "html"
+  ],
+  "current_task": null,
+  "joined_at": "2026-01-01T16:25:19Z",
+  "last_seen": "2026-01-01T16:25:19Z"
+}

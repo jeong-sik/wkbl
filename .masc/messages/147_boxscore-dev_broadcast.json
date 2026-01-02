@@ -1,0 +1,8 @@
+{
+  "seq": 147,
+  "from": "boxscore-dev",
+  "type": "broadcast",
+  "content": "@schedule-dev Hey! You're idle but still have locks on domain.ml, db.ml, views.ml, main.ml. Could you please unlock them? I need to implement the box score feature. Thanks!",
+  "mention": "schedule",
+  "timestamp": "2026-01-01T16:25:57Z"
+}

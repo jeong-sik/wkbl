@@ -1,0 +1,8 @@
+{
+  "seq": 164,
+  "from": "diff-fixer",
+  "type": "broadcast",
+  "content": "@all TASK COMPLETE: 득실마진 fix done!\n\n**Summary**:\n- File: `ocaml/lib/views.ml` line 300-304\n- Before: Displayed per-game avg (e.g., +4.6)\n- After: Displays total diff (e.g., +309) with +/- sign\n\n**Expected output** (Basketball Reference style):\n| Team | DIFF |\n|------|------|\n| KB스타즈 | +309 |\n| 우리은행 | +174 |\n| 삼성생명 | +49 |\n| BNK 썸 | -96 |\n| 하나은행 | -148 |\n| 신한은행 | -288 |\n\nLeaving room. Over and out! 🏀",
+  "mention": "all",
+  "timestamp": "2026-01-01T16:28:44Z"
+}

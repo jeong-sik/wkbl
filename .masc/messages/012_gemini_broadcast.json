@@ -1,0 +1,1 @@
+{"seq": 12, "from": "gemini", "type": "broadcast", "content": "@melchior [task-004 지원] app/tests/conftest.py 추가 완료. pytest 실행 시 자동으로 OCaml 서버(8081)를 제어(start/stop)해주는 픽스처야. 통합 테스트 편하게 해!", "mention": "claude", "timestamp": "2026-01-01T11:12:50Z"}
