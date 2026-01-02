@@ -43,27 +43,27 @@
                 <th>Player</th>
                 <th>Team</th>
                 <th>Pos</th>
-                <th>GP</th>
+                <th class="sortable {% if sort == 'gp' %}is-active{% endif %}" hx-get="/players/table?season={{ season }}&scope={{ scope }}&team={{ team }}&search={{ search }}&min_minutes={{ min_minutes }}&page_size={{ page_size }}&pager={{ pager_mode }}&sort=gp" hx-target="#players-table" hx-swap="innerHTML" style="cursor: pointer;">GP</th>
                 {% if scope == 'per_game' %}
-                <th>MIN/G</th>
+                <th class="sortable {% if sort == 'min_total' %}is-active{% endif %}" hx-get="/players/table?season={{ season }}&scope={{ scope }}&team={{ team }}&search={{ search }}&min_minutes={{ min_minutes }}&page_size={{ page_size }}&pager={{ pager_mode }}&sort=min_total" hx-target="#players-table" hx-swap="innerHTML" style="cursor: pointer;">MIN/G</th>
                 {% else %}
-                <th>MIN (Total)</th>
+                <th class="sortable {% if sort == 'min_total' %}is-active{% endif %}" hx-get="/players/table?season={{ season }}&scope={{ scope }}&team={{ team }}&search={{ search }}&min_minutes={{ min_minutes }}&page_size={{ page_size }}&pager={{ pager_mode }}&sort=min_total" hx-target="#players-table" hx-swap="innerHTML" style="cursor: pointer;">MIN (Total)</th>
                 {% endif %}
                 {% if scope == 'totals' %}
                 <th>MIN/G</th>
                 {% endif %}
-                <th>PTS{{ rate_suffix }}</th>
-                <th>REB{{ rate_suffix }}</th>
-                <th>AST{{ rate_suffix }}</th>
-                <th>STL{{ rate_suffix }}</th>
-                <th>BLK{{ rate_suffix }}</th>
-                <th>TO{{ rate_suffix }}</th>
-                <th>FG%</th>
-                <th>3P%</th>
-                <th>FT%</th>
-                <th>eFG%</th>
-                <th>TS%</th>
-                <th>EFF</th>
+                <th class="sortable {% if sort == 'pts' %}is-active{% endif %}" hx-get="/players/table?season={{ season }}&scope={{ scope }}&team={{ team }}&search={{ search }}&min_minutes={{ min_minutes }}&page_size={{ page_size }}&pager={{ pager_mode }}&sort=pts" hx-target="#players-table" hx-swap="innerHTML" style="cursor: pointer;">PTS{{ rate_suffix }}</th>
+                <th class="sortable {% if sort == 'reb' %}is-active{% endif %}" hx-get="/players/table?season={{ season }}&scope={{ scope }}&team={{ team }}&search={{ search }}&min_minutes={{ min_minutes }}&page_size={{ page_size }}&pager={{ pager_mode }}&sort=reb" hx-target="#players-table" hx-swap="innerHTML" style="cursor: pointer;">REB{{ rate_suffix }}</th>
+                <th class="sortable {% if sort == 'ast' %}is-active{% endif %}" hx-get="/players/table?season={{ season }}&scope={{ scope }}&team={{ team }}&search={{ search }}&min_minutes={{ min_minutes }}&page_size={{ page_size }}&pager={{ pager_mode }}&sort=ast" hx-target="#players-table" hx-swap="innerHTML" style="cursor: pointer;">AST{{ rate_suffix }}</th>
+                <th class="sortable {% if sort == 'stl' %}is-active{% endif %}" hx-get="/players/table?season={{ season }}&scope={{ scope }}&team={{ team }}&search={{ search }}&min_minutes={{ min_minutes }}&page_size={{ page_size }}&pager={{ pager_mode }}&sort=stl" hx-target="#players-table" hx-swap="innerHTML" style="cursor: pointer;">STL{{ rate_suffix }}</th>
+                <th class="sortable {% if sort == 'blk' %}is-active{% endif %}" hx-get="/players/table?season={{ season }}&scope={{ scope }}&team={{ team }}&search={{ search }}&min_minutes={{ min_minutes }}&page_size={{ page_size }}&pager={{ pager_mode }}&sort=blk" hx-target="#players-table" hx-swap="innerHTML" style="cursor: pointer;">BLK{{ rate_suffix }}</th>
+                <th class="sortable {% if sort == 'to' %}is-active{% endif %}" hx-get="/players/table?season={{ season }}&scope={{ scope }}&team={{ team }}&search={{ search }}&min_minutes={{ min_minutes }}&page_size={{ page_size }}&pager={{ pager_mode }}&sort=to" hx-target="#players-table" hx-swap="innerHTML" style="cursor: pointer;">TO{{ rate_suffix }}</th>
+                <th class="sortable {% if sort == 'fg_pct' %}is-active{% endif %}" hx-get="/players/table?season={{ season }}&scope={{ scope }}&team={{ team }}&search={{ search }}&min_minutes={{ min_minutes }}&page_size={{ page_size }}&pager={{ pager_mode }}&sort=fg_pct" hx-target="#players-table" hx-swap="innerHTML" style="cursor: pointer;">FG%</th>
+                <th class="sortable {% if sort == 'fg3_pct' %}is-active{% endif %}" hx-get="/players/table?season={{ season }}&scope={{ scope }}&team={{ team }}&search={{ search }}&min_minutes={{ min_minutes }}&page_size={{ page_size }}&pager={{ pager_mode }}&sort=fg3_pct" hx-target="#players-table" hx-swap="innerHTML" style="cursor: pointer;">3P%</th>
+                <th class="sortable {% if sort == 'ft_pct' %}is-active{% endif %}" hx-get="/players/table?season={{ season }}&scope={{ scope }}&team={{ team }}&search={{ search }}&min_minutes={{ min_minutes }}&page_size={{ page_size }}&pager={{ pager_mode }}&sort=ft_pct" hx-target="#players-table" hx-swap="innerHTML" style="cursor: pointer;">FT%</th>
+                <th class="sortable {% if sort == 'efg_pct' %}is-active{% endif %}" hx-get="/players/table?season={{ season }}&scope={{ scope }}&team={{ team }}&search={{ search }}&min_minutes={{ min_minutes }}&page_size={{ page_size }}&pager={{ pager_mode }}&sort=efg_pct" hx-target="#players-table" hx-swap="innerHTML" style="cursor: pointer;">eFG%</th>
+                <th class="sortable {% if sort == 'ts_pct' %}is-active{% endif %}" hx-get="/players/table?season={{ season }}&scope={{ scope }}&team={{ team }}&search={{ search }}&min_minutes={{ min_minutes }}&page_size={{ page_size }}&pager={{ pager_mode }}&sort=ts_pct" hx-target="#players-table" hx-swap="innerHTML" style="cursor: pointer;">TS%</th>
+                <th class="sortable {% if sort == 'eff' %}is-active{% endif %}" hx-get="/players/table?season={{ season }}&scope={{ scope }}&team={{ team }}&search={{ search }}&min_minutes={{ min_minutes }}&page_size={{ page_size }}&pager={{ pager_mode }}&sort=eff" hx-target="#players-table" hx-swap="innerHTML" style="cursor: pointer;">EFF</th>
             </tr>
         </thead>
         <tbody>
