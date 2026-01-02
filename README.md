@@ -38,6 +38,12 @@ python3 scripts/wkbl_data_qa.py
 ```
 보고서 경로: `data/wkbl/qa/qa_report.json`, `data/wkbl/qa/qa_report.md`
 
+## SQLite DB (OCaml)
+`data/wkbl/derived` CSV를 SQLite로 변환합니다.
+```bash
+python3 scripts/build_wkbl_db.py --force
+```
+
 ## 로스터 이미지 매핑
 ```bash
 python3 scripts/wkbl_roster_live.py
