@@ -20,6 +20,27 @@ except Exception:
 app = FastAPI()
 templates = Jinja2Templates(directory="app/templates")
 
+import urllib.request
+import json
+
+@app.get("/ocaml/health")
+def ocaml_health():
+    try:
+        with urllib.request.urlopen("http://localhost:8081/health") as response:
+            return json.loads(response.read().decode())
+    except Exception as e:
+        return {"status": "error", "message": str(e), "engine": "ocaml"}
+
+@app.get("/ocaml/predict")
+def ocaml_predict(team_a: str, team_b: str):
+    try:
+        query = urlencode({"team_a": team_a, "team_b": team_b})
+        url = f"http://localhost:8081/predict?{query}"
+        with urllib.request.urlopen(url) as response:
+            return json.loads(response.read().decode())
+    except Exception as e:
+        return {"error": str(e), "engine": "ocaml"}
+
 BASE_DIR = Path(__file__).resolve().parent
 ME_ROOT = Path(os.environ.get("ME_ROOT", BASE_DIR.parent)).resolve()
 DATA_DIR = BASE_DIR.parent / "data" / "wkbl"
@@ -634,7 +655,7 @@ def load_players_aggregate(
     if search_query:
         df = df[df["name"].str.contains(search_query, case=False, na=False, regex=False)]
 
-    allowed = {"pts", "reb", "ast", "stl", "blk", "to", "fg_pct", "fg3_pct", "ts_pct", "efg_pct", "eff", "min_total"}
+    allowed = {"pts", "reb", "ast", "stl", "blk", "to", "fg_pct", "fg3_pct", "ft_pct", "ts_pct", "efg_pct", "eff", "min_total", "gp"}
     if sort_by not in allowed:
         sort_by = "pts"
     df = df.sort_values(by=sort_by, ascending=(order == "asc"))
@@ -1194,6 +1215,8 @@ def build_compare_metrics(left: dict, right: dict, mode: str = "players", scope:
                 "right_display": format_metric(right_val, digits),
                 "left_bar": left_bar,
                 "right_bar": right_bar,
+                "left_raw": round(left_val, 2),
+                "right_raw": round(right_val, 2),
             }
         )
     return metrics
@@ -1256,6 +1279,10 @@ def compare_context(
 
     metrics = build_compare_metrics(left, right, mode, scope) if left and right else []
 
+    h2h = {}
+    if mode == "players" and left and right:
+        h2h = load_h2h_games(selected_a, selected_b, season)
+
     player_scope = scope if scope in player_scope_keys else "per_game"
     team_scope = scope if scope in team_scope_keys else "per_game"
     mode_switch = [
@@ -1293,8 +1320,86 @@ def compare_context(
         "metrics": metrics,
         "left": left,
         "right": right,
+        "h2h": h2h,
         "mode_switch": mode_switch,
     }
+
+def load_h2h_games(player_a_key: str, player_b_key: str, season: str = "ALL") -> dict:
+    if not player_a_key or "|" not in player_a_key or not player_b_key or "|" not in player_b_key:
+        return {}
+    
+    def parse_key(k):
+        parts = k.split("|")
+        return parts[0], parts[1]
+
+    name_a, team_a = parse_key(player_a_key)
+    name_b, team_b = parse_key(player_b_key)
+
+    path = DERIVED_DIR / "players_games.csv"
+    if not path.exists():
+        return {}
+    
+    try:
+        df = pd.read_csv(path)
+        if season and season != "ALL":
+            df = df[df["season_gu"].astype(str).str.zfill(3) == str(season)]
+        
+        games_a = df[(df["name"] == name_a) & (df["team"] == team_a)]
+        games_b = df[(df["name"] == name_b) & (df["team"] == team_b)]
+        
+        merged = pd.merge(games_a, games_b, on="game_key", suffixes=("_a", "_b"))
+        
+        if merged.empty:
+            return {}
+            
+        merged = merged.sort_values("game_no_a", ascending=False)
+        
+        games = []
+        stats_a = {"pts": [], "reb": [], "ast": [], "eff": []}
+        stats_b = {"pts": [], "reb": [], "ast": [], "eff": []}
+        
+        for _, row in merged.iterrows():
+            pts_a = c_i(row.get("pts_a"))
+            reb_a = c_i(row.get("reb_a"))
+            ast_a = c_i(row.get("ast_a"))
+            eff_a = float(row.get("eff_a") or 0)
+            
+            pts_b = c_i(row.get("pts_b"))
+            reb_b = c_i(row.get("reb_b"))
+            ast_b = c_i(row.get("ast_b"))
+            eff_b = float(row.get("eff_b") or 0)
+            
+            stats_a["pts"].append(pts_a)
+            stats_a["reb"].append(reb_a)
+            stats_a["ast"].append(ast_a)
+            stats_a["eff"].append(eff_a)
+            
+            stats_b["pts"].append(pts_b)
+            stats_b["reb"].append(reb_b)
+            stats_b["ast"].append(ast_b)
+            stats_b["eff"].append(eff_b)
+            
+            g_no = int(row.get("game_no_a") or 0)
+            date = str(row.get("ym_a") or "")
+            game_label = f"#{g_no}"
+            
+            games.append({
+                "game_label": game_label,
+                "date": date,
+                "pts_a": pts_a, "reb_a": reb_a, "ast_a": ast_a, "eff_a": round(eff_a, 1),
+                "pts_b": pts_b, "reb_b": reb_b, "ast_b": ast_b, "eff_b": round(eff_b, 1),
+            })
+            
+        avg = {}
+        for k in stats_a:
+            val_a = sum(stats_a[k]) / len(stats_a[k]) if stats_a[k] else 0
+            val_b = sum(stats_b[k]) / len(stats_b[k]) if stats_b[k] else 0
+            avg[k] = {"a": round(val_a, 1), "b": round(val_b, 1)}
+            
+        return {"games": games, "averages": avg, "count": len(games)}
+        
+    except Exception:
+        return {}
 
 def build_home_stats_from_aggregate(rows: list[dict], season: str) -> list[dict]:
     stats = []
