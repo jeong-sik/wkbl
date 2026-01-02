@@ -81,6 +81,87 @@ type player_aggregate = {
 }
 [@@deriving show]
 
+(** Team aggregates - totals from game_stats *)
+type team_totals = {
+  season: string;
+  team: string;
+  gp: int;
+  min_total: float;
+  fg2_m: int;
+  fg2_a: int;
+  fg3_m: int;
+  fg3_a: int;
+  ft_m: int;
+  ft_a: int;
+  reb_off: int;
+  reb_def: int;
+  reb: int;
+  ast: int;
+  stl: int;
+  blk: int;
+  turnovers: int;
+  pts: int;
+}
+[@@deriving show]
+
+(** Team points from games table *)
+type team_margin = {
+  season: string;
+  team: string;
+  gp: int;
+  pts_for: int;
+  pts_against: int;
+}
+[@@deriving show]
+
+(** Team stats for display (per-game or totals) *)
+type team_stats = {
+  season: string;
+  team: string;
+  gp: int;
+  min_total: float;
+  pts: float;
+  margin: float;
+  pts_against: float;
+  reb: float;
+  reb_off: float;
+  reb_def: float;
+  ast: float;
+  stl: float;
+  blk: float;
+  turnovers: float;
+  fg_pct: float;
+  fg3_pct: float;
+  ft_pct: float;
+  efg_pct: float;
+  ts_pct: float;
+  eff: float;
+}
+[@@deriving show]
+
+(** Team scopes *)
+type team_scope = Totals | PerGame
+[@@deriving show, eq]
+
+type team_sort_field =
+  | TeamByPoints
+  | TeamByRebounds
+  | TeamByAssists
+  | TeamBySteals
+  | TeamByBlocks
+  | TeamByEfficiency
+  | TeamByTsPct
+  | TeamByFg3Pct
+  | TeamByMinutes
+[@@deriving show, eq]
+
+(** Season list entry *)
+type season_info = {
+  code: string;
+  name: string;
+}
+[@@deriving show]
+
 (** Sort options - typed enum, not string *)
 type sort_field =
   | ByPoints
@@ -109,6 +190,28 @@ let default_filter = {
   sort_order = Desc;
   limit = 50;
 }
+
+let team_scope_of_string = function
+  | "totals" -> Totals
+  | "per_game" -> PerGame
+  | _ -> PerGame
+
+let team_scope_to_string = function
+  | Totals -> "totals"
+  | PerGame -> "per_game"
+
+let team_sort_field_of_string value =
+  match String.lowercase_ascii value with
+  | "pts" | "points" -> TeamByPoints
+  | "reb" | "rebounds" -> TeamByRebounds
+  | "ast" | "assists" -> TeamByAssists
+  | "stl" | "steals" -> TeamBySteals
+  | "blk" | "blocks" -> TeamByBlocks
+  | "eff" | "efficiency" -> TeamByEfficiency
+  | "ts_pct" | "ts" -> TeamByTsPct
+  | "fg3_pct" | "3p" -> TeamByFg3Pct
+  | "min" | "minutes" | "min_total" -> TeamByMinutes
+  | _ -> TeamByPoints
 
 (** Team code parsing - Total function using Option *)
 let team_code_of_string = function
