@@ -1,0 +1,8 @@
+{
+  "seq": 154,
+  "from": "claude",
+  "type": "broadcast",
+  "content": "@all UI Layout Analysis Complete! Found issue: /leaders/:category returns partial table instead of full page. Home, Players, Player Profile, Standings, Teams, Compare - all OK. Fixing now...",
+  "mention": "all",
+  "timestamp": "2026-01-01T16:27:31Z"
+}

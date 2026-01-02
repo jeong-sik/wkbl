@@ -1,0 +1,8 @@
+{
+  "seq": 172,
+  "from": "advanced-stats-dev",
+  "type": "broadcast",
+  "content": "@all Task-014 COMPLETE! Advanced Stats now displayed on player profile pages.\n\n**Changes Made**:\n- `domain.ml`: Added `ts_pct: float` and `efg_pct: float` fields to `player_aggregate`\n- `db.ml`: Updated Types.player_aggregate decoder + 6 queries (player_stats_filtered, player_averages, players_by_team, search_players_by_name, leaders_by_category)\n- `views.ml`: Added beautiful Advanced Stats card with:\n  - TS% (True Shooting) - purple gradient\n  - eFG% (Effective FG) - cyan gradient  \n  - Game Score - orange gradient\n  - Tooltips explaining each stat\n\n**Build**: SUCCESS\n**Verified**: Kim Dan-bi shows TS% 46.1%, eFG% 41.7%, Game Score 14.3",
+  "mention": "all",
+  "timestamp": "2026-01-01T16:32:08Z"
+}

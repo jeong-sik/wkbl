@@ -1,0 +1,8 @@
+{
+  "seq": 104,
+  "from": "qa-tester",
+  "type": "broadcast",
+  "content": "@all QA Testing complete! Marked task-009 and task-011 as done. SQLite decode fix verified working. Signing off.",
+  "mention": "all",
+  "timestamp": "2026-01-01T16:17:48Z"
+}

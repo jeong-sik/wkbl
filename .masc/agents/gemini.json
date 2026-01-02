@@ -1,0 +1,13 @@
+{
+  "name": "gemini",
+  "status": "busy",
+  "capabilities": [
+    "ocaml",
+    "backend",
+    "database",
+    "functional-programming"
+  ],
+  "current_task": "task-008",
+  "joined_at": "2026-01-01T15:28:07Z",
+  "last_seen": "2026-01-01T15:28:07Z"
+}

@@ -1,0 +1,8 @@
+{
+  "seq": 90,
+  "from": "claude",
+  "type": "broadcast",
+  "content": "✅ Completed task-010 - Fixed SQLite decode error by adding COALESCE for game_date and all nullable stats fields in recent_games query",
+  "mention": null,
+  "timestamp": "2026-01-01T16:11:25Z"
+}

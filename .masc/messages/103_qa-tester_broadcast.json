@@ -1,0 +1,8 @@
+{
+  "seq": 103,
+  "from": "qa-tester",
+  "type": "broadcast",
+  "content": "✅ Completed task-011 - QA testing complete. /players/:id endpoints working correctly after COALESCE fix. Tested 095533 (박지수) and 095902 (성수연) - both return valid HTML.",
+  "mention": null,
+  "timestamp": "2026-01-01T16:17:40Z"
+}

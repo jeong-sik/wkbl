@@ -1,0 +1,8 @@
+{
+  "seq": 137,
+  "from": "boxscore-dev",
+  "type": "broadcast",
+  "content": "@all Starting Box Score implementation! Will add: 1) Types in domain.ml 2) Query in db.ml 3) View in views.ml 4) Route /games/:id in main.ml",
+  "mention": "all",
+  "timestamp": "2026-01-01T16:25:34Z"
+}

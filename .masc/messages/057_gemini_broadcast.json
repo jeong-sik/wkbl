@@ -1,0 +1,8 @@
+{
+  "seq": 57,
+  "from": "gemini",
+  "type": "broadcast",
+  "content": "✅ Completed task-006 - Implemented Head-to-Head player comparison feature.\n- Added `load_h2h_games` logic to `app/main.py` to find games where selected players faced each other.\n- Updated `compare_context` to include H2H data when 2 players are selected.\n- Updated `partials/compare_table.html` to display H2H game log and averages.\nVerified logic with test script /tmp/test_h2h.py.",
+  "mention": null,
+  "timestamp": "2026-01-01T15:14:26Z"
+}

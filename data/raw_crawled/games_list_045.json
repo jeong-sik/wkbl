@@ -1,0 +1,639 @@
+[
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "1",
+        "ym": "202410",
+        "game_id": "045-01-1"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "2",
+        "ym": "202410",
+        "game_id": "045-01-2"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "3",
+        "ym": "202410",
+        "game_id": "045-01-3"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "4",
+        "ym": "202410",
+        "game_id": "045-01-4"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "5",
+        "ym": "202411",
+        "game_id": "045-01-5"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "6",
+        "ym": "202411",
+        "game_id": "045-01-6"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "7",
+        "ym": "202411",
+        "game_id": "045-01-7"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "8",
+        "ym": "202411",
+        "game_id": "045-01-8"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "9",
+        "ym": "202411",
+        "game_id": "045-01-9"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "10",
+        "ym": "202411",
+        "game_id": "045-01-10"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "11",
+        "ym": "202411",
+        "game_id": "045-01-11"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "12",
+        "ym": "202411",
+        "game_id": "045-01-12"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "13",
+        "ym": "202411",
+        "game_id": "045-01-13"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "14",
+        "ym": "202411",
+        "game_id": "045-01-14"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "15",
+        "ym": "202411",
+        "game_id": "045-01-15"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "16",
+        "ym": "202411",
+        "game_id": "045-01-16"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "17",
+        "ym": "202411",
+        "game_id": "045-01-17"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "18",
+        "ym": "202411",
+        "game_id": "045-01-18"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "19",
+        "ym": "202411",
+        "game_id": "045-01-19"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "20",
+        "ym": "202411",
+        "game_id": "045-01-20"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "21",
+        "ym": "202411",
+        "game_id": "045-01-21"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "22",
+        "ym": "202411",
+        "game_id": "045-01-22"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "23",
+        "ym": "202411",
+        "game_id": "045-01-23"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "24",
+        "ym": "202411",
+        "game_id": "045-01-24"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "25",
+        "ym": "202411",
+        "game_id": "045-01-25"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "26",
+        "ym": "202411",
+        "game_id": "045-01-26"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "27",
+        "ym": "202411",
+        "game_id": "045-01-27"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "28",
+        "ym": "202411",
+        "game_id": "045-01-28"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "29",
+        "ym": "202411",
+        "game_id": "045-01-29"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "30",
+        "ym": "202411",
+        "game_id": "045-01-30"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "31",
+        "ym": "202412",
+        "game_id": "045-01-31"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "32",
+        "ym": "202412",
+        "game_id": "045-01-32"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "33",
+        "ym": "202412",
+        "game_id": "045-01-33"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "34",
+        "ym": "202412",
+        "game_id": "045-01-34"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "35",
+        "ym": "202412",
+        "game_id": "045-01-35"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "36",
+        "ym": "202412",
+        "game_id": "045-01-36"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "37",
+        "ym": "202412",
+        "game_id": "045-01-37"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "38",
+        "ym": "202412",
+        "game_id": "045-01-38"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "39",
+        "ym": "202412",
+        "game_id": "045-01-39"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "40",
+        "ym": "202412",
+        "game_id": "045-01-40"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "41",
+        "ym": "202412",
+        "game_id": "045-01-41"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "42",
+        "ym": "202412",
+        "game_id": "045-01-42"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "43",
+        "ym": "202412",
+        "game_id": "045-01-43"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "44",
+        "ym": "202412",
+        "game_id": "045-01-44"
+    },
+    {
+        "season_code": "045",
+        "game_type": "10",
+        "game_no": "1",
+        "ym": "202412",
+        "game_id": "045-10-1"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "45",
+        "ym": "202501",
+        "game_id": "045-01-45"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "46",
+        "ym": "202501",
+        "game_id": "045-01-46"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "47",
+        "ym": "202501",
+        "game_id": "045-01-47"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "48",
+        "ym": "202501",
+        "game_id": "045-01-48"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "49",
+        "ym": "202501",
+        "game_id": "045-01-49"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "50",
+        "ym": "202501",
+        "game_id": "045-01-50"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "51",
+        "ym": "202501",
+        "game_id": "045-01-51"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "52",
+        "ym": "202501",
+        "game_id": "045-01-52"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "53",
+        "ym": "202501",
+        "game_id": "045-01-53"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "54",
+        "ym": "202501",
+        "game_id": "045-01-54"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "55",
+        "ym": "202501",
+        "game_id": "045-01-55"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "56",
+        "ym": "202501",
+        "game_id": "045-01-56"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "57",
+        "ym": "202501",
+        "game_id": "045-01-57"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "58",
+        "ym": "202501",
+        "game_id": "045-01-58"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "59",
+        "ym": "202501",
+        "game_id": "045-01-59"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "60",
+        "ym": "202501",
+        "game_id": "045-01-60"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "61",
+        "ym": "202501",
+        "game_id": "045-01-61"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "62",
+        "ym": "202501",
+        "game_id": "045-01-62"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "63",
+        "ym": "202501",
+        "game_id": "045-01-63"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "64",
+        "ym": "202501",
+        "game_id": "045-01-64"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "65",
+        "ym": "202501",
+        "game_id": "045-01-65"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "66",
+        "ym": "202501",
+        "game_id": "045-01-66"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "67",
+        "ym": "202501",
+        "game_id": "045-01-67"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "68",
+        "ym": "202501",
+        "game_id": "045-01-68"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "69",
+        "ym": "202501",
+        "game_id": "045-01-69"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "70",
+        "ym": "202501",
+        "game_id": "045-01-70"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "71",
+        "ym": "202501",
+        "game_id": "045-01-71"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "72",
+        "ym": "202502",
+        "game_id": "045-01-72"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "73",
+        "ym": "202502",
+        "game_id": "045-01-73"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "74",
+        "ym": "202502",
+        "game_id": "045-01-74"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "75",
+        "ym": "202502",
+        "game_id": "045-01-75"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "76",
+        "ym": "202502",
+        "game_id": "045-01-76"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "77",
+        "ym": "202502",
+        "game_id": "045-01-77"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "78",
+        "ym": "202502",
+        "game_id": "045-01-78"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "79",
+        "ym": "202502",
+        "game_id": "045-01-79"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "80",
+        "ym": "202502",
+        "game_id": "045-01-80"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "81",
+        "ym": "202502",
+        "game_id": "045-01-81"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "82",
+        "ym": "202502",
+        "game_id": "045-01-82"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "83",
+        "ym": "202502",
+        "game_id": "045-01-83"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "84",
+        "ym": "202502",
+        "game_id": "045-01-84"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "85",
+        "ym": "202502",
+        "game_id": "045-01-85"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "86",
+        "ym": "202502",
+        "game_id": "045-01-86"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "87",
+        "ym": "202502",
+        "game_id": "045-01-87"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "88",
+        "ym": "202502",
+        "game_id": "045-01-88"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "89",
+        "ym": "202502",
+        "game_id": "045-01-89"
+    },
+    {
+        "season_code": "045",
+        "game_type": "01",
+        "game_no": "90",
+        "ym": "202502",
+        "game_id": "045-01-90"
+    }
+]

@@ -3,3 +3,5 @@
 module Domain = Domain
 module Db = Db
 module Views = Views
+module Qa = Qa
+module Stats = Stats

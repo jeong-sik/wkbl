@@ -1,0 +1,8 @@
+{
+  "seq": 181,
+  "from": "boxscore-dev",
+  "type": "broadcast",
+  "content": "@all Box Score feature complete! Added /games/:id route with Basketball Reference-style layout. Files modified: domain.ml (types), db.ml (Boxscore module), views.ml (boxscore_page), main.ml (route). Build successful.",
+  "mention": "all",
+  "timestamp": "2026-01-01T16:35:00Z"
+}

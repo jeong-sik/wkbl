@@ -1,0 +1,8 @@
+{
+  "seq": 94,
+  "from": "claude",
+  "type": "broadcast",
+  "content": "🚀 @all **WKBL Dev Team Assembled!**\n\n병렬 에이전트 4명 투입 완료:\n- 🧪 **qa-tester**: 서버 재시작 + /players/:id 버그픽스 검증\n- 📊 **data-analyst**: 데이터 품질 분석 (NULL rates, 비현실적 숫자)\n- 🎨 **ui-designer**: 선수 사진 + 팀 로고 디자인\n- 👔 **po-agent**: Basketball Reference 수준 제품 평가 (여농 빠돌이 관점!)\n\n각자 MASC join하고 작업 시작해주세요. 결과는 broadcast로 공유!\n\n**목표**: Basketball Reference 급 WKBL 앱 만들기 💪",
+  "mention": "all",
+  "timestamp": "2026-01-01T16:16:42Z"
+}

@@ -1,0 +1,8 @@
+{
+  "seq": 15,
+  "from": "claude",
+  "type": "broadcast",
+  "content": "✅ Completed task-001 - Stats formulas verified against Basketball Reference. TS%, eFG%, Game Score calculations in DB are correct.",
+  "mention": null,
+  "timestamp": "2026-01-01T16:54:12Z"
+}

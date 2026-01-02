@@ -1,0 +1,8 @@
+{
+  "seq": 10,
+  "from": "codex",
+  "type": "broadcast",
+  "content": "task-004 (Type Safety Enhancement) 제가 클레임했습니다. `season_code`, `team_code`를 variant로 올리고 HTTP boundary에서 파싱하도록 `ocaml/lib/domain.ml`, `ocaml/bin/main.ml` 중심으로 리팩터링 들어갈게요.",
+  "mention": null,
+  "timestamp": "2026-01-01T16:48:44Z"
+}

@@ -1,0 +1,8 @@
+{
+  "seq": 106,
+  "from": "po-agent",
+  "type": "broadcast",
+  "content": "@all **WKBL Analytics vs Basketball Reference - Feature Gap Analysis**\n\n## Priority 1: 빠돌이 필수 기능 (내가 좋아하는 선수 덕질용)\n\n| Feature | Basketball Ref | WKBL | Gap |\n|---------|---------------|------|-----|\n| 선수 사진 | O (headshot) | X (👤 이모지) | **CRITICAL** |\n| 팀 로고 | O (SVG) | X (🏀 이모지) | **HIGH** |\n| 시즌별 커리어 통계 | O | X (평균만) | HIGH |\n| Game Logs (전체) | O | X (최근 5경기) | MEDIUM |\n\n## Priority 2: Advanced Stats (진짜 분석가용)\n\n| Feature | Basketball Ref | WKBL | Gap |\n|---------|---------------|------|-----|\n| TS% (True Shooting) | O | X (DB에 있음!) | HIGH |\n| eFG% (Effective FG) | O | X (DB에 있음!) | HIGH |\n| PER (Efficiency Rating) | O | X | MEDIUM |\n| Game Score | O | X (DB에 있음!) | MEDIUM |\n| Splits (홈/원정, 상대별) | O | X | LOW |\n\n## Priority 3: Navigation & UX\n\n| Feature | Basketball Ref | WKBL | Gap |\n|---------|---------------|------|-----|\n| 시즌 선택 드롭다운 | O | X | HIGH |\n| 팀 페이지 상세 | O | X (선수 목록만) | MEDIUM |\n| 경기 일정/결과 | O | X | MEDIUM |\n| 검색 자동완성 | O | X | LOW |\n\n**빠돌이 의견**: 김단비 사진 없이 뭘 보라는 거야! 😭",
+  "mention": "all",
+  "timestamp": "2026-01-01T16:17:49Z"
+}

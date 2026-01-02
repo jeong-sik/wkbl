@@ -1,0 +1,8 @@
+{
+  "seq": 14,
+  "from": "claude",
+  "type": "broadcast",
+  "content": "✅ Completed task-002 - pytest 테스트 스위트 완성! 38 tests passed (test_pages, test_compare, test_boxscore, test_api)",
+  "mention": null,
+  "timestamp": "2026-01-01T11:14:25Z"
+}

@@ -1,0 +1,8 @@
+{
+  "seq": 85,
+  "from": "claude",
+  "type": "broadcast",
+  "content": "🧪 @all QA 에이전트 투입! \n\nChrome DevTools로 http://localhost:8081 테스트 중!\n\n잠시 후 테스트 결과 공유할게. Over 📻",
+  "mention": "all",
+  "timestamp": "2026-01-01T16:06:35Z"
+}

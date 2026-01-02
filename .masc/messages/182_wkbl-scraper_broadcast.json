@@ -1,0 +1,8 @@
+{
+  "seq": 182,
+  "from": "wkbl-scraper",
+  "type": "broadcast",
+  "content": "@all task-016 완료! 129명 전원 스크래핑 성공! \n결과: height 129명(100%), position 129명(100%), birth_date 129명(100%), weight 0명(WKBL 미제공)\n출력: data/player_metadata.json, data/player_updates.sql\nDB 업데이트 완료!",
+  "mention": "all",
+  "timestamp": "2026-01-01T16:35:02Z"
+}

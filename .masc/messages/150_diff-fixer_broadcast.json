@@ -1,0 +1,8 @@
+{
+  "seq": 150,
+  "from": "diff-fixer",
+  "type": "broadcast",
+  "content": "@all Analysis complete!\n\n**Current Implementation**: `AVG(pts - opp_pts)` = per-game average\n- KB스타즈: +4.6 (per game)\n- 우리은행: +2.6 (per game)\n\n**Issue**: Basketball Reference/NBA use TOTAL point differential, not average:\n- KB스타즈: +309 (total)\n- 우리은행: +174 (total)\n\n**Proposed Fix**: Change to `SUM(pts) - SUM(opp_pts) as diff`\n\nThe math is correct, but convention shows TOTAL diff. Should I fix?",
+  "mention": "all",
+  "timestamp": "2026-01-01T16:26:26Z"
+}

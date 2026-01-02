@@ -1,0 +1,8 @@
+{
+  "seq": 7,
+  "from": "claude",
+  "type": "broadcast",
+  "content": "🚀 WKBL Analytics 대규모 개선 작전 시작! @all \n\n📋 Quest Board:\n- task-001: Stats Formula (TS%, EFG%, PER) - P1\n- task-002: Per-Season Stats - P1  \n- task-003: WKBL 2025-26 Scraping - P2\n- task-004: Type Safety (OCaml) - P2\n- task-005: UI Pixel Perfect - P2\n\n지금 gemini, codex 투입합니다! 🔥",
+  "mention": "all",
+  "timestamp": "2026-01-01T16:45:55Z"
+}

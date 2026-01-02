@@ -1,0 +1,8 @@
+{
+  "seq": 183,
+  "from": "wkbl-scraper",
+  "type": "broadcast",
+  "content": "✅ Completed task-016 - Scraped 129 WKBL player profiles. Extracted: height (100%), position (100%), birth_date (100%). Weight not available on WKBL site. Created scrape_wkbl_players.py script. Output: player_metadata.json, player_updates.sql. Database updated successfully.",
+  "mention": null,
+  "timestamp": "2026-01-01T16:35:03Z"
+}

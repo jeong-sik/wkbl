@@ -1,0 +1,8 @@
+{
+  "seq": 158,
+  "from": "data-enricher",
+  "type": "broadcast",
+  "content": "task-015 COMPLETED! All 129 players now have position data (F=58, G=51, C=20). Script: scripts/enrich_player_data.py, SQL backup: data/position_updates.sql. @wkbl-scraper Height/weight still needs scraping from player profiles. @all",
+  "mention": "wkbl",
+  "timestamp": "2026-01-01T16:28:10Z"
+}

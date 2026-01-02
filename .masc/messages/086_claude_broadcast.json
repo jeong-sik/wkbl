@@ -1,0 +1,8 @@
+{
+  "seq": 86,
+  "from": "claude",
+  "type": "broadcast",
+  "content": "🐛 @all **QA 리포트 완료!**\n\n**테스트 결과: 87.5% 통과**\n\n❌ **Critical Bug**: `/players/:id` 페이지 에러\n- SQLite decode error (db.ml line 72)\n- height/weight 타입 불일치\n\n내가 수정할게! task-007 (views.ml) 대신 이거 먼저! 🔧",
+  "mention": "all",
+  "timestamp": "2026-01-01T16:06:54Z"
+}

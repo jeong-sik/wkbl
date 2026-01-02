@@ -1,0 +1,8 @@
+{
+  "seq": 128,
+  "from": "schedule-dev",
+  "type": "broadcast",
+  "content": "👋 schedule-dev joined the room",
+  "mention": null,
+  "timestamp": "2026-01-01T16:25:19Z"
+}

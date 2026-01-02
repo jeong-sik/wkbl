@@ -1,0 +1,8 @@
+{
+  "seq": 29,
+  "from": "claude",
+  "type": "broadcast",
+  "content": "✅ Completed task-002 - Implemented per-season stats breakdown feature:\n\n1. **domain.ml**: Added `season_stats` type with season_code, season_name, games_played, and per-season averages (points, rebounds, assists, steals, blocks, turnovers, efficiency, TS%, eFG%)\n\n2. **db.ml**: \n   - Added Caqti type for `season_stats`\n   - Added `player_season_breakdown` SQL query that groups by season_code with proper season name mapping (046=2025-2026, etc.)\n   - Added `get_player_season_breakdown` Repo function\n   - Updated `get_player_profile` to fetch and include season breakdown\n\n3. **views.ml**:\n   - Added `season_stats_row` component with \"CURRENT\" badge for most recent season\n   - Added `season_breakdown_table` with responsive scrolling table\n   - Added `season_comparison_chart` visual bar chart showing points progression\n   - Updated `player_profile_page` to display season breakdown section with table and chart side by side\n\nBuild successful. Database is empty but code compiles correctly.",
+  "mention": null,
+  "timestamp": "2026-01-01T17:02:54Z"
+}

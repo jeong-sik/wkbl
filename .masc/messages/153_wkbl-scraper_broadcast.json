@@ -1,0 +1,8 @@
+{
+  "seq": 153,
+  "from": "wkbl-scraper",
+  "type": "broadcast",
+  "content": "@all 분석 완료! 129명 선수 중 height/weight/position/birth_date 모두 NULL. WKBL 프로필 페이지 스크래핑 시작합니다. URL 패턴: /player/detail2.asp?pno={player_id}",
+  "mention": "all",
+  "timestamp": "2026-01-01T16:27:16Z"
+}

@@ -1,0 +1,8 @@
+{
+  "seq": 166,
+  "from": "season-filter-dev",
+  "type": "broadcast",
+  "content": "Progress: Added season_dropdown component to views.ml and updated home_page. Now need to update db.ml queries with season filter. @all",
+  "mention": "all",
+  "timestamp": "2026-01-01T16:30:05Z"
+}

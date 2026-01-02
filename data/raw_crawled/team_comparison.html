@@ -1,0 +1,633 @@
+
+	<script type="text/javascript">
+	<!--
+		//alert("寃쎄린 寃곌낵 ��곗�댄�곌�� �����듬�����.");
+		//history.back();
+	//-->
+	</script>
+
+
+                <h3 id="gameDetail" class="screen_out2">������鍮�援�</h3>
+                <div class="info_table02 team_compare">
+                    <table>
+                        <caption>������ ���蹂�</caption>
+                        <colgroup>
+                            <col style="width:35.8333%">
+                            <col>
+                            <col style="width:35.8333%">
+                        </colgroup>
+                        <thead>
+                            <tr class="tr_team">
+                                <th scope="col">
+                                    <span class="outcome_wrap away">
+                                        <p class="language" data-kr="��곕━������" data-en="WOORI BANK">��곕━������</p>
+										<span class='outcome lose language' data-kr='���' data-en='L'>���</span><span class='outcome win language' data-kr='���' data-en='W'>���</span><span class='outcome lose language' data-kr='���' data-en='L'>���</span>
+                                    </span>
+                                    
+                                    <span class="frame_g"><img src="/static/images/team/teamlogo_05.png"></span>
+                                </th>
+                                <th scope="col" class="td_vs"><img src="/static/images/game/vs.png"></th>
+                                <th scope="col">
+                                    
+                                    <span class="frame_g"><img src="/static/images/team/teamlogo_03.png"></span>
+                                    <span class="outcome_wrap home">
+                                        <p class="language" data-kr="��쇱�깆��紐�" data-en="SAMSUNG LIFE">��쇱�깆��紐�</p>
+                                        <span class='outcome win language' data-kr='���' data-en='W'>���</span><span class='outcome lose language' data-kr='���' data-en='L'>���</span><span class='outcome win language' data-kr='���' data-en='W'>���</span>
+                                    </span>
+                                </th>
+                            </tr>
+                        </thead>
+
+                        
+                        <tbody>
+                            <tr>
+                                <td class="language"
+                                    data-kr="6��� 7���, 4���"
+                                    data-en="6W 7L, #4">
+                                    6��� 7���, 4���
+                                </td>
+                                <th class="language" data-kr="��ъ��利���깆��" data-en="Season Record">��ъ��利���깆��</th>
+                                <td class="language"
+                                    data-kr="5��� 7���, 5���"
+                                    data-en="5W 7L, #5">
+                                    5��� 7���, 5���
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>1��� 2���</td>
+                                <th class="language" data-kr="��ъ��利� ������������" data-en="Season Head-to-Head record">��ъ��利� ������������</th>
+                                <td class="language"
+                                    data-kr="2��� 1���"
+                                    data-en="2W 1L">
+                                    2��� 1���
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>3��� 2���</td>
+                                <th class="language" data-kr="理�洹� 5寃쎄린" data-en="Last 5 Games">理�洹� 5寃쎄린</th>
+                                <td class="language"
+                                    data-kr="2��� 3���"
+                                    data-en="2W 3L">
+                                    2��� 3���
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>102��� 82���</td>
+                                <th class="language" data-kr="��듭�곗�����������" data-en="All-time Head-to-Head record">��듭�곗�����������</th>
+                                <td class="language"
+                                    data-kr="82��� 102���"
+                                    data-en="82W 102L">82��� 102���</td>
+                            </tr>
+                        </tbody>
+                        
+                    </table>
+                </div>
+
+                <!-- http://www.kbl.or.kr/schedule/today/todaygame_detail.asp?scode=31&gcode=11&gno=1&tdate=20170804 -->
+                <!-- ���怨�,�����명�몄〈 ������,2������ ������,3������ ������,2������ ��깃났瑜�,3������ ��깃났瑜�,��������� ��깃났瑜�,由щ����대��,��댁����ㅽ��,��ㅽ��,釉�濡����,������,援용��������,��댁�ㅻ�� -->
+
+
+				<!-- ��ㅽ�щ┰��몃�� 李⑦�몄�쎌�� -->
+				<!-- <script src="https://code.highcharts.com/highcharts.src.js"></script>
+				<script src="https://code.highcharts.com/highcharts.js"></script>
+                <script src="https://code.highcharts.com/highcharts-more.js"></script>
+                <script src="https://code.highcharts.com/modules/solid-gauge.js"></script>
+
+                <div id="container"></div>
+                <div id="container" style="width:300px;height:300px;border:1px solid red"></div> -->
+
+                
+
+				<!-- ������ -->
+				<!-- <script src="/static/js/chart_handle.js"></script>
+				<script src="/static/js/ui_game.js"></script>
+				<script src="/static/js/lib/highcharts.js"></script>
+				<script src="/static/js/lib/highcharts-more.js"></script>
+				<script src="/static/js/lib/modules/solid-gauge.js"></script>
+				<script src="/static/js/lib/modules/data.js"></script>	-->
+
+				<div class="result_donutChart row_group">
+					<div class="col">
+						<div id="container2point" class="donut_chart"></div>
+					</div>
+					<div class="col">
+						<div id="container3point" class="donut_chart"></div>
+					</div>
+					<div class="col">
+						<div id="containerFreethrow" class="donut_chart"></div>
+					</div>
+				</div>
+
+				<script type="text/javascript">
+				function donutChart() {				
+					var hteam_color = "#22A5E6";
+					var ateam_color = "#1458F0";					
+
+					if (!Highcharts.theme) {
+						Highcharts.setOptions({
+							colors: [hteam_color, ateam_color]
+						});
+					}
+
+					var hteam_chart = Highcharts.Color(hteam_color);
+					var ateam_chart = Highcharts.Color(ateam_color);
+
+					//2������ ��깃났瑜�
+					var h_two_rate_val = Number("27.6");
+					var a_two_rate_val = Number("56.3");
+
+					// 3������ ��깃났瑜�
+					var h_threep_rate_val = Number("25.9");
+					var a_threep_rate_val = Number("15.8");
+
+					// ��������� ��깃났瑜�
+					var h_ft_rate_val = Number("70.0");
+					var a_ft_rate_val = Number("75.0");
+                    
+                    // 李⑦�� �����댄�� ���/���
+                    function langTitle(kr, en){
+                        let title = localStorage.getItem("lang") == 'kr' ? kr : en
+                        return title;
+                    }
+
+					$('#container2point').highcharts({
+						credits: {
+							enabled: false
+						},
+						chart: {
+							type: 'solidgauge',
+							height: '120%'
+						},
+
+						title: {
+							text: langTitle('2������ ��깃났瑜�', '2P%'),
+							floating: true,
+							style: {
+								fontSize: '16px',
+								fontWeight: 'bold',
+								fontFamily: 'Nanum Gothic'
+							}
+						},
+						subtitle: {
+							text: langTitle('��곕━������', 'WOORI BANK') + ' : 27.6% <br />' + langTitle('��쇱�깆��紐�', 'SAMSUNG LIFE') + ' : 56.3%',
+							align: 'center',
+							verticalAlign: 'bottom',
+							useHTML:true,
+							y: -20,
+							style: {
+								color: '#555',
+								fontWeight: 'bold',
+								fontSize: '14px',
+								fontFamily: 'Nanum Gothic'
+							}
+						},
+						tooltip: {
+							borderWidth: 0,
+							backgroundColor: 'none',
+							shadow: false,
+							useHTML:true,
+							visible: true,
+							style: {
+								fontSize: '16px'
+							},
+							pointFormat: '{series.name}<br /><span style="font-size:2em; color: {point.color}; font-weight: bold">{point.y}%</span>',
+							positioner: function (labelWidth) {
+								return {
+									x: (this.chart.chartWidth - labelWidth) / 2,
+									y: (this.chart.plotHeight / 2) - 64
+								};
+							}
+						},
+						pane: {
+							startAngle: 0,
+							endAngle: 360,
+							background: [{ // Track for Move
+								outerRadius: '112%',
+								innerRadius: '88%',
+								backgroundColor: hteam_chart.setOpacity(0.15).get(),
+								borderWidth: 0
+							}, { // Track for Exercise
+								outerRadius: '87%',
+								innerRadius: '63%',
+								backgroundColor: ateam_chart.setOpacity(0.15).get(),
+								borderWidth: 0
+							}]
+						},
+						yAxis: {
+							min: 0,
+							max: 100,
+							lineWidth: 0,
+							tickPositions: []
+						},
+						plotOptions: {
+							series: {
+								colorByPoint: true
+							},
+							solidgauge: {
+								dataLabels: {
+									enabled: false
+								},
+								linecap: 'round',
+								stickyTracking: false,
+								rounded: true
+							}
+						},
+						series: [{
+							name: langTitle('��곕━������', 'WOORI BANK'),
+							data: [{
+								color: hteam_chart.setOpacity(1).get(),
+								radius: '112%',
+								innerRadius: '88%',
+								y: h_two_rate_val
+							}]
+						}, {
+							name: langTitle('��쇱�깆��紐�', 'SAMSUNG LIFE'),
+							data: [{
+								color: ateam_chart.setOpacity(1).get(),
+								radius: '87%',
+								innerRadius: '63%',
+								y: a_two_rate_val
+							}]
+						}]
+					});
+
+					// 3������ ��깃났瑜�
+					$('#container3point').highcharts({
+						credits: {
+							enabled: false
+						},
+						button:{
+								enabled: true
+						},
+						chart: {
+							type: 'solidgauge',
+							height: '120%'
+						},
+						title: {
+							text: langTitle('3������ ��깃났瑜�','3P%'),
+							floating: true,
+							style: {
+								fontSize: '16px',
+								fontWeight: 'bold',
+								fontFamily: 'Nanum Gothic'
+							}
+						},
+						subtitle: {
+							text: langTitle('��곕━������', 'WOORI BANK') + ' : 25.9% <br>' + langTitle('��쇱�깆��紐�', 'SAMSUNG LIFE') + ' : 15.8%',
+							align: 'center',
+							verticalAlign: 'bottom',
+							useHTML:true,
+							y: -20,
+							style: {
+								color: '#555',
+								fontWeight: 'bold',
+								fontSize: '14px',
+								fontFamily: 'Nanum Gothic'
+							}
+						},
+						tooltip: {
+							borderWidth: 0,
+							backgroundColor: 'none',
+							shadow: false,
+							useHTML:true,
+							visible: true,
+							style: {
+								fontSize: '16px'
+							},
+							pointFormat: '{series.name}<br /><span style="font-size:2em; color: {point.color}; font-weight: bold">{point.y}%</span>',
+							positioner: function (labelWidth) {
+								return {
+									x: (this.chart.chartWidth - labelWidth) / 2,
+									y: (this.chart.plotHeight / 2) - 64
+								};
+							}
+						},
+						pane: {
+							startAngle: 0,
+							endAngle: 360,
+							background: [{ // Track for Move
+								outerRadius: '112%',
+								innerRadius: '88%',
+								backgroundColor: hteam_chart.setOpacity(0.15).get(),
+								borderWidth: 0
+							}, { // Track for Exercise
+								outerRadius: '87%',
+								innerRadius: '63%',
+								backgroundColor: ateam_chart.setOpacity(0.15).get(),
+								borderWidth: 0
+							}]
+						},
+						yAxis: {
+							min: 0,
+							max: 100,
+							lineWidth: 0,
+							tickPositions: []
+						},
+						plotOptions: {
+							solidgauge: {
+								dataLabels: {
+									enabled: false
+								},
+								linecap: 'round',
+								stickyTracking: false,
+								rounded: true
+							}
+						},
+						series: [{
+							name: langTitle('��곕━������', 'WOORI BANK'),
+							data: [{
+								color: hteam_chart.setOpacity(1).get(),
+								radius: '112%',
+								innerRadius: '88%',
+								y: h_threep_rate_val
+							}]
+						}, {
+							name: langTitle('��쇱�깆��紐�', 'SAMSUNG LIFE'),
+							data: [{
+								color: ateam_chart.setOpacity(1).get(),
+								radius: '87%',
+								innerRadius: '63%',
+								y: a_threep_rate_val
+							}]
+						}]
+					});
+
+					// ��������� ��깃났瑜�
+					$('#containerFreethrow').highcharts({
+						credits: {
+							enabled: false
+						},
+						chart: {
+							type: 'solidgauge',
+							height: '120%'
+						},
+						title: {
+							text: langTitle('��������� ��깃났瑜�','FT%'),
+							floating: true,
+							style: {
+								fontSize: '16px',
+								fontWeight: 'bold',
+								fontFamily: 'Nanum Gothic',
+							}
+						},
+						subtitle: {
+							text: langTitle('��곕━������', 'WOORI BANK') + ' : 70.0% <br /> ' + langTitle('��쇱�깆��紐�', 'SAMSUNG LIFE') + ' : 75.0%',
+							align: 'center',
+							verticalAlign: 'bottom',
+							useHTML:true,
+							y: -20,
+							style: {
+								color: '#555',
+								fontWeight: 'bold',
+								fontSize: '14px',
+								fontFamily: 'Nanum Gothic'
+							}
+						},
+						tooltip: {
+							borderWidth: 0,
+							backgroundColor: 'none',
+							shadow: false,
+							useHTML:true,
+							visible: true,
+							style: {
+								fontSize: '16px'
+							},
+							pointFormat: '{series.name}<br /><span style="font-size:2em; color: {point.color}; font-weight: bold">{point.y}%</span>',
+							positioner: function (labelWidth) {
+								return {
+									x: (this.chart.chartWidth - labelWidth) / 2,
+									y: (this.chart.plotHeight / 2) - 64
+								};
+							}
+						},
+						pane: {
+							startAngle: 0,
+							endAngle: 360,
+							background: [{ // Track for Move
+								outerRadius: '112%',
+								innerRadius: '88%',
+								backgroundColor: hteam_chart.setOpacity(0.15).get(),
+								borderWidth: 0
+							}, { // Track for Exercise
+								outerRadius: '87%',
+								innerRadius: '63%',
+								backgroundColor: ateam_chart.setOpacity(0.15).get(),
+								borderWidth: 0
+							}]
+						},
+						yAxis: {
+							min: 0,
+							max: 100,
+							lineWidth: 0,
+							tickPositions: []
+						},
+						plotOptions: {
+							solidgauge: {
+								dataLabels: {
+									enabled: false
+								},
+								linecap: 'round',
+								stickyTracking: false,
+								rounded: true
+							}
+						},
+						series: [{
+							name: langTitle('��곕━������', 'WOORI BANK'),
+							data: [{
+								color: hteam_chart.setOpacity(1).get(),
+								radius: '112%',
+								innerRadius: '88%',
+								y: h_ft_rate_val
+							}]
+						}, {
+							name: langTitle('��쇱�깆��紐�', 'SAMSUNG LIFE'),
+							data: [{
+								color: ateam_chart.setOpacity(1).get(),
+								radius: '87%',
+								innerRadius: '63%',
+								y: a_ft_rate_val
+							}]
+						}]
+					});
+				}
+				donutChart();
+				</script>
+				<!-- //��� -->
+
+				<div id="datatableContainer"></div>
+				<table id="datatable" class="datatable_chart">
+					<thead>
+						<tr>
+							<th></th>
+							<th></th>
+							<th></th>
+						</tr>
+					</thead>
+					<tbody>
+					
+						<tr>
+							<th>���怨�</th>
+							<!-- <td>7</td>
+							<td>8</td> -->
+							<td>4</td>
+							<td>4</td>
+						</tr>
+						<tr>
+							<th>由щ����대��</th>
+							<td>32</td>
+							<td>37</td>
+						</tr>
+						<tr>
+							<th>��댁����ㅽ��</th>
+							<td>16</td>
+							<td>15</td>
+						</tr>
+						<tr>
+							<th>��ㅽ��</th>
+							<td>9</td>
+							<td>11</td>
+						</tr>
+						<tr>
+							<th>��댁�ㅻ��</th>
+							<td>16</td>
+							<td>16</td>
+						</tr>
+					</tbody>
+				</table>
+
+				<script>
+				function datatableChart(){
+
+					Highcharts.chart('datatableContainer', {
+						data: {
+							table: 'datatable'
+						},
+						chart: {
+							type: 'column'
+						},
+						title: {
+							text: null
+						},
+						xAxis: {
+							labels: {
+							  style: {
+								'fontSize': '16px',
+								'color': '#111111',
+								'fontFamily':'Spoqa Han Sans'
+							  }
+							}
+						},
+						yAxis: {
+							min: 0,
+							gridLineWidth: 0,
+							title: {
+								text: '',
+								align: '',
+							},
+							categories: [''],
+							title: {
+								text: null
+							},
+							labels: {
+							 enabled:false,
+							}
+						},
+						tooltip: {
+							 enabled:false
+						},
+						plotOptions: {
+							series:{
+								animation: true,
+									dataLabels: {
+										enabled: true,
+										"style": {
+												  "color": "#555",
+												  "fontSize": "14px",
+												  "fontWeight": "normal",
+												  "textOutline": "none",
+												  "textShadow": "1px 1px 1px #fff"
+												}
+									}
+							}
+						},series: [{
+							name: langTitle('��곕━������', 'WOORI BANK')
+						}, {
+							name: langTitle('��쇱�깆��紐�', 'SAMSUNG LIFE')
+						}],
+						legend: {	//李⑦�� ������ ��� 遺�瑜�������
+							enabled: true,
+							itemStyle : {
+								fontSize:'16px',
+								color: '#111111'
+							}
+						},
+						credits: {
+							enabled: false
+						}
+					});
+
+                    // datatableChart �����댄�� ���/���
+                    function langTitle(kr, en){
+                        let title = localStorage.getItem("lang") == 'kr' ? kr : en
+                        return title;
+                    }
+                    
+                    var dataTableChartTitle = [
+                        langTitle('���怨�', 'Fast break'), 
+                        langTitle('由щ����대��', 'Rebound'), 
+                        langTitle('��댁����ㅽ��', 'Assist'), 
+                        langTitle('��ㅽ��', 'Steals'), 
+                        langTitle('��댁�ㅻ��', 'Turnover')
+                    ]
+                    for ( var i=0; i<dataTableChartTitle.length; i++ ){
+                        $('g.highcharts-xaxis-labels text:nth-child('+(i+1)+')').text(dataTableChartTitle[i])
+                    }
+				}
+
+				datatableChart();
+				</script>
+
+                <script>
+                    $(function() {
+                        /////////////////////////////////////////////language change start///////////////////////////////////////////
+                        let now_lang = localStorage.getItem("lang");
+                        if(!now_lang) now_lang = "kr";
+                    
+                        $('.lang_change').on('click', function(e){
+                            now_lang = (now_lang == "kr") ? "en" : "kr";
+                            localStorage.setItem("lang", now_lang);
+                    
+                            language_icon_change(now_lang);
+                            
+                            // 李⑦�� reload
+                            donutChart();
+                            datatableChart();
+                        });
+                    
+                        function language_icon_change(now_lang){
+                            // if( now_lang == 'en' ){
+                            //     $('.lang_change').addClass('active');
+                            //     $('.lang_change_text').html("English");
+                            // }else{
+                            //     $('.lang_change').removeClass('active');
+                            //     $('.lang_change_text').html("Korea");
+                            // }
+                    
+                            language_change(now_lang);
+                        }
+                    
+                        function language_change(now_lang){
+                            for(i=0;i < $(".language").length; i++){
+                                if($($('.language')[i]).attr('placeholder') !== undefined){ //placeholder change
+                                   $($('.language')[i]).attr('placeholder', $($('.language')[i]).attr("data-"+now_lang));
+                                }else{ //text change
+                                    $($('.language')[i]).html($($('.language')[i]).attr("data-"+now_lang));
+                                }
+                            }
+                        }
+                    
+                        language_icon_change(now_lang);
+                        /////////////////////////////////////////////language change end ///////////////////////////////////////////
+                    });
+                </script>
+

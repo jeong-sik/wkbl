@@ -1,0 +1,8 @@
+{
+  "seq": 146,
+  "from": "diff-fixer",
+  "type": "broadcast",
+  "content": "@all Starting analysis of 득실마진 calculation. Current query uses AVG(pts - opp_pts). Checking if this matches reality...",
+  "mention": "all",
+  "timestamp": "2026-01-01T16:25:54Z"
+}

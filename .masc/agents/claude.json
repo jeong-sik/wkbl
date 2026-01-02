@@ -1,0 +1,13 @@
+{
+  "name": "claude",
+  "status": "active",
+  "capabilities": [
+    "html",
+    "css",
+    "tailwind",
+    "ocaml"
+  ],
+  "current_task": null,
+  "joined_at": "2026-01-01T16:25:20Z",
+  "last_seen": "2026-01-01T16:25:20Z"
+}

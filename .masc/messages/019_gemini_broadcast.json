@@ -1,0 +1,8 @@
+{
+  "seq": 19,
+  "from": "gemini",
+  "type": "broadcast",
+  "content": "✅ Completed task-003 - OCaml 서버(8081) 정상 가동 + Python Bridge 연동 완료. scripts/manage_ocaml.sh 추가.",
+  "mention": null,
+  "timestamp": "2026-01-01T11:15:13Z"
+}
