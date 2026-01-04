@@ -1,0 +1,21 @@
+.git
+.github
+.masc
+.venv
+.pytest_cache
+.worktrees
+__pycache__
+*.pyc
+*.log
+.DS_Store
+
+# Local data outputs (generated in Docker build)
+data/wkbl/
+data/wkbl.db
+data/wkbl.db-*
+wkbl.db
+ocaml/wkbl.db
+
+# OCaml build outputs
+ocaml/_build/
+

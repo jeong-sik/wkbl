@@ -27,6 +27,27 @@ dune build
 dune exec wkbl  # 포트 8000에서 실행
 ```
 
+## 배포 (상시) - Docker
+이 레포는 루트의 `Dockerfile`로 바로 컨테이너 배포할 수 있습니다.
+
+### 로컬에서 Docker로 실행
+```bash
+# (빌드 시) WKBL 공식 사이트에서 데이터 수집/집계 후 wkbl.db를 생성합니다.
+docker build -t wkbl .
+
+docker run --rm -p 8000:8000 wkbl
+```
+
+### Railway에 상시 배포 (추천)
+1. Railway에서 GitHub repo를 연결하고, Dockerfile 기반으로 서비스를 생성합니다.
+2. Health check는 `/health`를 사용합니다.
+3. 데이터는 이미지 빌드 단계에서 생성되므로, 최신 데이터가 필요하면 재배포(redeploy)로 갱신합니다.
+
+#### 환경변수
+- `PORT`: 플랫폼이 주입 (없으면 8000)
+- `WKBL_DB_PATH`: SQLite 경로 (기본값: `data/wkbl.db`)
+- `WKBL_STATIC_PATH`: 정적 파일 경로 (기본값: 자동 탐색)
+
 ## 엔드포인트 (OCaml)
 - `/`: 홈 (선수 목록)
 - `/players`: 선수 집계 (검색/정렬/HTMX)
