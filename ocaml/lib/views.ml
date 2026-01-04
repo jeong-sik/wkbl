@@ -64,16 +64,27 @@ let player_season_stats_table (stats: season_stats list) =
   let rows =
     stats
     |> List.map (fun (s: season_stats) ->
+        let margin_class = if s.ss_margin >= 0.0 then "text-sky-400" else "text-rose-400" in
+        let margin_str = if s.ss_margin > 0.0 then Printf.sprintf "+%.1f" s.ss_margin else Printf.sprintf "%.1f" s.ss_margin in
         Printf.sprintf {html|<tr class="border-b border-slate-800/60 hover:bg-slate-800/30 transition-colors">
           <td class="px-4 py-3 text-white font-medium truncate">%s</td>
           <td class="px-4 py-3 text-right text-slate-300 w-[60px] font-mono">%d</td>
           <td class="px-4 py-3 text-right text-slate-300 w-[80px] font-mono">%.1f</td>
           <td class="px-4 py-3 text-right font-bold text-orange-400 w-[80px] font-mono">%.1f</td>
+          <td class="px-4 py-3 text-right font-bold %s w-[80px] font-mono">%s</td>
           <td class="px-4 py-3 text-right text-slate-300 w-[80px] font-mono">%.1f</td>
           <td class="px-4 py-3 text-right text-slate-300 w-[80px] font-mono">%.1f</td>
           <td class="px-4 py-3 text-right text-slate-300 w-[80px] font-mono">%.1f</td>
         </tr>|html}
-        (escape_html s.ss_season_name) s.ss_games_played s.ss_total_minutes s.ss_avg_points s.ss_avg_rebounds s.ss_avg_assists s.ss_efficiency)
+        (escape_html s.ss_season_name)
+        s.ss_games_played
+        s.ss_total_minutes
+        s.ss_avg_points
+        margin_class
+        (escape_html margin_str)
+        s.ss_avg_rebounds
+        s.ss_avg_assists
+        s.ss_efficiency)
     |> String.concat "\n"
   in
   Printf.sprintf {html|<div class="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden shadow-lg animate-fade-in"><table class="season-stats-table w-full text-sm font-mono table-fixed">
@@ -83,6 +94,7 @@ let player_season_stats_table (stats: season_stats list) =
         <th class="px-4 py-3 text-right w-[60px]">GP</th>
         <th class="px-4 py-3 text-right w-[80px]">MIN</th>
         <th class="px-4 py-3 text-right text-orange-400 w-[80px]">PTS</th>
+        <th class="px-4 py-3 text-right w-[80px]">MG</th>
         <th class="px-4 py-3 text-right w-[80px]">REB</th>
         <th class="px-4 py-3 text-right w-[80px]">AST</th>
         <th class="px-4 py-3 text-right w-[80px]">EFF</th>

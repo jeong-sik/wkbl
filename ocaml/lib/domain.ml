@@ -208,6 +208,7 @@ type season_stats = {
   ss_avg_blocks: float;
   ss_avg_turnovers: float;
   ss_efficiency: float;
+  ss_margin: float;
   ss_ts_pct: float;
   ss_efg_pct: float;
 }
