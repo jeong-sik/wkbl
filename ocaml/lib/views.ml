@@ -407,13 +407,16 @@ let boxscore_page (bs: game_boxscore) =
       (Uri.pct_encode gi.gi_away_team_name) (escape_html gi.gi_away_team_name) (team_logo_tag ~class_name:"w-10 h-10" gi.gi_away_team_name)
       home_table away_table)
 
-let compare_stat_row label val1 val2 =
-  let max_val = max val1 val2 in
-  let pct1 = if max_val = 0.0 then 0.0 else val1 /. max_val *. 100.0 in
-  let pct2 = if max_val = 0.0 then 0.0 else val2 /. max_val *. 100.0 in
+let compare_stat_row ?(signed=false) label val1 val2 =
+  let max_val = max (abs_float val1) (abs_float val2) in
+  let pct1 = if max_val = 0.0 then 0.0 else abs_float val1 /. max_val *. 100.0 in
+  let pct2 = if max_val = 0.0 then 0.0 else abs_float val2 /. max_val *. 100.0 in
+  let value_str v =
+    if signed && v > 0.0 then Printf.sprintf "+%.1f" v else Printf.sprintf "%.1f" v
+  in
   Printf.sprintf
-    {html|<div class="flex flex-col gap-1"><div class="flex justify-between text-xs font-bold uppercase tracking-tighter text-slate-500"><span>%.1f</span><span class="text-slate-400">%s</span><span>%.1f</span></div><div class="flex h-2 bg-slate-800 rounded-full overflow-hidden"><div class="flex justify-end w-1/2 border-r border-slate-700"><div class="bg-orange-500 h-full transition-all duration-500" style="width: %.1f%%"></div></div><div class="flex justify-start w-1/2"><div class="bg-sky-500 h-full transition-all duration-500" style="width: %.1f%%"></div></div></div></div>|html}
-    val1 label val2 pct1 pct2
+    {html|<div class="flex flex-col gap-1"><div class="flex justify-between text-xs font-bold uppercase tracking-tighter text-slate-500"><span>%s</span><span class="text-slate-400">%s</span><span>%s</span></div><div class="flex h-2 bg-slate-800 rounded-full overflow-hidden"><div class="flex justify-end w-1/2 border-r border-slate-700"><div class="bg-orange-500 h-full transition-all duration-500" style="width: %.1f%%"></div></div><div class="flex justify-start w-1/2"><div class="bg-sky-500 h-full transition-all duration-500" style="width: %.1f%%"></div></div></div></div>|html}
+    (escape_html (value_str val1)) (escape_html label) (escape_html (value_str val2)) pct1 pct2
 
 let h2h_game_row (g: h2h_game) =
   Printf.sprintf
@@ -439,8 +442,8 @@ let compare_page (p1: player_aggregate option) (p2: player_aggregate option) (h2
     match p1, p2 with
     | Some a, Some b ->
         Printf.sprintf
-          {html|<div class="space-y-8 animate-fade-in"><div class="grid grid-cols-1 md:grid-cols-3 gap-8 items-start"><div class="bg-slate-900 rounded-xl border border-slate-800 p-6 flex flex-col items-center gap-4 shadow-xl border-t-4 border-t-orange-500">%s<div class="text-center"><div class="text-2xl font-black text-white hover:text-orange-400"><a href="/player/%s">%s</a></div><div class="text-slate-400">%s</div></div></div><div class="bg-slate-900/50 rounded-xl border border-slate-800 p-6 space-y-6"><h3 class="text-center text-slate-500 text-sm font-bold uppercase">Average Stats</h3>%s%s%s%s%s%s%s</div><div class="bg-slate-900 rounded-xl border border-slate-800 p-6 flex flex-col items-center gap-4 shadow-xl border-t-4 border-t-sky-500">%s<div class="text-center"><div class="text-2xl font-black text-white hover:text-sky-400"><a href="/player/%s">%s</a></div><div class="text-slate-400">%s</div></div></div></div>%s</div>|html}
-          (player_img_tag ~class_name:"w-32 h-32" a.player_id a.name) a.player_id (escape_html a.name) (escape_html a.team_name) (compare_stat_row "Points" a.avg_points b.avg_points) (compare_stat_row "Rebounds" a.avg_rebounds b.avg_rebounds) (compare_stat_row "Assists" a.avg_assists b.avg_assists) (compare_stat_row "Steals" a.avg_steals b.avg_steals) (compare_stat_row "Blocks" a.avg_blocks b.avg_blocks) (compare_stat_row "Turnovers" a.avg_turnovers b.avg_turnovers) (compare_stat_row "Efficiency" a.efficiency b.efficiency) (player_img_tag ~class_name:"w-32 h-32" b.player_id b.name) b.player_id (escape_html b.name) (escape_html b.team_name) (h2h_game_table a.name b.name h2h)
+          {html|<div class="space-y-8 animate-fade-in"><div class="grid grid-cols-1 md:grid-cols-3 gap-8 items-start"><div class="bg-slate-900 rounded-xl border border-slate-800 p-6 flex flex-col items-center gap-4 shadow-xl border-t-4 border-t-orange-500">%s<div class="text-center"><div class="text-2xl font-black text-white hover:text-orange-400"><a href="/player/%s">%s</a></div><div class="text-slate-400">%s</div></div></div><div class="bg-slate-900/50 rounded-xl border border-slate-800 p-6 space-y-6"><h3 class="text-center text-slate-500 text-sm font-bold uppercase">Average Stats</h3>%s%s%s%s%s%s%s%s</div><div class="bg-slate-900 rounded-xl border border-slate-800 p-6 flex flex-col items-center gap-4 shadow-xl border-t-4 border-t-sky-500">%s<div class="text-center"><div class="text-2xl font-black text-white hover:text-sky-400"><a href="/player/%s">%s</a></div><div class="text-slate-400">%s</div></div></div></div>%s</div>|html}
+          (player_img_tag ~class_name:"w-32 h-32" a.player_id a.name) a.player_id (escape_html a.name) (escape_html a.team_name) (compare_stat_row "Points" a.avg_points b.avg_points) (compare_stat_row ~signed:true "MG" a.avg_margin b.avg_margin) (compare_stat_row "Rebounds" a.avg_rebounds b.avg_rebounds) (compare_stat_row "Assists" a.avg_assists b.avg_assists) (compare_stat_row "Steals" a.avg_steals b.avg_steals) (compare_stat_row "Blocks" a.avg_blocks b.avg_blocks) (compare_stat_row "Turnovers" a.avg_turnovers b.avg_turnovers) (compare_stat_row "Efficiency" a.efficiency b.efficiency) (player_img_tag ~class_name:"w-32 h-32" b.player_id b.name) b.player_id (escape_html b.name) (escape_html b.team_name) (h2h_game_table a.name b.name h2h)
     | _ -> {html|<div class="text-center py-20 bg-slate-900 rounded-xl border border-slate-800"><div class="text-4xl mb-4">🔍</div><h3 class="text-xl font-bold text-white">Compare Players</h3><p class="text-slate-400 mt-2">Enter player names in the URL query (e.g., ?p1=김단비&p2=박지현)</p></div>|html}
   in
   layout ~title:"Player Comparison" ~content:(Printf.sprintf {html|<div class="space-y-8"><div class="flex justify-between items-end"><div><h2 class="text-3xl font-black text-white">Head to Head</h2><p class="text-slate-400">Side-by-side performance analysis.</p></div></div>%s</div>|html} content)
