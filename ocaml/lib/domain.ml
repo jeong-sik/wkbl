@@ -7,6 +7,7 @@ type player_aggregate = {
   games_played: int;
   total_minutes: float;
   avg_points: float;
+  avg_margin: float;
   avg_rebounds: float;
   avg_assists: float;
   avg_steals: float;
@@ -17,6 +18,7 @@ type player_aggregate = {
 
 type player_sort =
   | ByPoints
+  | ByMargin
   | ByRebounds
   | ByAssists
   | ByEfficiency
@@ -24,6 +26,7 @@ type player_sort =
 
 let player_sort_of_string = function
   | "pts" | "points" -> ByPoints
+  | "mg" | "margin" -> ByMargin
   | "reb" | "rebounds" -> ByRebounds
   | "ast" | "assists" -> ByAssists
   | "min" | "minutes" -> ByMinutes
