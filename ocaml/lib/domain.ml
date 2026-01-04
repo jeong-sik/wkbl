@@ -217,6 +217,8 @@ type player_game_stat = {
   game_date: string;
   opponent: string;
   is_home: bool;
+  team_score: int option;
+  opponent_score: int option;
   min: float;
   pts: int;
   reb: int;
