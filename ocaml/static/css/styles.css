@@ -585,3 +585,54 @@ select:focus-visible {
     box-shadow: 0 0 0 8px rgba(34, 197, 94, 0);
   }
 }
+
+/* ===========================================
+   9. Player Season Stats UI Stability
+   =========================================== */
+
+/* Generic fade-in utility for server-rendered sections */
+.animate-fade-in {
+  animation: fadeSlideIn 220ms ease-out forwards;
+}
+
+/* Prevent layout jump during HTMX tab swaps */
+.stats-container {
+  min-height: 300px;
+  will-change: opacity, transform;
+}
+
+/* Stabilize season stats table column widths across scopes */
+.season-stats-table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.season-stats-table th,
+.season-stats-table td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.season-stats-table th:nth-child(2),
+.season-stats-table td:nth-child(2) {
+  width: 60px;
+}
+
+.season-stats-table th:nth-child(n+3),
+.season-stats-table td:nth-child(n+3) {
+  width: 80px;
+}
+
+/* Season stats tabs: disable spam-click + align indicator */
+.season-stats-tab:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.season-stats-indicator.htmx-request {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}

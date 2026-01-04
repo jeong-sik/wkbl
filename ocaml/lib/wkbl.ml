@@ -1,7 +1,8 @@
-(** WKBL Library - public API *)
+(** WKBL Library Entry Point *)
 
 module Domain = Domain
 module Db = Db
-module Views = Views
-module Qa = Qa
 module Stats = Stats
+module Views = Views
+module Prediction = Prediction
+module Qa = Qa
