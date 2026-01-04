@@ -408,6 +408,14 @@ def scrape_player_stats(season_code: str, game_type: str, game_no: int, ym: str 
                     if not player_name or player_name in ["TEAM", "팀", "합계", "TOTAL"]:
                         continue
 
+                    player_id = None
+                    player_link = cells[0].find("a")
+                    if player_link:
+                        href = player_link.get("href", "")
+                        match = re.search(r"pno=(\d+)", href)
+                        if match:
+                            player_id = match.group(1)
+
                     position = cells[1].get_text(strip=True)
                     min_str = cells[2].get_text(strip=True)
 
@@ -441,7 +449,7 @@ def scrape_player_stats(season_code: str, game_type: str, game_no: int, ym: str 
                         game_id=game_id,
                         team_code=team_code,
                         player_name=player_name,
-                        player_id=None,  # Will be matched later
+                        player_id=player_id,
                         position=position,
                         min_seconds=parse_minutes(min_str),
                         fg_2p_m=fg_2p_m,
@@ -481,9 +489,16 @@ def scrape_player_stats(season_code: str, game_type: str, game_no: int, ym: str 
 def get_player_id_by_name(conn: sqlite3.Connection, player_name: str) -> Optional[str]:
     """Look up player_id by name."""
     cursor = conn.cursor()
-    cursor.execute("SELECT player_id FROM players WHERE player_name = ?", (player_name,))
-    row = cursor.fetchone()
-    return row[0] if row else None
+    cursor.execute(
+        "SELECT player_id FROM players WHERE player_name = ? ORDER BY player_id",
+        (player_name,),
+    )
+    rows = cursor.fetchall()
+    if not rows:
+        return None
+    if len(rows) > 1:
+        return None
+    return rows[0][0]
 
 
 def get_existing_game_ids(conn: sqlite3.Connection) -> set[str]:
@@ -523,13 +538,83 @@ def save_player_stats_to_db(conn: sqlite3.Connection, stats: list[PlayerGameStat
     inserted = 0
 
     for stat in stats:
-        # Look up player_id
-        player_id = get_player_id_by_name(conn, stat.player_name)
+        player_id = stat.player_id or get_player_id_by_name(conn, stat.player_name)
         if not player_id:
-            print(f"    Warning: Player '{stat.player_name}' not found in database")
+            cursor.execute(
+                "SELECT COUNT(*) FROM players WHERE player_name = ?",
+                (stat.player_name,),
+            )
+            name_count = cursor.fetchone()[0]
+            if name_count > 1:
+                print(f"    Warning: Ambiguous player name '{stat.player_name}' (multiple IDs). Skipping.")
+            else:
+                print(f"    Warning: Player '{stat.player_name}' not found in database. Skipping.")
             continue
 
         try:
+            cursor.execute(
+                "INSERT OR IGNORE INTO players (player_id, player_name, position) VALUES (?, ?, ?)",
+                (player_id, stat.player_name, stat.position or None),
+            )
+            cursor.execute(
+                "UPDATE players SET position = COALESCE(position, ?) WHERE player_id = ?",
+                (stat.position or None, player_id),
+            )
+
+            # If we previously wrote this same stat line under a different ID (name collision),
+            # remove the duplicate to keep boxscores and score fallbacks correct.
+            cursor.execute(
+                """
+                DELETE FROM game_stats
+                WHERE game_id = ?
+                  AND team_code = ?
+                  AND player_id IN (
+                    SELECT player_id
+                    FROM players
+                    WHERE player_name = ?
+                      AND player_id != ?
+                  )
+                  AND min_seconds = ?
+                  AND pts = ?
+                  AND reb_off = ?
+                  AND reb_def = ?
+                  AND reb_tot = ?
+                  AND ast = ?
+                  AND stl = ?
+                  AND blk = ?
+                  AND tov = ?
+                  AND pf = ?
+                  AND fg_2p_m = ?
+                  AND fg_2p_a = ?
+                  AND fg_3p_m = ?
+                  AND fg_3p_a = ?
+                  AND ft_m = ?
+                  AND ft_a = ?
+                """,
+                (
+                    stat.game_id,
+                    stat.team_code,
+                    stat.player_name,
+                    player_id,
+                    stat.min_seconds,
+                    stat.pts,
+                    stat.reb_off,
+                    stat.reb_def,
+                    stat.reb_tot,
+                    stat.ast,
+                    stat.stl,
+                    stat.blk,
+                    stat.tov,
+                    stat.pf,
+                    stat.fg_2p_m,
+                    stat.fg_2p_a,
+                    stat.fg_3p_m,
+                    stat.fg_3p_a,
+                    stat.ft_m,
+                    stat.ft_a,
+                ),
+            )
+
             cursor.execute("""
                 INSERT OR REPLACE INTO game_stats
                 (game_id, team_code, player_id, min_seconds,

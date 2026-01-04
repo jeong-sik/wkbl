@@ -146,6 +146,7 @@ type game_summary = {
 type boxscore_player_stat = {
   bs_player_id: string;
   bs_player_name: string;
+  bs_position: string option;
   bs_team_code: string;
   bs_team_name: string;
   bs_minutes: float;
