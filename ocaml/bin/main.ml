@@ -19,9 +19,22 @@ let rec find_static_path start_dir =
       if parent = start_dir then None else find_static_path parent
 
 let () =
+  (* Resolve runtime config from env. *)
+  let db_path = Sys.getenv_opt "WKBL_DB_PATH" |> Option.value ~default:Db.default_db_path in
+  let port =
+    match Sys.getenv_opt "PORT" with
+    | None -> 8000
+    | Some value -> (
+        match int_of_string_opt (String.trim value) with
+        | Some p when p > 0 -> p
+        | _ -> 8000)
+  in
+
   (* Initialize database pool *)
-  match Db.init_pool Db.default_db_path with
-  | Error e -> Printf.eprintf "Failed to init DB: %s\n" (Db.show_db_error e); exit 1
+  match Db.init_pool db_path with
+  | Error e ->
+      Printf.eprintf "Failed to init DB (%s): %s\n" db_path (Db.show_db_error e);
+      exit 1
   | Ok () ->
   
   (* Determine static path robustly (repo-relative discovery + env override). *)
@@ -37,8 +50,10 @@ let () =
         Option.value (find_static_path cwd) ~default:"static"
   in
   Printf.printf "Serving static assets from: %s\n%%!" static_path;
+  Printf.printf "Using DB path: %s\n%%!" db_path;
+  Printf.printf "Listening on: 0.0.0.0:%d\n%%!" port;
 
-  Dream.run ~port:8000 ~error_handler:Dream.debug_error_handler
+  Dream.run ~interface:"0.0.0.0" ~port ~error_handler:Dream.debug_error_handler
   @@ Dream.logger
   (* Force UTF-8 for HTML without breaking static assets. *)
   @@ (fun next_handler request ->
