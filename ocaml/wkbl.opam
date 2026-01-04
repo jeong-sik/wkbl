@@ -10,7 +10,7 @@ homepage: "https://github.com/yousleepwhen/wkbl"
 bug-reports: "https://github.com/yousleepwhen/wkbl/issues"
 depends: [
   "ocaml" {>= "5.1"}
-  "dune" {>= "3.13" & >= "3.14"}
+  "dune" {>= "3.13" & >= "3.13"}
   "dream" {>= "1.0.0~alpha5"}
   "caqti" {>= "1.9"}
   "caqti-driver-sqlite3" {>= "1.9"}
