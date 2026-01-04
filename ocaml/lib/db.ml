@@ -145,13 +145,17 @@ module Types = struct
 
   let boxscore_player_stat =
     let encode _ = assert false in
-    let decode (player_id, (player_name, (team_code, (team_name, (min_seconds, (pts, (reb, (ast, (stl, (blk, (tov, (fg2_m, (fg2_a, (fg3_m, (fg3_a, (ft_m, ft_a)))))))))))))))) =
+    let decode (player_id, (player_name, (position, (team_code, (team_name, (min_seconds, (pts, (reb, (ast, (stl, (blk, (tov, (fg2_m, (fg2_a, (fg3_m, (fg3_a, (ft_m, ft_a))))))))))))))))) =
       let min = Stdlib.float min_seconds /. 60.0 in
       let fg_m = fg2_m + fg3_m in
       let fg_a = fg2_a + fg3_a in
       let pct m a = if a = 0 then 0.0 else Stdlib.float m /. Stdlib.float a *. 100.0 in
       Ok {
-        bs_player_id = player_id; bs_player_name = player_name; bs_team_code = team_code; bs_team_name = team_name;
+        bs_player_id = player_id;
+        bs_player_name = player_name;
+        bs_position = position;
+        bs_team_code = team_code;
+        bs_team_name = team_name;
         bs_minutes = min; bs_pts = pts; bs_reb = reb; bs_ast = ast; bs_stl = stl; bs_blk = blk; bs_tov = tov;
         bs_fg_made = fg_m; bs_fg_att = fg_a; bs_fg_pct = pct fg_m fg_a;
         bs_fg3_made = fg3_m; bs_fg3_att = fg3_a; bs_fg3_pct = pct fg3_m fg3_a;
@@ -160,7 +164,23 @@ module Types = struct
     in
     let t = tup2 in
     custom ~encode ~decode
-      (t string (t string (t string (t string (t int (t int (t int (t int (t int (t int (t int (t int (t int (t int (t int (t int int))))))))))))))))
+      (t string
+         (t string
+            (t (option string)
+               (t string
+                  (t string
+                     (t int
+                        (t int
+                           (t int
+                              (t int
+                                 (t int
+                                    (t int
+                                       (t int
+                                          (t int
+                                             (t int
+                                                (t int
+                                                   (t int
+                                                      (t int int)))))))))))))))))
 
   let game_info =
     let encode _ = assert false in
@@ -398,7 +418,7 @@ module Queries = struct
     JOIN teams t2 ON g.away_team_code = t2.team_code
     WHERE g.game_id = ?
   |}
-  let boxscore_stats_by_game_id = (string ->* Types.boxscore_player_stat) {| SELECT p.player_id, p.player_name, t.team_code, t.team_name_kr, s.min_seconds, s.pts, s.reb_tot, s.ast, s.stl, s.blk, s.tov, s.fg_2p_m, s.fg_2p_a, s.fg_3p_m, s.fg_3p_a, s.ft_m, s.ft_a FROM game_stats s JOIN players p ON s.player_id = p.player_id JOIN teams t ON s.team_code = t.team_code WHERE s.game_id = ? ORDER BY s.min_seconds DESC |}
+  let boxscore_stats_by_game_id = (string ->* Types.boxscore_player_stat) {| SELECT p.player_id, p.player_name, p.position, t.team_code, t.team_name_kr, s.min_seconds, s.pts, s.reb_tot, s.ast, s.stl, s.blk, s.tov, s.fg_2p_m, s.fg_2p_a, s.fg_3p_m, s.fg_3p_a, s.ft_m, s.ft_a FROM game_stats s JOIN players p ON s.player_id = p.player_id JOIN teams t ON s.team_code = t.team_code WHERE s.game_id = ? ORDER BY s.min_seconds DESC |}
   let top_players = (int ->* Types.player_aggregate) {| SELECT p.player_id, p.player_name, t.team_name_kr, COUNT(*) as gp, COALESCE(SUM(s.min_seconds) / 60.0, 0), COALESCE(AVG(s.pts), 0), COALESCE((SUM(((COALESCE((CASE WHEN g.home_team_code = s.team_code THEN COALESCE(g.home_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code)) ELSE COALESCE(g.away_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code)) END), 0) - COALESCE((CASE WHEN g.home_team_code = s.team_code THEN COALESCE(g.away_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code)) ELSE COALESCE(g.home_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code)) END), 0))) * s.min_seconds) * 1.0) / NULLIF(SUM(s.min_seconds), 0), 0) as margin, COALESCE(AVG(s.reb_tot), 0), COALESCE(AVG(s.ast), 0), COALESCE(AVG(s.stl), 0), COALESCE(AVG(s.blk), 0), COALESCE(AVG(s.tov), 0), COALESCE(AVG(s.game_score), 0) FROM game_stats s JOIN games g ON g.game_id = s.game_id JOIN players p ON s.player_id = p.player_id JOIN teams t ON s.team_code = t.team_code GROUP BY p.player_id ORDER BY AVG(s.game_score) DESC LIMIT ? |}
   let player_stats_by_points = (tup2 string int ->* Types.player_aggregate) {| SELECT p.player_id, p.player_name, t.team_name_kr, COUNT(*) as gp, COALESCE(SUM(s.min_seconds) / 60.0, 0), COALESCE(AVG(s.pts), 0), COALESCE((SUM(((COALESCE((CASE WHEN g.home_team_code = s.team_code THEN COALESCE(g.home_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code)) ELSE COALESCE(g.away_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code)) END), 0) - COALESCE((CASE WHEN g.home_team_code = s.team_code THEN COALESCE(g.away_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code)) ELSE COALESCE(g.home_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code)) END), 0))) * s.min_seconds) * 1.0) / NULLIF(SUM(s.min_seconds), 0), 0) as margin, COALESCE(AVG(s.reb_tot), 0), COALESCE(AVG(s.ast), 0), COALESCE(AVG(s.stl), 0), COALESCE(AVG(s.blk), 0), COALESCE(AVG(s.tov), 0), COALESCE(AVG(s.game_score), 0) FROM game_stats s JOIN games g ON g.game_id = s.game_id JOIN players p ON s.player_id = p.player_id JOIN teams t ON s.team_code = t.team_code WHERE p.player_name LIKE ? GROUP BY p.player_id ORDER BY AVG(s.pts) DESC LIMIT ? |}
   let player_stats_by_margin = (tup2 string int ->* Types.player_aggregate) {| SELECT p.player_id, p.player_name, t.team_name_kr, COUNT(*) as gp, COALESCE(SUM(s.min_seconds) / 60.0, 0), COALESCE(AVG(s.pts), 0), COALESCE((SUM(((COALESCE((CASE WHEN g.home_team_code = s.team_code THEN COALESCE(g.home_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code)) ELSE COALESCE(g.away_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code)) END), 0) - COALESCE((CASE WHEN g.home_team_code = s.team_code THEN COALESCE(g.away_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code)) ELSE COALESCE(g.home_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code)) END), 0))) * s.min_seconds) * 1.0) / NULLIF(SUM(s.min_seconds), 0), 0) as margin, COALESCE(AVG(s.reb_tot), 0), COALESCE(AVG(s.ast), 0), COALESCE(AVG(s.stl), 0), COALESCE(AVG(s.blk), 0), COALESCE(AVG(s.tov), 0), COALESCE(AVG(s.game_score), 0) FROM game_stats s JOIN games g ON g.game_id = s.game_id JOIN players p ON s.player_id = p.player_id JOIN teams t ON s.team_code = t.team_code WHERE p.player_name LIKE ? GROUP BY p.player_id HAVING SUM(s.min_seconds) >= 6000 ORDER BY margin DESC LIMIT ? |}

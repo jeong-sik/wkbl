@@ -71,6 +71,7 @@ python3 scripts/wkbl_refresh_all.py --update-roster --audit-photos
 - `scripts/wkbl_ajax_collector.py`: 공식 사이트 AJAX 데이터 수집
 - `scripts/wkbl_aggregate_stats.py`: 수집된 CSV 집계
 - `scripts/build_wkbl_db.py`: 집계된 CSV를 SQLite(`wkbl.db`)로 변환
+- `scripts/wkbl_db_dedupe_game_stats.py`: 동명이인 등으로 생긴 중복 game_stats 정리
 - `scripts/wkbl_data_qa.py`: 데이터 무결성 체크
 
 ## 사진 및 로스터 매핑

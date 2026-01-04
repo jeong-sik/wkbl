@@ -397,9 +397,21 @@ let boxscore_player_table (title: string) (players: boxscore_player_stat list) =
   let rows =
     players
     |> List.map (fun (p: boxscore_player_stat) ->
+        let pos_badge =
+          match p.bs_position with
+          | Some pos when String.trim pos <> "" ->
+              Printf.sprintf
+                {html|<span class="ml-2 px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 text-[10px] font-sans">%s</span>|html}
+                (escape_html pos)
+          | _ -> ""
+        in
         Printf.sprintf
-          {html|<tr class="border-b border-slate-800/60 hover:bg-slate-800/30 transition-colors"><td class="px-3 py-2 font-medium text-white flex items-center gap-3">%s<a href="/player/%s" class="hover:text-orange-400 transition-colors">%s</a></td><td class="px-3 py-2 text-right text-slate-400 font-mono text-sm w-[60px]">%.1f</td><td class="px-3 py-2 text-right text-white font-bold w-[60px]">%d</td><td class="px-3 py-2 text-right text-slate-300 w-[60px]">%d</td><td class="px-3 py-2 text-right text-slate-300 w-[60px]">%d</td><td class="px-3 py-2 text-right text-slate-300 w-[60px]">%d</td><td class="px-3 py-2 text-right text-slate-300 w-[60px]">%d</td><td class="px-3 py-2 text-right text-slate-300 w-[60px]">%d</td><td class="px-3 py-2 text-right text-slate-400 text-xs font-mono w-[120px]">%d-%d (%.1f%%)</td><td class="px-3 py-2 text-right text-slate-400 text-xs font-mono w-[120px]">%d-%d (%.1f%%)</td><td class="px-3 py-2 text-right text-slate-400 text-xs font-mono w-[120px]">%d-%d (%.1f%%)</td></tr>|html}
-          (player_img_tag ~class_name:"w-6 h-6" p.bs_player_id p.bs_player_name) p.bs_player_id (escape_html p.bs_player_name) p.bs_minutes p.bs_pts p.bs_reb p.bs_ast p.bs_stl p.bs_blk p.bs_tov p.bs_fg_made p.bs_fg_att p.bs_fg_pct p.bs_fg3_made p.bs_fg3_att p.bs_fg3_pct p.bs_ft_made p.bs_ft_att p.bs_ft_pct)
+          {html|<tr class="border-b border-slate-800/60 hover:bg-slate-800/30 transition-colors"><td class="px-3 py-2 font-medium text-white flex items-center gap-3">%s<a href="/player/%s" class="hover:text-orange-400 transition-colors">%s</a>%s</td><td class="px-3 py-2 text-right text-slate-400 font-mono text-sm w-[60px]">%.1f</td><td class="px-3 py-2 text-right text-white font-bold w-[60px]">%d</td><td class="px-3 py-2 text-right text-slate-300 w-[60px]">%d</td><td class="px-3 py-2 text-right text-slate-300 w-[60px]">%d</td><td class="px-3 py-2 text-right text-slate-300 w-[60px]">%d</td><td class="px-3 py-2 text-right text-slate-300 w-[60px]">%d</td><td class="px-3 py-2 text-right text-slate-300 w-[60px]">%d</td><td class="px-3 py-2 text-right text-slate-400 text-xs font-mono w-[120px]">%d-%d (%.1f%%)</td><td class="px-3 py-2 text-right text-slate-400 text-xs font-mono w-[120px]">%d-%d (%.1f%%)</td><td class="px-3 py-2 text-right text-slate-400 text-xs font-mono w-[120px]">%d-%d (%.1f%%)</td></tr>|html}
+          (player_img_tag ~class_name:"w-6 h-6" p.bs_player_id p.bs_player_name)
+          p.bs_player_id
+          (escape_html p.bs_player_name)
+          pos_badge
+          p.bs_minutes p.bs_pts p.bs_reb p.bs_ast p.bs_stl p.bs_blk p.bs_tov p.bs_fg_made p.bs_fg_att p.bs_fg_pct p.bs_fg3_made p.bs_fg3_att p.bs_fg3_pct p.bs_ft_made p.bs_ft_att p.bs_ft_pct)
     |> String.concat "\n"
   in
   Printf.sprintf
@@ -408,14 +420,30 @@ let boxscore_player_table (title: string) (players: boxscore_player_stat list) =
 
 let boxscore_page (bs: game_boxscore) =
   let gi = bs.boxscore_game in
+  let margin = gi.gi_home_score - gi.gi_away_score in
+  let margin_str =
+    if margin > 0 then Printf.sprintf "+%d" margin else if margin < 0 then Printf.sprintf "%d" margin else "0"
+  in
+  let margin_class =
+    if margin > 0 then "text-sky-400"
+    else if margin < 0 then "text-orange-400"
+    else "text-slate-400"
+  in
+  let margin_badge =
+    Printf.sprintf
+      {html|<span class="px-2 py-1 rounded-full bg-slate-800 border border-slate-700 text-[10px] font-mono tracking-wider %s">MARGIN %s</span>|html}
+      margin_class
+      (escape_html margin_str)
+  in
   let home_table = boxscore_player_table gi.gi_home_team_name bs.boxscore_home_players in
   let away_table = boxscore_player_table gi.gi_away_team_name bs.boxscore_away_players in
   layout ~title:(Printf.sprintf "Boxscore: %s vs %s" gi.gi_home_team_name gi.gi_away_team_name)
     ~content:(Printf.sprintf
-      {html|<div class="space-y-8 animate-fade-in"><div class="bg-slate-900 rounded-xl border border-slate-800 p-6 shadow-2xl"><div class="flex flex-col items-center gap-6"><div class="text-slate-500 font-mono text-sm uppercase tracking-widest">%s</div><div class="flex items-center justify-between w-full max-w-2xl"><div class="flex flex-col items-center gap-3"><div class="text-2xl font-black text-white flex items-center gap-3">%s<a href="/team/%s" class="hover:text-orange-400 transition-colors">%s</a></div><div class="text-slate-400 text-sm">HOME</div></div><div class="flex items-center gap-8"><div class="text-5xl font-black text-white">%d</div><div class="text-2xl text-slate-700 font-light">vs</div><div class="text-5xl font-black text-white">%d</div></div><div class="flex flex-col items-center gap-3"><div class="text-2xl font-black text-white flex items-center gap-3"><a href="/team/%s" class="hover:text-orange-400 transition-colors">%s</a>%s</div><div class="text-slate-400 text-sm">AWAY</div></div></div></div></div><div class="grid grid-cols-1 gap-8">%s%s</div><div class="flex justify-center"><a href="/games" class="text-slate-500 hover:text-orange-500 transition text-sm">← Back to Games</a></div></div>|html}
+      {html|<div class="space-y-8 animate-fade-in"><div class="bg-slate-900 rounded-xl border border-slate-800 p-6 shadow-2xl"><div class="flex flex-col items-center gap-6"><div class="text-slate-500 font-mono text-sm uppercase tracking-widest">%s</div><div class="flex items-center justify-between w-full max-w-2xl"><div class="flex flex-col items-center gap-3"><div class="text-2xl font-black text-white flex items-center gap-3">%s<a href="/team/%s" class="hover:text-orange-400 transition-colors">%s</a></div><div class="text-slate-400 text-sm">HOME</div></div><div class="flex items-center gap-8"><div class="text-5xl font-black text-white">%d</div><div class="flex flex-col items-center gap-2"><div class="text-2xl text-slate-700 font-light">vs</div>%s</div><div class="text-5xl font-black text-white">%d</div></div><div class="flex flex-col items-center gap-3"><div class="text-2xl font-black text-white flex items-center gap-3"><a href="/team/%s" class="hover:text-orange-400 transition-colors">%s</a>%s</div><div class="text-slate-400 text-sm">AWAY</div></div></div></div></div><div class="grid grid-cols-1 gap-8">%s%s</div><div class="flex justify-center"><a href="/games" class="text-slate-500 hover:text-orange-500 transition text-sm">← Back to Games</a></div></div>|html}
       (escape_html gi.gi_game_date)
       (team_logo_tag ~class_name:"w-10 h-10" gi.gi_home_team_name) (Uri.pct_encode gi.gi_home_team_name) (escape_html gi.gi_home_team_name)
       gi.gi_home_score
+      margin_badge
       gi.gi_away_score
       (Uri.pct_encode gi.gi_away_team_name) (escape_html gi.gi_away_team_name) (team_logo_tag ~class_name:"w-10 h-10" gi.gi_away_team_name)
       home_table away_table)
