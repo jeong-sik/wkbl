@@ -442,7 +442,36 @@ let player_profile_page (profile: player_profile) ~scope =
   let p = profile.player in
   let pos = match p.position with Some s -> s | None -> "-" in
   let info_text = Printf.sprintf "%s | %dcm" pos (match p.height with Some h -> h | None -> 0) in
-  let recent_rows = profile.recent_games |> List.map (fun (g: player_game_stat) -> let res_color = if g.pts >= 20 then "text-orange-400" else "text-slate-300" in Printf.sprintf {html|<tr class="border-b border-slate-800/60 hover:bg-slate-800/30 transition-colors"><td class="px-4 py-3 text-slate-400 text-sm font-mono">%s</td><td class="px-4 py-3 text-white">%s</td><td class="px-4 py-3 text-right font-mono text-slate-400 w-[80px]">%.1f</td><td class="px-4 py-3 text-right font-bold %s w-[80px]">%d</td><td class="px-4 py-3 text-right text-slate-300 w-[80px]">%d</td><td class="px-4 py-3 text-right text-slate-300 w-[80px]">%d</td><td class="px-4 py-3 text-right text-slate-300 w-[80px]">%d</td><td class="px-4 py-3 text-right text-slate-300 w-[80px]">%d</td></tr>|html} (escape_html g.game_date) (if g.is_home then "vs " ^ g.opponent else "@ " ^ g.opponent) g.min res_color g.pts g.reb g.ast g.stl g.blk) |> String.concat "\n" in
+  let recent_rows =
+    profile.recent_games
+    |> List.map (fun (g: player_game_stat) ->
+        let res_color = if g.pts >= 20 then "text-orange-400" else "text-slate-300" in
+        let margin_badge =
+          match g.team_score, g.opponent_score with
+          | Some team_score, Some opponent_score ->
+              let margin = team_score - opponent_score in
+              let cls =
+                if margin > 0 then "bg-sky-500/10 text-sky-400 border-sky-500/30"
+                else if margin < 0 then "bg-rose-500/10 text-rose-400 border-rose-500/30"
+                else "bg-slate-500/10 text-slate-300 border-slate-500/30"
+              in
+              let label =
+                if margin > 0 then Printf.sprintf "W +%d" margin
+                else if margin < 0 then Printf.sprintf "L %d" margin
+                else "T 0"
+              in
+              Printf.sprintf
+                {html|<span class="inline-flex items-center px-2 py-0.5 rounded border text-[10px] font-mono %s">%s</span>|html}
+                cls label
+          | _ ->
+              {html|<span class="inline-flex items-center px-2 py-0.5 rounded border border-slate-700/60 text-[10px] font-mono text-slate-500">-</span>|html}
+        in
+        let opponent_label = if g.is_home then "vs " ^ g.opponent else "@ " ^ g.opponent in
+        Printf.sprintf
+          {html|<tr class="border-b border-slate-800/60 hover:bg-slate-800/30 transition-colors"><td class="px-4 py-3 text-slate-400 text-sm font-mono"><a href="/boxscore/%s" class="hover:text-orange-400 transition-colors">%s</a></td><td class="px-4 py-3 text-white"><div class="flex items-center justify-between gap-3"><span class="truncate">%s</span>%s</div></td><td class="px-4 py-3 text-right font-mono text-slate-400 w-[80px]">%.1f</td><td class="px-4 py-3 text-right font-bold %s w-[80px]">%d</td><td class="px-4 py-3 text-right text-slate-300 w-[80px]">%d</td><td class="px-4 py-3 text-right text-slate-300 w-[80px]">%d</td><td class="px-4 py-3 text-right text-slate-300 w-[80px]">%d</td><td class="px-4 py-3 text-right text-slate-300 w-[80px]">%d</td></tr>|html}
+          (Uri.pct_encode g.game_id) (escape_html g.game_date) (escape_html opponent_label) margin_badge g.min res_color g.pts g.reb g.ast g.stl g.blk)
+    |> String.concat "\n"
+  in
   let season_stats_component = player_season_stats_component ~player_id:p.id ~scope profile.season_breakdown in
 
   let career_highs_html = career_highs_card profile.career_highs in
@@ -454,7 +483,7 @@ let player_profile_page (profile: player_profile) ~scope =
   in
 
   layout ~title:(p.name ^ " | WKBL Profile")
-    ~content:(Printf.sprintf {html|<div class="space-y-8 animate-fade-in"><div class="bg-slate-900 rounded-xl border border-slate-800 p-8 shadow-2xl flex flex-col md:flex-row items-center md:items-start gap-8"><div class="relative">%s<div class="absolute -bottom-3 -right-3 bg-slate-800 border border-slate-700 text-white text-xs font-bold px-3 py-1 rounded-full">%s</div></div><div class="text-center md:text-left space-y-2"><h1 class="text-4xl font-black text-white">%s</h1><div class="text-slate-400 text-lg">%s</div><div class="flex gap-2 justify-center md:justify-start pt-2"><span class="bg-slate-800 text-slate-300 px-3 py-1 rounded text-sm">%s</span></div></div></div><div class="grid grid-cols-1 lg:grid-cols-3 gap-8"><div class="lg:col-span-2 space-y-8">%s<div class="space-y-4"><h3 class="text-xl font-bold text-white">Recent Games</h3><div class="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden shadow-lg"><table class="w-full text-sm font-mono table-fixed"><thead class="bg-slate-800/80 text-slate-400 uppercase tracking-wider text-xs"><tr><th class="px-4 py-3 text-left font-sans">Date</th><th class="px-4 py-3 text-left font-sans">Opponent</th><th class="px-4 py-3 text-right w-[80px]">MIN</th><th class="px-4 py-3 text-right text-orange-400 w-[80px]">PTS</th><th class="px-4 py-3 text-right w-[80px]">REB</th><th class="px-4 py-3 text-right w-[80px]">AST</th><th class="px-4 py-3 text-right w-[80px]">BLK</th><th class="px-4 py-3 text-right w-[80px]">TO</th></tr></thead><tbody>%s</tbody></table></div></div></div><div class="space-y-8"><div class="space-y-4">%s%s</div></div></div></div>|html}
+    ~content:(Printf.sprintf {html|<div class="space-y-8 animate-fade-in"><div class="bg-slate-900 rounded-xl border border-slate-800 p-8 shadow-2xl flex flex-col md:flex-row items-center md:items-start gap-8"><div class="relative">%s<div class="absolute -bottom-3 -right-3 bg-slate-800 border border-slate-700 text-white text-xs font-bold px-3 py-1 rounded-full">%s</div></div><div class="text-center md:text-left space-y-2"><h1 class="text-4xl font-black text-white">%s</h1><div class="text-slate-400 text-lg">%s</div><div class="flex gap-2 justify-center md:justify-start pt-2"><span class="bg-slate-800 text-slate-300 px-3 py-1 rounded text-sm">%s</span></div></div></div><div class="grid grid-cols-1 lg:grid-cols-3 gap-8"><div class="lg:col-span-2 space-y-8">%s<div class="space-y-4"><h3 class="text-xl font-bold text-white">Recent Games</h3><div class="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden shadow-lg"><table class="w-full text-sm font-mono table-fixed"><thead class="bg-slate-800/80 text-slate-400 uppercase tracking-wider text-xs"><tr><th class="px-4 py-3 text-left font-sans">Date</th><th class="px-4 py-3 text-left font-sans">Opponent</th><th class="px-4 py-3 text-right w-[80px]">MIN</th><th class="px-4 py-3 text-right text-orange-400 w-[80px]">PTS</th><th class="px-4 py-3 text-right w-[80px]">REB</th><th class="px-4 py-3 text-right w-[80px]">AST</th><th class="px-4 py-3 text-right w-[80px]">STL</th><th class="px-4 py-3 text-right w-[80px]">BLK</th></tr></thead><tbody>%s</tbody></table></div></div></div><div class="space-y-8"><div class="space-y-4">%s%s</div></div></div></div>|html}
           (player_img_tag ~class_name:"w-32 h-32 border-4 border-slate-700 shadow-2xl" p.id p.name) (escape_html p.id) (escape_html p.name) info_text (match p.birth_date with Some d -> d | None -> "Unknown") season_stats_component recent_rows career_highs_html missing_data_html)
 
 let team_profile_page (detail: team_full_detail) =
@@ -462,7 +491,34 @@ let team_profile_page (detail: team_full_detail) =
   let s = detail.tfd_standing in
   let standing_info = match s with | Some st -> Printf.sprintf {html|<div class="flex gap-6 text-sm"><div class="flex flex-col"><span>WINS</span><span class="text-2xl font-black text-white">%d</span></div><div class="flex flex-col"><span>LOSSES</span><span class="text-2xl font-black text-white">%d</span></div><div class="flex flex-col"><span>WIN %%</span><span class="text-2xl font-black text-orange-400">%.3f</span></div><div class="flex flex-col"><span>GB</span><span class="text-2xl font-black text-slate-400">%.1f</span></div></div>|html} st.wins st.losses st.win_pct st.gb | None -> "" in
   let roster_rows = detail.tfd_roster |> List.mapi (fun i p -> player_row (i + 1) p) |> String.concat "\n" in
-  let game_rows = detail.tfd_recent_games |> List.map (fun (g: team_game_result) -> let res_class = if g.tgr_is_win then "text-sky-400" else "text-rose-400" in let res_label = if g.tgr_is_win then "W" else "L" in Printf.sprintf {html|<tr class="border-b border-slate-800/60 hover:bg-slate-800/30 transition-colors"><td class="px-4 py-3 text-slate-400 text-sm font-mono">%s</td><td class="px-4 py-3 text-white">%s</td><td class="px-4 py-3 text-center font-bold %s">%s</td><td class="px-4 py-3 text-right font-mono text-white">%d - %d</td></tr>|html} (escape_html g.tgr_game_date) (if g.tgr_is_home then "vs " ^ g.tgr_opponent else "@ " ^ g.tgr_opponent) res_class res_label g.tgr_team_score g.tgr_opponent_score) |> String.concat "\n" in
+  let game_rows =
+    detail.tfd_recent_games
+    |> List.map (fun (g: team_game_result) ->
+        let res_class = if g.tgr_is_win then "text-sky-400" else "text-rose-400" in
+        let res_label = if g.tgr_is_win then "W" else "L" in
+        let margin = g.tgr_team_score - g.tgr_opponent_score in
+        let margin_class =
+          if margin > 0 then "text-sky-400"
+          else if margin < 0 then "text-rose-400"
+          else "text-slate-400"
+        in
+        let margin_str =
+          if margin > 0 then Printf.sprintf "+%d" margin else string_of_int margin
+        in
+        let opponent_label = if g.tgr_is_home then "vs " ^ g.tgr_opponent else "@ " ^ g.tgr_opponent in
+        Printf.sprintf
+          {html|<tr class="border-b border-slate-800/60 hover:bg-slate-800/30 transition-colors"><td class="px-4 py-3 text-slate-400 text-sm font-mono"><a href="/boxscore/%s" class="hover:text-orange-400 transition-colors">%s</a></td><td class="px-4 py-3 text-white">%s</td><td class="px-4 py-3 text-center font-bold %s">%s</td><td class="px-4 py-3 text-right font-mono text-white"><div class="flex items-center justify-end gap-2"><span>%d - %d</span><span class="px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700/60 text-[10px] font-mono %s">%s</span></div></td></tr>|html}
+          (Uri.pct_encode g.tgr_game_id)
+          (escape_html g.tgr_game_date)
+          (escape_html opponent_label)
+          res_class
+          res_label
+          g.tgr_team_score
+          g.tgr_opponent_score
+          margin_class
+          (escape_html margin_str))
+    |> String.concat "\n"
+  in
   layout ~title:(t ^ " | WKBL Team Profile")
     ~content:(Printf.sprintf {html|<div class="space-y-8 animate-fade-in"><div class="bg-slate-900 rounded-xl border border-slate-800 p-8 shadow-2xl flex flex-col md:flex-row items-center md:items-start gap-8"><div class="w-32 h-32 bg-slate-800 rounded-xl flex items-center justify-center p-4 border-2 border-slate-700 shadow-inner">%s</div><div class="text-center md:text-left space-y-4"><h1 class="text-4xl font-black text-white">%s</h1>%s</div></div><div class="grid grid-cols-1 lg:grid-cols-2 gap-8"><div class="space-y-4"><h3 class="text-xl font-bold text-white">Roster</h3><div class="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden shadow-lg"><table class="w-full text-sm font-mono"><thead class="bg-slate-800/80 text-slate-400 uppercase tracking-wider text-xs"><tr><th class="px-3 py-3 text-left font-sans w-12">#</th><th class="px-3 py-3 text-left font-sans">Player</th><th class="px-3 py-3 text-left font-sans">Team</th><th class="px-3 py-3 text-right">GP</th><th class="px-3 py-3 text-right text-orange-400">PTS</th><th class="px-3 py-3 text-right">REB</th><th class="px-3 py-3 text-right">AST</th><th class="px-3 py-3 text-right">STL</th><th class="px-3 py-3 text-right">BLK</th><th class="px-3 py-2 text-right">TO</th><th class="px-3 py-2 text-right text-orange-400">EFF</th></tr></thead><tbody>%s</tbody></table></div></div><div class="space-y-4"><h3 class="text-xl font-bold text-white">Recent Results</h3><div class="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden shadow-lg"><table class="w-full text-sm font-mono"><thead class="bg-slate-800/80 text-slate-400 uppercase tracking-wider text-xs"><tr><th class="px-4 py-3 text-left font-sans">Date</th><th class="px-4 py-3 text-left font-sans">Opponent</th><th class="px-4 py-3 text-center font-sans">Result</th><th class="px-4 py-3 text-right font-sans">Score</th></tr></thead><tbody>%s</tbody></table></div></div></div></div>|html}
           (team_logo_tag ~class_name:"w-24 h-24" t) (escape_html t) standing_info roster_rows game_rows)
