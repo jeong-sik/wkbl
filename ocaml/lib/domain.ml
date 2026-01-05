@@ -306,7 +306,7 @@ let team_code_of_string = function
   | "인천 신한은행 에스버드" | "신한은행" | "SH" -> Some "SH"
   | "청주 KB스타즈" | "KB스타즈" | "KB" -> Some "KB"
   | "부천 하나은행" | "하나은행" | "HN" -> Some "HN"
-  | "부산 BNK 썸" | "BNK썸" | "BNK" | "BN" -> Some "BN"
+  | "부산 BNK 썸" | "BNK 썸" | "BNK썸" | "BNK" | "BN" -> Some "BN"
   | _ -> None
 
 let team_code_to_color = function
