@@ -26,11 +26,11 @@ let player_img_tag ?(class_name="w-12 h-12") player_id player_name =
   let local_src = Printf.sprintf "/static/images/player_%s.png" player_id in
   let remote_src = Printf.sprintf "https://www.wkbl.or.kr/static/images/player/pimg/m_%s.jpg" player_id in
   Printf.sprintf
-    {html|<img src=\"%s\" alt=\"%s\" class=\"%s rounded-full object-cover bg-slate-800 border border-slate-700 shadow-sm\" onerror=\"this.onerror=null; this.src='%s';\">|html}
-    local_src
+    {html|<img src="%s" alt="%s" class="%s rounded-full object-cover bg-slate-800 border border-slate-700 shadow-sm" data-fallback="%s" onerror="this.onerror=null; this.src=this.dataset.fallback;">|html}
+    (escape_html local_src)
     (escape_html player_name)
-    class_name
-    remote_src
+    (escape_html class_name)
+    (escape_html remote_src)
 
 (** Team logo component *)
 let team_logo_tag ?(class_name="w-8 h-8") team_name =
