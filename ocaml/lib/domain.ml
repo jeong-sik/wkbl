@@ -248,6 +248,7 @@ type player_profile = {
   player: player_info;
   averages: player_aggregate;
   recent_games: player_game_stat list;
+  all_star_games: player_game_stat list;
   season_breakdown: season_stats list;
   career_highs: career_high_item list option;
 }
