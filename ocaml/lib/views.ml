@@ -338,6 +338,7 @@ let layout ~title ~content =
         <a href="/standings" class="text-slate-400 hover:text-white transition">Standings</a>
         <a href="/teams" class="text-slate-400 hover:text-white transition">Teams</a>
         <a href="/players" class="text-slate-400 hover:text-white transition">Players</a>
+        <a href="/predict" class="text-slate-400 hover:text-white transition">Predict</a>
         <a href="/compare" class="text-slate-400 hover:text-white transition">Compare</a>
         <a href="/qa" class="text-slate-400 hover:text-white transition">QA</a>
       </nav>
@@ -615,6 +616,107 @@ let compare_page (p1: player_aggregate option) (p2: player_aggregate option) (h2
     | _ -> {html|<div class="text-center py-20 bg-slate-900 rounded-xl border border-slate-800"><div class="text-4xl mb-4">🔍</div><h3 class="text-xl font-bold text-white">Compare Players</h3><p class="text-slate-400 mt-2">Enter player names in the URL query (e.g., ?p1=김단비&p2=박지현)</p></div>|html}
   in
   layout ~title:"Player Comparison" ~content:(Printf.sprintf {html|<div class="space-y-8"><div class="flex justify-between items-end"><div><h2 class="text-3xl font-black text-white">Head to Head</h2><p class="text-slate-400">Side-by-side performance analysis.</p></div></div>%s</div>|html} content)
+
+let prediction_result_card ~(home: string) ~(away: string) (result: prediction_result) =
+  let pct value = value *. 100.0 in
+  let home_pct = pct result.prob_a in
+  let away_pct = pct result.prob_b in
+  Printf.sprintf
+    {html|<div class="bg-slate-900 rounded-xl border border-slate-800 p-6 shadow-xl space-y-4">
+      <div class="flex items-start justify-between gap-6">
+        <div>
+          <div class="text-sm text-slate-500 font-mono uppercase tracking-widest">Prediction</div>
+          <div class="mt-1 text-2xl font-black text-white">%s</div>
+          <div class="mt-1 text-xs text-slate-500">%s (Home) vs %s (Away)</div>
+        </div>
+        <div class="text-right">
+          <div class="text-xs text-slate-500">Winner</div>
+          <div class="text-lg font-black text-orange-400">%s</div>
+        </div>
+      </div>
+      <div class="space-y-2">
+        <div class="flex justify-between text-xs font-bold uppercase tracking-tighter text-slate-500">
+          <span class="text-slate-300">%s</span>
+          <span class="text-slate-300">%s</span>
+        </div>
+        <div class="flex h-2 bg-slate-800 rounded-full overflow-hidden">
+          <div class="bg-orange-500 h-full transition-all duration-500" style="width: %.1f%%"></div>
+          <div class="bg-sky-500 h-full transition-all duration-500" style="width: %.1f%%"></div>
+        </div>
+        <div class="flex justify-between font-mono text-sm">
+          <span class="text-orange-400 font-bold">%.1f%%</span>
+          <span class="text-sky-400 font-bold">%.1f%%</span>
+        </div>
+      </div>
+      <details class="bg-slate-900/50 rounded-lg border border-slate-800/50 p-4 text-xs text-slate-400">
+        <summary class="cursor-pointer font-bold text-slate-300 select-none">예측 안내</summary>
+        <div class="mt-2 space-y-1 leading-relaxed">
+          <div>시즌 집계(<span class="font-mono text-slate-200">PTS/REB/AST/STL/BLK/EFF</span>)와 승률을 단순 결합해 확률을 계산합니다.</div>
+          <div>홈 어드밴티지(+5%%p)를 반영합니다.</div>
+          <div>부상/로스터/일정/전술/PBP 등의 컨텍스트는 반영하지 않습니다.</div>
+        </div>
+      </details>
+    </div>|html}
+    (escape_html (Printf.sprintf "%.1f%% - %.1f%%" home_pct away_pct))
+    (escape_html home)
+    (escape_html away)
+    (escape_html result.winner)
+    (escape_html home)
+    (escape_html away)
+    home_pct
+    away_pct
+    home_pct
+    away_pct
+
+let predict_page ~season ~seasons ~teams ~home ~away (result: prediction_result option) (error: string option) =
+  let season_options =
+    let base =
+      seasons
+      |> List.map (fun (s : season_info) ->
+          let selected = if s.code = season then "selected" else "" in
+          Printf.sprintf {html|<option value="%s" %s>%s</option>|html} s.code selected (escape_html s.name))
+      |> String.concat "\n"
+    in
+    Printf.sprintf {html|<option value="ALL" %s>All Seasons</option>%s|html} (if season = "ALL" then "selected" else "") base
+  in
+  let team_option current name =
+    let selected = if normalize_label current = normalize_label name then "selected" else "" in
+    Printf.sprintf {html|<option value="%s" %s>%s</option>|html} (escape_html name) selected (escape_html name)
+  in
+  let team_options current =
+    let base = teams |> List.map (team_option current) |> String.concat "\n" in
+    Printf.sprintf {html|<option value="" %s>Select team…</option>%s|html} (if String.trim current = "" then "selected" else "") base
+  in
+  let result_html =
+    match result, error with
+    | Some r, _ -> prediction_result_card ~home ~away r
+    | None, Some msg ->
+        Printf.sprintf
+          {html|<div class="bg-rose-500/10 border border-rose-500/30 text-rose-300 rounded-xl p-5">%s</div>|html}
+          (escape_html msg)
+    | None, None ->
+        {html|<div class="text-slate-500 text-sm">Select teams to see a prediction.</div>|html}
+  in
+  layout ~title:"WKBL Predict"
+    ~content:(Printf.sprintf
+      {html|<div class="space-y-6 animate-fade-in">
+        <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+          <div>
+            <h2 class="text-3xl font-black text-white">Match Prediction</h2>
+            <p class="text-slate-400 text-sm">Home vs Away — season aggregate 기반의 간단한 승부 예측.</p>
+          </div>
+        </div>
+        <form action="/predict" method="get" class="grid grid-cols-1 md:grid-cols-3 gap-3 bg-slate-900 rounded-xl border border-slate-800 p-4">
+          <select name="season" class="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none">%s</select>
+          <select name="home" class="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none">%s</select>
+          <select name="away" class="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none">%s</select>
+          <div class="md:col-span-3 flex justify-end">
+            <button type="submit" class="bg-orange-500 hover:bg-orange-400 text-black font-bold px-4 py-2 rounded text-sm transition">Predict</button>
+          </div>
+        </form>
+        %s
+      </div>|html}
+      season_options (team_options home) (team_options away) result_html)
 
 let leader_card title (leaders: leader_entry list) =
   if leaders = [] then ""

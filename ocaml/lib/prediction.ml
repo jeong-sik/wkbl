@@ -12,6 +12,9 @@ open Domain
 let home_court_boost = 0.05
 let pythagorean_exponent = 13.91  (* Optimized for professional basketball *)
 
+let clamp01 value =
+  if value < 0.0 then 0.0 else if value > 1.0 then 1.0 else value
+
 (** 1. Pythagorean Winning Percentage 
     formula: (pts_for^exp) / (pts_for^exp + pts_against^exp)
 *)
@@ -42,10 +45,11 @@ let stats_probability ~(stats_a: team_prediction_stats) ~(stats_b: team_predicti
   let relative_strength = base_prob /. (base_prob +. opponent_prob) in
   
   (* Apply Home Boost *)
-  if is_home_a then
-    relative_strength +. home_court_boost
-  else
-    relative_strength -. home_court_boost
+  let adjusted =
+    if is_home_a then relative_strength +. home_court_boost
+    else relative_strength -. home_court_boost
+  in
+  clamp01 adjusted
 
 (** Main prediction function *)
 let predict_match ~(team_a: team_prediction_stats) ~(team_b: team_prediction_stats) ~name_a ~name_b =
