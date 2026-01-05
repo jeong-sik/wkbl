@@ -25,12 +25,29 @@ let escape_html s =
 let player_img_tag ?(class_name="w-12 h-12") player_id player_name =
   let local_src = Printf.sprintf "/static/images/player_%s.png" player_id in
   let remote_src = Printf.sprintf "https://www.wkbl.or.kr/static/images/player/pimg/m_%s.jpg" player_id in
+  let placeholder_src = "/static/images/player_placeholder.svg" in
+  let local_filename = Printf.sprintf "player_%s.png" player_id in
+  let has_local_player_image =
+    let env_static =
+      Sys.getenv_opt "WKBL_STATIC_PATH"
+      |> Option.map (fun p -> Filename.concat (Filename.concat p "images") local_filename)
+    in
+    let candidates =
+      [ env_static
+      ; Some (Filename.concat "static/images" local_filename)
+      ; Some (Filename.concat "ocaml/static/images" local_filename)
+      ]
+      |> List.filter_map Fun.id
+    in
+    List.exists Sys.file_exists candidates
+  in
+  let src = if has_local_player_image then local_src else remote_src in
   Printf.sprintf
-    {html|<img src="%s" alt="%s" class="%s rounded-full object-cover bg-slate-800 border border-slate-700 shadow-sm" data-fallback="%s" onerror="this.onerror=null; this.src=this.dataset.fallback;">|html}
-    (escape_html local_src)
+    {html|<img src="%s" alt="%s" class="%s rounded-full object-cover bg-slate-800 border border-slate-700 shadow-sm" loading="lazy" data-placeholder="%s">|html}
+    (escape_html src)
     (escape_html player_name)
     (escape_html class_name)
-    (escape_html remote_src)
+    (escape_html placeholder_src)
 
 (** Team logo component *)
 let team_logo_tag ?(class_name="w-8 h-8") team_name =
@@ -289,11 +306,12 @@ let layout ~title ~content =
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>%s</title>
-  <script src="https://unpkg.com/htmx.org@1.9.10"></script>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/static/js/htmx-1.9.10.min.js" defer data-cfasync="false"></script>
+  <script src="/static/js/player-photo-fallback.js" defer data-cfasync="false"></script>
+  <script src="https://cdn.tailwindcss.com" data-cfasync="false"></script>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/css/styles.css">
-  <script>tailwind.config = { darkMode: 'class', theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] } } } }</script>
+  <script data-cfasync="false">tailwind.config = { darkMode: 'class', theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] } } } }</script>
 </head>
 <body class="bg-[#0b0e14] text-slate-200 font-sans antialiased min-h-screen">
   <header class="sticky top-0 z-50 bg-slate-900/95 backdrop-blur border-b border-slate-800 px-6 py-4">
