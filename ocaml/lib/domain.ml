@@ -310,6 +310,26 @@ type prediction_result = {
   winner: string;
 }
 
+(** Prediction breakdown (nerd mode) *)
+type prediction_breakdown = {
+  pb_season: string;
+  pb_is_neutral: bool;
+  pb_games_used: int;
+  pb_elo_home: float;
+  pb_elo_away: float;
+  pb_elo_prob: float;
+  pb_pyth_home: float;
+  pb_pyth_away: float;
+  pb_pyth_prob: float;
+  pb_stats_prob: float;
+  pb_final_prob: float;
+}
+
+type prediction_output = {
+  result: prediction_result;
+  breakdown: prediction_breakdown;
+}
+
 (** Helper to map team names to codes *)
 let normalize_label (s: string) =
   let is_space = function

@@ -261,6 +261,13 @@ let () =
       let season = Dream.query request "season" |> Option.value ~default:"ALL" in
       let home = Dream.query request "home" |> Option.value ~default:"" in
       let away = Dream.query request "away" |> Option.value ~default:"" in
+      let is_neutral =
+        Dream.query request "neutral"
+        |> Option.map String.lowercase_ascii
+        |> function
+        | Some ("1" | "true" | "yes" | "on") -> true
+        | _ -> false
+      in
 
       let* seasons_res = Db.get_seasons () in
       let* teams_res = Db.get_all_teams () in
@@ -268,7 +275,7 @@ let () =
       let render result error =
         match seasons_res, teams_res with
         | Ok seasons, Ok teams ->
-            Dream.html (Views.predict_page ~season ~seasons ~teams ~home ~away result error)
+            Dream.html (Views.predict_page ~season ~seasons ~teams ~home ~away ~is_neutral result error)
         | Error e, _ | _, Error e -> Dream.html (Views.error_page (Db.show_db_error e))
       in
 
@@ -277,13 +284,14 @@ let () =
       else if normalize_label home = normalize_label away then
         render None (Some "Home/Away teams must be different.")
       else
-        let* stats_res = Db.get_team_stats ~season () in
+        let* totals_res = Db.get_team_stats ~season ~scope:Totals () in
         let* standings_res = Db.get_standings ~season () in
-        match stats_res, standings_res with
-        | Ok stats, Ok standings ->
+        let* games_res = Db.get_scored_games ~season () in
+        match totals_res, standings_res, games_res with
+        | Ok totals, Ok standings, Ok games ->
             let find_team (name : string) =
               let key = normalize_label name in
-              List.find_opt (fun (row : team_stats) -> normalize_label row.team = key) stats
+              List.find_opt (fun (row : team_stats) -> normalize_label row.team = key) totals
             in
             let find_win_pct (name : string) =
               let key = normalize_label name in
@@ -291,26 +299,24 @@ let () =
               | Some s -> s.win_pct
               | None -> 0.5
             in
-            let mk_prediction_stats (row : team_stats) win_pct =
-              {
-                ps_pts = row.pts;
-                ps_reb = row.reb;
-                ps_ast = row.ast;
-                ps_stl = row.stl;
-                ps_blk = row.blk;
-                ps_eff = row.eff;
-                ps_win_pct = win_pct;
-              }
-            in
             (match find_team home, find_team away with
             | Some home_row, Some away_row ->
-                let home_stats = mk_prediction_stats home_row (find_win_pct home) in
-                let away_stats = mk_prediction_stats away_row (find_win_pct away) in
-                let result = Prediction.predict_match ~team_a:home_stats ~team_b:away_stats ~name_a:home ~name_b:away in
-                render (Some result) None
+                let output =
+                  Prediction.predict_match_nerd
+                    ~season
+                    ~is_neutral
+                    ~games
+                    ~home:home_row
+                    ~away:away_row
+                    ~home_win_pct:(find_win_pct home)
+                    ~away_win_pct:(find_win_pct away)
+                    ~name_home:home
+                    ~name_away:away
+                in
+                render (Some output) None
             | None, _ -> render None (Some (Printf.sprintf "Team not found: %s" home))
             | _, None -> render None (Some (Printf.sprintf "Team not found: %s" away)))
-        | Error e, _ | _, Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+        | Error e, _, _ | _, Error e, _ | _, _, Error e -> Dream.html (Views.error_page (Db.show_db_error e))
     );
 
     (* Player Profile *)
