@@ -75,14 +75,71 @@ let margin_cell value =
   Printf.sprintf {html|<td class="px-3 py-2 text-right %s font-mono">%s</td>|html} class_name (escape_html value_str)
 
 (** Player Season Stats Table Component (Fixed widths for layout stability) *)
-let player_season_stats_table (stats: season_stats list) =
-  let rows =
-    stats
-    |> List.map (fun (s: season_stats) ->
-        let margin_class = if s.ss_margin >= 0.0 then "text-sky-400" else "text-rose-400" in
-        let margin_str = if s.ss_margin > 0.0 then Printf.sprintf "+%.1f" s.ss_margin else Printf.sprintf "%.1f" s.ss_margin in
-        Printf.sprintf {html|<tr class="border-b border-slate-800/60 hover:bg-slate-800/30 transition-colors">
-          <td class="px-4 py-3 text-white font-medium truncate">%s</td>
+let player_season_stats_table ~scope (stats: season_stats list) =
+  let total_gp = stats |> List.fold_left (fun acc (s: season_stats) -> acc + s.ss_games_played) 0 in
+  let total_minutes = stats |> List.fold_left (fun acc (s: season_stats) -> acc +. s.ss_total_minutes) 0.0 in
+  let sum_by f =
+    stats |> List.fold_left (fun acc (s: season_stats) -> acc +. f s) 0.0
+  in
+  let sum_weighted ~weight f =
+    stats |> List.fold_left (fun acc (s: season_stats) -> acc +. f s *. weight s) 0.0
+  in
+  let career_row =
+    match stats with
+    | [] -> None
+    | _ ->
+        let margin =
+          if total_minutes <= 0.0 then 0.0
+          else (sum_weighted ~weight:(fun s -> s.ss_total_minutes) (fun s -> s.ss_margin)) /. total_minutes
+        in
+        let make_weighted_row ~weight =
+          let wsum = stats |> List.fold_left (fun acc s -> acc +. weight s) 0.0 in
+          let safe_div x = if wsum <= 0.0 then 0.0 else x /. wsum in
+          let pts = safe_div (sum_weighted ~weight (fun s -> s.ss_avg_points)) in
+          let reb = safe_div (sum_weighted ~weight (fun s -> s.ss_avg_rebounds)) in
+          let ast = safe_div (sum_weighted ~weight (fun s -> s.ss_avg_assists)) in
+          let eff = safe_div (sum_weighted ~weight (fun s -> s.ss_efficiency)) in
+          (pts, reb, ast, eff)
+        in
+        let pts, reb, ast, eff =
+          match scope with
+          | "totals" ->
+              (sum_by (fun s -> s.ss_avg_points),
+               sum_by (fun s -> s.ss_avg_rebounds),
+               sum_by (fun s -> s.ss_avg_assists),
+               sum_by (fun s -> s.ss_efficiency))
+          | "per_36" ->
+              make_weighted_row ~weight:(fun s -> s.ss_total_minutes)
+          | _ ->
+              make_weighted_row ~weight:(fun s -> float_of_int s.ss_games_played)
+        in
+        Some {
+          ss_season_code = "CAREER";
+          ss_season_name = "Career";
+          ss_games_played = total_gp;
+          ss_total_minutes = total_minutes;
+          ss_avg_points = pts;
+          ss_avg_rebounds = reb;
+          ss_avg_assists = ast;
+          ss_avg_steals = 0.0;
+          ss_avg_blocks = 0.0;
+          ss_avg_turnovers = 0.0;
+          ss_efficiency = eff;
+          ss_margin = margin;
+          ss_ts_pct = 0.0;
+          ss_efg_pct = 0.0;
+        }
+  in
+  let row_html ?(highlight=false) (s: season_stats) =
+    let margin_class = if s.ss_margin >= 0.0 then "text-sky-400" else "text-rose-400" in
+    let margin_str = if s.ss_margin > 0.0 then Printf.sprintf "+%.1f" s.ss_margin else Printf.sprintf "%.1f" s.ss_margin in
+    let row_class =
+      if highlight then "bg-slate-800/40 border-b border-slate-700/60"
+      else "border-b border-slate-800/60 hover:bg-slate-800/30 transition-colors"
+    in
+    let name_class = if highlight then "text-white font-black" else "text-white font-medium" in
+    Printf.sprintf {html|<tr class="%s">
+          <td class="px-4 py-3 %s truncate">%s</td>
           <td class="px-4 py-3 text-right text-slate-300 w-[60px] font-mono">%d</td>
           <td class="px-4 py-3 text-right text-slate-300 w-[80px] font-mono">%.1f</td>
           <td class="px-4 py-3 text-right font-bold text-orange-400 w-[80px] font-mono">%.1f</td>
@@ -91,15 +148,23 @@ let player_season_stats_table (stats: season_stats list) =
           <td class="px-4 py-3 text-right text-slate-300 w-[80px] font-mono">%.1f</td>
           <td class="px-4 py-3 text-right text-slate-300 w-[80px] font-mono">%.1f</td>
         </tr>|html}
-        (escape_html s.ss_season_name)
-        s.ss_games_played
-        s.ss_total_minutes
-        s.ss_avg_points
-        margin_class
-        (escape_html margin_str)
-        s.ss_avg_rebounds
-        s.ss_avg_assists
-        s.ss_efficiency)
+      row_class
+      name_class
+      (escape_html s.ss_season_name)
+      s.ss_games_played
+      s.ss_total_minutes
+      s.ss_avg_points
+      margin_class
+      (escape_html margin_str)
+      s.ss_avg_rebounds
+      s.ss_avg_assists
+      s.ss_efficiency
+  in
+  let rows =
+    (match career_row with
+     | None -> []
+     | Some s -> [row_html ~highlight:true s])
+    @ (stats |> List.map row_html)
     |> String.concat "\n"
   in
   Printf.sprintf {html|<div class="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden shadow-lg animate-fade-in"><table class="season-stats-table w-full text-sm font-mono table-fixed">
@@ -140,7 +205,7 @@ let player_season_stats_component ~player_id ~scope (stats: season_stats list) =
   let mg_note =
     {html|<p class="text-[11px] text-slate-500 leading-relaxed mb-3"><span class="font-mono text-slate-300">MG</span>는 팀 득실마진(출전시간 가중)이며, 개인 <span class="font-mono text-slate-300">+/-</span>는 문자중계(PBP) 기반으로 <span class="font-mono text-slate-300">일부 경기만</span> 제공됩니다. (데이터가 없으면 <span class="font-mono text-slate-300">-</span>)</p>|html}
   in
-  let table = player_season_stats_table stats in
+  let table = player_season_stats_table ~scope stats in
   Printf.sprintf {html|<div id="season-stats-component" class="stats-container animate-fade-in">%s%s%s</div>|html} tabs mg_note table
 
 (** Career Highs Component *)
@@ -546,8 +611,19 @@ let player_profile_page (profile: player_profile) ~scope =
   let p = profile.player in
   let pos = match p.position with Some s -> s | None -> "-" in
   let info_text = Printf.sprintf "%s | %dcm" pos (match p.height with Some h -> h | None -> 0) in
-  let recent_rows =
-    profile.recent_games
+  let avg = profile.averages in
+  let career_chips =
+    if avg.games_played <= 0 then ""
+    else
+      Printf.sprintf
+        {html|<span class="bg-slate-800/60 text-slate-300 px-3 py-1 rounded text-sm font-mono">GP %d</span><span class="bg-slate-800/60 text-orange-400 px-3 py-1 rounded text-sm font-mono">PTS %.1f</span><span class="bg-slate-800/60 text-slate-300 px-3 py-1 rounded text-sm font-mono">REB %.1f</span><span class="bg-slate-800/60 text-slate-300 px-3 py-1 rounded text-sm font-mono">AST %.1f</span>|html}
+        avg.games_played
+        avg.avg_points
+        avg.avg_rebounds
+        avg.avg_assists
+  in
+  let game_rows games =
+    games
     |> List.map (fun (g: player_game_stat) ->
         let res_color = if g.pts >= 20 then "text-orange-400" else "text-slate-300" in
         let pm_class, pm_str =
@@ -584,7 +660,7 @@ let player_profile_page (profile: player_profile) ~scope =
         in
         let opponent_label = if g.is_home then "vs " ^ g.opponent else "@ " ^ g.opponent in
         Printf.sprintf
-          {html|<tr class="border-b border-slate-800/60 hover:bg-slate-800/30 transition-colors"><td class="px-4 py-3 text-slate-400 text-sm font-mono"><a href="/boxscore/%s" class="hover:text-orange-400 transition-colors">%s</a></td><td class="px-4 py-3 text-white"><div class="flex items-center justify-between gap-3"><span class="truncate">%s</span>%s</div></td><td class="px-4 py-3 text-right font-mono text-slate-400 w-[80px]">%.1f</td><td class="px-4 py-3 text-right font-bold %s w-[80px]">%d</td><td class="px-4 py-3 text-right font-mono w-[80px] %s">%s</td><td class="px-4 py-3 text-right text-slate-300 w-[80px]">%d</td><td class="px-4 py-3 text-right text-slate-300 w-[80px]">%d</td><td class="px-4 py-3 text-right text-slate-300 w-[80px]">%d</td><td class="px-4 py-3 text-right text-slate-300 w-[80px]">%d</td></tr>|html}
+          {html|<tr class="border-b border-slate-800/60 hover:bg-slate-800/30 transition-colors"><td class="px-4 py-3 text-slate-400 text-sm font-mono whitespace-nowrap"><a href="/boxscore/%s" class="hover:text-orange-400 transition-colors">%s</a></td><td class="px-4 py-3 text-white"><div class="flex items-center justify-between gap-3"><span class="truncate">%s</span>%s</div></td><td class="px-4 py-3 text-right font-mono text-slate-400 w-[72px]">%.1f</td><td class="px-4 py-3 text-right font-bold %s w-[72px]">%d</td><td class="px-4 py-3 text-right font-mono w-[72px] %s">%s</td><td class="px-4 py-3 text-right text-slate-300 w-[72px]">%d</td><td class="px-4 py-3 text-right text-slate-300 w-[72px]">%d</td><td class="px-4 py-3 text-right text-slate-300 w-[72px]">%d</td><td class="px-4 py-3 text-right text-slate-300 w-[72px]">%d</td></tr>|html}
           (Uri.pct_encode g.game_id)
           (escape_html g.game_date)
           (escape_html opponent_label)
@@ -600,19 +676,71 @@ let player_profile_page (profile: player_profile) ~scope =
           g.blk)
     |> String.concat "\n"
   in
+  let recent_rows = game_rows profile.recent_games in
+  let all_star_rows = game_rows profile.all_star_games in
   let season_stats_component = player_season_stats_component ~player_id:p.id ~scope profile.season_breakdown in
+  let all_star_section_html =
+    if profile.all_star_games = [] then
+      ""
+    else
+      Printf.sprintf
+        {html|<div class="space-y-4"><div class="flex flex-col gap-1"><h3 class="text-xl font-bold text-white">All-Star Games</h3><p class="text-[11px] text-slate-500">올스타전(<span class="font-mono text-slate-300">game_type=10</span>) 기록은 시즌/커리어 테이블에서 제외하고 여기서만 보여줍니다.</p></div><div class="bg-slate-900 rounded-xl border border-slate-800 overflow-x-auto shadow-lg"><table class="min-w-[920px] w-full text-sm font-mono table-fixed"><thead class="bg-slate-800/80 text-slate-400 uppercase tracking-wider text-xs"><tr><th class="px-4 py-3 text-left font-sans w-[110px] whitespace-nowrap">Date</th><th class="px-4 py-3 text-left font-sans">Opponent</th><th class="px-4 py-3 text-right w-[72px]">MIN</th><th class="px-4 py-3 text-right text-orange-400 w-[72px]">PTS</th><th class="px-4 py-3 text-right w-[72px]">+/-</th><th class="px-4 py-3 text-right w-[72px]">REB</th><th class="px-4 py-3 text-right w-[72px]">AST</th><th class="px-4 py-3 text-right w-[72px]">STL</th><th class="px-4 py-3 text-right w-[72px]">BLK</th></tr></thead><tbody>%s</tbody></table></div></div>|html}
+        all_star_rows
+  in
 
   let career_highs_html = career_highs_card profile.career_highs in
+  let data_notes_html =
+    let seasons = profile.season_breakdown in
+    let seasons_note =
+      match seasons with
+      | [] ->
+          {html|<div>Season stats: <span class="font-mono text-slate-300">-</span></div>|html}
+      | latest :: _ ->
+          let count = List.length seasons in
+          let rec last = function
+            | [] -> None
+            | [x] -> Some x
+            | _ :: xs -> last xs
+          in
+          let oldest = last seasons |> Option.value ~default:latest in
+          Printf.sprintf
+            {html|<div>Loaded seasons: <span class="font-mono text-slate-300">%s</span> ~ <span class="font-mono text-slate-300">%s</span> (<span class="font-mono text-slate-300">%d</span>)</div>|html}
+            (escape_html oldest.ss_season_name)
+            (escape_html latest.ss_season_name)
+            count
+    in
+    let backfill_hint =
+      if List.length seasons > 0 && List.length seasons <= 3 then
+        {html|<div>더 오래된 시즌이 필요하면 <code class="font-mono text-slate-300">python3 scripts/wkbl_refresh_all.py -- --years 10</code> 로 백필하세요.</div>|html}
+      else
+        ""
+    in
+    Printf.sprintf
+      {html|<div class="bg-slate-900 rounded-xl border border-slate-800 p-6 shadow-lg"><h3 class="text-slate-400 font-bold uppercase tracking-wider text-xs mb-4 flex items-center gap-2"><span class="text-lg">🧾</span> Data Notes</h3><div class="space-y-2 text-xs text-slate-500 leading-relaxed">%s%s<div>개인 <span class="font-mono text-slate-300">+/-</span>는 문자중계(PBP) 기반이라 일부 경기만 제공됩니다. (데이터가 없거나 품질 이슈면 <span class="font-mono text-slate-300">-</span>)</div><div>드래프트/이적 정보는 아직 수집 중입니다. (공식 페이지 기반 추가 수집 필요)</div></div></div>|html}
+      seasons_note
+      backfill_hint
+  in
   let missing_data_html =
-    if profile.season_breakdown = [] && profile.recent_games = [] then
-      {html|<div class="bg-slate-900/50 rounded-xl border border-slate-800/50 p-6 flex items-center justify-center text-slate-500 text-sm gap-2"><span class="text-xl">🚧</span><div><div class="font-bold">Data Collection in Progress</div><div>Draft info, trade history, and play-by-play data coming soon.</div></div></div>|html}
+    if profile.season_breakdown = [] && profile.recent_games = [] && profile.all_star_games = [] then
+      {html|<div class="bg-slate-900/50 rounded-xl border border-slate-800/50 p-6 flex items-center justify-center text-slate-500 text-sm gap-2"><span class="text-xl">🚧</span><div><div class="font-bold">Data Collection in Progress</div><div>Draft info and play-by-play data coming soon.</div></div></div>|html}
     else
       ""
   in
 
   layout ~title:(p.name ^ " | WKBL Profile")
-    ~content:(Printf.sprintf {html|<div class="space-y-8 animate-fade-in"><div class="bg-slate-900 rounded-xl border border-slate-800 p-8 shadow-2xl flex flex-col md:flex-row items-center md:items-start gap-8"><div class="relative">%s<div class="absolute -bottom-3 -right-3 bg-slate-800 border border-slate-700 text-white text-xs font-bold px-3 py-1 rounded-full">%s</div></div><div class="text-center md:text-left space-y-2"><h1 class="text-4xl font-black text-white">%s</h1><div class="text-slate-400 text-lg">%s</div><div class="flex gap-2 justify-center md:justify-start pt-2"><span class="bg-slate-800 text-slate-300 px-3 py-1 rounded text-sm">%s</span></div></div></div><div class="grid grid-cols-1 lg:grid-cols-3 gap-8"><div class="lg:col-span-2 space-y-8">%s<div class="space-y-4"><div class="flex flex-col gap-1"><h3 class="text-xl font-bold text-white">Recent Games</h3><p class="text-[11px] text-slate-500">개인 <span class="font-mono text-slate-300">+/-</span>는 문자중계(PBP) 기반이며, 데이터가 없거나 PBP/박스스코어 최종 스코어 불일치 등 품질 이슈가 있으면 <span class="font-mono text-slate-300">-</span>로 표시합니다.</p></div><div class="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden shadow-lg"><table class="w-full text-sm font-mono table-fixed"><thead class="bg-slate-800/80 text-slate-400 uppercase tracking-wider text-xs"><tr><th class="px-4 py-3 text-left font-sans">Date</th><th class="px-4 py-3 text-left font-sans">Opponent</th><th class="px-4 py-3 text-right w-[80px]">MIN</th><th class="px-4 py-3 text-right text-orange-400 w-[80px]">PTS</th><th class="px-4 py-3 text-right w-[80px]">+/-</th><th class="px-4 py-3 text-right w-[80px]">REB</th><th class="px-4 py-3 text-right w-[80px]">AST</th><th class="px-4 py-3 text-right w-[80px]">STL</th><th class="px-4 py-3 text-right w-[80px]">BLK</th></tr></thead><tbody>%s</tbody></table></div></div></div><div class="space-y-8"><div class="space-y-4">%s%s</div></div></div></div>|html}
-          (player_img_tag ~class_name:"w-32 h-32 border-4 border-slate-700 shadow-2xl" p.id p.name) (escape_html p.id) (escape_html p.name) info_text (match p.birth_date with Some d -> d | None -> "Unknown") season_stats_component recent_rows career_highs_html missing_data_html)
+    ~content:(Printf.sprintf {html|<div class="space-y-8 animate-fade-in"><div class="bg-slate-900 rounded-xl border border-slate-800 p-8 shadow-2xl flex flex-col md:flex-row items-center md:items-start gap-8"><div class="relative">%s<div class="absolute -bottom-3 -right-3 bg-slate-800 border border-slate-700 text-white text-xs font-bold px-3 py-1 rounded-full">%s</div></div><div class="text-center md:text-left space-y-2"><h1 class="text-4xl font-black text-white">%s</h1><div class="text-slate-400 text-lg">%s</div><div class="flex flex-wrap gap-2 justify-center md:justify-start pt-2"><span class="bg-slate-800 text-slate-300 px-3 py-1 rounded text-sm">%s</span>%s</div></div></div><div class="grid grid-cols-1 lg:grid-cols-4 gap-8"><div class="lg:col-span-3 space-y-8">%s<div class="space-y-4"><div class="flex flex-col gap-1"><h3 class="text-xl font-bold text-white">Recent Games</h3><p class="text-[11px] text-slate-500">개인 <span class="font-mono text-slate-300">+/-</span>는 문자중계(PBP) 기반이며, 데이터가 없거나 PBP/박스스코어 최종 스코어 불일치 등 품질 이슈가 있으면 <span class="font-mono text-slate-300">-</span>로 표시합니다.</p></div><div class="bg-slate-900 rounded-xl border border-slate-800 overflow-x-auto shadow-lg"><table class="min-w-[920px] w-full text-sm font-mono table-fixed"><thead class="bg-slate-800/80 text-slate-400 uppercase tracking-wider text-xs"><tr><th class="px-4 py-3 text-left font-sans w-[110px] whitespace-nowrap">Date</th><th class="px-4 py-3 text-left font-sans">Opponent</th><th class="px-4 py-3 text-right w-[72px]">MIN</th><th class="px-4 py-3 text-right text-orange-400 w-[72px]">PTS</th><th class="px-4 py-3 text-right w-[72px]">+/-</th><th class="px-4 py-3 text-right w-[72px]">REB</th><th class="px-4 py-3 text-right w-[72px]">AST</th><th class="px-4 py-3 text-right w-[72px]">STL</th><th class="px-4 py-3 text-right w-[72px]">BLK</th></tr></thead><tbody>%s</tbody></table></div></div>%s</div><div class="space-y-8"><div class="space-y-4">%s%s%s</div></div></div></div>|html}
+          (player_img_tag ~class_name:"w-32 h-32 border-4 border-slate-700 shadow-2xl" p.id p.name)
+          (escape_html p.id)
+          (escape_html p.name)
+          info_text
+          (match p.birth_date with Some d -> d | None -> "Unknown")
+          career_chips
+          season_stats_component
+          recent_rows
+          all_star_section_html
+          career_highs_html
+          data_notes_html
+          missing_data_html)
 
 let team_profile_page (detail: team_full_detail) =
   let t = detail.tfd_team_name in
