@@ -244,11 +244,19 @@ type career_high_item = {
   chi_is_home: bool;
 }
 
+type player_team_stint = {
+  pts_team_name: string;
+  pts_start_date: string;
+  pts_end_date: string;
+  pts_games_played: int;
+}
+
 type player_profile = {
   player: player_info;
   averages: player_aggregate;
   recent_games: player_game_stat list;
   all_star_games: player_game_stat list;
+  team_stints: player_team_stint list;
   season_breakdown: season_stats list;
   career_highs: career_high_item list option;
 }

@@ -600,8 +600,9 @@ module Queries = struct
   (** Queries for Per 36 Minutes (Normalized) *)
   let player_seasons_per36 = (string ->* Types.season_stats) {| SELECT g.season_code, se.season_name, COUNT(*) as gp, COALESCE(SUM(s.min_seconds) / 60.0, 0), (SUM(s.pts) * 2160.0 / SUM(s.min_seconds)), (SUM(s.reb_tot) * 2160.0 / SUM(s.min_seconds)), (SUM(s.ast) * 2160.0 / SUM(s.min_seconds)), (SUM(s.stl) * 2160.0 / SUM(s.min_seconds)), (SUM(s.blk) * 2160.0 / SUM(s.min_seconds)), (SUM(s.tov) * 2160.0 / SUM(s.min_seconds)), (SUM(s.game_score) * 2160.0 / SUM(s.min_seconds)), COALESCE((SUM(((COALESCE((CASE WHEN g.home_team_code = s.team_code THEN COALESCE(g.home_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code)) ELSE COALESCE(g.away_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code)) END), 0) - COALESCE((CASE WHEN g.home_team_code = s.team_code THEN COALESCE(g.away_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code)) ELSE COALESCE(g.home_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code)) END), 0))) * s.min_seconds) * 1.0) / NULLIF(SUM(s.min_seconds), 0), 0) as margin, 0.0 as ts_pct, 0.0 as efg_pct FROM game_stats s JOIN games g ON s.game_id = g.game_id JOIN seasons se ON g.season_code = se.season_code WHERE s.player_id = ? AND g.game_type != '10' GROUP BY g.season_code HAVING SUM(s.min_seconds) > 0 ORDER BY g.season_code DESC |}
 
-	  let player_recent_games = (string ->* Types.player_game_stat) {| SELECT g.game_id, g.game_date, CASE WHEN g.home_team_code = s.team_code THEN t2.team_name_kr ELSE t1.team_name_kr END as opponent, CASE WHEN g.home_team_code = s.team_code THEN 1 ELSE 0 END as is_home, CASE WHEN g.home_team_code = s.team_code THEN COALESCE(g.home_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code)) ELSE COALESCE(g.away_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code)) END as team_score, CASE WHEN g.home_team_code = s.team_code THEN COALESCE(g.away_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code)) ELSE COALESCE(g.home_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code)) END as opponent_score, s.min_seconds / 60.0, s.pts, s.reb_tot, s.ast, s.stl, s.blk, s.tov, pm.plus_minus FROM game_stats s JOIN games g ON g.game_id = s.game_id JOIN teams t1 ON t1.team_code = g.home_team_code JOIN teams t2 ON t2.team_code = g.away_team_code LEFT JOIN player_plus_minus pm ON pm.game_id = s.game_id AND pm.player_id = s.player_id WHERE s.player_id = ? AND g.game_type != '10' ORDER BY g.game_date DESC LIMIT 10 |}
-	  let player_all_star_games = (string ->* Types.player_game_stat) {| SELECT g.game_id, g.game_date, CASE WHEN g.home_team_code = s.team_code THEN t2.team_name_kr ELSE t1.team_name_kr END as opponent, CASE WHEN g.home_team_code = s.team_code THEN 1 ELSE 0 END as is_home, CASE WHEN g.home_team_code = s.team_code THEN COALESCE(g.home_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code)) ELSE COALESCE(g.away_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code)) END as team_score, CASE WHEN g.home_team_code = s.team_code THEN COALESCE(g.away_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code)) ELSE COALESCE(g.home_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code)) END as opponent_score, s.min_seconds / 60.0, s.pts, s.reb_tot, s.ast, s.stl, s.blk, s.tov, pm.plus_minus FROM game_stats s JOIN games g ON g.game_id = s.game_id JOIN teams t1 ON t1.team_code = g.home_team_code JOIN teams t2 ON t2.team_code = g.away_team_code LEFT JOIN player_plus_minus pm ON pm.game_id = s.game_id AND pm.player_id = s.player_id WHERE s.player_id = ? AND g.game_type = '10' ORDER BY g.game_date DESC |}
+		  let player_recent_games = (string ->* Types.player_game_stat) {| SELECT g.game_id, g.game_date, CASE WHEN g.home_team_code = s.team_code THEN t2.team_name_kr ELSE t1.team_name_kr END as opponent, CASE WHEN g.home_team_code = s.team_code THEN 1 ELSE 0 END as is_home, CASE WHEN g.home_team_code = s.team_code THEN COALESCE(g.home_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code)) ELSE COALESCE(g.away_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code)) END as team_score, CASE WHEN g.home_team_code = s.team_code THEN COALESCE(g.away_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code)) ELSE COALESCE(g.home_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code)) END as opponent_score, s.min_seconds / 60.0, s.pts, s.reb_tot, s.ast, s.stl, s.blk, s.tov, pm.plus_minus FROM game_stats s JOIN games g ON g.game_id = s.game_id JOIN teams t1 ON t1.team_code = g.home_team_code JOIN teams t2 ON t2.team_code = g.away_team_code LEFT JOIN player_plus_minus pm ON pm.game_id = s.game_id AND pm.player_id = s.player_id WHERE s.player_id = ? AND g.game_type != '10' ORDER BY g.game_date DESC LIMIT 10 |}
+		  let player_all_star_games = (string ->* Types.player_game_stat) {| SELECT g.game_id, g.game_date, CASE WHEN g.home_team_code = s.team_code THEN t2.team_name_kr ELSE t1.team_name_kr END as opponent, CASE WHEN g.home_team_code = s.team_code THEN 1 ELSE 0 END as is_home, CASE WHEN g.home_team_code = s.team_code THEN COALESCE(g.home_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code)) ELSE COALESCE(g.away_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code)) END as team_score, CASE WHEN g.home_team_code = s.team_code THEN COALESCE(g.away_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code)) ELSE COALESCE(g.home_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code)) END as opponent_score, s.min_seconds / 60.0, s.pts, s.reb_tot, s.ast, s.stl, s.blk, s.tov, pm.plus_minus FROM game_stats s JOIN games g ON g.game_id = s.game_id JOIN teams t1 ON t1.team_code = g.home_team_code JOIN teams t2 ON t2.team_code = g.away_team_code LEFT JOIN player_plus_minus pm ON pm.game_id = s.game_id AND pm.player_id = s.player_id WHERE s.player_id = ? AND g.game_type = '10' ORDER BY g.game_date DESC |}
+		  let player_team_games = (string ->* (tup2 string string)) {| SELECT g.game_date, t.team_name_kr FROM game_stats s JOIN games g ON g.game_id = s.game_id JOIN teams t ON t.team_code = s.team_code WHERE s.player_id = ? AND g.game_type != '10' ORDER BY g.game_date ASC |}
 
   (** Career Highs Queries (best single game per category) *)
 	  let career_high_points_game = (string ->? Types.player_game_stat) {| SELECT g.game_id, COALESCE(g.game_date, 'Unknown'), CASE WHEN g.home_team_code = s.team_code THEN t2.team_name_kr ELSE t1.team_name_kr END as opponent, CASE WHEN g.home_team_code = s.team_code THEN 1 ELSE 0 END as is_home, NULL as team_score, NULL as opponent_score, COALESCE(s.min_seconds, 0) / 60.0, s.pts, s.reb_tot, s.ast, s.stl, s.blk, s.tov, NULL as plus_minus FROM game_stats s JOIN games g ON g.game_id = s.game_id JOIN teams t1 ON t1.team_code = g.home_team_code JOIN teams t2 ON t2.team_code = g.away_team_code WHERE s.player_id = ? AND g.game_type != '10' ORDER BY s.pts DESC, g.game_date DESC, g.game_id DESC LIMIT 1 |}
@@ -711,39 +712,94 @@ module Repo = struct
   let get_boxscore_stats ~game_id (module Db : Caqti_lwt.CONNECTION) = Db.collect_list Queries.boxscore_stats_by_game_id game_id
   let get_leaders ~category ~scope ~season (module Db : Caqti_lwt.CONNECTION) = let q = match (category, scope) with | "pts", "per_36" -> Queries.leaders_pts_per36 | "pts", _ -> Queries.leaders_pts | "reb", "per_36" -> Queries.leaders_reb_per36 | "reb", _ -> Queries.leaders_reb | "ast", "per_36" -> Queries.leaders_ast_per36 | "ast", _ -> Queries.leaders_ast | "stl", "per_36" -> Queries.leaders_stl_per36 | "stl", _ -> Queries.leaders_stl | "blk", "per_36" -> Queries.leaders_blk_per36 | "blk", _ -> Queries.leaders_blk | _ -> Queries.leaders_pts in Db.collect_list q (season, season)
   
-  let get_player_profile ~player_id (module Db : Caqti_lwt.CONNECTION) = 
-    let open Lwt.Syntax in 
-    let* info = Db.find_opt Queries.player_info player_id in 
-    match info with 
-    | Error e -> Lwt.return (Error e) 
-	    | Ok None -> Lwt.return (Ok None) 
-	    | Ok (Some p) -> 
-	        let* seasons = Db.collect_list Queries.player_seasons_per_game player_id in 
-	        let* recent = Db.collect_list Queries.player_recent_games player_id in 
-	        let* all_star = Db.collect_list Queries.player_all_star_games player_id in
-	        let* averages_res = Db.find_opt Queries.player_career_aggregate player_id in
-	        let* ch_points = Db.find_opt Queries.career_high_points_game player_id in
-	        let* ch_rebounds = Db.find_opt Queries.career_high_rebounds_game player_id in
-	        let* ch_assists = Db.find_opt Queries.career_high_assists_game player_id in
-	        let* ch_steals = Db.find_opt Queries.career_high_steals_game player_id in
-	        let* ch_blocks = Db.find_opt Queries.career_high_blocks_game player_id in
-	        let dummy_avg = { player_id = p.id; name = p.name; team_name = ""; games_played = 0; total_minutes = 0.0; avg_points = 0.0; avg_margin = 0.0; avg_rebounds = 0.0; avg_assists = 0.0; avg_steals = 0.0; avg_blocks = 0.0; avg_turnovers = 0.0; efficiency = 0.0; } in 
-	        match seasons, recent, all_star, averages_res, ch_points, ch_rebounds, ch_assists, ch_steals, ch_blocks with 
-	        | Ok ss, Ok rg, Ok asg, Ok avg_opt, Ok pts_g, Ok reb_g, Ok ast_g, Ok stl_g, Ok blk_g -> 
-	            let add_opt opt mk acc = match opt with | None -> acc | Some v -> mk v :: acc in
-	            let items =
-	              []
-	              |> add_opt pts_g (fun (g: player_game_stat) -> { chi_label = "Points"; chi_value = g.pts; chi_game_id = g.game_id; chi_game_date = g.game_date; chi_opponent = g.opponent; chi_is_home = g.is_home })
+	  let get_player_profile ~player_id (module Db : Caqti_lwt.CONNECTION) = 
+	    let open Lwt.Syntax in 
+	    let* info = Db.find_opt Queries.player_info player_id in 
+	    match info with 
+	    | Error e -> Lwt.return (Error e) 
+		    | Ok None -> Lwt.return (Ok None) 
+		    | Ok (Some p) -> 
+		        let team_stints_of_games (games: (string * string) list) =
+		          let rec loop current acc = function
+		            | [] ->
+		                (match current with
+		                | None -> List.rev acc
+		                | Some c -> List.rev (c :: acc))
+		            | (game_date, team_name) :: rest ->
+		                (match current with
+		                | None ->
+		                    loop
+		                      (Some
+		                        {
+		                          pts_team_name = team_name;
+		                          pts_start_date = game_date;
+		                          pts_end_date = game_date;
+		                          pts_games_played = 1;
+		                        })
+		                      acc
+		                      rest
+		                | Some stint when stint.pts_team_name = team_name ->
+		                    loop
+		                      (Some
+		                        {
+		                          stint with
+		                          pts_end_date = game_date;
+		                          pts_games_played = stint.pts_games_played + 1;
+		                        })
+		                      acc
+		                      rest
+		                | Some stint ->
+		                    loop
+		                      (Some
+		                        {
+		                          pts_team_name = team_name;
+		                          pts_start_date = game_date;
+		                          pts_end_date = game_date;
+		                          pts_games_played = 1;
+		                        })
+		                      (stint :: acc)
+		                      rest)
+		          in
+		          loop None [] games
+		        in
+		        let* seasons = Db.collect_list Queries.player_seasons_per_game player_id in 
+		        let* recent = Db.collect_list Queries.player_recent_games player_id in 
+		        let* all_star = Db.collect_list Queries.player_all_star_games player_id in
+		        let* team_games = Db.collect_list Queries.player_team_games player_id in
+		        let* averages_res = Db.find_opt Queries.player_career_aggregate player_id in
+		        let* ch_points = Db.find_opt Queries.career_high_points_game player_id in
+		        let* ch_rebounds = Db.find_opt Queries.career_high_rebounds_game player_id in
+		        let* ch_assists = Db.find_opt Queries.career_high_assists_game player_id in
+		        let* ch_steals = Db.find_opt Queries.career_high_steals_game player_id in
+		        let* ch_blocks = Db.find_opt Queries.career_high_blocks_game player_id in
+		        let dummy_avg = { player_id = p.id; name = p.name; team_name = ""; games_played = 0; total_minutes = 0.0; avg_points = 0.0; avg_margin = 0.0; avg_rebounds = 0.0; avg_assists = 0.0; avg_steals = 0.0; avg_blocks = 0.0; avg_turnovers = 0.0; efficiency = 0.0; } in 
+		        match seasons, recent, all_star, team_games, averages_res, ch_points, ch_rebounds, ch_assists, ch_steals, ch_blocks with 
+		        | Ok ss, Ok rg, Ok asg, Ok tgs, Ok avg_opt, Ok pts_g, Ok reb_g, Ok ast_g, Ok stl_g, Ok blk_g -> 
+		            let add_opt opt mk acc = match opt with | None -> acc | Some v -> mk v :: acc in
+		            let items =
+		              []
+		              |> add_opt pts_g (fun (g: player_game_stat) -> { chi_label = "Points"; chi_value = g.pts; chi_game_id = g.game_id; chi_game_date = g.game_date; chi_opponent = g.opponent; chi_is_home = g.is_home })
               |> add_opt reb_g (fun g -> { chi_label = "Rebounds"; chi_value = g.reb; chi_game_id = g.game_id; chi_game_date = g.game_date; chi_opponent = g.opponent; chi_is_home = g.is_home })
               |> add_opt ast_g (fun g -> { chi_label = "Assists"; chi_value = g.ast; chi_game_id = g.game_id; chi_game_date = g.game_date; chi_opponent = g.opponent; chi_is_home = g.is_home })
               |> add_opt stl_g (fun g -> { chi_label = "Steals"; chi_value = g.stl; chi_game_id = g.game_id; chi_game_date = g.game_date; chi_opponent = g.opponent; chi_is_home = g.is_home })
               |> add_opt blk_g (fun g -> { chi_label = "Blocks"; chi_value = g.blk; chi_game_id = g.game_id; chi_game_date = g.game_date; chi_opponent = g.opponent; chi_is_home = g.is_home })
               |> List.rev
-	            in
-	            let career_highs = match items with | [] -> None | _ -> Some items in
-	            let averages = match avg_opt with Some a -> a | None -> dummy_avg in
-	            Lwt.return (Ok (Some { player = p; averages; recent_games = rg; all_star_games = asg; season_breakdown = ss; career_highs })) 
-	        | Error e, _, _, _, _, _, _, _, _ | _, Error e, _, _, _, _, _, _, _ | _, _, Error e, _, _, _, _, _, _ | _, _, _, Error e, _, _, _, _, _ | _, _, _, _, Error e, _, _, _, _ | _, _, _, _, _, Error e, _, _, _ | _, _, _, _, _, _, Error e, _, _ | _, _, _, _, _, _, _, Error e, _ | _, _, _, _, _, _, _, _, Error e -> Lwt.return (Error e)
+		            in
+		            let career_highs = match items with | [] -> None | _ -> Some items in
+		            let averages = match avg_opt with Some a -> a | None -> dummy_avg in
+		            let team_stints = team_stints_of_games tgs in
+		            Lwt.return (Ok (Some { player = p; averages; recent_games = rg; all_star_games = asg; team_stints; season_breakdown = ss; career_highs })) 
+		        | Error e, _, _, _, _, _, _, _, _, _
+		        | _, Error e, _, _, _, _, _, _, _, _
+		        | _, _, Error e, _, _, _, _, _, _, _
+		        | _, _, _, Error e, _, _, _, _, _, _
+		        | _, _, _, _, Error e, _, _, _, _, _
+		        | _, _, _, _, _, Error e, _, _, _, _
+		        | _, _, _, _, _, _, Error e, _, _, _
+		        | _, _, _, _, _, _, _, Error e, _, _
+		        | _, _, _, _, _, _, _, _, Error e, _
+		        | _, _, _, _, _, _, _, _, _, Error e ->
+		            Lwt.return (Error e)
 
   let get_player_season_stats ~player_id ~scope (module Db : Caqti_lwt.CONNECTION) = let q = match scope with | "totals" -> Queries.player_seasons_totals | "per_36" -> Queries.player_seasons_per36 | _ -> Queries.player_seasons_per_game in Db.collect_list q player_id
   let get_team_recent_games ~team_name (module Db : Caqti_lwt.CONNECTION) = let t = (team_name, (team_name, (team_name, (team_name, (team_name, (team_name, (team_name, team_name))))))) in Db.collect_list Queries.team_recent_games t
