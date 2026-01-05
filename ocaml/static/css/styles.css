@@ -78,6 +78,16 @@ tbody tr {
   transition: background-color 150ms ease;
 }
 
+/* Prevent CJK per-character wrapping for player names */
+.player-name {
+  display: block;
+  white-space: nowrap;
+  word-break: keep-all;
+  overflow-wrap: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* Clickable link cards */
 a.card-link {
   transition: transform 300ms ease, box-shadow 300ms ease;
