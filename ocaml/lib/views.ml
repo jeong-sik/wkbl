@@ -266,16 +266,18 @@ let player_row (rank: int) (p: player_aggregate) =
   Printf.sprintf
     {html|<tr class="border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors">
       <td class="px-3 py-2 text-slate-500 text-sm">%d</td>
-      <td class="px-3 py-2 font-medium text-white flex items-center gap-3">
-        %s
-        <a href="/player/%s" class="hover:text-orange-400 transition-colors">%s</a>
+      <td class="px-3 py-2 font-medium text-white">
+        <div class="flex items-center gap-3 min-w-0">
+          %s
+          <a href="/player/%s" class="hover:text-orange-400 transition-colors truncate break-keep min-w-0">%s</a>
+        </div>
       </td>
       <td class="px-3 py-2">%s</td>
       <td class="px-3 py-2 text-right text-slate-400">%d</td>
       %s%s%s%s%s%s%s%s
     </tr>|html}
     rank
-    (player_img_tag ~class_name:"w-8 h-8" p.player_id p.name)
+    (player_img_tag ~class_name:"w-8 h-8 shrink-0" p.player_id p.name)
     p.player_id
     (escape_html p.name)
     (team_badge p.team_name)
@@ -1038,7 +1040,7 @@ let team_profile_page (detail: team_full_detail) =
     |> String.concat "\n"
   in
   layout ~title:(t ^ " | WKBL Team Profile")
-    ~content:(Printf.sprintf {html|<div class="space-y-8 animate-fade-in"><div class="bg-slate-900 rounded-xl border border-slate-800 p-8 shadow-2xl flex flex-col md:flex-row items-center md:items-start gap-8"><div class="w-32 h-32 bg-slate-800 rounded-xl flex items-center justify-center p-4 border-2 border-slate-700 shadow-inner">%s</div><div class="text-center md:text-left space-y-4"><h1 class="text-4xl font-black text-white">%s</h1>%s</div></div><div class="grid grid-cols-1 lg:grid-cols-2 gap-8"><div class="space-y-4"><h3 class="text-xl font-bold text-white">Roster</h3><div class="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden shadow-lg"><table class="w-full text-sm font-mono"><thead class="bg-slate-800/80 text-slate-400 uppercase tracking-wider text-xs"><tr><th class="px-3 py-3 text-left font-sans w-12">#</th><th class="px-3 py-3 text-left font-sans">Player</th><th class="px-3 py-3 text-left font-sans">Team</th><th class="px-3 py-3 text-right">GP</th><th class="px-3 py-3 text-right text-orange-400">PTS</th><th class="px-3 py-3 text-right">MG</th><th class="px-3 py-3 text-right">REB</th><th class="px-3 py-3 text-right">AST</th><th class="px-3 py-3 text-right">STL</th><th class="px-3 py-3 text-right">BLK</th><th class="px-3 py-2 text-right">TO</th><th class="px-3 py-2 text-right text-orange-400">EFF</th></tr></thead><tbody>%s</tbody></table></div></div><div class="space-y-4"><h3 class="text-xl font-bold text-white">Recent Results</h3><div class="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden shadow-lg"><table class="w-full text-sm font-mono"><thead class="bg-slate-800/80 text-slate-400 uppercase tracking-wider text-xs"><tr><th class="px-4 py-3 text-left font-sans">Date</th><th class="px-4 py-3 text-left font-sans">Opponent</th><th class="px-4 py-3 text-center font-sans">Result</th><th class="px-4 py-3 text-right font-sans">Score</th></tr></thead><tbody>%s</tbody></table></div></div></div></div>|html}
+    ~content:(Printf.sprintf {html|<div class="space-y-8 animate-fade-in"><div class="bg-slate-900 rounded-xl border border-slate-800 p-8 shadow-2xl flex flex-col md:flex-row items-center md:items-start gap-8"><div class="w-32 h-32 bg-slate-800 rounded-xl flex items-center justify-center p-4 border-2 border-slate-700 shadow-inner">%s</div><div class="text-center md:text-left space-y-4"><h1 class="text-4xl font-black text-white">%s</h1>%s</div></div><div class="grid grid-cols-1 lg:grid-cols-3 gap-8"><div class="space-y-4 lg:col-span-2"><h3 class="text-xl font-bold text-white">Roster</h3><div class="bg-slate-900 rounded-xl border border-slate-800 overflow-x-auto shadow-lg"><table class="min-w-[900px] w-full text-sm font-mono"><thead class="bg-slate-800/80 text-slate-400 uppercase tracking-wider text-xs"><tr><th class="px-3 py-3 text-left font-sans w-12">#</th><th class="px-3 py-3 text-left font-sans">Player</th><th class="px-3 py-3 text-left font-sans">Team</th><th class="px-3 py-3 text-right">GP</th><th class="px-3 py-3 text-right text-orange-400">PTS</th><th class="px-3 py-3 text-right">MG</th><th class="px-3 py-3 text-right">REB</th><th class="px-3 py-3 text-right">AST</th><th class="px-3 py-3 text-right">STL</th><th class="px-3 py-3 text-right">BLK</th><th class="px-3 py-2 text-right">TO</th><th class="px-3 py-2 text-right text-orange-400">EFF</th></tr></thead><tbody>%s</tbody></table></div></div><div class="space-y-4 lg:col-span-1"><h3 class="text-xl font-bold text-white">Recent Results</h3><div class="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden shadow-lg"><table class="w-full text-sm font-mono"><thead class="bg-slate-800/80 text-slate-400 uppercase tracking-wider text-xs"><tr><th class="px-4 py-3 text-left font-sans">Date</th><th class="px-4 py-3 text-left font-sans">Opponent</th><th class="px-4 py-3 text-center font-sans">Result</th><th class="px-4 py-3 text-right font-sans">Score</th></tr></thead><tbody>%s</tbody></table></div></div></div></div>|html}
           (team_logo_tag ~class_name:"w-24 h-24" t) (escape_html t) standing_info roster_rows game_rows)
 
 (** Error page *)
