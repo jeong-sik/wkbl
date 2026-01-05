@@ -332,26 +332,31 @@ type prediction_output = {
 
 (** Helper to map team names to codes *)
 let normalize_label (s: string) =
-  let is_space = function
+  let len = String.length s in
+  let is_ascii_space = function
     | ' ' | '\t' | '\n' | '\r' -> true
-    | c when Char.code c = 0xA0 -> true  (* NBSP *)
     | _ -> false
   in
-  let buf = Buffer.create (String.length s) in
+  let buf = Buffer.create len in
+  let add_space prev_space =
+    if prev_space then () else Buffer.add_char buf ' '
+  in
   let rec loop i prev_space =
-    if i >= String.length s then ()
+    if i >= len then ()
     else
       let c0 = s.[i] in
-      let c =
-        if c0 = '"' then ' '
-        else if Char.code c0 = 0xA0 then ' '
-        else c0
-      in
-      if is_space c then (
-        if not prev_space then Buffer.add_char buf ' ';
+      if c0 = '"' then (
+        add_space prev_space;
         loop (i + 1) true
+      ) else if is_ascii_space c0 then (
+        add_space prev_space;
+        loop (i + 1) true
+      ) else if c0 = '\xC2' && i + 1 < len && s.[i + 1] = '\xA0' then (
+        (* NBSP in UTF-8 is 0xC2 0xA0. Avoid corrupting multi-byte UTF-8 chars. *)
+        add_space prev_space;
+        loop (i + 2) true
       ) else (
-        Buffer.add_char buf c;
+        Buffer.add_char buf c0;
         loop (i + 1) false
       )
   in
