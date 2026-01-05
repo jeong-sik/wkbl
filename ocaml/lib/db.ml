@@ -355,8 +355,35 @@ module Queries = struct
     WHERE s.player_id = ? AND g.game_type != '10'
     GROUP BY p.player_id
   |}
-  let team_totals_by_season = (tup2 string string ->* Types.team_totals) {| SELECT g.season_code, t.team_name_kr, COUNT(DISTINCT s.game_id) as gp, COALESCE(SUM(s.min_seconds) / 60.0, 0), COALESCE(SUM(s.fg_2p_m), 0), COALESCE(SUM(s.fg_2p_a), 0), COALESCE(SUM(s.fg_3p_m), 0), COALESCE(SUM(s.fg_3p_a), 0), COALESCE(SUM(s.ft_m), 0), COALESCE(SUM(s.ft_a), 0), COALESCE(SUM(s.reb_off), 0), COALESCE(SUM(s.reb_def), 0), COALESCE(SUM(s.reb_tot), 0), COALESCE(SUM(s.ast), 0), COALESCE(SUM(s.stl), 0), COALESCE(SUM(s.blk), 0), COALESCE(SUM(s.tov), 0), COALESCE(SUM(s.pts), 0) FROM game_stats s JOIN games g ON g.game_id = s.game_id JOIN teams t ON t.team_code = s.team_code WHERE g.game_type != '10' AND (? = 'ALL' OR g.season_code = ?) GROUP BY g.season_code, t.team_code ORDER BY t.team_name_kr ASC |}
-  let team_margin_by_season = (tup2 string string ->* Types.team_margin) {|
+  let team_totals_by_season = (tup2 string (tup2 string string) ->* Types.team_totals) {|
+    SELECT
+      CASE WHEN ? = 'ALL' THEN 'ALL' ELSE g.season_code END as season,
+      t.team_name_kr,
+      COUNT(DISTINCT s.game_id) as gp,
+      COALESCE(SUM(s.min_seconds) / 60.0, 0),
+      COALESCE(SUM(s.fg_2p_m), 0),
+      COALESCE(SUM(s.fg_2p_a), 0),
+      COALESCE(SUM(s.fg_3p_m), 0),
+      COALESCE(SUM(s.fg_3p_a), 0),
+      COALESCE(SUM(s.ft_m), 0),
+      COALESCE(SUM(s.ft_a), 0),
+      COALESCE(SUM(s.reb_off), 0),
+      COALESCE(SUM(s.reb_def), 0),
+      COALESCE(SUM(s.reb_tot), 0),
+      COALESCE(SUM(s.ast), 0),
+      COALESCE(SUM(s.stl), 0),
+      COALESCE(SUM(s.blk), 0),
+      COALESCE(SUM(s.tov), 0),
+      COALESCE(SUM(s.pts), 0)
+    FROM game_stats s
+    JOIN games g ON g.game_id = s.game_id
+    JOIN teams t ON t.team_code = s.team_code
+    WHERE g.game_type != '10'
+      AND (? = 'ALL' OR g.season_code = ?)
+    GROUP BY season, t.team_code
+    ORDER BY t.team_name_kr ASC
+  |}
+  let team_margin_by_season = (tup2 string (tup2 string string) ->* Types.team_margin) {|
     WITH scored_games AS (
       SELECT
         g.*,
@@ -371,7 +398,7 @@ module Queries = struct
       FROM games g
     )
     SELECT
-      g.season_code,
+      CASE WHEN ? = 'ALL' THEN 'ALL' ELSE g.season_code END as season,
       t.team_name_kr,
       COUNT(*) as gp,
       COALESCE(SUM(CASE WHEN g.home_team_code = t.team_code THEN g.home_score_calc ELSE g.away_score_calc END), 0) as pts_for,
@@ -380,7 +407,7 @@ module Queries = struct
     JOIN teams t ON t.team_code = g.home_team_code OR t.team_code = g.away_team_code
     WHERE (? = 'ALL' OR g.season_code = ?)
       AND g.game_type != '10'
-    GROUP BY g.season_code, t.team_code
+    GROUP BY season, t.team_code
     ORDER BY t.team_name_kr ASC
   |}
 
@@ -704,8 +731,11 @@ module Repo = struct
   let get_players_filtered ~sort ~search ~limit (module Db : Caqti_lwt.CONNECTION) = let pattern = normalize_search_pattern search in Db.collect_list (query_for_sort sort) (pattern, limit)
   let get_top_players ?(team_name="ALL") ~limit (module Db : Caqti_lwt.CONNECTION) = Db.collect_list Queries.player_stats_base ((team_name, team_name), limit)
   let get_players_by_team ~team_name ~limit (module Db : Caqti_lwt.CONNECTION) = Db.collect_list Queries.players_by_team (team_name, limit)
-  let get_team_totals ~season (module Db : Caqti_lwt.CONNECTION) = Db.collect_list Queries.team_totals_by_season (season, season)
-  let get_team_margins ~season (module Db : Caqti_lwt.CONNECTION) = Db.collect_list Queries.team_margin_by_season (season, season)
+  let get_team_totals ~season (module Db : Caqti_lwt.CONNECTION) =
+    Db.collect_list Queries.team_totals_by_season (season, (season, season))
+
+  let get_team_margins ~season (module Db : Caqti_lwt.CONNECTION) =
+    Db.collect_list Queries.team_margin_by_season (season, (season, season))
   let get_standings ~season (module Db : Caqti_lwt.CONNECTION) = Db.collect_list Queries.team_standings_by_season (season, season)
   let get_games ~season (module Db : Caqti_lwt.CONNECTION) = Db.collect_list Queries.all_games_by_season (season, season)
   let get_game_info ~game_id (module Db : Caqti_lwt.CONNECTION) = Db.find_opt Queries.game_info_by_id game_id
