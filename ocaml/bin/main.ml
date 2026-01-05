@@ -36,6 +36,13 @@ let () =
       Printf.eprintf "Failed to init DB (%s): %s\n" db_path (Db.show_db_error e);
       exit 1
   | Ok () ->
+
+  (* Ensure optional analytics tables exist (e.g., player +/-). *)
+  (match Lwt_main.run (Db.ensure_schema ()) with
+  | Ok () -> ()
+  | Error e ->
+      Printf.eprintf "Failed to ensure DB schema: %s\n" (Db.show_db_error e);
+      exit 1);
   
   (* Determine static path robustly (repo-relative discovery + env override). *)
   let static_path =
