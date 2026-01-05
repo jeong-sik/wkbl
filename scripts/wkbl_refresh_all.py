@@ -3,6 +3,7 @@
 Refresh WKBL data pipeline: collect -> aggregate -> QA.
 Use `--` to pass arguments through to the collector.
 Example: python3 scripts/wkbl_refresh_all.py -- --years 10
+Example (+/-): python3 scripts/wkbl_refresh_all.py --sync-pbp --pbp-season 046 --compute-plus-minus -- --years 1
 """
 
 from __future__ import annotations
@@ -29,6 +30,19 @@ def main() -> None:
     parser.add_argument("--update-roster", action="store_true", help="Refresh roster_db.json from WKBL live lists.")
     parser.add_argument("--audit-photos", action="store_true", help="Build photo blacklist for missing images.")
     parser.add_argument("--include-special", action="store_true", help="Include all-star/international games in aggregates.")
+    parser.add_argument("--sync-pbp", action="store_true", help="Sync text play-by-play (PBP) into SQLite.")
+    parser.add_argument(
+        "--pbp-season",
+        default="",
+        help="Season code for PBP sync (e.g. 046). Empty = all seasons.",
+    )
+    parser.add_argument(
+        "--pbp-limit",
+        type=int,
+        default=0,
+        help="Limit number of games processed for PBP sync (0=all).",
+    )
+    parser.add_argument("--compute-plus-minus", action="store_true", help="Compute per-game +/- from stored PBP.")
     parser.add_argument("--qa-meta-file", default="", help="Optional meta file path for QA.")
     parser.add_argument("collector_args", nargs=argparse.REMAINDER, help="Args passed to wkbl_ajax_collector.py.")
     args = parser.parse_args()
@@ -44,11 +58,24 @@ def main() -> None:
             cmd.extend(collector_args)
         run_step(cmd)
 
+    if args.sync_pbp:
+        cmd = [python, "scripts/wkbl_pbp_sync.py"]
+        if args.pbp_season.strip():
+            cmd.extend(["--season", args.pbp_season.strip()])
+        if args.pbp_limit and args.pbp_limit > 0:
+            cmd.extend(["--limit", str(args.pbp_limit)])
+        if args.include_special:
+            cmd.append("--include-special")
+        run_step(cmd)
+
     if not args.skip_aggregate:
         cmd = [python, "scripts/wkbl_aggregate_stats.py"]
         if args.include_special:
             cmd.append("--include-special")
         run_step(cmd)
+
+    if args.compute_plus_minus:
+        run_step([python, "scripts/wkbl_plus_minus_from_pbp.py"])
 
     if not args.skip_qa:
         cmd = [python, "scripts/wkbl_data_qa.py"]

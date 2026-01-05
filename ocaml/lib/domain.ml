@@ -151,6 +151,7 @@ type boxscore_player_stat = {
   bs_team_name: string;
   bs_minutes: float;
   bs_pts: int;
+  bs_plus_minus: int option;
   bs_reb: int;
   bs_ast: int;
   bs_stl: int;
@@ -231,6 +232,7 @@ type player_game_stat = {
   stl: int;
   blk: int;
   tov: int;
+  plus_minus: int option;
 }
 
 type career_high_item = {
@@ -300,7 +302,36 @@ type prediction_result = {
 }
 
 (** Helper to map team names to codes *)
-let team_code_of_string = function
+let normalize_label (s: string) =
+  let is_space = function
+    | ' ' | '\t' | '\n' | '\r' -> true
+    | c when Char.code c = 0xA0 -> true  (* NBSP *)
+    | _ -> false
+  in
+  let buf = Buffer.create (String.length s) in
+  let rec loop i prev_space =
+    if i >= String.length s then ()
+    else
+      let c0 = s.[i] in
+      let c =
+        if c0 = '"' then ' '
+        else if Char.code c0 = 0xA0 then ' '
+        else c0
+      in
+      if is_space c then (
+        if not prev_space then Buffer.add_char buf ' ';
+        loop (i + 1) true
+      ) else (
+        Buffer.add_char buf c;
+        loop (i + 1) false
+      )
+  in
+  loop 0 true;
+  Buffer.contents buf |> String.trim
+
+let team_code_of_string team_name =
+  let key = team_name |> normalize_label |> String.uppercase_ascii in
+  match key with
   | "아산 우리은행 우리WON" | "우리은행" | "우리WON" | "WO" -> Some "WO"
   | "용인 삼성생명 블루밍스" | "삼성생명" | "SS" -> Some "SS"
   | "인천 신한은행 에스버드" | "신한은행" | "SH" -> Some "SH"
