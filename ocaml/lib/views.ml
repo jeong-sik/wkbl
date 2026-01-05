@@ -696,50 +696,50 @@ let player_profile_page (profile: player_profile) ~scope =
     match profile.team_stints with
     | [] -> ""
     | stints ->
+        let stints_desc = List.rev stints in
         let current_team_html =
           let t = String.trim avg.team_name in
           if t = "" then {html|<span class="text-slate-500">-</span>|html} else team_badge t
         in
         let transfers = max 0 (List.length stints - 1) in
-        let last_move_html =
-          match List.rev stints with
+        let last_move_value_html =
+          match stints_desc with
           | current :: prev :: _ when prev.pts_team_name <> current.pts_team_name ->
               Printf.sprintf
-                {html|<div>최근 이동: %s <span class="mx-1 text-slate-600">→</span> %s <span class="text-slate-600 font-mono">(%s~)</span></div>|html}
+                {html|%s <span class="mx-1 text-slate-600">→</span> %s <span class="text-slate-600 font-mono">(%s~)</span>|html}
                 (team_badge prev.pts_team_name)
                 (team_badge current.pts_team_name)
                 (escape_html current.pts_start_date)
-          | _ -> ""
+          | _ -> {html|<span class="text-slate-500">-</span>|html}
         in
         let stint_rows =
-          stints
+          stints_desc
           |> List.map (fun (s: player_team_stint) ->
               let range =
                 if s.pts_start_date = s.pts_end_date then s.pts_start_date
                 else Printf.sprintf "%s ~ %s" s.pts_start_date s.pts_end_date
               in
               Printf.sprintf
-                {html|<div class="flex items-center justify-between border-b border-slate-800/60 pb-2 last:border-0 last:pb-0"><div class="flex flex-col gap-1"><div>%s</div><div class="text-[11px] text-slate-500 font-mono">%s</div></div><div class="text-xs text-slate-400 font-mono">GP %d</div></div>|html}
+                {html|<div class="flex items-center justify-between gap-3 py-2"><div class="flex items-center gap-2 min-w-0">%s<div class="text-[11px] text-slate-500 font-mono truncate">%s</div></div><div class="text-xs text-slate-400 font-mono shrink-0">GP %d</div></div>|html}
                 (team_badge s.pts_team_name)
                 (escape_html range)
                 s.pts_games_played)
           |> String.concat "\n"
         in
         Printf.sprintf
-          {html|<div class="bg-slate-900 rounded-xl border border-slate-800 p-6 shadow-lg"><h3 class="text-slate-400 font-bold uppercase tracking-wider text-xs mb-4 flex items-center gap-2"><span class="text-lg">🔁</span> Team Movement</h3><div class="space-y-2 text-xs text-slate-500 leading-relaxed"><div>Current: %s</div><div>Transfers: <span class="font-mono text-slate-300">%d</span></div>%s</div><div class="mt-4 space-y-2">%s</div><p class="mt-4 text-[11px] text-slate-500 leading-relaxed">팀 이동은 공식 이적 기록이 아니라, 박스스코어 기준 출전팀 변화로 추정합니다.</p></div>|html}
+          {html|<div class="bg-slate-900 rounded-xl border border-slate-800 p-6 shadow-lg"><h3 class="text-slate-400 font-bold uppercase tracking-wider text-xs mb-4 flex items-center gap-2"><span class="text-lg">🔁</span> Team Movement</h3><dl class="grid gap-2 text-xs"><div class="flex items-center gap-3"><dt class="w-20 shrink-0 text-slate-500">Current</dt><dd class="text-slate-300">%s</dd></div><div class="flex items-center gap-3"><dt class="w-20 shrink-0 text-slate-500">Transfers</dt><dd class="font-mono text-slate-300">%d</dd></div><div class="flex items-start gap-3"><dt class="w-20 shrink-0 text-slate-500 pt-0.5">Latest</dt><dd class="text-slate-400">%s</dd></div></dl><div class="mt-4 divide-y divide-slate-800/60">%s</div><div class="mt-4 pt-3 border-t border-slate-800/60 text-[11px] text-slate-500 leading-relaxed">팀 이동은 공식 이적 기록이 아니라, 박스스코어 기준 출전팀 변화로 추정합니다.</div></div>|html}
           current_team_html
           transfers
-          last_move_html
+          last_move_value_html
           stint_rows
   in
 
   let career_highs_html = career_highs_card profile.career_highs in
   let data_notes_html =
     let seasons = profile.season_breakdown in
-    let seasons_note =
+    let seasons_value_html, show_backfill =
       match seasons with
-      | [] ->
-          {html|<div>Season stats: <span class="font-mono text-slate-300">-</span></div>|html}
+      | [] -> ({html|<span class="font-mono text-slate-500">-</span>|html}, false)
       | latest :: _ ->
           let count = List.length seasons in
           let rec last = function
@@ -748,22 +748,23 @@ let player_profile_page (profile: player_profile) ~scope =
             | _ :: xs -> last xs
           in
           let oldest = last seasons |> Option.value ~default:latest in
-          Printf.sprintf
-            {html|<div>Loaded seasons: <span class="font-mono text-slate-300">%s</span> ~ <span class="font-mono text-slate-300">%s</span> (<span class="font-mono text-slate-300">%d</span>)</div>|html}
-            (escape_html oldest.ss_season_name)
-            (escape_html latest.ss_season_name)
-            count
+          (Printf.sprintf
+             {html|<span class="font-mono text-slate-300">%s</span><span class="mx-1 text-slate-600">→</span><span class="font-mono text-slate-300">%s</span><span class="ml-2 text-slate-500 font-mono">(n=%d)</span>|html}
+             (escape_html oldest.ss_season_name)
+             (escape_html latest.ss_season_name)
+             count,
+           count <= 3)
     in
-    let backfill_hint =
-      if List.length seasons > 0 && List.length seasons <= 3 then
-        {html|<div>더 오래된 시즌이 필요하면 <code class="font-mono text-slate-300">python3 scripts/wkbl_refresh_all.py -- --years 10</code> 로 백필하세요.</div>|html}
+    let backfill_row_html =
+      if show_backfill then
+        {html|<div class="flex items-start gap-3"><dt class="w-20 shrink-0 text-slate-500 pt-0.5">Backfill</dt><dd class="text-slate-400"><code class="font-mono text-slate-300 bg-slate-800/40 border border-slate-700/60 px-2 py-1 rounded break-all">python3 scripts/wkbl_refresh_all.py -- --years 10</code></dd></div>|html}
       else
         ""
     in
     Printf.sprintf
-      {html|<div class="bg-slate-900 rounded-xl border border-slate-800 p-6 shadow-lg"><h3 class="text-slate-400 font-bold uppercase tracking-wider text-xs mb-4 flex items-center gap-2"><span class="text-lg">🧾</span> Data Notes</h3><div class="space-y-2 text-xs text-slate-500 leading-relaxed">%s%s<div>개인 <span class="font-mono text-slate-300">+/-</span>는 문자중계(PBP) 기반이라 일부 경기만 제공됩니다. (데이터가 없거나 품질 이슈면 <span class="font-mono text-slate-300">-</span>)</div><div>드래프트/이적 정보는 아직 수집 중입니다. (공식 페이지 기반 추가 수집 필요)</div></div></div>|html}
-      seasons_note
-      backfill_hint
+      {html|<div class="bg-slate-900 rounded-xl border border-slate-800 p-6 shadow-lg"><h3 class="text-slate-400 font-bold uppercase tracking-wider text-xs mb-4 flex items-center gap-2"><span class="text-lg">🧾</span> Data Notes</h3><dl class="grid gap-2 text-xs leading-relaxed"><div class="flex items-start gap-3"><dt class="w-20 shrink-0 text-slate-500 pt-0.5">Seasons</dt><dd class="text-slate-400">%s</dd></div>%s<div class="flex items-start gap-3"><dt class="w-20 shrink-0 text-slate-500 pt-0.5">PBP +/-</dt><dd class="text-slate-400">개인 <span class="font-mono text-slate-300">+/-</span>는 문자중계(PBP) 기반이라 일부 경기만 제공됩니다. (데이터가 없거나 품질 이슈면 <span class="font-mono text-slate-300">-</span>)</dd></div><div class="flex items-start gap-3"><dt class="w-20 shrink-0 text-slate-500 pt-0.5">Draft/Trade</dt><dd class="text-slate-400">드래프트/공식 이적 정보는 아직 수집 중입니다. (공식 페이지 기반 추가 수집 필요)</dd></div></dl></div>|html}
+      seasons_value_html
+      backfill_row_html
   in
   let missing_data_html =
     if profile.season_breakdown = [] && profile.recent_games = [] && profile.all_star_games = [] then
