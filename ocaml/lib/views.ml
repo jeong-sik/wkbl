@@ -8,6 +8,14 @@
 
 open Domain
 
+(** Cache-busting asset version (Cloudflare + browser cache). *)
+let asset_version =
+  Sys.getenv_opt "WKBL_ASSET_VERSION"
+  |> Option.map String.trim
+  |> function
+  | Some v when v <> "" -> v
+  | _ -> string_of_int (int_of_float (Unix.time ()))
+
 (** Escape HTML - prevent XSS *)
 let escape_html s =
   s
@@ -299,6 +307,7 @@ let players_table (players: player_aggregate list) =
 
 (** Main layout *)
 let layout ~title ~content =
+  let v = escape_html asset_version in
   Printf.sprintf
     {html|<!DOCTYPE html>
 <html lang="ko" class="dark">
@@ -306,11 +315,11 @@ let layout ~title ~content =
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>%s</title>
-  <script src="/static/js/htmx-1.9.10.min.js" defer data-cfasync="false"></script>
-  <script src="/static/js/player-photo-fallback.js" defer data-cfasync="false"></script>
+  <script src="/static/js/htmx-1.9.10.min.js?v=%s" defer data-cfasync="false"></script>
+  <script src="/static/js/player-photo-fallback.js?v=%s" defer data-cfasync="false"></script>
   <script src="https://cdn.tailwindcss.com" data-cfasync="false"></script>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/styles.css">
+  <link rel="stylesheet" href="/static/css/styles.css?v=%s">
   <script data-cfasync="false">tailwind.config = { darkMode: 'class', theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] } } } }</script>
 </head>
 <body class="bg-[#0b0e14] text-slate-200 font-sans antialiased min-h-screen">
@@ -338,7 +347,7 @@ let layout ~title ~content =
   <footer class="border-t border-slate-800 py-6 text-center text-slate-500 text-sm">Built with OCaml + Dream + HTMX</footer>
 </body>
 </html>|html}
-    (escape_html title) content
+    (escape_html title) v v v content
 
 (** Home page *)
 let home_page players =
