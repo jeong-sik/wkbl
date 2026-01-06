@@ -519,6 +519,37 @@ module Queries = struct
     ORDER BY g.game_date ASC, g.game_id ASC
   |}
 
+  (** Small helper queries for prediction context (schedule/roster). *)
+  let game_season_by_id = (string ->? string) "SELECT season_code FROM games WHERE game_id = ?"
+
+  let team_core_player_ids =
+    (let t = tup2 string (tup2 (tup2 string string) int) in
+     t ->* string)
+    {|
+      SELECT s.player_id
+      FROM game_stats s
+      JOIN games g ON g.game_id = s.game_id
+      JOIN teams t ON t.team_code = s.team_code
+      WHERE t.team_name_kr = ?
+        AND (? = 'ALL' OR g.season_code = ?)
+        AND g.game_type != '10'
+      GROUP BY s.player_id
+      ORDER BY SUM(s.min_seconds) DESC
+      LIMIT ?
+    |}
+
+  let team_active_player_ids =
+    (tup2 string string ->* string)
+    {|
+      SELECT s.player_id
+      FROM game_stats s
+      JOIN teams t ON t.team_code = s.team_code
+      WHERE t.team_name_kr = ?
+        AND s.game_id = ?
+        AND COALESCE(s.min_seconds, 0) > 0
+      ORDER BY s.min_seconds DESC
+    |}
+
   let game_info_by_id = (string ->? Types.game_info) {|
     WITH scored_games AS (
       SELECT
@@ -771,6 +802,11 @@ module Repo = struct
   let get_standings ~season (module Db : Caqti_lwt.CONNECTION) = Db.collect_list Queries.team_standings_by_season (season, season)
   let get_games ~season (module Db : Caqti_lwt.CONNECTION) = Db.collect_list Queries.all_games_by_season (season, season)
   let get_scored_games ~season (module Db : Caqti_lwt.CONNECTION) = Db.collect_list Queries.scored_games_by_season (season, season)
+  let get_game_season_code ~game_id (module Db : Caqti_lwt.CONNECTION) = Db.find_opt Queries.game_season_by_id game_id
+  let get_team_core_player_ids ~season ~team_name ~limit (module Db : Caqti_lwt.CONNECTION) =
+    Db.collect_list Queries.team_core_player_ids (team_name, ((season, season), limit))
+  let get_team_active_player_ids ~team_name ~game_id (module Db : Caqti_lwt.CONNECTION) =
+    Db.collect_list Queries.team_active_player_ids (team_name, game_id)
   let get_game_info ~game_id (module Db : Caqti_lwt.CONNECTION) = Db.find_opt Queries.game_info_by_id game_id
   let get_boxscore_stats ~game_id (module Db : Caqti_lwt.CONNECTION) = Db.collect_list Queries.boxscore_stats_by_game_id game_id
   let get_leaders ~category ~scope ~season (module Db : Caqti_lwt.CONNECTION) = let q = match (category, scope) with | "pts", "per_36" -> Queries.leaders_pts_per36 | "pts", _ -> Queries.leaders_pts | "reb", "per_36" -> Queries.leaders_reb_per36 | "reb", _ -> Queries.leaders_reb | "ast", "per_36" -> Queries.leaders_ast_per36 | "ast", _ -> Queries.leaders_ast | "stl", "per_36" -> Queries.leaders_stl_per36 | "stl", _ -> Queries.leaders_stl | "blk", "per_36" -> Queries.leaders_blk_per36 | "blk", _ -> Queries.leaders_blk | _ -> Queries.leaders_pts in Db.collect_list q (season, season)
@@ -888,6 +924,11 @@ let calculate_gb (standings : team_standing list) = match standings with | [] ->
 let get_standings ?(season = "ALL") () = let open Lwt.Syntax in let* result = with_db (fun db -> Repo.get_standings ~season db) in match result with | Ok standings -> Lwt.return (Ok (calculate_gb standings)) | Error err -> Lwt.return (Error err)
 let get_games ?(season = "ALL") () = with_db (fun db -> Repo.get_games ~season db)
 let get_scored_games ?(season = "ALL") () = with_db (fun db -> Repo.get_scored_games ~season db)
+let get_game_season_code ~game_id () = with_db (fun db -> Repo.get_game_season_code ~game_id db)
+let get_team_core_player_ids ~season ~team_name ?(limit=7) () =
+  with_db (fun db -> Repo.get_team_core_player_ids ~season ~team_name ~limit db)
+let get_team_active_player_ids ~team_name ~game_id () =
+  with_db (fun db -> Repo.get_team_active_player_ids ~team_name ~game_id db)
 let get_boxscore ~game_id () = let open Lwt.Syntax in let* game_info_result = with_db (fun db -> Repo.get_game_info ~game_id db) in let* stats_result = with_db (fun db -> Repo.get_boxscore_stats ~game_id db) in match game_info_result, stats_result with | Ok (Some game_info), Ok stats -> let home_players = List.filter (fun s -> s.bs_team_code = game_info.gi_home_team_code) stats in let away_players = List.filter (fun s -> s.bs_team_code = game_info.gi_away_team_code) stats in Lwt.return (Ok { boxscore_game = game_info; boxscore_home_players = home_players; boxscore_away_players = away_players }) | Ok None, _ -> Lwt.return (Error (QueryFailed "Game not found")) | Error err, _ -> Lwt.return (Error err) | _, Error err -> Lwt.return (Error err)
 let get_leaders ?(season="ALL") ?(scope="per_game") category = with_db (fun db -> Repo.get_leaders ~category ~scope ~season db)
 let get_player_profile ~player_id () = with_db (fun db -> Repo.get_player_profile ~player_id db)
