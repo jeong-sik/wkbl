@@ -839,7 +839,7 @@ module Queries = struct
     ranked AS (
       SELECT
         p.player_id,
-        TRIM(REPLACE(p.player_name, '"', '')) AS player_name,
+        TRIM(REPLACE(REPLACE(p.player_name, char(92), ''), '"', '')) AS player_name,
         p.position,
         t.team_code,
 	        t.team_name_kr,
@@ -861,7 +861,7 @@ module Queries = struct
           PARTITION BY
             s.game_id,
             s.team_code,
-            TRIM(REPLACE(p.player_name, '"', '')),
+            TRIM(REPLACE(REPLACE(p.player_name, char(92), ''), '"', '')),
             CAST(ROUND(s.min_seconds / 6.0) AS INT),
             s.pts,
             s.reb_tot,
@@ -1197,9 +1197,64 @@ let get_seasons () = with_db (fun db -> Repo.get_seasons db)
 let get_player_by_name ?(season="ALL") name = with_db (fun db -> Repo.get_player_by_name ~name ~season db)
 let get_players ?(limit=50) ?(search="") ?(sort=ByEfficiency) () = with_db (fun db -> Repo.get_players_filtered ~sort ~search ~limit db)
 let get_players_by_team ~team_name ?(limit=20) () = with_db (fun db -> Repo.get_players_by_team ~team_name ~limit db)
-let build_margin_map margins : team_margin MarginMap.t = List.fold_left (fun acc (row: team_margin) -> let key = (row.season, row.team) in MarginMap.add key row acc) MarginMap.empty margins
-let sort_team_stats sort_field (items : team_stats list) = let metric = function | TeamByPoints -> (fun (row: team_stats) -> row.pts) | TeamByRebounds -> (fun row -> row.reb) | TeamByAssists -> (fun row -> row.ast) | TeamBySteals -> (fun row -> row.stl) | TeamByBlocks -> (fun row -> row.blk) | TeamByEfficiency -> (fun row -> row.eff) | TeamByTsPct -> (fun row -> row.ts_pct) | TeamByFg3Pct -> (fun row -> row.fg3_pct) | TeamByMinutes -> (fun row -> row.min_total) in let getter = metric sort_field in List.sort (fun a b -> let primary = compare (getter b) (getter a) in if primary <> 0 then primary else String.compare a.team b.team) items
-let get_team_stats ?(season="ALL") ?(scope=PerGame) ?(sort=TeamByPoints) () = let open Lwt.Syntax in let* totals_result = with_db (fun db -> Repo.get_team_totals ~season db) in let* margins_result = with_db (fun db -> Repo.get_team_margins ~season db) in match totals_result, margins_result with | Ok totals, Ok margins -> let margin_map = build_margin_map margins in let stats = totals |> List.map (fun (row: team_totals) -> let key = (row.season, row.team) in let margin = MarginMap.find_opt key margin_map in Stats.team_stats_of_totals ~scope ~margin row) |> sort_team_stats sort in Lwt.return (Ok stats) | Error err, _ -> Lwt.return (Error err) | _, Error err -> Lwt.return (Error err)
+let build_margin_map margins : team_margin MarginMap.t =
+  List.fold_left
+    (fun acc (row: team_margin) ->
+      let key = (row.season, row.team) in
+      MarginMap.add key row acc)
+    MarginMap.empty
+    margins
+
+let sort_team_stats sort_field (items : team_stats list) =
+  let metric = function
+    | TeamByPoints -> (fun (row: team_stats) -> row.pts)
+    | TeamByRebounds -> (fun row -> row.reb)
+    | TeamByAssists -> (fun row -> row.ast)
+    | TeamBySteals -> (fun row -> row.stl)
+    | TeamByBlocks -> (fun row -> row.blk)
+    | TeamByEfficiency -> (fun row -> row.eff)
+    | TeamByTsPct -> (fun row -> row.ts_pct)
+    | TeamByFg3Pct -> (fun row -> row.fg3_pct)
+    | TeamByMinutes -> (fun row -> row.min_total)
+  in
+  let getter = metric sort_field in
+  List.sort
+    (fun a b ->
+      let primary = compare (getter b) (getter a) in
+      if primary <> 0 then primary else String.compare a.team b.team)
+    items
+
+let dedupe_team_stats (items : team_stats list) =
+  let seen : (string, unit) Hashtbl.t = Hashtbl.create 16 in
+  items
+  |> List.filter (fun (row: team_stats) ->
+      let key = normalize_label row.team |> String.uppercase_ascii in
+      if Hashtbl.mem seen key then
+        false
+      else (
+        Hashtbl.add seen key ();
+        true
+      ))
+
+let get_team_stats ?(season="ALL") ?(scope=PerGame) ?(sort=TeamByPoints) () =
+  let open Lwt.Syntax in
+  let* totals_result = with_db (fun db -> Repo.get_team_totals ~season db) in
+  let* margins_result = with_db (fun db -> Repo.get_team_margins ~season db) in
+  match totals_result, margins_result with
+  | Ok totals, Ok margins ->
+      let margin_map = build_margin_map margins in
+      let stats =
+        totals
+        |> List.map (fun (row: team_totals) ->
+            let key = (row.season, row.team) in
+            let margin = MarginMap.find_opt key margin_map in
+            Stats.team_stats_of_totals ~scope ~margin row)
+        |> sort_team_stats sort
+        |> dedupe_team_stats
+      in
+      Lwt.return (Ok stats)
+  | Error err, _ -> Lwt.return (Error err)
+  | _, Error err -> Lwt.return (Error err)
 let calculate_gb (standings : team_standing list) = match standings with | [] -> [] | leader :: others -> let calc s = let wins_diff = Stdlib.float (leader.wins - s.wins) in let losses_diff = Stdlib.float (s.losses - leader.losses) in (wins_diff +. losses_diff) /. 2.0 in leader :: List.map (fun s -> { s with gb = calc s }) others
 let get_standings ?(season = "ALL") () = let open Lwt.Syntax in let* result = with_db (fun db -> Repo.get_standings ~season db) in match result with | Ok standings -> Lwt.return (Ok (calculate_gb standings)) | Error err -> Lwt.return (Error err)
 let get_games ?(season = "ALL") () = with_db (fun db -> Repo.get_games ~season db)
