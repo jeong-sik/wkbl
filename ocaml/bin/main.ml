@@ -412,7 +412,13 @@ let () =
               | Ok stats -> Lwt.return { profile with season_breakdown = stats }
               | Error _ -> Lwt.return profile (* Fallback to default if error *)
           in
-          Dream.html (Views.player_profile_page final_profile ~scope)
+          let* seasons_res = Db.get_seasons () in
+          let seasons_catalog =
+            match seasons_res with
+            | Ok seasons -> seasons
+            | Error _ -> []
+          in
+          Dream.html (Views.player_profile_page final_profile ~scope ~seasons_catalog)
       | Ok None -> Dream.html (Views.error_page "Player not found")
       | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
     );

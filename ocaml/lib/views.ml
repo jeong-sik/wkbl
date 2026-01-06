@@ -992,7 +992,7 @@ let leaders_page ~season ~seasons ~scope pts reb ast stl blk =
   let content = Printf.sprintf {html|<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">%s%s%s%s%s</div>|html} (leader_card "Points" pts) (leader_card "Rebounds" reb) (leader_card "Assists" ast) (leader_card "Steals" stl) (leader_card "Blocks" blk) in
   layout ~title:"WKBL Leaders" ~content:(Printf.sprintf {html|<div class="space-y-8 animate-fade-in"><div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3"><div><h2 class="text-3xl font-black text-white">League Leaders</h2><p class="text-slate-400">Top performers by category.</p></div><form action="/leaders" method="get" class="flex gap-3"><select name="season" class="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none w-40" onchange="this.form.submit()">%s</select><select name="scope" class="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none w-40" onchange="this.form.submit()">%s</select></form></div>%s</div>|html} season_options scope_options content)
 
-let player_profile_page (profile: player_profile) ~scope =
+let player_profile_page (profile: player_profile) ~scope ~(seasons_catalog: season_info list) =
   let p = profile.player in
   let pos = match p.position with Some s -> s | None -> "-" in
   let info_text = Printf.sprintf "%s | %dcm" pos (match p.height with Some h -> h | None -> 0) in
@@ -1165,34 +1165,39 @@ let player_profile_page (profile: player_profile) ~scope =
 
   let career_highs_html = career_highs_card profile.career_highs in
   let data_notes_html =
-    let seasons = profile.season_breakdown in
-    let seasons_value_html, show_backfill =
-      match seasons with
-      | [] -> ({html|<span class="font-mono text-slate-500">-</span>|html}, false)
-      | latest :: _ ->
-          let count = List.length seasons in
-          let rec last = function
-            | [] -> None
-            | [x] -> Some x
-            | _ :: xs -> last xs
+    let seasons_value_html, show_backfill, season_count =
+      match seasons_catalog with
+      | [] -> ({html|<span class="font-mono text-slate-500">-</span>|html}, false, 0)
+      | oldest :: _ ->
+          let count = List.length seasons_catalog in
+          let latest =
+            match List.rev seasons_catalog with
+            | latest :: _ -> latest
+            | [] -> oldest
           in
-          let oldest = last seasons |> Option.value ~default:latest in
-          (Printf.sprintf
-             {html|<span class="font-mono text-slate-300">%s</span><span class="mx-1 text-slate-600">→</span><span class="font-mono text-slate-300">%s</span>|html}
-             (escape_html oldest.ss_season_name)
-             (escape_html latest.ss_season_name),
-           count <= 3)
+          let value_html =
+            if count <= 1 then
+              Printf.sprintf {html|<span class="font-mono text-slate-300">%s</span>|html} (escape_html oldest.name)
+            else
+              Printf.sprintf
+                {html|<span class="font-mono text-slate-300">%s</span><span class="mx-1 text-slate-600">→</span><span class="font-mono text-slate-300">%s</span>|html}
+                (escape_html oldest.name)
+                (escape_html latest.name)
+          in
+          (value_html, count <= 3, count)
     in
     let backfill_row_html =
       if show_backfill then
-        {html|<div class="text-slate-500 leading-relaxed">아직 데이터가 3시즌 정도만 있어요. 더 채우려면 아래를 실행하세요:</div><code class="mt-2 block font-mono text-slate-300 bg-slate-800/40 border border-slate-700/60 px-2 py-1 rounded break-all">python3 scripts/wkbl_refresh_all.py -- --years 10</code>|html}
+        Printf.sprintf
+          {html|<div class="text-slate-500 leading-relaxed">아직 데이터가 %d시즌 정도만 있어요. 더 채우려면 아래를 실행하세요:</div><code class="mt-2 block font-mono text-slate-300 bg-slate-800/40 border border-slate-700/60 px-2 py-1 rounded break-all">python3 scripts/wkbl_refresh_all.py -- --years 10</code>|html}
+          season_count
       else
         ""
     in
     let seasons_card_html =
       Printf.sprintf
         {html|<div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-4"><div class="flex items-center justify-between gap-3"><div class="text-slate-400 font-bold uppercase tracking-widest text-[11px] flex items-center gap-2"><span class="text-base">🗓</span> Seasons</div><div class="text-[11px] text-slate-500 font-mono">n=%d</div></div><div class="mt-2 text-slate-200 font-mono">%s</div>%s</div>|html}
-        (List.length seasons)
+        season_count
         seasons_value_html
         (if backfill_row_html = "" then "" else Printf.sprintf {html|<details class="mt-3 text-[11px] text-slate-500"><summary class="cursor-pointer select-none text-slate-400 font-bold">Backfill</summary><div class="mt-2">%s</div></details>|html} backfill_row_html)
     in
