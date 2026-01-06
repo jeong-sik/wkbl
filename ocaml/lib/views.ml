@@ -116,6 +116,13 @@ let stat_cell ?(highlight=false) value =
   let class_name = if highlight then "text-orange-400 font-bold" else "text-slate-300" in
   Printf.sprintf {html|<td class="px-3 py-2 text-right %s font-mono">%.1f</td>|html} class_name value
 
+(** Points cell with career total *)
+let points_total_cell (avg_points: float) (total_points: int) =
+  Printf.sprintf
+    {html|<td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-orange-400 font-bold font-mono">%.1f</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT %d</span></div></td>|html}
+    avg_points
+    total_points
+
 (** Margin cell (signed, colored) *)
 let margin_cell value =
   let class_name =
@@ -369,7 +376,7 @@ let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2") (rank: int
     id_badge
     team_cell
     p.games_played
-    (stat_cell ~highlight:true p.avg_points)
+    (points_total_cell p.avg_points p.total_points)
     (margin_cell p.avg_margin)
     (stat_cell p.avg_rebounds)
     (stat_cell p.avg_assists)
@@ -1350,9 +1357,10 @@ let player_profile_page (profile: player_profile) ~scope ~(seasons_catalog: seas
     if avg.games_played <= 0 then ""
     else
       Printf.sprintf
-        {html|<span class="bg-slate-800/60 text-slate-300 px-3 py-1 rounded text-sm font-mono">GP %d</span><span class="bg-slate-800/60 text-orange-400 px-3 py-1 rounded text-sm font-mono">PTS %.1f</span><span class="bg-slate-800/60 text-slate-300 px-3 py-1 rounded text-sm font-mono">REB %.1f</span><span class="bg-slate-800/60 text-slate-300 px-3 py-1 rounded text-sm font-mono">AST %.1f</span>|html}
+        {html|<span class="bg-slate-800/60 text-slate-300 px-3 py-1 rounded text-sm font-mono">GP %d</span><span class="bg-slate-800/60 text-orange-400 px-3 py-1 rounded text-sm font-mono">PTS %.1f</span><span class="bg-slate-800/60 text-slate-300 px-3 py-1 rounded text-sm font-mono">TOT PTS %d</span><span class="bg-slate-800/60 text-slate-300 px-3 py-1 rounded text-sm font-mono">REB %.1f</span><span class="bg-slate-800/60 text-slate-300 px-3 py-1 rounded text-sm font-mono">AST %.1f</span>|html}
         avg.games_played
         avg.avg_points
+        avg.total_points
         avg.avg_rebounds
         avg.avg_assists
   in

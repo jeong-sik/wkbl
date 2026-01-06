@@ -6,6 +6,7 @@ type player_aggregate = {
   team_name: string;
   games_played: int;
   total_minutes: float;
+  total_points: int;
   avg_points: float;
   avg_margin: float;
   avg_rebounds: float;
