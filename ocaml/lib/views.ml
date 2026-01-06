@@ -631,6 +631,54 @@ let prediction_result_card ~(home: string) ~(away: string) (output: prediction_o
   let pyth_away_pct = pct (1.0 -. breakdown.pb_pyth_prob) in
   let stats_home_pct = pct breakdown.pb_stats_prob in
   let stats_away_pct = pct (1.0 -. breakdown.pb_stats_prob) in
+  let context_card_html, context_note_html =
+    match breakdown.pb_context with
+    | None ->
+        ("", {html|<div>부상/로스터/일정/전술/PBP 등의 컨텍스트는 반영하지 않습니다.</div>|html})
+    | Some ctx ->
+        let delta_pp = ctx.pcb_delta *. 100.0 in
+        let delta_cls =
+          if delta_pp > 0.0 then "text-sky-400"
+          else if delta_pp < 0.0 then "text-rose-400"
+          else "text-slate-300"
+        in
+        let delta_str =
+          if delta_pp > 0.0 then Printf.sprintf "+%.1f%%p" delta_pp else Printf.sprintf "%.1f%%p" delta_pp
+        in
+        let form_home_pct = pct ctx.pcb_form_home in
+        let form_away_pct = pct ctx.pcb_form_away in
+        let roster_text =
+          match ctx.pcb_roster_home, ctx.pcb_roster_away with
+          | Some h, Some a ->
+              Printf.sprintf "%d/%d vs %d/%d" h.rcs_present h.rcs_total a.rcs_present a.rcs_total
+          | _ -> "-"
+        in
+        let rest_text =
+          match ctx.pcb_rest_home_days, ctx.pcb_rest_away_days with
+          | Some h, Some a -> Printf.sprintf "%dd vs %dd" h a
+          | _ -> "-"
+        in
+        ( Printf.sprintf
+            {html|<div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-3">
+              <div class="flex items-center justify-between">
+                <div class="text-slate-500 font-mono uppercase tracking-widest">CONTEXT</div>
+                <div class="text-[10px] font-mono %s">%s</div>
+              </div>
+              <div class="mt-2 space-y-1 text-[10px] text-slate-500 font-mono">
+                <div class="flex justify-between"><span>FORM (L5 win%%)</span><span class="text-slate-300">%.0f%% vs %.0f%%</span></div>
+                <div class="flex justify-between"><span>ROSTER (core)</span><span class="text-slate-300">%s</span></div>
+                <div class="flex justify-between"><span>REST</span><span class="text-slate-300">%s</span></div>
+              </div>
+            </div>|html}
+            delta_cls
+            (escape_html delta_str)
+            form_home_pct
+            form_away_pct
+            (escape_html roster_text)
+            (escape_html rest_text),
+          {html|<div>컨텍스트(최근 5경기 폼/코어 로스터/휴식)를 Δ로 소폭 반영합니다. (최대 ±8%p)</div><div class="text-slate-500">로스터는 “마지막 경기 출전” 기준으로 추정하며, 부상/전술/PBP 컨텍스트는 여전히 미반영입니다.</div>|html}
+        )
+  in
   let winner_class =
     if normalize_label result.winner = normalize_label home then "text-orange-400"
     else "text-sky-400"
@@ -662,7 +710,7 @@ let prediction_result_card ~(home: string) ~(away: string) (output: prediction_o
           <span class="text-sky-400 font-bold">%.1f%%</span>
         </div>
       </div>
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-3 text-xs">
+      <div class="grid grid-cols-1 lg:grid-cols-4 gap-3 text-xs">
         <div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-3">
           <div class="flex items-center justify-between">
             <div class="text-slate-500 font-mono uppercase tracking-widest">ELO</div>
@@ -696,6 +744,7 @@ let prediction_result_card ~(home: string) ~(away: string) (output: prediction_o
           </div>
           <div class="mt-1 text-[10px] text-slate-500 font-mono">Win%% + EFF blend</div>
         </div>
+        %s
       </div>
       <details class="bg-slate-900/50 rounded-lg border border-slate-800/50 p-4 text-xs text-slate-400">
         <summary class="cursor-pointer font-bold text-slate-300 select-none">예측 안내</summary>
@@ -705,7 +754,7 @@ let prediction_result_card ~(home: string) ~(away: string) (output: prediction_o
           <div><span class="font-mono text-slate-200">Pythag</span>는 득실 기반 기대 승률이며 Log5로 매치업 확률을 계산합니다.</div>
           <div><span class="font-mono text-slate-200">Stats</span>는 승률과 EFF를 단순 결합합니다.</div>
           <div>중립경기(Neutral)면 홈 어드밴티지는 예측에 반영하지 않습니다.</div>
-          <div>부상/로스터/일정/전술/PBP 등의 컨텍스트는 반영하지 않습니다.</div>
+          %s
         </div>
       </details>
     </div>|html}
@@ -733,8 +782,10 @@ let prediction_result_card ~(home: string) ~(away: string) (output: prediction_o
     pyth_away_pct
     stats_home_pct
     stats_away_pct
+    context_card_html
+    context_note_html
 
-let predict_page ~season ~seasons ~teams ~home ~away ~is_neutral (result: prediction_output option) (error: string option) =
+let predict_page ~season ~seasons ~teams ~home ~away ~is_neutral ~context_enabled (result: prediction_output option) (error: string option) =
   let season_options =
     let base =
       seasons
@@ -777,6 +828,10 @@ let predict_page ~season ~seasons ~teams ~home ~away ~is_neutral (result: predic
           <select name="home" class="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none">%s</select>
           <select name="away" class="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none">%s</select>
           <label class="md:col-span-3 flex items-center gap-2 text-xs text-slate-400">
+            <input type="checkbox" name="context" value="1" class="accent-orange-500" %s>
+            컨텍스트 반영 (폼/로스터/휴식)
+          </label>
+          <label class="md:col-span-3 flex items-center gap-2 text-xs text-slate-400">
             <input type="checkbox" name="neutral" value="1" class="accent-orange-500" %s>
             Neutral site (no home advantage)
           </label>
@@ -786,7 +841,12 @@ let predict_page ~season ~seasons ~teams ~home ~away ~is_neutral (result: predic
         </form>
         %s
       </div>|html}
-      season_options (team_options home) (team_options away) (if is_neutral then "checked" else "") result_html)
+      season_options
+      (team_options home)
+      (team_options away)
+      (if context_enabled then "checked" else "")
+      (if is_neutral then "checked" else "")
+      result_html)
 
 let leader_card title (leaders: leader_entry list) =
   if leaders = [] then ""

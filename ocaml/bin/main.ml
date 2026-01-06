@@ -261,6 +261,13 @@ let () =
       let season = Dream.query request "season" |> Option.value ~default:"ALL" in
       let home = Dream.query request "home" |> Option.value ~default:"" in
       let away = Dream.query request "away" |> Option.value ~default:"" in
+      let context_enabled =
+        Dream.query request "context"
+        |> Option.map String.lowercase_ascii
+        |> function
+        | Some ("1" | "true" | "yes" | "on") -> true
+        | _ -> false
+      in
       let is_neutral =
         Dream.query request "neutral"
         |> Option.map String.lowercase_ascii
@@ -275,7 +282,7 @@ let () =
       let render result error =
         match seasons_res, teams_res with
         | Ok seasons, Ok teams ->
-            Dream.html (Views.predict_page ~season ~seasons ~teams ~home ~away ~is_neutral result error)
+            Dream.html (Views.predict_page ~season ~seasons ~teams ~home ~away ~is_neutral ~context_enabled result error)
         | Error e, _ | _, Error e -> Dream.html (Views.error_page (Db.show_db_error e))
       in
 
@@ -299,10 +306,65 @@ let () =
               | Some s -> s.win_pct
               | None -> 0.5
             in
+            let last_game_for_team (name : string) =
+              let key = normalize_label name in
+              games
+              |> List.filter (fun (g : game_summary) ->
+                  normalize_label g.home_team = key || normalize_label g.away_team = key)
+              |> List.sort (fun (a : game_summary) (b : game_summary) ->
+                  let by_date = String.compare b.game_date a.game_date in
+                  if by_date <> 0 then by_date else String.compare b.game_id a.game_id)
+              |> function
+              | [] -> None
+              | g :: _ -> Some g
+            in
+            let roster_for_team ~team_name ~game_id ~season_code =
+              let open Lwt.Syntax in
+              let* core_res = Db.get_team_core_player_ids ~season:season_code ~team_name () in
+              let* active_res = Db.get_team_active_player_ids ~team_name ~game_id () in
+              match core_res, active_res with
+              | Ok core_ids, Ok active_ids ->
+                  let present =
+                    core_ids
+                    |> List.filter (fun pid -> List.mem pid active_ids)
+                    |> List.length
+                  in
+                  Lwt.return (Some { rcs_present = present; rcs_total = List.length core_ids })
+              | _ -> Lwt.return None
+            in
+            let season_for_game_id (game_id : string) =
+              if season <> "ALL" then Lwt.return season
+              else
+                let open Lwt.Syntax in
+                let* res = Db.get_game_season_code ~game_id () in
+                match res with
+                | Ok (Some s) -> Lwt.return s
+                | _ -> Lwt.return "ALL"
+            in
             (match find_team home, find_team away with
             | Some home_row, Some away_row ->
+                let* context_input =
+                  if not context_enabled then Lwt.return None
+                  else
+                    let* home_roster =
+                      match last_game_for_team home with
+                      | None -> Lwt.return None
+                      | Some g ->
+                          let* sc = season_for_game_id g.game_id in
+                          roster_for_team ~team_name:home ~game_id:g.game_id ~season_code:sc
+                    in
+                    let* away_roster =
+                      match last_game_for_team away with
+                      | None -> Lwt.return None
+                      | Some g ->
+                          let* sc = season_for_game_id g.game_id in
+                          roster_for_team ~team_name:away ~game_id:g.game_id ~season_code:sc
+                    in
+                    Lwt.return (Some { pci_home_roster = home_roster; pci_away_roster = away_roster })
+                in
                 let output =
                   Prediction.predict_match_nerd
+                    ~context:context_input
                     ~season
                     ~is_neutral
                     ~games
