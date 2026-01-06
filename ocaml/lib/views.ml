@@ -476,8 +476,14 @@ let players_page ~search ~sort ~include_mismatch players =
 let format_float ?(digits=1) value = Printf.sprintf "%.*f" digits value
 
 (** Team stat row component to avoid too many sprintf arguments *)
-let team_stat_row (row: team_stats) =
-  let name_cell = Printf.sprintf {html|<td class="px-3 py-2 font-medium text-white flex items-center gap-2 whitespace-nowrap">%s<a href="/team/%s" class="hover:text-orange-400 transition-colors">%s</a></td>|html} (team_logo_tag ~class_name:"w-5 h-5" row.team) (Uri.pct_encode row.team) (escape_html row.team) in
+let team_stat_row ~season (row: team_stats) =
+  let team_href =
+    if season = "ALL" then
+      Printf.sprintf "/team/%s" (Uri.pct_encode row.team)
+    else
+      Printf.sprintf "/team/%s?season=%s" (Uri.pct_encode row.team) (Uri.pct_encode season)
+  in
+  let name_cell = Printf.sprintf {html|<td class="px-3 py-2 font-medium text-white flex items-center gap-2 whitespace-nowrap">%s<a href="%s" class="hover:text-orange-400 transition-colors">%s</a></td>|html} (team_logo_tag ~class_name:"w-5 h-5" row.team) (escape_html team_href) (escape_html row.team) in
   let gp_cell = Printf.sprintf {html|<td class="px-3 py-2 text-right text-slate-400">%d</td>|html} row.gp in
   let stats_part1 = Printf.sprintf {html|<td class="px-3 py-2 text-right text-slate-300 hidden md:table-cell">%s</td><td class="px-3 py-2 text-right text-slate-300">%s</td><td class="px-3 py-2 text-right text-slate-300">%s</td><td class="px-3 py-2 text-right text-slate-300 hidden md:table-cell">%s</td><td class="px-3 py-2 text-right text-slate-300 hidden sm:table-cell">%s</td><td class="px-3 py-2 text-right text-slate-300 hidden sm:table-cell">%s</td><td class="px-3 py-2 text-right text-slate-300 hidden md:table-cell">%s</td>|html}
     (format_float row.min_total) (format_float row.pts) (format_float row.margin) (format_float row.pts_against) (format_float row.reb) (format_float row.ast) (format_float row.stl) in
@@ -486,10 +492,10 @@ let team_stat_row (row: team_stats) =
   in
   Printf.sprintf {html|<tr class="border-b border-slate-800/60 hover:bg-slate-800/30 transition-colors">%s%s%s%s</tr>|html} name_cell gp_cell stats_part1 stats_part2
 
-let teams_table ~scope (stats: team_stats list) =
+let teams_table ~season ~scope (stats: team_stats list) =
   let rows =
     stats
-    |> List.map team_stat_row
+    |> List.map (team_stat_row ~season)
     |> String.concat "\n"
   in
   let min_label = if scope = PerGame then "MIN/G" else "MIN" in
@@ -502,22 +508,28 @@ let teams_page ~season ~seasons ~scope ~sort ~include_mismatch stats =
   let scope_option value label = let selected = if scope_value = value then "selected" else "" in Printf.sprintf {html|<option value="%s" %s>%s</option>|html} value selected label in
   let sort_option value label = let selected = if String.lowercase_ascii sort = value then "selected" else "" in Printf.sprintf {html|<option value="%s" %s>%s</option>|html} value selected label in
   let season_options = let base = seasons |> List.map (fun s -> let selected = if s.code = season then "selected" else "" in Printf.sprintf {html|<option value="%s" %s>%s</option>|html} s.code selected (escape_html s.name)) |> String.concat "\n" in Printf.sprintf {html|<option value="ALL" %s>All Seasons</option>%s|html} (if season = "ALL" then "selected" else "") base in
-  let table = teams_table ~scope stats in
+  let table = teams_table ~season ~scope stats in
   let include_checked = if include_mismatch then "checked" else "" in
   layout ~title:"WKBL Teams"
     ~content:(Printf.sprintf
       {html|<div class="space-y-6"><div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3"><div><h2 class="text-2xl font-bold text-white">Teams</h2><p class="text-slate-400 text-sm">Team aggregates by season and scope.</p></div><a class="text-orange-400 hover:text-orange-300 text-sm" href="/teams">Reset</a></div><form id="teams-filter" class="grid grid-cols-1 md:grid-cols-3 gap-3" hx-get="/teams/table" hx-target="#teams-table" hx-trigger="change"><select name="season" class="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none">%s</select><select name="scope" class="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none">%s%s</select><select name="sort" class="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none">%s%s%s%s%s%s%s%s%s</select><label class="md:col-span-3 flex items-center justify-end gap-2 text-xs text-slate-400"><input type="checkbox" name="include_mismatch" value="1" %s class="h-4 w-4 rounded border-slate-600 bg-slate-800 accent-orange-500" title="Final score != sum(points) 경기 포함"><span>Mismatch 포함</span></label></form><div id="teams-table">%s</div></div>|html}
       season_options (scope_option "per_game" "Per Game") (scope_option "totals" "Totals") (sort_option "pts" "PTS") (sort_option "reb" "REB") (sort_option "ast" "AST") (sort_option "stl" "STL") (sort_option "blk" "BLK") (sort_option "eff" "EFF") (sort_option "ts_pct" "TS%") (sort_option "fg3_pct" "3P%") (sort_option "min_total" "MIN") include_checked table)
 
-let standings_table (standings : team_standing list) =
+let standings_table ~season (standings : team_standing list) =
   let rows =
     standings
     |> List.mapi (fun i (s : team_standing) ->
         let win_pct_fmt = Printf.sprintf "%.3f" s.win_pct in
         let gb_fmt = if s.gb = 0.0 then "-" else Printf.sprintf "%.1f" s.gb in
+        let team_href =
+          if season = "ALL" then
+            Printf.sprintf "/team/%s" (Uri.pct_encode s.team_name)
+          else
+            Printf.sprintf "/team/%s?season=%s" (Uri.pct_encode s.team_name) (Uri.pct_encode season)
+        in
         Printf.sprintf
-          {html|<tr class="border-b border-slate-800/60 hover:bg-slate-800/30 transition-colors"><td class="px-4 py-3 text-slate-500 font-mono text-sm">%d</td><td class="px-4 py-3 font-bold text-white flex items-center gap-2">%s<a href="/team/%s" class="hover:text-orange-400 transition-colors">%s</a></td><td class="px-4 py-3 text-right text-slate-300">%d</td><td class="px-4 py-3 text-right text-slate-300">%d</td><td class="px-4 py-3 text-right text-slate-300">%d</td><td class="px-4 py-3 text-right text-orange-400 font-bold">%s</td><td class="px-4 py-3 text-right text-slate-400">%s</td><td class="px-4 py-3 text-right text-slate-300 font-mono">%.1f</td><td class="px-4 py-3 text-right text-slate-300 font-mono">%.1f</td><td class="px-4 py-3 text-right %s font-mono font-bold">%.1f</td></tr>|html}
-          (i + 1) (team_logo_tag ~class_name:"w-5 h-5" s.team_name) (Uri.pct_encode s.team_name) (escape_html s.team_name) s.games_played s.wins s.losses win_pct_fmt gb_fmt s.avg_pts s.avg_opp_pts (if s.diff >= 0.0 then "text-emerald-400" else "text-rose-400") s.diff)
+          {html|<tr class="border-b border-slate-800/60 hover:bg-slate-800/30 transition-colors"><td class="px-4 py-3 text-slate-500 font-mono text-sm">%d</td><td class="px-4 py-3 font-bold text-white flex items-center gap-2">%s<a href="%s" class="hover:text-orange-400 transition-colors">%s</a></td><td class="px-4 py-3 text-right text-slate-300">%d</td><td class="px-4 py-3 text-right text-slate-300">%d</td><td class="px-4 py-3 text-right text-slate-300">%d</td><td class="px-4 py-3 text-right text-orange-400 font-bold">%s</td><td class="px-4 py-3 text-right text-slate-400">%s</td><td class="px-4 py-3 text-right text-slate-300 font-mono">%.1f</td><td class="px-4 py-3 text-right text-slate-300 font-mono">%.1f</td><td class="px-4 py-3 text-right %s font-mono font-bold">%.1f</td></tr>|html}
+          (i + 1) (team_logo_tag ~class_name:"w-5 h-5" s.team_name) (escape_html team_href) (escape_html s.team_name) s.games_played s.wins s.losses win_pct_fmt gb_fmt s.avg_pts s.avg_opp_pts (if s.diff >= 0.0 then "text-emerald-400" else "text-rose-400") s.diff)
     |> String.concat "\n"
   in
   Printf.sprintf
@@ -526,7 +538,7 @@ let standings_table (standings : team_standing list) =
 
 let standings_page ~season ~seasons standings =
   let season_options = let base = seasons |> List.map (fun (s: season_info) -> let selected = if s.code = season then "selected" else "" in Printf.sprintf {html|<option value="%s" %s>%s</option>|html} s.code selected (escape_html s.name)) |> String.concat "\n" in Printf.sprintf {html|<option value="ALL" %s>All Seasons</option>%s|html} (if season = "ALL" then "selected" else "") base in
-  let table = standings_table standings in
+  let table = standings_table ~season standings in
   layout ~title:"WKBL Standings"
     ~content:(Printf.sprintf
       {html|<div class="space-y-6"><div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3"><div><h2 class="text-2xl font-bold text-white">Standings</h2><p class="text-slate-400 text-sm">League rank and win percentage.</p></div></div><form id="standings-filter" class="flex gap-3" hx-get="/standings/table" hx-target="#standings-table" hx-trigger="change"><select name="season" class="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none w-48">%s</select></form><div id="standings-table">%s</div></div>|html}
@@ -1704,9 +1716,19 @@ let player_game_logs_page (profile: player_profile) ~(season: string) ~(seasons:
       quality_chips
       rows)
 
-let team_profile_page (detail: team_full_detail) =
+let team_profile_page (detail: team_full_detail) ~season ~seasons =
   let t = detail.tfd_team_name in
   let s = detail.tfd_standing in
+  let season_options =
+    let base =
+      seasons
+      |> List.map (fun (s: season_info) ->
+          let selected = if s.code = season then "selected" else "" in
+          Printf.sprintf {html|<option value="%s" %s>%s</option>|html} s.code selected (escape_html s.name))
+      |> String.concat "\n"
+    in
+    Printf.sprintf {html|<option value="ALL" %s>All Seasons</option>%s|html} (if season = "ALL" then "selected" else "") base
+  in
   let standing_info = match s with | Some st -> Printf.sprintf {html|<div class="flex gap-6 text-sm"><div class="flex flex-col"><span>WINS</span><span class="text-2xl font-black text-white">%d</span></div><div class="flex flex-col"><span>LOSSES</span><span class="text-2xl font-black text-white">%d</span></div><div class="flex flex-col"><span>WIN %%</span><span class="text-2xl font-black text-orange-400">%.3f</span></div><div class="flex flex-col"><span>GB</span><span class="text-2xl font-black text-slate-400">%.1f</span></div></div>|html} st.wins st.losses st.win_pct st.gb | None -> "" in
   let roster_name_counts : (string, int) Hashtbl.t = Hashtbl.create 32 in
   detail.tfd_roster
@@ -1826,9 +1848,11 @@ let team_profile_page (detail: team_full_detail) =
     |> String.concat "\n"
   in
   layout ~title:(t ^ " | WKBL Team Profile")
-    ~content:(Printf.sprintf {html|<div class="space-y-8 animate-fade-in"><div class="bg-slate-900 rounded-xl border border-slate-800 p-8 shadow-2xl flex flex-col md:flex-row items-center md:items-start gap-8"><div class="w-32 h-32 bg-slate-800 rounded-xl flex items-center justify-center p-4 border-2 border-slate-700 shadow-inner">%s</div><div class="text-center md:text-left space-y-4"><h1 class="text-4xl font-black text-white">%s</h1>%s</div></div><div class="grid grid-cols-1 lg:grid-cols-3 gap-8"><div class="space-y-4 lg:col-span-2"><h3 class="text-xl font-bold text-white">Roster</h3><div class="sm:hidden space-y-3">%s</div><details class="sm:hidden bg-slate-900/50 rounded-xl border border-slate-800 p-4"><summary class="cursor-pointer font-bold text-slate-300 select-none">Full table</summary><div class="mt-3 overflow-x-auto">%s</div></details><div class="hidden sm:block bg-slate-900 rounded-xl border border-slate-800 overflow-x-auto shadow-lg">%s</div></div><div class="space-y-4 lg:col-span-1"><h3 class="text-xl font-bold text-white">Recent Results</h3><div class="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden shadow-lg"><table class="w-full text-sm font-mono"><thead class="bg-slate-800/80 text-slate-400 uppercase tracking-wider text-xs"><tr><th class="px-4 py-3 text-left font-sans">Date</th><th class="px-4 py-3 text-left font-sans">Opponent</th><th class="px-4 py-3 text-center font-sans">Result</th><th class="px-4 py-3 text-right font-sans">Score</th></tr></thead><tbody>%s</tbody></table></div></div></div></div>|html}
+    ~content:(Printf.sprintf {html|<div class="space-y-8 animate-fade-in"><div class="bg-slate-900 rounded-xl border border-slate-800 p-8 shadow-2xl flex flex-col md:flex-row items-center md:items-start gap-8"><div class="w-32 h-32 bg-slate-800 rounded-xl flex items-center justify-center p-4 border-2 border-slate-700 shadow-inner">%s</div><div class="text-center md:text-left space-y-4 w-full"><div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3"><h1 class="text-4xl font-black text-white">%s</h1><form action="/team/%s" method="get" class="flex items-center justify-center sm:justify-end gap-2"><span class="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Season</span><select name="season" class="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none w-48" onchange="this.form.submit()">%s</select></form></div>%s</div></div><div class="grid grid-cols-1 lg:grid-cols-3 gap-8"><div class="space-y-4 lg:col-span-2"><h3 class="text-xl font-bold text-white">Roster</h3><div class="sm:hidden space-y-3">%s</div><details class="sm:hidden bg-slate-900/50 rounded-xl border border-slate-800 p-4"><summary class="cursor-pointer font-bold text-slate-300 select-none">Full table</summary><div class="mt-3 overflow-x-auto">%s</div></details><div class="hidden sm:block bg-slate-900 rounded-xl border border-slate-800 overflow-x-auto shadow-lg">%s</div></div><div class="space-y-4 lg:col-span-1"><h3 class="text-xl font-bold text-white">Recent Results</h3><div class="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden shadow-lg"><table class="w-full text-sm font-mono"><thead class="bg-slate-800/80 text-slate-400 uppercase tracking-wider text-xs"><tr><th class="px-4 py-3 text-left font-sans">Date</th><th class="px-4 py-3 text-left font-sans">Opponent</th><th class="px-4 py-3 text-center font-sans">Result</th><th class="px-4 py-3 text-right font-sans">Score</th></tr></thead><tbody>%s</tbody></table></div></div></div></div>|html}
           (team_logo_tag ~class_name:"w-24 h-24" t)
           (escape_html t)
+          (Uri.pct_encode t)
+          season_options
           standing_info
           roster_cards
           roster_table_inner

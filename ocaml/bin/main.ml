@@ -154,7 +154,7 @@ let () =
       let include_mismatch = query_bool request "include_mismatch" in
       let* stats_res = Db.get_team_stats ~season ~scope ~sort ~include_mismatch () in
       match stats_res with
-      | Ok stats -> Dream.html (Views.teams_table ~scope stats)
+      | Ok stats -> Dream.html (Views.teams_table ~season ~scope stats)
       | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
     );
 
@@ -174,7 +174,7 @@ let () =
       let season = Dream.query request "season" |> Option.value ~default:"ALL" in
       let* standings_res = Db.get_standings ~season () in
       match standings_res with
-      | Ok standings -> Dream.html (Views.standings_table standings)
+      | Ok standings -> Dream.html (Views.standings_table ~season standings)
       | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
     );
 
@@ -577,11 +577,13 @@ let () =
     (* Team Profile *)
     Dream.get "/team/:name" (fun request ->
       let team_name = Dream.param request "name" |> Uri.pct_decode in
+      let season = Dream.query request "season" |> Option.value ~default:"ALL" in
       let open Lwt.Syntax in
-      let* detail_res = Db.get_team_full_detail ~team_name () in
-      match detail_res with
-      | Ok detail -> Dream.html (Views.team_profile_page detail)
-      | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+      let* seasons_res = Db.get_seasons () in
+      let* detail_res = Db.get_team_full_detail ~team_name ~season () in
+      match seasons_res, detail_res with
+      | Ok seasons, Ok detail -> Dream.html (Views.team_profile_page detail ~season ~seasons)
+      | Error e, _ | _, Error e -> Dream.html (Views.error_page (Db.show_db_error e))
     );
 
     (* QA & System *)

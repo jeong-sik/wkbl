@@ -1029,7 +1029,7 @@ module Queries = struct
   let player_stats_by_assists = (tup2 string (tup2 int int) ->* Types.player_aggregate) {| SELECT p.player_id, p.player_name, t.team_name_kr, COUNT(*) as gp, COALESCE(SUM(s.min_seconds) / 60.0, 0), COALESCE(AVG(s.pts), 0), COALESCE((SUM(((COALESCE((CASE WHEN g.home_team_code = s.team_code THEN COALESCE(g.home_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code)) ELSE COALESCE(g.away_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code)) END), 0) - COALESCE((CASE WHEN g.home_team_code = s.team_code THEN COALESCE(g.away_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code)) ELSE COALESCE(g.home_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code)) END), 0))) * s.min_seconds) * 1.0) / NULLIF(SUM(s.min_seconds), 0), 0) as margin, COALESCE(AVG(s.reb_tot), 0), COALESCE(AVG(s.ast), 0), COALESCE(AVG(s.stl), 0), COALESCE(AVG(s.blk), 0), COALESCE(AVG(s.tov), 0), COALESCE(AVG(s.game_score), 0) FROM game_stats s JOIN games g ON g.game_id = s.game_id JOIN players p ON s.player_id = p.player_id JOIN teams t ON s.team_code = t.team_code WHERE p.player_name LIKE ? AND g.game_type != '10' AND (? = 1 OR g.game_id NOT IN (SELECT game_id FROM score_mismatch_games)) GROUP BY p.player_id ORDER BY AVG(s.ast) DESC LIMIT ? |}
   let player_stats_by_efficiency = (tup2 string (tup2 int int) ->* Types.player_aggregate) {| SELECT p.player_id, p.player_name, t.team_name_kr, COUNT(*) as gp, COALESCE(SUM(s.min_seconds) / 60.0, 0), COALESCE(AVG(s.pts), 0), COALESCE((SUM(((COALESCE((CASE WHEN g.home_team_code = s.team_code THEN COALESCE(g.home_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code)) ELSE COALESCE(g.away_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code)) END), 0) - COALESCE((CASE WHEN g.home_team_code = s.team_code THEN COALESCE(g.away_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code)) ELSE COALESCE(g.home_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code)) END), 0))) * s.min_seconds) * 1.0) / NULLIF(SUM(s.min_seconds), 0), 0) as margin, COALESCE(AVG(s.reb_tot), 0), COALESCE(AVG(s.ast), 0), COALESCE(AVG(s.stl), 0), COALESCE(AVG(s.blk), 0), COALESCE(AVG(s.tov), 0), COALESCE(AVG(s.game_score), 0) FROM game_stats s JOIN games g ON g.game_id = s.game_id JOIN players p ON s.player_id = p.player_id JOIN teams t ON s.team_code = t.team_code WHERE p.player_name LIKE ? AND g.game_type != '10' AND (? = 1 OR g.game_id NOT IN (SELECT game_id FROM score_mismatch_games)) GROUP BY p.player_id ORDER BY AVG(s.game_score) DESC LIMIT ? |}
   let player_stats_by_minutes = (tup2 string (tup2 int int) ->* Types.player_aggregate) {| SELECT p.player_id, p.player_name, t.team_name_kr, COUNT(*) as gp, COALESCE(SUM(s.min_seconds) / 60.0, 0), COALESCE(AVG(s.pts), 0), COALESCE((SUM(((COALESCE((CASE WHEN g.home_team_code = s.team_code THEN COALESCE(g.home_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code)) ELSE COALESCE(g.away_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code)) END), 0) - COALESCE((CASE WHEN g.home_team_code = s.team_code THEN COALESCE(g.away_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code)) ELSE COALESCE(g.home_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code)) END), 0))) * s.min_seconds) * 1.0) / NULLIF(SUM(s.min_seconds), 0), 0) as margin, COALESCE(AVG(s.reb_tot), 0), COALESCE(AVG(s.ast), 0), COALESCE(AVG(s.stl), 0), COALESCE(AVG(s.blk), 0), COALESCE(AVG(s.tov), 0), COALESCE(AVG(s.game_score), 0) FROM game_stats s JOIN games g ON g.game_id = s.game_id JOIN players p ON s.player_id = p.player_id JOIN teams t ON s.team_code = t.team_code WHERE p.player_name LIKE ? AND g.game_type != '10' AND (? = 1 OR g.game_id NOT IN (SELECT game_id FROM score_mismatch_games)) GROUP BY p.player_id ORDER BY SUM(s.min_seconds) DESC LIMIT ? |}
-  let players_by_team = (tup2 string int ->* Types.player_aggregate) {| SELECT p.player_id, p.player_name, t.team_name_kr, COUNT(*) as gp, COALESCE(SUM(s.min_seconds) / 60.0, 0), COALESCE(AVG(s.pts), 0), COALESCE((SUM(((COALESCE((CASE WHEN g.home_team_code = s.team_code THEN COALESCE(g.home_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code)) ELSE COALESCE(g.away_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code)) END), 0) - COALESCE((CASE WHEN g.home_team_code = s.team_code THEN COALESCE(g.away_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code)) ELSE COALESCE(g.home_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code)) END), 0))) * s.min_seconds) * 1.0) / NULLIF(SUM(s.min_seconds), 0), 0) as margin, COALESCE(AVG(s.reb_tot), 0), COALESCE(AVG(s.ast), 0), COALESCE(AVG(s.stl), 0), COALESCE(AVG(s.blk), 0), COALESCE(AVG(s.tov), 0), COALESCE(AVG(s.game_score), 0) FROM game_stats s JOIN games g ON g.game_id = s.game_id JOIN players p ON s.player_id = p.player_id JOIN teams t ON s.team_code = t.team_code WHERE t.team_name_kr = ? AND g.game_type != '10' GROUP BY p.player_id ORDER BY AVG(s.game_score) DESC LIMIT ? |}
+  let players_by_team = (tup2 string (tup2 string (tup2 string int)) ->* Types.player_aggregate) {| SELECT p.player_id, p.player_name, t.team_name_kr, COUNT(*) as gp, COALESCE(SUM(s.min_seconds) / 60.0, 0), COALESCE(AVG(s.pts), 0), COALESCE((SUM(((COALESCE((CASE WHEN g.home_team_code = s.team_code THEN COALESCE(g.home_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code)) ELSE COALESCE(g.away_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code)) END), 0) - COALESCE((CASE WHEN g.home_team_code = s.team_code THEN COALESCE(g.away_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code)) ELSE COALESCE(g.home_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code)) END), 0))) * s.min_seconds) * 1.0) / NULLIF(SUM(s.min_seconds), 0), 0) as margin, COALESCE(AVG(s.reb_tot), 0), COALESCE(AVG(s.ast), 0), COALESCE(AVG(s.stl), 0), COALESCE(AVG(s.blk), 0), COALESCE(AVG(s.tov), 0), COALESCE(AVG(s.game_score), 0) FROM game_stats s JOIN games g ON g.game_id = s.game_id JOIN players p ON s.player_id = p.player_id JOIN teams t ON s.team_code = t.team_code WHERE t.team_name_kr = ? AND (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id ORDER BY AVG(s.game_score) DESC LIMIT ? |}
   let leaders_pts = (tup2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, AVG(s.pts) FROM game_stats s JOIN players p ON s.player_id = p.player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id HAVING COUNT(*) >= 5 ORDER BY AVG(s.pts) DESC LIMIT 5 |}
   let leaders_pts_per36 = (tup2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, (SUM(s.pts) * 1.0 / SUM(s.min_seconds)) * 36 * 60 FROM game_stats s JOIN players p ON s.player_id = p.player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id HAVING SUM(s.min_seconds) >= 6000 ORDER BY (SUM(s.pts) / SUM(s.min_seconds)) DESC LIMIT 5 |}
   let leaders_reb = (tup2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, AVG(s.reb_tot) FROM game_stats s JOIN players p ON s.player_id = p.player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id HAVING COUNT(*) >= 5 ORDER BY AVG(s.reb_tot) DESC LIMIT 5 |}
@@ -1266,7 +1266,7 @@ module Queries = struct
 	  let career_high_steals_game = (string ->? Types.player_game_stat) {| SELECT g.game_id, COALESCE(g.game_date, 'Unknown'), CASE WHEN g.home_team_code = s.team_code THEN t2.team_name_kr ELSE t1.team_name_kr END as opponent, CASE WHEN g.home_team_code = s.team_code THEN 1 ELSE 0 END as is_home, NULL as team_score, NULL as opponent_score, 1 as score_quality, COALESCE(s.min_seconds, 0) / 60.0, s.pts, s.reb_tot, s.ast, s.stl, s.blk, s.tov, NULL as plus_minus FROM game_stats s JOIN games g ON g.game_id = s.game_id JOIN teams t1 ON t1.team_code = g.home_team_code JOIN teams t2 ON t2.team_code = g.away_team_code WHERE s.player_id = ? AND g.game_type != '10' ORDER BY s.stl DESC, g.game_date DESC, g.game_id DESC LIMIT 1 |}
 	  let career_high_blocks_game = (string ->? Types.player_game_stat) {| SELECT g.game_id, COALESCE(g.game_date, 'Unknown'), CASE WHEN g.home_team_code = s.team_code THEN t2.team_name_kr ELSE t1.team_name_kr END as opponent, CASE WHEN g.home_team_code = s.team_code THEN 1 ELSE 0 END as is_home, NULL as team_score, NULL as opponent_score, 1 as score_quality, COALESCE(s.min_seconds, 0) / 60.0, s.pts, s.reb_tot, s.ast, s.stl, s.blk, s.tov, NULL as plus_minus FROM game_stats s JOIN games g ON g.game_id = s.game_id JOIN teams t1 ON t1.team_code = g.home_team_code JOIN teams t2 ON t2.team_code = g.away_team_code WHERE s.player_id = ? AND g.game_type != '10' ORDER BY s.blk DESC, g.game_date DESC, g.game_id DESC LIMIT 1 |}
 
-  let team_recent_games = (let t = tup2 string (tup2 string (tup2 string (tup2 string (tup2 string (tup2 string (tup2 string string)))))) in t ->* Types.team_game_result) {|
+  let team_recent_games = (let t = tup2 string (tup2 string (tup2 string (tup2 string (tup2 string (tup2 string (tup2 string (tup2 string (tup2 string string)))))))) in t ->* Types.team_game_result) {|
     WITH scored_games AS (
       SELECT
         g.*,
@@ -1298,6 +1298,7 @@ module Queries = struct
     JOIN teams t2 ON t2.team_code = g.away_team_code
     WHERE (t1.team_name_kr = ? OR t2.team_name_kr = ?)
       AND g.game_type != '10'
+      AND (? = 'ALL' OR g.season_code = ?)
       AND g.home_score_calc IS NOT NULL
       AND g.away_score_calc IS NOT NULL
     ORDER BY g.game_date DESC
@@ -1365,7 +1366,9 @@ module Repo = struct
     let include_int = if include_mismatch then 1 else 0 in
     Db.collect_list (query_for_sort sort) (pattern, (include_int, limit))
   let get_top_players ?(team_name="ALL") ~limit (module Db : Caqti_lwt.CONNECTION) = Db.collect_list Queries.player_stats_base ((team_name, team_name), limit)
-  let get_players_by_team ~team_name ~limit (module Db : Caqti_lwt.CONNECTION) = Db.collect_list Queries.players_by_team (team_name, limit)
+  let get_players_by_team ~team_name ~season ~limit (module Db : Caqti_lwt.CONNECTION) =
+    let s = if String.trim season = "" then "ALL" else season in
+    Db.collect_list Queries.players_by_team (team_name, (s, (s, limit)))
   let get_team_totals ~season ~include_mismatch (module Db : Caqti_lwt.CONNECTION) =
     let include_int = if include_mismatch then 1 else 0 in
     Db.collect_list Queries.team_totals_by_season (season, (season, (season, include_int)))
@@ -1502,7 +1505,20 @@ module Repo = struct
     let include_int = if include_mismatch then 1 else 0 in
     let s = if String.trim season = "" then "ALL" else season in
     Db.collect_list Queries.player_game_logs (player_id, (s, (s, include_int)))
-  let get_team_recent_games ~team_name (module Db : Caqti_lwt.CONNECTION) = let t = (team_name, (team_name, (team_name, (team_name, (team_name, (team_name, (team_name, team_name))))))) in Db.collect_list Queries.team_recent_games t
+  let get_team_recent_games ~team_name ~season (module Db : Caqti_lwt.CONNECTION) =
+    let s = if String.trim season = "" then "ALL" else season in
+    let t =
+      (team_name,
+       (team_name,
+        (team_name,
+         (team_name,
+          (team_name,
+           (team_name,
+            (team_name,
+             (team_name,
+              (s, s)))))))))
+    in
+    Db.collect_list Queries.team_recent_games t
   let get_player_h2h ~p1_id ~p2_id ~season (module Db : Caqti_lwt.CONNECTION) = let s = if season = "" then "ALL" else season in Db.collect_list Queries.player_h2h_games ((p1_id, p2_id), (s, s))
 end
 
@@ -1536,7 +1552,8 @@ let get_player_aggregate_by_id ~player_id ?(season="ALL") () =
   with_db (fun db -> Repo.get_player_aggregate_by_id ~player_id ~season db)
 let get_players ?(limit=50) ?(search="") ?(sort=ByEfficiency) ?(include_mismatch=false) () =
   with_db (fun db -> Repo.get_players_filtered ~sort ~search ~limit ~include_mismatch db)
-let get_players_by_team ~team_name ?(limit=20) () = with_db (fun db -> Repo.get_players_by_team ~team_name ~limit db)
+let get_players_by_team ~team_name ?(season="ALL") ?(limit=20) () =
+  with_db (fun db -> Repo.get_players_by_team ~team_name ~season ~limit db)
 let build_margin_map margins : team_margin MarginMap.t =
   List.fold_left
     (fun acc (row: team_margin) ->
@@ -1623,7 +1640,16 @@ let get_player_profile ~player_id () = with_db (fun db -> Repo.get_player_profil
 let get_player_season_stats ~player_id ~scope () = with_db (fun db -> Repo.get_player_season_stats ~player_id ~scope db)
 let get_player_game_logs ~player_id ?(season="ALL") ?(include_mismatch=false) () =
   with_db (fun db -> Repo.get_player_game_logs ~player_id ~season ~include_mismatch db)
-let get_team_full_detail ~team_name ?(season="ALL") () = let open Lwt.Syntax in let* standing_res = get_standings ~season () in let* roster_res = get_players_by_team ~team_name () in let* games_res = with_db (fun db -> Repo.get_team_recent_games ~team_name db) in match standing_res, roster_res, games_res with | Ok standings, Ok roster, Ok games -> let standing = List.find_opt (fun (s: team_standing) -> s.team_name = team_name) standings in Lwt.return (Ok { tfd_team_name = team_name; tfd_standing = standing; tfd_roster = roster; tfd_recent_games = games }) | Error e, _, _ | _, Error e, _ | _, _, Error e -> Lwt.return (Error e)
+let get_team_full_detail ~team_name ?(season="ALL") () =
+  let open Lwt.Syntax in
+  let* standing_res = get_standings ~season () in
+  let* roster_res = get_players_by_team ~team_name ~season () in
+  let* games_res = with_db (fun db -> Repo.get_team_recent_games ~team_name ~season db) in
+  match standing_res, roster_res, games_res with
+  | Ok standings, Ok roster, Ok games ->
+      let standing = List.find_opt (fun (s: team_standing) -> s.team_name = team_name) standings in
+      Lwt.return (Ok { tfd_team_name = team_name; tfd_standing = standing; tfd_roster = roster; tfd_recent_games = games })
+  | Error e, _, _ | _, Error e, _ | _, _, Error e -> Lwt.return (Error e)
 let get_player_h2h_data ~p1_id ~p2_id ?(season="ALL") () = with_db (fun db -> Repo.get_player_h2h ~p1_id ~p2_id ~season db)
 
 let get_db_quality_report () : qa_db_report db_result =
