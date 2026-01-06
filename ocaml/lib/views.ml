@@ -128,6 +128,40 @@ let margin_cell value =
   in
   Printf.sprintf {html|<td class="px-3 py-2 text-right %s font-mono">%s</td>|html} class_name (escape_html value_str)
 
+let score_quality_badge ?(compact=false) (q: game_score_quality) =
+  let label, cls, title =
+    match q with
+    | Verified ->
+        ( "VERIFIED"
+        , "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+        , "Stored score matches summed boxscore points."
+        )
+    | Derived ->
+        ( "DERIVED"
+        , "bg-slate-800/60 text-slate-300 border-slate-700/60"
+        , "Score is derived or not cross-verified."
+        )
+    | Mismatch ->
+        ( "MISMATCH"
+        , "bg-rose-500/10 text-rose-400 border-rose-500/30"
+        , "Stored score differs from summed boxscore points. (See /qa)"
+        )
+  in
+  let text =
+    if compact then
+      match q with
+      | Verified -> "V"
+      | Derived -> "D"
+      | Mismatch -> "X"
+    else
+      label
+  in
+  Printf.sprintf
+    {html|<span class="px-2 py-1 rounded-full border text-[10px] font-mono tracking-wider %s" title="%s">%s</span>|html}
+    cls
+    (escape_html title)
+    (escape_html text)
+
 (** Player Season Stats Table Component (Fixed widths for layout stability) *)
 let player_season_stats_table ~scope (stats: season_stats list) =
   let total_gp = stats |> List.fold_left (fun acc (s: season_stats) -> acc + s.ss_games_played) 0 in
@@ -373,7 +407,7 @@ let layout ~title ~content =
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>%s</title>
   <script src="/static/js/htmx-1.9.10.min.js?v=%s" defer data-cfasync="false"></script>
-  <script src="/static/js/player-photo-fallback.js?v=%s" defer data-cfasync="false"></script>
+  <script src="/static/js/player-photo-fallback.js?v=%s" data-cfasync="false"></script>
   <script src="https://cdn.tailwindcss.com" data-cfasync="false"></script>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/css/styles.css?v=%s">
@@ -415,10 +449,11 @@ let home_page players =
       {html|<div class="space-y-6"><div class="flex items-center justify-between"><h2 class="text-xl font-bold text-white">Top Players by Efficiency</h2><div class="flex gap-2"><input type="text" placeholder="Search player..." class="bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-sm focus:border-orange-500 focus:outline-none" hx-get="/players/table" hx-trigger="keyup changed delay:300ms" hx-target="#players-table" name="search"></div></div><div id="players-table" class="bg-slate-900 rounded-lg border border-slate-800 overflow-hidden">%s</div></div>|html}
       table)
 
-let players_page ~search ~sort players =
+let players_page ~search ~sort ~include_mismatch players =
   let sort_value = match String.lowercase_ascii sort with | "pts" | "points" -> "pts" | "mg" | "margin" -> "mg" | "reb" | "rebounds" -> "reb" | "ast" | "assists" -> "ast" | "min" | "minutes" -> "min" | "eff" | "efficiency" -> "eff" | _ -> "eff" in
   let sort_option value label = let selected = if sort_value = value then "selected" else "" in Printf.sprintf {html|<option value="%s" %s>%s</option>|html} value selected label in
   let table = players_table players in
+  let include_checked = if include_mismatch then "checked" else "" in
   let mg_note =
     if sort_value = "mg" then
       {html|<details class="bg-slate-900/50 rounded-lg border border-slate-800/50 p-4 text-xs text-slate-400">
@@ -434,8 +469,8 @@ let players_page ~search ~sort players =
   in
   layout ~title:"WKBL Players"
     ~content:(Printf.sprintf
-      {html|<div class="space-y-6"><div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3"><div><h2 class="text-2xl font-bold text-white">Players</h2><p class="text-slate-400 text-sm">Filter and sort player aggregates.</p></div><a class="text-orange-400 hover:text-orange-300 text-sm" href="/players">Reset</a></div><form id="players-filter" class="grid grid-cols-1 md:grid-cols-3 gap-3" hx-get="/players/table" hx-target="#players-table" hx-trigger="change, keyup delay:250ms"><input type="text" name="search" placeholder="Search player..." value="%s" class="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none"><select name="sort" class="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none">%s%s%s%s%s%s</select><div class="text-slate-500 text-xs flex items-center">Sorted by %s</div></form>%s<div id="players-table" class="bg-slate-900 rounded-lg border border-slate-800 overflow-hidden">%s</div></div>|html}
-      (escape_html search) (sort_option "eff" "EFF") (sort_option "pts" "PTS") (sort_option "mg" "MG") (sort_option "reb" "REB") (sort_option "ast" "AST") (sort_option "min" "MIN") (String.uppercase_ascii sort_value) mg_note table)
+      {html|<div class="space-y-6"><div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3"><div><h2 class="text-2xl font-bold text-white">Players</h2><p class="text-slate-400 text-sm">Filter and sort player aggregates.</p></div><a class="text-orange-400 hover:text-orange-300 text-sm" href="/players">Reset</a></div><form id="players-filter" class="grid grid-cols-1 md:grid-cols-3 gap-3" hx-get="/players/table" hx-target="#players-table" hx-trigger="change, keyup delay:250ms"><input type="text" name="search" placeholder="Search player..." value="%s" class="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none"><select name="sort" class="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none">%s%s%s%s%s%s</select><div class="flex items-center justify-between gap-3 text-xs"><div class="text-slate-500 flex items-center">Sorted by %s</div><label class="flex items-center gap-2 text-slate-400 whitespace-nowrap"><input type="checkbox" name="include_mismatch" value="1" %s class="h-4 w-4 rounded border-slate-600 bg-slate-800 accent-orange-500" title="Final score != sum(points) 경기 포함"><span>Mismatch 포함</span></label></div></form>%s<div id="players-table" class="bg-slate-900 rounded-lg border border-slate-800 overflow-hidden">%s</div></div>|html}
+      (escape_html search) (sort_option "eff" "EFF") (sort_option "pts" "PTS") (sort_option "mg" "MG") (sort_option "reb" "REB") (sort_option "ast" "AST") (sort_option "min" "MIN") (String.uppercase_ascii sort_value) include_checked mg_note table)
 
 let format_float ?(digits=1) value = Printf.sprintf "%.*f" digits value
 
@@ -461,16 +496,17 @@ let teams_table ~scope (stats: team_stats list) =
     {html|<div class="bg-slate-900 rounded-lg border border-slate-800 overflow-x-auto overflow-y-hidden"><table class="w-full min-w-max text-xs sm:text-sm font-mono tabular-nums"><thead class="bg-slate-800/80 text-slate-400 text-[10px] sm:text-xs uppercase tracking-wider whitespace-nowrap"><tr><th class="px-3 py-2 text-left">Team</th><th class="px-3 py-2 text-right">GP</th><th class="px-3 py-2 text-right hidden md:table-cell">%s</th><th class="px-3 py-2 text-right">PTS</th><th class="px-3 py-2 text-right">MG</th><th class="px-3 py-2 text-right hidden md:table-cell">PA</th><th class="px-3 py-2 text-right hidden sm:table-cell">REB</th><th class="px-3 py-2 text-right hidden sm:table-cell">AST</th><th class="px-3 py-2 text-right hidden md:table-cell">STL</th><th class="px-3 py-2 text-right hidden md:table-cell">BLK</th><th class="px-3 py-2 text-right hidden md:table-cell">TO</th><th class="px-3 py-2 text-right hidden lg:table-cell">FG%%</th><th class="px-3 py-2 text-right hidden lg:table-cell">3P%%</th><th class="px-3 py-2 text-right hidden lg:table-cell">FT%%</th><th class="px-3 py-2 text-right hidden lg:table-cell">eFG%%</th><th class="px-3 py-2 text-right text-orange-400">EFF</th></tr></thead><tbody>%s</tbody></table></div>|html}
     min_label rows
 
-let teams_page ~season ~seasons ~scope ~sort stats =
+let teams_page ~season ~seasons ~scope ~sort ~include_mismatch stats =
   let scope_value = team_scope_to_string scope in
   let scope_option value label = let selected = if scope_value = value then "selected" else "" in Printf.sprintf {html|<option value="%s" %s>%s</option>|html} value selected label in
   let sort_option value label = let selected = if String.lowercase_ascii sort = value then "selected" else "" in Printf.sprintf {html|<option value="%s" %s>%s</option>|html} value selected label in
   let season_options = let base = seasons |> List.map (fun s -> let selected = if s.code = season then "selected" else "" in Printf.sprintf {html|<option value="%s" %s>%s</option>|html} s.code selected (escape_html s.name)) |> String.concat "\n" in Printf.sprintf {html|<option value="ALL" %s>All Seasons</option>%s|html} (if season = "ALL" then "selected" else "") base in
   let table = teams_table ~scope stats in
+  let include_checked = if include_mismatch then "checked" else "" in
   layout ~title:"WKBL Teams"
     ~content:(Printf.sprintf
-      {html|<div class="space-y-6"><div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3"><div><h2 class="text-2xl font-bold text-white">Teams</h2><p class="text-slate-400 text-sm">Team aggregates by season and scope.</p></div><a class="text-orange-400 hover:text-orange-300 text-sm" href="/teams">Reset</a></div><form id="teams-filter" class="grid grid-cols-1 md:grid-cols-3 gap-3" hx-get="/teams/table" hx-target="#teams-table" hx-trigger="change"><select name="season" class="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none">%s</select><select name="scope" class="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none">%s%s</select><select name="sort" class="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none">%s%s%s%s%s%s%s%s%s</select></form><div id="teams-table">%s</div></div>|html}
-      season_options (scope_option "per_game" "Per Game") (scope_option "totals" "Totals") (sort_option "pts" "PTS") (sort_option "reb" "REB") (sort_option "ast" "AST") (sort_option "stl" "STL") (sort_option "blk" "BLK") (sort_option "eff" "EFF") (sort_option "ts_pct" "TS%") (sort_option "fg3_pct" "3P%") (sort_option "min_total" "MIN") table)
+      {html|<div class="space-y-6"><div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3"><div><h2 class="text-2xl font-bold text-white">Teams</h2><p class="text-slate-400 text-sm">Team aggregates by season and scope.</p></div><a class="text-orange-400 hover:text-orange-300 text-sm" href="/teams">Reset</a></div><form id="teams-filter" class="grid grid-cols-1 md:grid-cols-3 gap-3" hx-get="/teams/table" hx-target="#teams-table" hx-trigger="change"><select name="season" class="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none">%s</select><select name="scope" class="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none">%s%s</select><select name="sort" class="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none">%s%s%s%s%s%s%s%s%s</select><label class="md:col-span-3 flex items-center justify-end gap-2 text-xs text-slate-400"><input type="checkbox" name="include_mismatch" value="1" %s class="h-4 w-4 rounded border-slate-600 bg-slate-800 accent-orange-500" title="Final score != sum(points) 경기 포함"><span>Mismatch 포함</span></label></form><div id="teams-table">%s</div></div>|html}
+      season_options (scope_option "per_game" "Per Game") (scope_option "totals" "Totals") (sort_option "pts" "PTS") (sort_option "reb" "REB") (sort_option "ast" "AST") (sort_option "stl" "STL") (sort_option "blk" "BLK") (sort_option "eff" "EFF") (sort_option "ts_pct" "TS%") (sort_option "fg3_pct" "3P%") (sort_option "min_total" "MIN") include_checked table)
 
 let standings_table (standings : team_standing list) =
   let rows =
@@ -637,15 +673,17 @@ let boxscore_page (bs: game_boxscore) =
       margin_class
       (escape_html margin_str)
   in
+  let quality_badge = score_quality_badge gi.gi_score_quality in
   let home_table = boxscore_player_table gi.gi_home_team_name bs.boxscore_home_players in
   let away_table = boxscore_player_table gi.gi_away_team_name bs.boxscore_away_players in
   layout ~title:(Printf.sprintf "Boxscore: %s vs %s" gi.gi_home_team_name gi.gi_away_team_name)
     ~content:(Printf.sprintf
-      {html|<div class="space-y-8 animate-fade-in"><div class="bg-slate-900 rounded-xl border border-slate-800 p-6 shadow-2xl"><div class="flex flex-col items-center gap-6"><div class="text-slate-500 font-mono text-sm uppercase tracking-widest">%s</div><div class="flex items-center justify-between w-full max-w-2xl"><div class="flex flex-col items-center gap-3"><div class="text-2xl font-black text-white flex items-center gap-3">%s<a href="/team/%s" class="hover:text-orange-400 transition-colors">%s</a></div><div class="text-slate-400 text-sm">HOME</div></div><div class="flex items-center gap-8"><div class="text-5xl font-black text-white">%d</div><div class="flex flex-col items-center gap-2"><div class="text-2xl text-slate-700 font-light">vs</div>%s</div><div class="text-5xl font-black text-white">%d</div></div><div class="flex flex-col items-center gap-3"><div class="text-2xl font-black text-white flex items-center gap-3"><a href="/team/%s" class="hover:text-orange-400 transition-colors">%s</a>%s</div><div class="text-slate-400 text-sm">AWAY</div></div></div></div></div><details class="max-w-2xl mx-auto bg-slate-900/50 rounded-lg border border-slate-800 p-4 text-xs text-slate-500"><summary class="cursor-pointer font-bold text-slate-300 select-none">득실마진 / 데이터 안내</summary><div class="mt-2 space-y-1 leading-relaxed"><div><span class="font-mono text-slate-200">MARGIN</span>은 경기 최종 득점(팀-상대)입니다.</div><div>개인 <span class="font-mono text-slate-200">+/-</span>는 문자중계(PBP) 기반이며, 데이터가 없거나 PBP/박스스코어 최종 스코어 불일치 등 품질 이슈가 있으면 <span class="font-mono text-slate-200">-</span>로 표시합니다.</div><div>동명이인 매칭 오류로 동일 스탯 라인이 중복될 수 있어, 동일 라인은 1개만 표시합니다.</div></div></details><div class="grid grid-cols-1 gap-8">%s%s</div><div class="flex justify-center"><a href="/games" class="text-slate-500 hover:text-orange-500 transition text-sm">← Back to Games</a></div></div>|html}
+      {html|<div class="space-y-8 animate-fade-in"><div class="bg-slate-900 rounded-xl border border-slate-800 p-6 shadow-2xl"><div class="flex flex-col items-center gap-6"><div class="text-slate-500 font-mono text-sm uppercase tracking-widest">%s</div><div class="flex items-center justify-between w-full max-w-2xl"><div class="flex flex-col items-center gap-3"><div class="text-2xl font-black text-white flex items-center gap-3">%s<a href="/team/%s" class="hover:text-orange-400 transition-colors">%s</a></div><div class="text-slate-400 text-sm">HOME</div></div><div class="flex items-center gap-8"><div class="text-5xl font-black text-white">%d</div><div class="flex flex-col items-center gap-2"><div class="text-2xl text-slate-700 font-light">vs</div>%s%s</div><div class="text-5xl font-black text-white">%d</div></div><div class="flex flex-col items-center gap-3"><div class="text-2xl font-black text-white flex items-center gap-3"><a href="/team/%s" class="hover:text-orange-400 transition-colors">%s</a>%s</div><div class="text-slate-400 text-sm">AWAY</div></div></div></div></div><details class="max-w-2xl mx-auto bg-slate-900/50 rounded-lg border border-slate-800 p-4 text-xs text-slate-500"><summary class="cursor-pointer font-bold text-slate-300 select-none">득실마진 / 데이터 안내</summary><div class="mt-2 space-y-1 leading-relaxed"><div><span class="font-mono text-slate-200">MARGIN</span>은 경기 최종 득점(팀-상대)입니다.</div><div><span class="font-mono text-slate-200">VERIFIED/DERIVED/MISMATCH</span>는 스코어 교차검증 상태입니다. (<span class="font-mono text-slate-200">games</span> vs <span class="font-mono text-slate-200">SUM(game_stats.pts)</span>)</div><div>개인 <span class="font-mono text-slate-200">+/-</span>는 문자중계(PBP) 기반이며, 데이터가 없거나 PBP/박스스코어 최종 스코어 불일치 등 품질 이슈가 있으면 <span class="font-mono text-slate-200">-</span>로 표시합니다.</div><div>동명이인 매칭 오류로 동일 스탯 라인이 중복될 수 있어, 동일 라인은 1개만 표시합니다.</div></div></details><div class="grid grid-cols-1 gap-8">%s%s</div><div class="flex justify-center"><a href="/games" class="text-slate-500 hover:text-orange-500 transition text-sm">← Back to Games</a></div></div>|html}
       (escape_html gi.gi_game_date)
       (team_logo_tag ~class_name:"w-10 h-10" gi.gi_home_team_name) (Uri.pct_encode gi.gi_home_team_name) (escape_html gi.gi_home_team_name)
       gi.gi_home_score
       margin_badge
+      quality_badge
       gi.gi_away_score
       (Uri.pct_encode gi.gi_away_team_name) (escape_html gi.gi_away_team_name) (team_logo_tag ~class_name:"w-10 h-10" gi.gi_away_team_name)
       home_table away_table)
@@ -1037,13 +1075,15 @@ let player_profile_page (profile: player_profile) ~scope =
           | _ ->
               {html|<span class="inline-flex items-center px-2 py-0.5 rounded border border-slate-700/60 text-[10px] font-mono text-slate-500">-</span>|html}
         in
+        let quality_badge = score_quality_badge ~compact:true g.score_quality in
         let opponent_label = if g.is_home then "vs " ^ g.opponent else "@ " ^ g.opponent in
         Printf.sprintf
-          {html|<tr class="border-b border-slate-800/60 hover:bg-slate-800/30 transition-colors"><td class="px-4 py-3 text-slate-400 text-sm font-mono whitespace-nowrap"><a href="/boxscore/%s" class="hover:text-orange-400 transition-colors">%s</a></td><td class="px-4 py-3 text-white"><div class="flex items-center justify-between gap-3"><span class="truncate">%s</span>%s</div></td><td class="px-4 py-3 text-right font-mono text-slate-400 w-[72px]">%.1f</td><td class="px-4 py-3 text-right font-bold %s w-[72px]">%d</td><td class="px-4 py-3 text-right font-mono w-[72px] %s">%s</td><td class="px-4 py-3 text-right text-slate-300 w-[72px]">%d</td><td class="px-4 py-3 text-right text-slate-300 w-[72px]">%d</td><td class="px-4 py-3 text-right text-slate-300 w-[72px]">%d</td><td class="px-4 py-3 text-right text-slate-300 w-[72px]">%d</td></tr>|html}
+          {html|<tr class="border-b border-slate-800/60 hover:bg-slate-800/30 transition-colors"><td class="px-4 py-3 text-slate-400 text-sm font-mono whitespace-nowrap"><a href="/boxscore/%s" class="hover:text-orange-400 transition-colors">%s</a></td><td class="px-4 py-3 text-white"><div class="flex items-center justify-between gap-3"><span class="truncate">%s</span><div class="flex items-center gap-2 shrink-0">%s%s</div></div></td><td class="px-4 py-3 text-right font-mono text-slate-400 w-[72px]">%.1f</td><td class="px-4 py-3 text-right font-bold %s w-[72px]">%d</td><td class="px-4 py-3 text-right font-mono w-[72px] %s">%s</td><td class="px-4 py-3 text-right text-slate-300 w-[72px]">%d</td><td class="px-4 py-3 text-right text-slate-300 w-[72px]">%d</td><td class="px-4 py-3 text-right text-slate-300 w-[72px]">%d</td><td class="px-4 py-3 text-right text-slate-300 w-[72px]">%d</td></tr>|html}
           (Uri.pct_encode g.game_id)
           (escape_html g.game_date)
           (escape_html opponent_label)
           margin_badge
+          quality_badge
           g.min
           res_color
           g.pts
