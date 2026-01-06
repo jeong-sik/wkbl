@@ -781,6 +781,8 @@ let h2h_game_table (p1_name: string) (p2_name: string) (games: h2h_game list) =
 let compare_page
     ~season
     ~seasons
+    ~p1_season
+    ~p2_season
     ~p1_query
     ~p2_query
     ~p1_id
@@ -788,19 +790,36 @@ let compare_page
     ~p1_candidates
     ~p2_candidates
     ~error
+    ~h2h_disabled_reason
     (p1_selected: player_aggregate option)
     (p2_selected: player_aggregate option)
     (h2h: h2h_game list)
   =
-  let season_options =
+  let season_options ~selected =
     let base =
       seasons
       |> List.map (fun (s : season_info) ->
-          let selected = if s.code = season then "selected" else "" in
-          Printf.sprintf {html|<option value="%s" %s>%s</option>|html} s.code selected (escape_html s.name))
+          let is_selected = if s.code = selected then "selected" else "" in
+          Printf.sprintf {html|<option value="%s" %s>%s</option>|html} s.code is_selected (escape_html s.name))
       |> String.concat "\n"
     in
-    Printf.sprintf {html|<option value="ALL" %s>All Seasons</option>%s|html} (if season = "ALL" then "selected" else "") base
+    Printf.sprintf
+      {html|<option value="ALL" %s>All Seasons</option>%s|html}
+      (if selected = "ALL" then "selected" else "")
+      base
+  in
+  let season_label code =
+    if code = "ALL" then "All Seasons"
+    else
+      seasons
+      |> List.find_opt (fun (s: season_info) -> s.code = code)
+      |> Option.map (fun (s: season_info) -> s.name)
+      |> Option.value ~default:code
+  in
+  let season_badge code =
+    Printf.sprintf
+      {html|<span class="px-2 py-0.5 rounded bg-slate-800/40 border border-slate-700/40 text-[10px] font-mono text-slate-400 whitespace-nowrap">%s</span>|html}
+      (escape_html (season_label code))
   in
   let query_display (query : string) (selected : player_aggregate option) =
     if String.trim query <> "" then query
@@ -811,16 +830,16 @@ let compare_page
   in
   let p1_display = query_display p1_query p1_selected in
   let p2_display = query_display p2_query p2_selected in
-  let compare_url ~season ~p1 ~p2 ~p1_id ~p2_id =
+  let compare_url ~season ~p1_season ~p2_season ~p1 ~p2 ~p1_id ~p2_id =
     let params =
-      [ ("season", season); ("p1", p1); ("p2", p2) ]
+      [ ("season", season); ("p1_season", p1_season); ("p2_season", p2_season); ("p1", p1); ("p2", p2) ]
       @ (match p1_id with None -> [] | Some id -> [ ("p1_id", id) ])
       @ (match p2_id with None -> [] | Some id -> [ ("p2_id", id) ])
     in
     let encode (k, v) = k ^ "=" ^ Uri.pct_encode v in
     "/compare?" ^ String.concat "&" (List.map encode params)
   in
-  let selected_card ~accent_border (p : player_aggregate) =
+  let selected_card ~accent_border ~season_code (p : player_aggregate) =
     let mp =
       if p.games_played <= 0 then 0.0 else p.total_minutes /. float_of_int p.games_played
     in
@@ -835,6 +854,7 @@ let compare_page
             </div>
             <div class="mt-1 text-xs text-slate-500 flex flex-wrap items-center gap-2">
               <span class="truncate">%s</span>
+              %s
               <span class="font-mono">GP %d</span>
               <span class="font-mono">MP %.1f</span>
               <span class="font-mono">EFF %.1f</span>
@@ -849,6 +869,7 @@ let compare_page
       (escape_html (normalize_name p.name))
       id_badge_html
       (escape_html p.team_name)
+      (season_badge season_code)
       p.games_played
       mp
       p.efficiency
@@ -870,7 +891,16 @@ let compare_page
             p1_id,
             Some c.player_id )
     in
-    let url = compare_url ~season ~p1:p1_for_link ~p2:p2_for_link ~p1_id:p1_id_for_link ~p2_id:p2_id_for_link in
+    let url =
+      compare_url
+        ~season
+        ~p1_season
+        ~p2_season
+        ~p1:p1_for_link
+        ~p2:p2_for_link
+        ~p1_id:p1_id_for_link
+        ~p2_id:p2_id_for_link
+    in
     let id_badge_html = Printf.sprintf {html|<span class="ml-2">%s</span>|html} (player_id_badge c.player_id) in
     Printf.sprintf
       {html|<div class="flex items-center justify-between gap-3 py-2 border-b border-slate-800/60 last:border-0">
@@ -932,12 +962,25 @@ let compare_page
   let compare_result_html =
     match p1_selected, p2_selected with
     | Some a, Some b ->
+        let h2h_html =
+          match h2h_disabled_reason with
+          | Some msg ->
+              Printf.sprintf
+                {html|<div class="bg-slate-900/50 rounded-xl border border-slate-800 p-4 text-sm text-slate-400">%s</div>|html}
+                (escape_html msg)
+          | None ->
+              if h2h = [] then
+                {html|<div class="bg-slate-900/50 rounded-xl border border-slate-800 p-4 text-sm text-slate-400">No match history for this season.</div>|html}
+              else
+                h2h_game_table (normalize_name a.name) (normalize_name b.name) h2h
+        in
         Printf.sprintf
-          {html|<div class="space-y-8 animate-fade-in"><div class="grid grid-cols-1 md:grid-cols-3 gap-8 items-start"><div class="bg-slate-900 rounded-xl border border-slate-800 p-6 flex flex-col items-center gap-4 shadow-xl border-t-4 border-t-orange-500">%s<div class="text-center"><div class="text-2xl font-black text-white hover:text-orange-400"><a href="/player/%s">%s</a></div><div class="text-slate-400">%s</div></div></div><div class="bg-slate-900/50 rounded-xl border border-slate-800 p-6 space-y-6"><div class="text-center space-y-2"><h3 class="text-slate-500 text-sm font-bold uppercase">Average Stats</h3><p class="text-[11px] text-slate-500 leading-relaxed"><span class="font-mono">MG</span>는 팀 득실마진(출전시간 가중)이며, 개인 +/-는 문자중계(PBP) 기반으로 일부 경기에서만 제공됩니다. (데이터가 없으면 -)</p></div>%s%s%s%s%s%s%s%s</div><div class="bg-slate-900 rounded-xl border border-slate-800 p-6 flex flex-col items-center gap-4 shadow-xl border-t-4 border-t-sky-500">%s<div class="text-center"><div class="text-2xl font-black text-white hover:text-sky-400"><a href="/player/%s">%s</a></div><div class="text-slate-400">%s</div></div></div></div>%s</div>|html}
+          {html|<div class="space-y-8 animate-fade-in"><div class="grid grid-cols-1 md:grid-cols-3 gap-8 items-start"><div class="bg-slate-900 rounded-xl border border-slate-800 p-6 flex flex-col items-center gap-4 shadow-xl border-t-4 border-t-orange-500">%s<div class="text-center space-y-2"><div class="text-2xl font-black text-white hover:text-orange-400"><a href="/player/%s">%s</a></div><div class="text-slate-400">%s</div>%s</div></div><div class="bg-slate-900/50 rounded-xl border border-slate-800 p-6 space-y-6"><div class="text-center space-y-2"><h3 class="text-slate-500 text-sm font-bold uppercase">Average Stats</h3><p class="text-[11px] text-slate-500 leading-relaxed"><span class="font-mono">MG</span>는 팀 득실마진(출전시간 가중)이며, 개인 +/-는 문자중계(PBP) 기반으로 일부 경기에서만 제공됩니다. (데이터가 없으면 -)</p></div>%s%s%s%s%s%s%s%s</div><div class="bg-slate-900 rounded-xl border border-slate-800 p-6 flex flex-col items-center gap-4 shadow-xl border-t-4 border-t-sky-500">%s<div class="text-center space-y-2"><div class="text-2xl font-black text-white hover:text-sky-400"><a href="/player/%s">%s</a></div><div class="text-slate-400">%s</div>%s</div></div></div>%s</div>|html}
           (player_img_tag ~class_name:"w-32 h-32" a.player_id a.name)
           a.player_id
           (escape_html (normalize_name a.name))
           (escape_html a.team_name)
+          (season_badge p1_season)
           (compare_stat_row "Points" a.avg_points b.avg_points)
           (compare_stat_row ~signed:true "MG" a.avg_margin b.avg_margin)
           (compare_stat_row "Rebounds" a.avg_rebounds b.avg_rebounds)
@@ -950,7 +993,8 @@ let compare_page
           b.player_id
           (escape_html (normalize_name b.name))
           (escape_html b.team_name)
-          (h2h_game_table (normalize_name a.name) (normalize_name b.name) h2h)
+          (season_badge p2_season)
+          h2h_html
     | _ -> ""
   in
   layout ~title:"WKBL Compare"
@@ -960,17 +1004,19 @@ let compare_page
           <div>
             <h2 class="text-3xl font-black text-white">Compare Players</h2>
             <p class="text-slate-400 text-sm">동명이인/표기 이슈를 피하기 위해 <span class="font-mono text-slate-200">player_id</span>를 선택해 비교합니다.</p>
+            <p class="text-slate-500 text-xs mt-1">Player 1/2는 시즌을 각각 선택할 수 있습니다. 시즌이 다르면 Match History는 표시하지 않습니다.</p>
           </div>
         </div>
 
         <form action="/compare" method="get" class="bg-slate-900 rounded-xl border border-slate-800 p-4">
           <input type="hidden" id="p1_id" name="p1_id" value="%s">
           <input type="hidden" id="p2_id" name="p2_id" value="%s">
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <select name="season" class="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none">%s</select>
-            <input name="p1" value="%s" placeholder="Player 1 (search name)" oninput="document.getElementById('p1_id').value='';" class="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none">
-            <input name="p2" value="%s" placeholder="Player 2 (search name)" oninput="document.getElementById('p2_id').value='';" class="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none">
-            <div class="md:col-span-3 flex justify-end">
+          <div class="grid grid-cols-1 md:grid-cols-6 gap-3">
+            <select name="p1_season" aria-label="Player 1 season" class="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none md:col-span-2">%s</select>
+            <input name="p1" value="%s" placeholder="Player 1 (search name)" oninput="document.getElementById('p1_id').value='';" class="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none md:col-span-4">
+            <select name="p2_season" aria-label="Player 2 season" class="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:border-sky-500 focus:outline-none md:col-span-2">%s</select>
+            <input name="p2" value="%s" placeholder="Player 2 (search name)" oninput="document.getElementById('p2_id').value='';" class="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:border-sky-500 focus:outline-none md:col-span-4">
+            <div class="md:col-span-6 flex justify-end">
               <button type="submit" class="px-4 py-2 rounded-lg bg-orange-500 text-white font-bold hover:bg-orange-400 transition">Search</button>
             </div>
           </div>
@@ -987,15 +1033,16 @@ let compare_page
       </div>|html}
       (escape_html (Option.value ~default:"" p1_id))
       (escape_html (Option.value ~default:"" p2_id))
-      season_options
+      (season_options ~selected:p1_season)
       (escape_html p1_display)
+      (season_options ~selected:p2_season)
       (escape_html p2_display)
       error_html
       (match p1_selected with
-      | Some p -> selected_card ~accent_border:"border-t-orange-500" p
+      | Some p -> selected_card ~accent_border:"border-t-orange-500" ~season_code:p1_season p
       | None -> candidates_panel ~title:"Player 1" ~slot:`P1 ~accent_btn_class:"text-orange-300" p1_display p1_candidates)
       (match p2_selected with
-      | Some p -> selected_card ~accent_border:"border-t-sky-500" p
+      | Some p -> selected_card ~accent_border:"border-t-sky-500" ~season_code:p2_season p
       | None -> candidates_panel ~title:"Player 2" ~slot:`P2 ~accent_btn_class:"text-sky-300" p2_display p2_candidates)
       compare_result_html)
 

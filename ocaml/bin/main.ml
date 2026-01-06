@@ -332,6 +332,19 @@ let () =
       | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
       | Ok seasons ->
           let season = query_season_or_latest request seasons in
+          let is_valid_season code =
+            code = "ALL" || List.exists (fun (s: season_info) -> s.code = code) seasons
+          in
+          let p1_season =
+            match query_nonempty request "p1_season" with
+            | None -> season
+            | Some v -> if is_valid_season v then v else season
+          in
+          let p2_season =
+            match query_nonempty request "p2_season" with
+            | None -> season
+            | Some v -> if is_valid_season v then v else season
+          in
           let errors : string list ref = ref [] in
           let add_error msg = errors := msg :: !errors in
 
@@ -340,12 +353,12 @@ let () =
           let* p1_sel_res =
             match p1_id_opt with
             | None -> Lwt.return (Ok None)
-            | Some pid -> Db.get_player_aggregate_by_id ~player_id:pid ~season ()
+            | Some pid -> Db.get_player_aggregate_by_id ~player_id:pid ~season:p1_season ()
           in
           let* p2_sel_res =
             match p2_id_opt with
             | None -> Lwt.return (Ok None)
-            | Some pid -> Db.get_player_aggregate_by_id ~player_id:pid ~season ()
+            | Some pid -> Db.get_player_aggregate_by_id ~player_id:pid ~season:p2_season ()
           in
           let p1_selected =
             match p1_sel_res with
@@ -358,10 +371,10 @@ let () =
             | Error e -> add_error (Db.show_db_error e); None
           in
           (match p1_id_opt, p1_selected with
-          | Some pid, None -> add_error (Printf.sprintf "No stats for player_id=%s (season=%s)" pid season)
+          | Some pid, None -> add_error (Printf.sprintf "No stats for player_id=%s (season=%s)" pid p1_season)
           | _ -> ());
           (match p2_id_opt, p2_selected with
-          | Some pid, None -> add_error (Printf.sprintf "No stats for player_id=%s (season=%s)" pid season)
+          | Some pid, None -> add_error (Printf.sprintf "No stats for player_id=%s (season=%s)" pid p2_season)
           | _ -> ());
 
           let* p1_candidates_res =
@@ -379,9 +392,16 @@ let () =
           let p1_candidates = match p1_candidates_res with Ok xs -> xs | Error _ -> [] in
           let p2_candidates = match p2_candidates_res with Ok xs -> xs | Error _ -> [] in
 
-          let* h2h_res =
+          let h2h_disabled_reason =
             match p1_selected, p2_selected with
-            | Some a, Some b -> Db.get_player_h2h_data ~p1_id:a.player_id ~p2_id:b.player_id ~season ()
+            | Some _, Some _ when p1_season <> p2_season ->
+                Some "Match History는 같은 시즌 선택 시만 표시됩니다."
+            | _ -> None
+          in
+          let* h2h_res =
+            match p1_selected, p2_selected, h2h_disabled_reason with
+            | Some a, Some b, None ->
+                Db.get_player_h2h_data ~p1_id:a.player_id ~p2_id:b.player_id ~season:p1_season ()
             | _ -> Lwt.return (Ok [])
           in
           let h2h = match h2h_res with Ok h -> h | Error _ -> [] in
@@ -394,6 +414,8 @@ let () =
             (Views.compare_page
                ~season
                ~seasons
+               ~p1_season
+               ~p2_season
                ~p1_query
                ~p2_query
                ~p1_id:p1_id_opt
@@ -401,6 +423,7 @@ let () =
                ~p1_candidates
                ~p2_candidates
                ~error:error_opt
+               ~h2h_disabled_reason
                p1_selected
                p2_selected
                h2h)
