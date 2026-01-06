@@ -1167,12 +1167,12 @@ let player_profile_page (profile: player_profile) ~scope ~(seasons_catalog: seas
   let data_notes_html =
     let season_range_html ~count ~oldest ~latest =
       if count <= 0 then
-        {html|<span class="font-mono text-slate-500">-</span>|html}
+        {html|<span class="text-slate-500">-</span>|html}
       else if count = 1 then
-        Printf.sprintf {html|<span class="font-mono text-slate-300">%s</span>|html} (escape_html oldest)
+        Printf.sprintf {html|<span class="text-slate-300 whitespace-nowrap">%s</span>|html} (escape_html oldest)
       else
         Printf.sprintf
-          {html|<span class="font-mono text-slate-300">%s</span><span class="mx-1 text-slate-600">→</span><span class="font-mono text-slate-300">%s</span>|html}
+          {html|<span class="inline-flex flex-wrap items-baseline gap-x-1 gap-y-1"><span class="text-slate-300 whitespace-nowrap">%s</span><span class="whitespace-nowrap"><span class="text-slate-600">→</span><span class="ml-1 text-slate-300">%s</span></span></span>|html}
           (escape_html oldest)
           (escape_html latest)
     in
@@ -1213,7 +1213,7 @@ let player_profile_page (profile: player_profile) ~scope ~(seasons_catalog: seas
     in
     let seasons_card_html =
       Printf.sprintf
-        {html|<div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-4"><div class="flex items-center justify-between gap-3"><div class="text-slate-400 font-bold uppercase tracking-widest text-[11px] flex items-center gap-2"><span class="text-base">🗓</span> Seasons</div><div class="flex items-center gap-2 text-[10px] font-mono"><span class="px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700/60 text-slate-300">DB n=%d</span><span class="px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700/60 text-slate-300">Player n=%d</span></div></div><div class="mt-2 space-y-2 text-slate-200"><div><div class="text-[10px] text-slate-500 font-mono uppercase tracking-widest">DB</div><div class="mt-1 font-mono">%s</div></div><div><div class="text-[10px] text-slate-500 font-mono uppercase tracking-widest">Player</div><div class="mt-1 font-mono">%s</div></div></div>%s</div>|html}
+        {html|<div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-4"><div class="flex flex-wrap items-center justify-between gap-3"><div class="text-slate-400 font-bold uppercase tracking-widest text-[11px] flex items-center gap-2"><span class="text-base">🗓</span> Seasons</div><div class="flex flex-wrap items-center justify-end gap-2 text-[10px] font-mono"><span class="px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700/60 text-slate-300 whitespace-nowrap">DB n=%d</span><span class="px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700/60 text-slate-300 whitespace-nowrap">Player n=%d</span></div></div><div class="mt-2 space-y-2 text-slate-200"><div><div class="text-[10px] text-slate-500 font-mono uppercase tracking-widest">DB</div><div class="mt-1 font-mono">%s</div></div><div><div class="text-[10px] text-slate-500 font-mono uppercase tracking-widest">Player</div><div class="mt-1 font-mono">%s</div></div></div>%s</div>|html}
         db_season_count
         player_season_count
         db_seasons_value_html
@@ -1238,16 +1238,16 @@ let player_profile_page (profile: player_profile) ~scope ~(seasons_catalog: seas
         {html|<div class="mt-2 text-[11px] text-slate-500 font-mono">최근 경기 데이터 없음</div>|html}
       else
         Printf.sprintf
-          {html|<div class="mt-2 text-[11px] text-slate-500 font-mono">최근 %d경기: +/- %d · M %d · - %d%s</div>|html}
+          {html|<div class="mt-2 text-[11px] text-slate-500 font-mono flex flex-wrap items-center gap-x-2 gap-y-1"><span class="whitespace-nowrap">최근 %d경기:</span><span class="whitespace-nowrap">+/- %d</span><span class="whitespace-nowrap">· M %d</span><span class="whitespace-nowrap">· - %d</span>%s</div>|html}
           total_recent
           count_pm
           count_m
           count_dash
-          (if count_issue > 0 then Printf.sprintf " · Mismatch %d" count_issue else "")
+          (if count_issue > 0 then Printf.sprintf {html|<span class="whitespace-nowrap">· Mismatch %d</span>|html} count_issue else "")
     in
     let pbp_card_html =
       Printf.sprintf
-        {html|<div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-4"><div class="flex items-center justify-between gap-3"><div class="text-slate-400 font-bold uppercase tracking-widest text-[11px] flex items-center gap-2"><span class="text-base">🎥</span> PBP +/-</div><span class="px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700/60 text-[10px] font-mono text-slate-300">부분</span></div>%s<div class="mt-2 text-slate-400 text-xs leading-relaxed"><div><span class="font-mono text-slate-300">+/-</span>: 문자중계(PBP) 기반</div><div><span class="font-mono text-slate-300">M</span>: PBP가 없을 때 팀 득실마진(경기 최종 점수)</div><div><span class="font-mono text-slate-300">-</span>: 데이터 없음/품질 이슈</div></div></div>|html}
+        {html|<div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-4"><div class="flex flex-wrap items-center justify-between gap-3"><div class="text-slate-400 font-bold uppercase tracking-widest text-[11px] flex items-center gap-2"><span class="text-base">🎥</span> PBP +/-</div><span class="px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700/60 text-[10px] font-mono text-slate-300 whitespace-nowrap">부분</span></div>%s<div class="mt-2 text-slate-400 text-xs leading-relaxed"><div><span class="font-mono text-slate-300">+/-</span>: 문자중계(PBP) 기반</div><div><span class="font-mono text-slate-300">M</span>: PBP가 없을 때 팀 득실마진(경기 최종 점수)</div><div><span class="font-mono text-slate-300">-</span>: 데이터 없음/품질 이슈</div></div></div>|html}
         pbp_stat_line
     in
     let draft_card_html =
