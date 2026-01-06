@@ -78,6 +78,17 @@ tbody tr {
   transition: background-color 150ms ease;
 }
 
+/* Roster table: keep layout stable even if Tailwind is delayed/blocked */
+.roster-table {
+  min-width: 900px;
+  table-layout: fixed;
+}
+
+.roster-table th,
+.roster-table td {
+  white-space: nowrap;
+}
+
 /* Prevent CJK per-character wrapping for player names */
 .player-name {
   display: block;
