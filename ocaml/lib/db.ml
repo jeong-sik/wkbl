@@ -481,7 +481,7 @@ module Queries = struct
     GROUP BY p.player_id
   |}
 
-  let player_aggregate_by_id = (tup2 string (tup2 string string) ->? Types.player_aggregate) {|
+  let player_aggregate_by_id = (tup2 string (tup2 string (tup2 string (tup2 string string))) ->? Types.player_aggregate) {|
     SELECT
       p.player_id,
       p.player_name,
@@ -1359,7 +1359,7 @@ module Repo = struct
   let get_player_by_name ~name ~season (module Db : Caqti_lwt.CONNECTION) = let s = if season = "" then "ALL" else season in Db.find_opt Queries.player_by_name (name, (s, s))
   let get_player_aggregate_by_id ~player_id ~season (module Db : Caqti_lwt.CONNECTION) =
     let s = if String.trim season = "" then "ALL" else season in
-    Db.find_opt Queries.player_aggregate_by_id (player_id, (s, s))
+    Db.find_opt Queries.player_aggregate_by_id (s, (s, (player_id, (s, s))))
   let query_for_sort = function | ByPoints -> Queries.player_stats_by_points | ByMargin -> Queries.player_stats_by_margin | ByRebounds -> Queries.player_stats_by_rebounds | ByAssists -> Queries.player_stats_by_assists | ByEfficiency -> Queries.player_stats_by_efficiency | ByMinutes -> Queries.player_stats_by_minutes
   let get_players_filtered ~sort ~search ~limit ~include_mismatch (module Db : Caqti_lwt.CONNECTION) =
     let pattern = normalize_search_pattern search in
