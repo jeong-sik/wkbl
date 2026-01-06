@@ -128,23 +128,34 @@ let margin_cell value =
   in
   Printf.sprintf {html|<td class="px-3 py-2 text-right %s font-mono">%s</td>|html} class_name (escape_html value_str)
 
+let wkbl_official_game_result_url (game_id : string) =
+  match String.split_on_char '-' (String.trim game_id) with
+  | [ season; game_type; game_no ] ->
+      Some
+        (Printf.sprintf
+           "https://www.wkbl.or.kr/game/result.asp?season_gu=%s&game_type=%s&game_no=%s"
+           (Uri.pct_encode season)
+           (Uri.pct_encode game_type)
+           (Uri.pct_encode game_no))
+  | _ -> None
+
 let score_quality_badge ?(compact=false) (q: game_score_quality) =
   let label, cls, title =
     match q with
     | Verified ->
         ( "VERIFIED"
         , "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
-        , "Stored score matches summed boxscore points."
+        , "WKBL 공식 스코어(result.asp)와 박스스코어 득점합(ajax_game_result_2.asp)이 일치합니다."
         )
     | Derived ->
         ( "DERIVED"
         , "bg-slate-800/60 text-slate-300 border-slate-700/60"
-        , "Score is derived or not cross-verified."
+        , "스코어가 누락되었거나 교차검증이 불가해 득점합으로 보정(derive)되었습니다."
         )
     | Mismatch ->
         ( "MISMATCH"
         , "bg-rose-500/10 text-rose-400 border-rose-500/30"
-        , "Stored score differs from summed boxscore points. (See /qa)"
+        , "WKBL 공식 스코어와 박스스코어 득점합이 불일치합니다. (/qa 참고)"
         )
   in
   let text =
@@ -687,11 +698,39 @@ let boxscore_page (bs: game_boxscore) =
       (escape_html margin_str)
   in
   let quality_badge = score_quality_badge gi.gi_score_quality in
+  let official_link =
+    match wkbl_official_game_result_url gi.gi_game_id with
+    | None -> ""
+    | Some url ->
+        Printf.sprintf
+          {html|<a href="%s" target="_blank" rel="noreferrer" class="text-orange-400 hover:text-orange-300 underline-offset-2 hover:underline">WKBL 원본</a>|html}
+          (escape_html url)
+  in
+  let data_notes =
+    Printf.sprintf
+      {html|<details class="max-w-2xl mx-auto bg-slate-900/50 rounded-lg border border-slate-800 p-4 text-xs text-slate-500">
+        <summary class="cursor-pointer font-bold text-slate-300 select-none">출처 / 검증 기준</summary>
+        <div class="mt-2 space-y-1 leading-relaxed">
+          <div><span class="font-mono text-slate-200">MARGIN</span>은 경기 최종 득점(팀-상대)입니다.</div>
+          <div class="pt-1 text-slate-400 font-bold">출처</div>
+          <div>• 스코어: WKBL 공식 경기 결과 페이지(<span class="font-mono text-slate-300">/game/result.asp</span>) %s</div>
+          <div>• 박스스코어: WKBL 공식 박스스코어(AJAX) → <span class="font-mono text-slate-300">game_stats</span></div>
+          <div>• 개인 <span class="font-mono text-slate-300">+/-</span>: WKBL 문자중계(PBP) → <span class="font-mono text-slate-300">player_plus_minus</span> (일부 경기만)</div>
+          <div class="pt-1 text-slate-400 font-bold">검증 기준</div>
+          <div>• <span class="font-mono text-slate-200">VERIFIED (V)</span>: <span class="font-mono text-slate-300">games.home/away_score</span>가 있고, 양 팀 <span class="font-mono text-slate-300">SUM(game_stats.pts)</span>와 모두 일치</div>
+          <div>• <span class="font-mono text-slate-200">DERIVED (D)</span>: 스코어/합계 누락으로 교차검증 불가. 표시 스코어는 <span class="font-mono text-slate-300">COALESCE(games score, sum pts)</span></div>
+          <div>• <span class="font-mono text-slate-200">MISMATCH (X)</span>: 스코어와 합계가 모두 있는데 값이 다름 (<a href="/qa" class="text-orange-400 hover:underline">QA</a>)</div>
+          <div class="pt-1">※ 이 검증은 “최종 득점”만 대상으로, 다른 스탯(리바운드/어시스트 등)은 별도 검증이 필요합니다.</div>
+          <div>※ 동명이인 매칭 오류로 동일 스탯 라인이 중복될 수 있어, 동일 라인은 1개만 표시합니다.</div>
+        </div>
+      </details>|html}
+      official_link
+  in
   let home_table = boxscore_player_table gi.gi_home_team_name bs.boxscore_home_players in
   let away_table = boxscore_player_table gi.gi_away_team_name bs.boxscore_away_players in
   layout ~title:(Printf.sprintf "Boxscore: %s vs %s" gi.gi_home_team_name gi.gi_away_team_name)
     ~content:(Printf.sprintf
-      {html|<div class="space-y-8 animate-fade-in"><div class="bg-slate-900 rounded-xl border border-slate-800 p-6 shadow-2xl"><div class="flex flex-col items-center gap-6"><div class="text-slate-500 font-mono text-sm uppercase tracking-widest">%s</div><div class="flex items-center justify-between w-full max-w-2xl"><div class="flex flex-col items-center gap-3"><div class="text-2xl font-black text-white flex items-center gap-3">%s<a href="/team/%s" class="hover:text-orange-400 transition-colors">%s</a></div><div class="text-slate-400 text-sm">HOME</div></div><div class="flex items-center gap-8"><div class="text-5xl font-black text-white">%d</div><div class="flex flex-col items-center gap-2"><div class="text-2xl text-slate-700 font-light">vs</div>%s%s</div><div class="text-5xl font-black text-white">%d</div></div><div class="flex flex-col items-center gap-3"><div class="text-2xl font-black text-white flex items-center gap-3"><a href="/team/%s" class="hover:text-orange-400 transition-colors">%s</a>%s</div><div class="text-slate-400 text-sm">AWAY</div></div></div></div></div><details class="max-w-2xl mx-auto bg-slate-900/50 rounded-lg border border-slate-800 p-4 text-xs text-slate-500"><summary class="cursor-pointer font-bold text-slate-300 select-none">득실마진 / 데이터 안내</summary><div class="mt-2 space-y-1 leading-relaxed"><div><span class="font-mono text-slate-200">MARGIN</span>은 경기 최종 득점(팀-상대)입니다.</div><div><span class="font-mono text-slate-200">VERIFIED/DERIVED/MISMATCH</span>는 스코어 교차검증 상태입니다. (<span class="font-mono text-slate-200">games</span> vs <span class="font-mono text-slate-200">SUM(game_stats.pts)</span>)</div><div>개인 <span class="font-mono text-slate-200">+/-</span>는 문자중계(PBP) 기반이며, 데이터가 없거나 PBP/박스스코어 최종 스코어 불일치 등 품질 이슈가 있으면 <span class="font-mono text-slate-200">-</span>로 표시합니다.</div><div>동명이인 매칭 오류로 동일 스탯 라인이 중복될 수 있어, 동일 라인은 1개만 표시합니다.</div></div></details><div class="grid grid-cols-1 gap-8">%s%s</div><div class="flex justify-center"><a href="/games" class="text-slate-500 hover:text-orange-500 transition text-sm">← Back to Games</a></div></div>|html}
+      {html|<div class="space-y-8 animate-fade-in"><div class="bg-slate-900 rounded-xl border border-slate-800 p-6 shadow-2xl"><div class="flex flex-col items-center gap-6"><div class="text-slate-500 font-mono text-sm uppercase tracking-widest">%s</div><div class="flex items-center justify-between w-full max-w-2xl"><div class="flex flex-col items-center gap-3"><div class="text-2xl font-black text-white flex items-center gap-3">%s<a href="/team/%s" class="hover:text-orange-400 transition-colors">%s</a></div><div class="text-slate-400 text-sm">HOME</div></div><div class="flex items-center gap-8"><div class="text-5xl font-black text-white">%d</div><div class="flex flex-col items-center gap-2"><div class="text-2xl text-slate-700 font-light">vs</div>%s%s</div><div class="text-5xl font-black text-white">%d</div></div><div class="flex flex-col items-center gap-3"><div class="text-2xl font-black text-white flex items-center gap-3"><a href="/team/%s" class="hover:text-orange-400 transition-colors">%s</a>%s</div><div class="text-slate-400 text-sm">AWAY</div></div></div></div></div>%s<div class="grid grid-cols-1 gap-8">%s%s</div><div class="flex justify-center"><a href="/games" class="text-slate-500 hover:text-orange-500 transition text-sm">← Back to Games</a></div></div>|html}
       (escape_html gi.gi_game_date)
       (team_logo_tag ~class_name:"w-10 h-10" gi.gi_home_team_name) (Uri.pct_encode gi.gi_home_team_name) (escape_html gi.gi_home_team_name)
       gi.gi_home_score
@@ -699,6 +738,7 @@ let boxscore_page (bs: game_boxscore) =
       quality_badge
       gi.gi_away_score
       (Uri.pct_encode gi.gi_away_team_name) (escape_html gi.gi_away_team_name) (team_logo_tag ~class_name:"w-10 h-10" gi.gi_away_team_name)
+      data_notes
       home_table away_table)
 
 let compare_stat_row ?(signed=false) label val1 val2 =
@@ -1945,10 +1985,27 @@ let qa_dashboard_page (report: Db.qa_db_report) ?(markdown=None) () =
           {html|<details class="bg-slate-900 rounded-xl border border-slate-800 p-6 shadow-lg"><summary class="cursor-pointer select-none text-slate-300 font-bold">Legacy QA (Markdown)</summary><pre class="mt-4 text-[11px] text-slate-300 whitespace-pre-wrap break-words">%s</pre></details>|html}
           (escape_html md)
   in
+  let sources_block =
+    {html|<details class="bg-slate-900/50 rounded-xl border border-slate-800 p-5 text-xs text-slate-400">
+      <summary class="cursor-pointer font-bold text-slate-300 select-none">출처 / 검증 기준</summary>
+      <div class="mt-2 space-y-1 leading-relaxed">
+        <div class="text-slate-400 font-bold">출처 (공식)</div>
+        <div>• 경기 결과/스코어: <a href="https://www.wkbl.or.kr/game/result.asp" target="_blank" rel="noreferrer" class="text-orange-400 hover:underline">wkbl.or.kr/game/result.asp</a></div>
+        <div>• 박스스코어: <span class="font-mono text-slate-200">/game/ajax/ajax_game_result_2.asp</span> (POST) → <span class="font-mono text-slate-200">game_stats</span></div>
+        <div>• PBP +/-: <a href="https://www.wkbl.or.kr/live11/path_live_sms.asp" target="_blank" rel="noreferrer" class="text-orange-400 hover:underline">wkbl.or.kr/live11/path_live_sms.asp</a> → <span class="font-mono text-slate-200">player_plus_minus</span></div>
+        <div class="pt-1 text-slate-400 font-bold">검증 기준 (스코어 교차검증)</div>
+        <div>• <span class="font-mono text-slate-200">VERIFIED (V)</span>: <span class="font-mono text-slate-200">games.home/away_score</span>가 존재하고, 양 팀 <span class="font-mono text-slate-200">SUM(game_stats.pts)</span>와 모두 일치</div>
+        <div>• <span class="font-mono text-slate-200">DERIVED (D)</span>: 스코어/합계 누락으로 교차검증 불가. 표시 스코어는 <span class="font-mono text-slate-200">COALESCE(games score, sum pts)</span></div>
+        <div>• <span class="font-mono text-slate-200">MISMATCH (X)</span>: 스코어와 합계가 모두 있는데 값이 다름</div>
+        <div class="pt-1">※ 이 검증은 “최종 득점”만 대상으로, 다른 스탯(리바운드/어시스트 등)은 별도 검증이 필요합니다.</div>
+      </div>
+    </details>|html}
+  in
   layout ~title:"QA | WKBL"
     ~content:(Printf.sprintf
-      {html|<div class="space-y-6 animate-fade-in"><div class="flex flex-col gap-2"><h2 class="text-2xl font-black text-white">Data Quality (QA)</h2><div class="text-slate-400 text-sm leading-relaxed">기록 신뢰도를 위해 <span class="font-mono text-slate-200">스코어 불일치</span>, <span class="font-mono text-slate-200">팀 수 이상</span>, <span class="font-mono text-slate-200">중복 스탯 row</span>, <span class="font-mono text-slate-200">중복 선수 ID</span>를 점검합니다. (Generated: <span class="font-mono">%s</span>)</div></div><div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">%s%s%s%s</div><div class="grid grid-cols-1 lg:grid-cols-3 gap-4">%s%s%s</div><div class="grid grid-cols-1 gap-4"><div class="bg-slate-900 rounded-xl border border-slate-800 p-6 shadow-lg"><div class="flex items-center justify-between gap-3"><h3 class="text-slate-300 font-bold uppercase tracking-wider text-xs">Score Mismatch</h3><span class="text-[11px] text-slate-500 font-mono">count=%d</span></div><div class="mt-3 text-[11px] text-slate-500 leading-relaxed"><span class="font-mono text-slate-200">games.home/away_score</span> vs <span class="font-mono text-slate-200">SUM(game_stats.pts)</span> 비교</div><div class="mt-4 overflow-x-auto"><table class="min-w-[860px] w-full text-sm font-mono table-fixed"><thead class="bg-slate-800/80 text-slate-400 uppercase tracking-wider text-[10px]"><tr><th class="px-3 py-2 text-left w-[90px]">Date</th><th class="px-3 py-2 text-left w-[120px]">Game</th><th class="px-3 py-2 text-left">Matchup</th><th class="px-3 py-2 text-right w-[120px]">Stored</th><th class="px-3 py-2 text-right w-[120px]">Summed</th><th class="px-3 py-2 text-right w-[80px]">HΔ</th><th class="px-3 py-2 text-right w-[80px]">AΔ</th></tr></thead><tbody>%s</tbody></table></div></div><div class="bg-slate-900 rounded-xl border border-slate-800 p-6 shadow-lg"><div class="flex items-center justify-between gap-3"><h3 class="text-slate-300 font-bold uppercase tracking-wider text-xs">Team Count Anomaly</h3><span class="text-[11px] text-slate-500 font-mono">count=%d</span></div><div class="mt-3 text-[11px] text-slate-500 leading-relaxed">한 경기에서 <span class="font-mono text-slate-200">game_stats.team_code</span>가 2개가 아닌 케이스</div><div class="mt-4 overflow-x-auto"><table class="min-w-[320px] w-full text-sm font-mono table-fixed"><thead class="bg-slate-800/80 text-slate-400 uppercase tracking-wider text-[10px]"><tr><th class="px-3 py-2 text-left">Game</th><th class="px-3 py-2 text-right w-[90px]">Teams</th></tr></thead><tbody>%s</tbody></table></div></div><div class="bg-slate-900 rounded-xl border border-slate-800 p-6 shadow-lg"><div class="flex items-center justify-between gap-3"><h3 class="text-slate-300 font-bold uppercase tracking-wider text-xs">Duplicate Player Rows</h3><span class="text-[11px] text-slate-500 font-mono">count=%d</span></div><div class="mt-3 text-[11px] text-slate-500 leading-relaxed"><span class="font-mono text-slate-200">(game_id, team_code, player_id)</span> 중복</div><div class="mt-4 overflow-x-auto"><table class="min-w-[720px] w-full text-sm font-mono table-fixed"><thead class="bg-slate-800/80 text-slate-400 uppercase tracking-wider text-[10px]"><tr><th class="px-3 py-2 text-left w-[120px]">Game</th><th class="px-3 py-2 text-left w-[160px]">Team</th><th class="px-3 py-2 text-left">Player</th><th class="px-3 py-2 text-right w-[80px]">Rows</th></tr></thead><tbody>%s</tbody></table></div></div><div class="bg-slate-900 rounded-xl border border-slate-800 p-6 shadow-lg"><div class="flex items-center justify-between gap-3"><h3 class="text-slate-300 font-bold uppercase tracking-wider text-xs">Duplicate Player Names</h3><span class="text-[11px] text-slate-500 font-mono">count=%d</span></div><div class="mt-3 text-[11px] text-slate-500 leading-relaxed">동일 이름으로 <span class="font-mono text-slate-200">player_id</span>가 여러 개인 케이스</div><div class="mt-4 overflow-x-auto"><table class="min-w-[720px] w-full text-sm font-mono table-fixed"><thead class="bg-slate-800/80 text-slate-400 uppercase tracking-wider text-[10px]"><tr><th class="px-3 py-2 text-left">Name</th><th class="px-3 py-2 text-right w-[80px]">IDs</th><th class="px-3 py-2 text-left">player_id</th></tr></thead><tbody>%s</tbody></table></div></div></div>%s</div>|html}
+      {html|<div class="space-y-6 animate-fade-in"><div class="flex flex-col gap-2"><h2 class="text-2xl font-black text-white">Data Quality (QA)</h2><div class="text-slate-400 text-sm leading-relaxed">기록 신뢰도를 위해 <span class="font-mono text-slate-200">스코어 불일치</span>, <span class="font-mono text-slate-200">팀 수 이상</span>, <span class="font-mono text-slate-200">중복 스탯 row</span>, <span class="font-mono text-slate-200">중복 선수 ID</span>를 점검합니다. (Generated: <span class="font-mono">%s</span>)</div></div>%s<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">%s%s%s%s</div><div class="grid grid-cols-1 lg:grid-cols-3 gap-4">%s%s%s</div><div class="grid grid-cols-1 gap-4"><div class="bg-slate-900 rounded-xl border border-slate-800 p-6 shadow-lg"><div class="flex items-center justify-between gap-3"><h3 class="text-slate-300 font-bold uppercase tracking-wider text-xs">Score Mismatch</h3><span class="text-[11px] text-slate-500 font-mono">count=%d</span></div><div class="mt-3 text-[11px] text-slate-500 leading-relaxed"><span class="font-mono text-slate-200">games.home/away_score</span> vs <span class="font-mono text-slate-200">SUM(game_stats.pts)</span> 비교</div><div class="mt-4 overflow-x-auto"><table class="min-w-[860px] w-full text-sm font-mono table-fixed"><thead class="bg-slate-800/80 text-slate-400 uppercase tracking-wider text-[10px]"><tr><th class="px-3 py-2 text-left w-[90px]">Date</th><th class="px-3 py-2 text-left w-[120px]">Game</th><th class="px-3 py-2 text-left">Matchup</th><th class="px-3 py-2 text-right w-[120px]">Stored</th><th class="px-3 py-2 text-right w-[120px]">Summed</th><th class="px-3 py-2 text-right w-[80px]">HΔ</th><th class="px-3 py-2 text-right w-[80px]">AΔ</th></tr></thead><tbody>%s</tbody></table></div></div><div class="bg-slate-900 rounded-xl border border-slate-800 p-6 shadow-lg"><div class="flex items-center justify-between gap-3"><h3 class="text-slate-300 font-bold uppercase tracking-wider text-xs">Team Count Anomaly</h3><span class="text-[11px] text-slate-500 font-mono">count=%d</span></div><div class="mt-3 text-[11px] text-slate-500 leading-relaxed">한 경기에서 <span class="font-mono text-slate-200">game_stats.team_code</span>가 2개가 아닌 케이스</div><div class="mt-4 overflow-x-auto"><table class="min-w-[320px] w-full text-sm font-mono table-fixed"><thead class="bg-slate-800/80 text-slate-400 uppercase tracking-wider text-[10px]"><tr><th class="px-3 py-2 text-left">Game</th><th class="px-3 py-2 text-right w-[90px]">Teams</th></tr></thead><tbody>%s</tbody></table></div></div><div class="bg-slate-900 rounded-xl border border-slate-800 p-6 shadow-lg"><div class="flex items-center justify-between gap-3"><h3 class="text-slate-300 font-bold uppercase tracking-wider text-xs">Duplicate Player Rows</h3><span class="text-[11px] text-slate-500 font-mono">count=%d</span></div><div class="mt-3 text-[11px] text-slate-500 leading-relaxed"><span class="font-mono text-slate-200">(game_id, team_code, player_id)</span> 중복</div><div class="mt-4 overflow-x-auto"><table class="min-w-[720px] w-full text-sm font-mono table-fixed"><thead class="bg-slate-800/80 text-slate-400 uppercase tracking-wider text-[10px]"><tr><th class="px-3 py-2 text-left w-[120px]">Game</th><th class="px-3 py-2 text-left w-[160px]">Team</th><th class="px-3 py-2 text-left">Player</th><th class="px-3 py-2 text-right w-[80px]">Rows</th></tr></thead><tbody>%s</tbody></table></div></div><div class="bg-slate-900 rounded-xl border border-slate-800 p-6 shadow-lg"><div class="flex items-center justify-between gap-3"><h3 class="text-slate-300 font-bold uppercase tracking-wider text-xs">Duplicate Player Names</h3><span class="text-[11px] text-slate-500 font-mono">count=%d</span></div><div class="mt-3 text-[11px] text-slate-500 leading-relaxed">동일 이름으로 <span class="font-mono text-slate-200">player_id</span>가 여러 개인 케이스</div><div class="mt-4 overflow-x-auto"><table class="min-w-[720px] w-full text-sm font-mono table-fixed"><thead class="bg-slate-800/80 text-slate-400 uppercase tracking-wider text-[10px]"><tr><th class="px-3 py-2 text-left">Name</th><th class="px-3 py-2 text-right w-[80px]">IDs</th><th class="px-3 py-2 text-left">player_id</th></tr></thead><tbody>%s</tbody></table></div></div></div>%s</div>|html}
       (escape_html report.qdr_generated_at)
+      sources_block
       (kpi_card ~label:"Games" ~value_html:(int_chip report.qdr_games_total) ~hint_html:"전체 경기 수(정규/PO, 시범 제외)")
       (kpi_card ~label:"Games w/ Stats" ~value_html:(int_chip report.qdr_games_with_stats) ~hint_html:"game_stats가 존재하는 경기")
       (kpi_card ~label:"PBP +/- Coverage" ~value_html:(pct_chip report.qdr_plus_minus_coverage_pct) ~hint_html:(Printf.sprintf "PBP 기반 +/-가 있는 경기: %d" report.qdr_plus_minus_games))
