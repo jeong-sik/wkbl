@@ -29,6 +29,16 @@ let escape_html s =
   |> List.of_seq
   |> String.concat ""
 
+(** Normalize names for duplicate detection (strip common escape artifacts). *)
+let normalize_name s =
+  let trimmed = String.trim s in
+  trimmed
+  |> String.to_seq
+  |> Seq.filter (fun c -> c <> '"' && c <> '\\')
+  |> List.of_seq
+  |> List.map (String.make 1)
+  |> String.concat ""
+
 (** Player image component with fallback *)
 let player_img_tag ?(class_name="w-12 h-12") player_id _player_name =
   let local_src = Printf.sprintf "/static/images/player_%s.png" player_id in
@@ -261,14 +271,25 @@ let career_highs_card (ch: career_high_item list option) =
       Printf.sprintf {html|<div class="bg-slate-900 rounded-xl border border-slate-800 p-6 shadow-lg h-full"><h3 class="text-orange-400 font-bold uppercase tracking-wider text-xs mb-4 flex items-center gap-2"><span class="text-lg">🚀</span> Career Highs</h3><div class="space-y-3">%s</div></div>|html} items_html
 
 (** Player row component *)
-let player_row (rank: int) (p: player_aggregate) =
+let player_row ?(show_player_id=false) (rank: int) (p: player_aggregate) =
+  let id_badge =
+    if show_player_id then
+      Printf.sprintf
+        {html|<span class="px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700/60 text-[10px] font-mono text-slate-400 whitespace-nowrap">#%s</span>|html}
+        (escape_html p.player_id)
+    else
+      ""
+  in
   Printf.sprintf
     {html|<tr class="border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors">
       <td class="px-3 py-2 text-slate-500 text-sm">%d</td>
       <td class="px-3 py-2 font-medium text-white">
         <div class="flex items-center gap-3 min-w-0">
           %s
-          <a href="/player/%s" class="player-name hover:text-orange-400 transition-colors truncate break-keep min-w-0">%s</a>
+          <div class="flex items-center gap-2 min-w-0">
+            <a href="/player/%s" class="player-name hover:text-orange-400 transition-colors truncate break-keep min-w-0">%s</a>
+            %s
+          </div>
         </div>
       </td>
       <td class="px-3 py-2">%s</td>
@@ -279,6 +300,7 @@ let player_row (rank: int) (p: player_aggregate) =
     (player_img_tag ~class_name:"w-8 h-8 shrink-0" p.player_id p.name)
     p.player_id
     (escape_html p.name)
+    id_badge
     (team_badge p.team_name)
     p.games_played
     (stat_cell ~highlight:true p.avg_points)
@@ -292,9 +314,22 @@ let player_row (rank: int) (p: player_aggregate) =
 
 (** Players table - HTMX partial *)
 let players_table (players: player_aggregate list) =
+  let name_counts : (string, int) Hashtbl.t = Hashtbl.create 64 in
+  players
+  |> List.iter (fun (p: player_aggregate) ->
+      let key = normalize_name p.name in
+      let prev = Hashtbl.find_opt name_counts key |> Option.value ~default:0 in
+      Hashtbl.replace name_counts key (prev + 1));
   let rows =
     players
-    |> List.mapi (fun i p -> player_row (i + 1) p)
+    |> List.mapi (fun i (p: player_aggregate) ->
+        let key = normalize_name p.name in
+        let show_player_id =
+          match Hashtbl.find_opt name_counts key with
+          | Some c when c > 1 -> true
+          | _ -> false
+        in
+        player_row ~show_player_id (i + 1) p)
     |> String.concat "\n"
   in
   Printf.sprintf
@@ -494,6 +529,12 @@ let boxscores_page ~season ~seasons games =
       season_options table)
 
 let boxscore_player_table (title: string) (players: boxscore_player_stat list) =
+  let name_counts : (string, int) Hashtbl.t = Hashtbl.create 32 in
+  players
+  |> List.iter (fun (p: boxscore_player_stat) ->
+      let key = normalize_name p.bs_player_name in
+      let prev = Hashtbl.find_opt name_counts key |> Option.value ~default:0 in
+      Hashtbl.replace name_counts key (prev + 1));
   let rows =
     players
     |> List.map (fun (p: boxscore_player_stat) ->
@@ -504,6 +545,19 @@ let boxscore_player_table (title: string) (players: boxscore_player_stat list) =
                 {html|<span class="ml-2 px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 text-[10px] font-sans">%s</span>|html}
                 (escape_html pos)
           | _ -> ""
+        in
+        let show_player_id =
+          match Hashtbl.find_opt name_counts (normalize_name p.bs_player_name) with
+          | Some c when c > 1 -> true
+          | _ -> false
+        in
+        let id_badge =
+          if show_player_id then
+            Printf.sprintf
+              {html|<span class="ml-2 px-1.5 py-0.5 rounded bg-slate-800/60 border border-slate-700/60 text-[10px] font-mono text-slate-500 whitespace-nowrap">#%s</span>|html}
+              (escape_html p.bs_player_id)
+          else
+            ""
         in
         let pm_class, pm_str =
           match p.bs_plus_minus with
@@ -522,7 +576,7 @@ let boxscore_player_table (title: string) (players: boxscore_player_stat list) =
           (player_img_tag ~class_name:"w-6 h-6" p.bs_player_id p.bs_player_name)
           p.bs_player_id
           (escape_html p.bs_player_name)
-          pos_badge
+          (pos_badge ^ id_badge)
           p.bs_minutes
           p.bs_pts
           pm_class
@@ -1093,7 +1147,24 @@ let team_profile_page (detail: team_full_detail) =
   let t = detail.tfd_team_name in
   let s = detail.tfd_standing in
   let standing_info = match s with | Some st -> Printf.sprintf {html|<div class="flex gap-6 text-sm"><div class="flex flex-col"><span>WINS</span><span class="text-2xl font-black text-white">%d</span></div><div class="flex flex-col"><span>LOSSES</span><span class="text-2xl font-black text-white">%d</span></div><div class="flex flex-col"><span>WIN %%</span><span class="text-2xl font-black text-orange-400">%.3f</span></div><div class="flex flex-col"><span>GB</span><span class="text-2xl font-black text-slate-400">%.1f</span></div></div>|html} st.wins st.losses st.win_pct st.gb | None -> "" in
-  let roster_rows = detail.tfd_roster |> List.mapi (fun i p -> player_row (i + 1) p) |> String.concat "\n" in
+  let roster_name_counts : (string, int) Hashtbl.t = Hashtbl.create 32 in
+  detail.tfd_roster
+  |> List.iter (fun (p: player_aggregate) ->
+      let key = normalize_name p.name in
+      let prev = Hashtbl.find_opt roster_name_counts key |> Option.value ~default:0 in
+      Hashtbl.replace roster_name_counts key (prev + 1));
+  let roster_rows =
+    detail.tfd_roster
+    |> List.mapi (fun i (p: player_aggregate) ->
+        let key = normalize_name p.name in
+        let show_player_id =
+          match Hashtbl.find_opt roster_name_counts key with
+          | Some c when c > 1 -> true
+          | _ -> false
+        in
+        player_row ~show_player_id (i + 1) p)
+    |> String.concat "\n"
+  in
   let game_rows =
     detail.tfd_recent_games
     |> List.map (fun (g: team_game_result) ->
