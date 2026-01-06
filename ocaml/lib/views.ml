@@ -1268,7 +1268,7 @@ let player_profile_page (profile: player_profile) ~scope ~(seasons_catalog: seas
 
   let display_name = normalize_name p.name in
   layout ~title:(display_name ^ " | WKBL Profile")
-    ~content:(Printf.sprintf {html|<div class="space-y-8 animate-fade-in"><div class="bg-slate-900 rounded-xl border border-slate-800 p-8 shadow-2xl flex flex-col md:flex-row items-center md:items-start gap-8"><div class="relative">%s<div class="absolute -bottom-3 -right-3 bg-slate-800 border border-slate-700 text-white text-xs font-bold px-3 py-1 rounded-full">%s</div></div><div class="text-center md:text-left space-y-2"><h1 class="text-4xl font-black text-white">%s</h1><div class="text-slate-400 text-lg">%s</div><div class="flex flex-wrap gap-2 justify-center md:justify-start pt-2"><span class="bg-slate-800 text-slate-300 px-3 py-1 rounded text-sm">%s</span>%s%s%s</div></div></div><div class="grid grid-cols-1 lg:grid-cols-5 gap-8"><div class="lg:col-span-3 space-y-8">%s<div class="space-y-4"><div class="flex flex-col gap-1"><h3 class="text-xl font-bold text-white">Recent Games</h3><p class="text-[11px] text-slate-500">개인 <span class="font-mono text-slate-300">+/-</span>는 문자중계(PBP) 기반입니다. PBP가 없으면 <span class="font-mono text-slate-300">M</span>으로 팀 득실마진(경기 최종 점수)을 대신 표시합니다. (데이터가 없거나 PBP/박스스코어 최종 스코어 불일치 등 품질 이슈면 <span class="font-mono text-slate-300">-</span>)</p></div><div class="bg-slate-900 rounded-xl border border-slate-800 overflow-x-auto shadow-lg"><table class="min-w-[920px] w-full text-sm font-mono table-fixed"><thead class="bg-slate-800/80 text-slate-400 uppercase tracking-wider text-xs"><tr><th class="px-4 py-3 text-left font-sans w-[110px] whitespace-nowrap">Date</th><th class="px-4 py-3 text-left font-sans">Opponent</th><th class="px-4 py-3 text-right w-[72px]">MIN</th><th class="px-4 py-3 text-right text-orange-400 w-[72px]">PTS</th><th class="px-4 py-3 text-right w-[72px]">+/-</th><th class="px-4 py-3 text-right w-[72px]">REB</th><th class="px-4 py-3 text-right w-[72px]">AST</th><th class="px-4 py-3 text-right w-[72px]">STL</th><th class="px-4 py-3 text-right w-[72px]">BLK</th></tr></thead><tbody>%s</tbody></table></div></div>%s</div><div class="space-y-8 lg:col-span-2"><div class="space-y-4">%s%s%s%s</div></div></div></div>|html}
+    ~content:(Printf.sprintf {html|<div class="space-y-8 animate-fade-in"><div class="bg-slate-900 rounded-xl border border-slate-800 p-8 shadow-2xl flex flex-col md:flex-row items-center md:items-start gap-8"><div class="relative">%s<div class="absolute -bottom-3 -right-3 bg-slate-800 border border-slate-700 text-white text-xs font-bold px-3 py-1 rounded-full">%s</div></div><div class="text-center md:text-left space-y-2"><h1 class="text-4xl font-black text-white">%s</h1><div class="text-slate-400 text-lg">%s</div><div class="flex flex-wrap gap-2 justify-center md:justify-start pt-2"><span class="bg-slate-800 text-slate-300 px-3 py-1 rounded text-sm">%s</span>%s%s%s</div></div></div><div class="grid grid-cols-1 lg:grid-cols-5 gap-8"><div class="lg:col-span-3 space-y-8">%s<div class="space-y-4"><div class="flex items-end justify-between gap-3"><div class="flex flex-col gap-1 min-w-0"><h3 class="text-xl font-bold text-white">Recent Games</h3><p class="text-[11px] text-slate-500">개인 <span class="font-mono text-slate-300">+/-</span>는 문자중계(PBP) 기반입니다. PBP가 없으면 <span class="font-mono text-slate-300">M</span>으로 팀 득실마진(경기 최종 점수)을 대신 표시합니다. (데이터가 없거나 PBP/박스스코어 최종 스코어 불일치 등 품질 이슈면 <span class="font-mono text-slate-300">-</span>)</p></div><a href="/player/%s/games" class="shrink-0 text-xs bg-slate-800 hover:bg-slate-700 px-3 py-2 rounded text-slate-300 hover:text-white transition whitespace-nowrap">전체 경기</a></div><div class="bg-slate-900 rounded-xl border border-slate-800 overflow-x-auto shadow-lg"><table class="min-w-[920px] w-full text-sm font-mono table-fixed"><thead class="bg-slate-800/80 text-slate-400 uppercase tracking-wider text-xs"><tr><th class="px-4 py-3 text-left font-sans w-[110px] whitespace-nowrap">Date</th><th class="px-4 py-3 text-left font-sans">Opponent</th><th class="px-4 py-3 text-right w-[72px]">MIN</th><th class="px-4 py-3 text-right text-orange-400 w-[72px]">PTS</th><th class="px-4 py-3 text-right w-[72px]">+/-</th><th class="px-4 py-3 text-right w-[72px]">REB</th><th class="px-4 py-3 text-right w-[72px]">AST</th><th class="px-4 py-3 text-right w-[72px]">STL</th><th class="px-4 py-3 text-right w-[72px]">BLK</th></tr></thead><tbody>%s</tbody></table></div></div>%s</div><div class="space-y-8 lg:col-span-2"><div class="space-y-4">%s%s%s%s</div></div></div></div>|html}
           (player_img_tag ~class_name:"w-32 h-32 border-4 border-slate-700 shadow-2xl" p.id p.name)
           (escape_html p.id)
           (escape_html display_name)
@@ -1278,12 +1278,126 @@ let player_profile_page (profile: player_profile) ~scope ~(seasons_catalog: seas
           video_links_html
           career_chips
           season_stats_component
+          (Uri.pct_encode p.id)
           recent_rows
           all_star_section_html
           team_movement_html
           career_highs_html
           data_notes_html
           missing_data_html)
+
+let player_game_logs_page (profile: player_profile) ~(season: string) ~(seasons: season_info list) ~(include_mismatch: bool) (games: player_game_stat list) =
+  let p = profile.player in
+  let display_name = normalize_name p.name in
+  let season_options =
+    let base =
+      seasons
+      |> List.map (fun (s: season_info) ->
+          let selected = if s.code = season then "selected" else "" in
+          Printf.sprintf {html|<option value="%s" %s>%s</option>|html} s.code selected (escape_html s.name))
+      |> String.concat "\n"
+    in
+    Printf.sprintf {html|<option value="ALL" %s>All Seasons</option>%s|html} (if season = "ALL" then "selected" else "") base
+  in
+  let include_checked = if include_mismatch then "checked" else "" in
+  let verified_cnt, derived_cnt, mismatch_cnt =
+    games
+    |> List.fold_left
+      (fun (v, d, m) (g: player_game_stat) ->
+        match g.score_quality with
+        | Verified -> (v + 1, d, m)
+        | Derived -> (v, d + 1, m)
+        | Mismatch -> (v, d, m + 1))
+      (0, 0, 0)
+  in
+  let quality_chips =
+    Printf.sprintf
+      {html|<div class="flex flex-wrap items-center gap-2 text-[11px] font-mono text-slate-400"><span class="px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700/60 whitespace-nowrap">V %d</span><span class="px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700/60 whitespace-nowrap">D %d</span><span class="px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700/60 whitespace-nowrap">X %d</span></div>|html}
+      verified_cnt derived_cnt mismatch_cnt
+  in
+  let rows =
+    if games = [] then
+      {html|<tr><td colspan="9" class="px-4 py-10 text-center text-slate-500 text-sm">No games found.</td></tr>|html}
+    else
+      games
+      |> List.map (fun (g: player_game_stat) ->
+          let res_color = if g.pts >= 20 then "text-orange-400" else "text-slate-300" in
+          let pm_class, pm_str =
+            match g.plus_minus, g.team_score, g.opponent_score with
+            | Some v, _, _ ->
+                let cls =
+                  if v > 0 then "text-sky-400"
+                  else if v < 0 then "text-rose-400"
+                  else "text-slate-400"
+                in
+                let s = if v > 0 then Printf.sprintf "+%d" v else string_of_int v in
+                (cls, s)
+            | None, Some team_score, Some opponent_score ->
+                let margin = team_score - opponent_score in
+                let cls =
+                  if margin > 0 then "text-sky-400"
+                  else if margin < 0 then "text-rose-400"
+                  else "text-slate-400"
+                in
+                let s =
+                  if margin > 0 then Printf.sprintf "M +%d" margin
+                  else Printf.sprintf "M %d" margin
+                in
+                (cls, s)
+            | None, _, _ -> ("text-slate-500", "-")
+          in
+          let margin_badge =
+            match g.team_score, g.opponent_score with
+            | Some team_score, Some opponent_score ->
+                let margin = team_score - opponent_score in
+                let cls =
+                  if margin > 0 then "bg-sky-500/10 text-sky-400 border-sky-500/30"
+                  else if margin < 0 then "bg-rose-500/10 text-rose-400 border-rose-500/30"
+                  else "bg-slate-500/10 text-slate-300 border-slate-500/30"
+                in
+                let label =
+                  if margin > 0 then Printf.sprintf "W +%d" margin
+                  else if margin < 0 then Printf.sprintf "L %d" margin
+                  else "T 0"
+                in
+                Printf.sprintf
+                  {html|<span class="inline-flex items-center px-2 py-0.5 rounded border text-[10px] font-mono %s">%s</span>|html}
+                  cls label
+            | _ ->
+                {html|<span class="inline-flex items-center px-2 py-0.5 rounded border border-slate-700/60 text-[10px] font-mono text-slate-500">-</span>|html}
+          in
+          let quality_badge = score_quality_badge ~compact:true g.score_quality in
+          let opponent_label = if g.is_home then "vs " ^ g.opponent else "@ " ^ g.opponent in
+          Printf.sprintf
+            {html|<tr class="border-b border-slate-800/60 hover:bg-slate-800/30 transition-colors"><td class="px-4 py-3 text-slate-400 text-sm font-mono whitespace-nowrap"><a href="/boxscore/%s" class="hover:text-orange-400 transition-colors">%s</a></td><td class="px-4 py-3 text-white"><div class="flex items-center justify-between gap-3"><span class="truncate">%s</span><div class="flex items-center gap-2 shrink-0">%s%s</div></div></td><td class="px-4 py-3 text-right font-mono text-slate-400 w-[72px]">%.1f</td><td class="px-4 py-3 text-right font-bold %s w-[72px]">%d</td><td class="px-4 py-3 text-right font-mono w-[72px] %s">%s</td><td class="px-4 py-3 text-right text-slate-300 w-[72px]">%d</td><td class="px-4 py-3 text-right text-slate-300 w-[72px]">%d</td><td class="px-4 py-3 text-right text-slate-300 w-[72px]">%d</td><td class="px-4 py-3 text-right text-slate-300 w-[72px]">%d</td></tr>|html}
+            (Uri.pct_encode g.game_id)
+            (escape_html g.game_date)
+            (escape_html opponent_label)
+            margin_badge
+            quality_badge
+            g.min
+            res_color
+            g.pts
+            pm_class
+            (escape_html pm_str)
+            g.reb
+            g.ast
+            g.stl
+            g.blk)
+      |> String.concat "\n"
+  in
+  layout ~title:(display_name ^ " | Game Log")
+    ~content:(Printf.sprintf
+      {html|<div class="space-y-8 animate-fade-in"><div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4"><div class="flex items-center gap-4"><div class="shrink-0">%s</div><div class="min-w-0"><div class="text-sm text-slate-400"><a href="/player/%s" class="hover:text-white transition">← Profile</a></div><h2 class="text-3xl font-black text-white truncate">%s <span class="text-slate-400 text-lg font-mono">Game Log</span></h2><div class="mt-1 text-slate-500 text-sm">총 %d경기</div></div></div><div class="flex flex-col items-start sm:items-end gap-3"><form action="/player/%s/games" method="get" class="flex flex-wrap items-center justify-end gap-2"><select name="season" class="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none" onchange="this.form.submit()">%s</select><label class="flex items-center gap-2 text-xs text-slate-400 whitespace-nowrap"><input type="checkbox" name="include_mismatch" value="1" %s class="h-4 w-4 rounded border-slate-600 bg-slate-800 accent-orange-500" onchange="this.form.submit()"><span>Mismatch 포함</span></label></form>%s</div></div><p class="text-[11px] text-slate-500">개인 <span class="font-mono text-slate-300">+/-</span>는 문자중계(PBP) 기반입니다. PBP가 없으면 <span class="font-mono text-slate-300">M</span>으로 팀 득실마진(경기 최종 점수)을 대신 표시합니다. (데이터가 없거나 품질 이슈면 <span class="font-mono text-slate-300">-</span>)</p><div class="bg-slate-900 rounded-xl border border-slate-800 overflow-x-auto shadow-lg"><table class="min-w-[920px] w-full text-sm font-mono table-fixed"><thead class="bg-slate-800/80 text-slate-400 uppercase tracking-wider text-xs"><tr><th class="px-4 py-3 text-left font-sans w-[110px] whitespace-nowrap">Date</th><th class="px-4 py-3 text-left font-sans">Opponent</th><th class="px-4 py-3 text-right w-[72px]">MIN</th><th class="px-4 py-3 text-right text-orange-400 w-[72px]">PTS</th><th class="px-4 py-3 text-right w-[72px]">+/-</th><th class="px-4 py-3 text-right w-[72px]">REB</th><th class="px-4 py-3 text-right w-[72px]">AST</th><th class="px-4 py-3 text-right w-[72px]">STL</th><th class="px-4 py-3 text-right w-[72px]">BLK</th></tr></thead><tbody>%s</tbody></table></div></div>|html}
+      (player_img_tag ~class_name:"w-14 h-14 border border-slate-700 shadow-lg" p.id p.name)
+      (Uri.pct_encode p.id)
+      (escape_html display_name)
+      (List.length games)
+      (Uri.pct_encode p.id)
+      season_options
+      include_checked
+      quality_chips
+      rows)
 
 let team_profile_page (detail: team_full_detail) =
   let t = detail.tfd_team_name in
