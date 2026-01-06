@@ -9,6 +9,14 @@ let has_prefix ~prefix s =
   let prefix_len = String.length prefix in
   String.length s >= prefix_len && String.sub s 0 prefix_len = prefix
 
+let query_bool request name =
+  Dream.query request name
+  |> Option.map (fun v ->
+      match String.lowercase_ascii (String.trim v) with
+      | "1" | "true" | "yes" | "on" -> true
+      | _ -> false)
+  |> Option.value ~default:false
+
 let rec find_static_path start_dir =
   let has_styles path = Sys.file_exists (Filename.concat path "css/styles.css") in
   let candidates = [ Filename.concat start_dir "static"; Filename.concat start_dir "ocaml/static" ] in
@@ -56,6 +64,8 @@ let () =
         let cwd = Sys.getcwd () in
         Option.value (find_static_path cwd) ~default:"static"
   in
+  (* Keep WKBL_STATIC_PATH consistent for view-layer asset checks. *)
+  Unix.putenv "WKBL_STATIC_PATH" static_path;
   Printf.printf "Serving static assets from: %s\n%%!" static_path;
   Printf.printf "Using DB path: %s\n%%!" db_path;
   Printf.printf "Listening on: 0.0.0.0:%d\n%%!" port;
@@ -98,10 +108,11 @@ let () =
       let open Lwt.Syntax in
       let search = Dream.query request "search" |> Option.value ~default:"" in
       let sort_str = Dream.query request "sort" |> Option.value ~default:"eff" in
+      let include_mismatch = query_bool request "include_mismatch" in
       let sort = Domain.player_sort_of_string sort_str in
-      let* players_res = Db.get_players ~search ~sort () in
+      let* players_res = Db.get_players ~search ~sort ~include_mismatch () in
       match players_res with
-      | Ok p -> Dream.html (Views.players_page ~search ~sort:sort_str p)
+      | Ok p -> Dream.html (Views.players_page ~search ~sort:sort_str ~include_mismatch p)
       | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
     );
 
@@ -109,8 +120,9 @@ let () =
       let open Lwt.Syntax in
       let search = Dream.query request "search" |> Option.value ~default:"" in
       let sort_str = Dream.query request "sort" |> Option.value ~default:"eff" in
+      let include_mismatch = query_bool request "include_mismatch" in
       let sort = Domain.player_sort_of_string sort_str in
-      let* players_res = Db.get_players ~search ~sort () in
+      let* players_res = Db.get_players ~search ~sort ~include_mismatch () in
       match players_res with
       | Ok p -> Dream.html (Views.players_table p)
       | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
@@ -124,10 +136,11 @@ let () =
       let scope = Domain.team_scope_of_string scope_str in
       let sort_str = Dream.query request "sort" |> Option.value ~default:"pts" in
       let sort = Domain.team_sort_of_string sort_str in
+      let include_mismatch = query_bool request "include_mismatch" in
       let* seasons_res = Db.get_seasons () in
-      let* stats_res = Db.get_team_stats ~season ~scope ~sort () in
+      let* stats_res = Db.get_team_stats ~season ~scope ~sort ~include_mismatch () in
       match seasons_res, stats_res with
-      | Ok seasons, Ok stats -> Dream.html (Views.teams_page ~season ~seasons ~scope ~sort:sort_str stats)
+      | Ok seasons, Ok stats -> Dream.html (Views.teams_page ~season ~seasons ~scope ~sort:sort_str ~include_mismatch stats)
       | Error e, _ | _, Error e -> Dream.html (Views.error_page (Db.show_db_error e))
     );
 
@@ -138,7 +151,8 @@ let () =
       let scope = Domain.team_scope_of_string scope_str in
       let sort_str = Dream.query request "sort" |> Option.value ~default:"pts" in
       let sort = Domain.team_sort_of_string sort_str in
-      let* stats_res = Db.get_team_stats ~season ~scope ~sort () in
+      let include_mismatch = query_bool request "include_mismatch" in
+      let* stats_res = Db.get_team_stats ~season ~scope ~sort ~include_mismatch () in
       match stats_res with
       | Ok stats -> Dream.html (Views.teams_table ~scope stats)
       | Error e -> Dream.html (Views.error_page (Db.show_db_error e))

@@ -168,6 +168,16 @@ type boxscore_player_stat = {
   bs_ft_pct: float;
 }
 
+type game_score_quality =
+  | Verified
+  | Derived
+  | Mismatch
+
+let game_score_quality_of_int = function
+  | 2 -> Verified
+  | 0 -> Mismatch
+  | _ -> Derived
+
 type game_info = {
   gi_game_id: string;
   gi_game_date: string;
@@ -177,6 +187,7 @@ type game_info = {
   gi_away_team_name: string;
   gi_home_score: int;
   gi_away_score: int;
+  gi_score_quality: game_score_quality;
 }
 
 type game_boxscore = {
@@ -225,6 +236,7 @@ type player_game_stat = {
   is_home: bool;
   team_score: int option;
   opponent_score: int option;
+  score_quality: game_score_quality;
   min: float;
   pts: int;
   reb: int;
