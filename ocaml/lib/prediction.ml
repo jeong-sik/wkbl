@@ -128,7 +128,104 @@ let team_prediction_stats_of_totals ~(win_pct: float) (totals: team_stats) =
     ps_win_pct = win_pct;
   }
 
-let predict_match_nerd ~(season: string) ~(is_neutral: bool) ~(games: game_summary list) ~(home: team_stats) ~(away: team_stats) ~(home_win_pct: float) ~(away_win_pct: float) ~name_home ~name_away =
+type team_form = {
+  tf_games: int;
+  tf_win_pct: float;
+  tf_avg_margin: float;
+  tf_last_date: string option;
+}
+
+let compare_game_desc (a : game_summary) (b : game_summary) =
+  let by_date = String.compare b.game_date a.game_date in
+  if by_date <> 0 then by_date else String.compare b.game_id a.game_id
+
+let rec take n xs =
+  if n <= 0 then []
+  else
+    match xs with
+    | [] -> []
+    | x :: tl -> x :: take (n - 1) tl
+
+let parse_ymd (s : string) =
+  match String.split_on_char '-' s with
+  | [y; m; d] -> (
+      match int_of_string_opt y, int_of_string_opt m, int_of_string_opt d with
+      | Some yy, Some mm, Some dd -> Some (yy, mm, dd)
+      | _ -> None)
+  | _ -> None
+
+let time_of_ymd (y, m, d) =
+  let tm =
+    { Unix.tm_sec = 0;
+      tm_min = 0;
+      tm_hour = 12;
+      tm_mday = d;
+      tm_mon = m - 1;
+      tm_year = y - 1900;
+      tm_wday = 0;
+      tm_yday = 0;
+      tm_isdst = false
+    }
+  in
+  fst (Unix.mktime tm)
+
+let days_between (a : string) (b : string) =
+  match parse_ymd a, parse_ymd b with
+  | Some da, Some db ->
+      let ta = time_of_ymd da in
+      let tb = time_of_ymd db in
+      Some (int_of_float ((tb -. ta) /. 86400.0))
+  | _ -> None
+
+let latest_game_date (games : game_summary list) =
+  games
+  |> List.fold_left
+       (fun acc (g : game_summary) ->
+         match acc with
+         | None -> Some g.game_date
+         | Some d -> if String.compare g.game_date d > 0 then Some g.game_date else Some d)
+       None
+
+let team_form ~team ~(games : game_summary list) ~n =
+  let key = normalize_label team in
+  let relevant =
+    games
+    |> List.filter (fun (g : game_summary) ->
+        normalize_label g.home_team = key || normalize_label g.away_team = key)
+    |> List.sort compare_game_desc
+    |> take n
+  in
+  let last_date = match relevant with | g :: _ -> Some g.game_date | [] -> None in
+  let wins, ties, margin_sum, count =
+    relevant
+    |> List.fold_left
+         (fun (wins, ties, margin_sum, count) (g : game_summary) ->
+           match g.home_score, g.away_score with
+           | Some hs, Some ascore ->
+               let margin =
+                 if normalize_label g.home_team = key then hs - ascore else ascore - hs
+               in
+               if margin > 0 then (wins + 1, ties, margin_sum + margin, count + 1)
+               else if margin < 0 then (wins, ties, margin_sum + margin, count + 1)
+               else (wins, ties + 1, margin_sum + margin, count + 1)
+           | _ -> (wins, ties, margin_sum, count))
+         (0, 0, 0, 0)
+  in
+  let win_pct =
+    if count <= 0 then 0.5
+    else ((float_of_int wins) +. (0.5 *. float_of_int ties)) /. float_of_int count
+  in
+  let avg_margin = if count <= 0 then 0.0 else (float_of_int margin_sum) /. float_of_int count in
+  { tf_games = count; tf_win_pct = win_pct; tf_avg_margin = avg_margin; tf_last_date = last_date }
+
+let roster_ratio (r : roster_core_status option) =
+  match r with
+  | None -> None
+  | Some r ->
+      if r.rcs_total <= 0 then None
+      else Some ((float_of_int r.rcs_present) /. float_of_int r.rcs_total)
+
+let predict_match_nerd ~(context : prediction_context_input option) ~(season: string) ~(is_neutral: bool) ~(games: game_summary list) ~(home: team_stats) ~(away: team_stats) ~(home_win_pct: float) ~(away_win_pct: float) ~name_home ~name_away =
   let ratings, games_used = Elo.ratings_of_games games in
   let elo_home = Elo.rating_of_team ratings name_home in
   let elo_away = Elo.rating_of_team ratings name_away in
@@ -151,7 +248,73 @@ let predict_match_nerd ~(season: string) ~(is_neutral: bool) ~(games: game_summa
   in
 
   (* Blend probabilities (Elo-heavy) *)
-  let final_prob = clamp01 ((0.6 *. elo_prob) +. (0.25 *. pyth_prob) +. (0.15 *. stats_prob)) in
+  let base_prob = clamp01 ((0.6 *. elo_prob) +. (0.25 *. pyth_prob) +. (0.15 *. stats_prob)) in
+
+  let ctx_breakdown, final_prob =
+    match context with
+    | None -> (None, base_prob)
+    | Some (ctx : prediction_context_input) ->
+        let form_n = 5 in
+        let form_home = team_form ~team:name_home ~games ~n:form_n in
+        let form_away = team_form ~team:name_away ~games ~n:form_n in
+
+        let win_factor = 0.04 in
+        let margin_factor = 0.02 in
+        let margin_norm = 20.0 in
+        let form_delta =
+          ((form_home.tf_win_pct -. form_away.tf_win_pct) *. win_factor)
+          +. (((form_home.tf_avg_margin -. form_away.tf_avg_margin) /. margin_norm) *. margin_factor)
+        in
+
+        let roster_factor = 0.06 in
+        let roster_delta =
+          match roster_ratio ctx.pci_home_roster, roster_ratio ctx.pci_away_roster with
+          | Some rh, Some ra -> (rh -. ra) *. roster_factor
+          | _ -> 0.0
+        in
+
+        let rest_factor = 0.004 in
+        let rest_cap = 0.02 in
+        let ref_date = latest_game_date games in
+        let rest_home_days =
+          match form_home.tf_last_date, ref_date with
+          | Some d, Some r -> days_between d r
+          | _ -> None
+        in
+        let rest_away_days =
+          match form_away.tf_last_date, ref_date with
+          | Some d, Some r -> days_between d r
+          | _ -> None
+        in
+        let rest_delta =
+          match rest_home_days, rest_away_days with
+          | Some dh, Some da ->
+              let diff = dh - da in
+              let scaled = (float_of_int diff) *. rest_factor in
+              if scaled < -.rest_cap then -.rest_cap else if scaled > rest_cap then rest_cap else scaled
+          | _ -> 0.0
+        in
+
+        let ctx_cap = 0.08 in
+        let ctx_delta =
+          let raw = form_delta +. roster_delta +. rest_delta in
+          if raw < -.ctx_cap then -.ctx_cap else if raw > ctx_cap then ctx_cap else raw
+        in
+        let final_prob = clamp01 (base_prob +. ctx_delta) in
+        ( Some
+            { pcb_delta = ctx_delta;
+              pcb_form_home = form_home.tf_win_pct;
+              pcb_form_away = form_away.tf_win_pct;
+              pcb_form_delta = form_delta;
+              pcb_roster_home = ctx.pci_home_roster;
+              pcb_roster_away = ctx.pci_away_roster;
+              pcb_roster_delta = roster_delta;
+              pcb_rest_home_days = rest_home_days;
+              pcb_rest_away_days = rest_away_days;
+              pcb_rest_delta = rest_delta
+            },
+          final_prob )
+  in
   let result =
     {
       prob_a = final_prob;
@@ -171,6 +334,8 @@ let predict_match_nerd ~(season: string) ~(is_neutral: bool) ~(games: game_summa
       pb_pyth_away = pyth_away;
       pb_pyth_prob = pyth_prob;
       pb_stats_prob = stats_prob;
+      pb_base_prob = base_prob;
+      pb_context = ctx_breakdown;
       pb_final_prob = final_prob;
     }
   in

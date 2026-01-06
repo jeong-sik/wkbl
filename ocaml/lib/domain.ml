@@ -310,6 +310,30 @@ type prediction_result = {
   winner: string;
 }
 
+(** Prediction context inputs/breakdown (optional, best-effort). *)
+type roster_core_status = {
+  rcs_present: int;
+  rcs_total: int;
+}
+
+type prediction_context_input = {
+  pci_home_roster: roster_core_status option;
+  pci_away_roster: roster_core_status option;
+}
+
+type prediction_context_breakdown = {
+  pcb_delta: float;
+  pcb_form_home: float;
+  pcb_form_away: float;
+  pcb_form_delta: float;
+  pcb_roster_home: roster_core_status option;
+  pcb_roster_away: roster_core_status option;
+  pcb_roster_delta: float;
+  pcb_rest_home_days: int option;
+  pcb_rest_away_days: int option;
+  pcb_rest_delta: float;
+}
+
 (** Prediction breakdown (nerd mode) *)
 type prediction_breakdown = {
   pb_season: string;
@@ -322,6 +346,8 @@ type prediction_breakdown = {
   pb_pyth_away: float;
   pb_pyth_prob: float;
   pb_stats_prob: float;
+  pb_base_prob: float;
+  pb_context: prediction_context_breakdown option;
   pb_final_prob: float;
 }
 
