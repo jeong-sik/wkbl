@@ -249,6 +249,44 @@ let () =
       | _, _, _, _, _, Error e -> Dream.html (Views.error_page (Db.show_db_error e))
     );
 
+    (* Awards (Stat-based, unofficial) *)
+    Dream.get "/awards" (fun request ->
+      let open Lwt.Syntax in
+      let season = Dream.query request "season" |> Option.value ~default:"ALL" in
+      let include_mismatch = query_bool request "include_mismatch" in
+      let* seasons_res = Db.get_seasons () in
+      match seasons_res with
+      | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+      | Ok seasons ->
+          let prev_season_code =
+            if season = "ALL" then None
+            else
+              let rec loop prev = function
+                | [] -> None
+                | (s: season_info) :: rest ->
+                    if s.code = season then prev else loop (Some s.code) rest
+              in
+              loop None seasons
+          in
+          let prev_season_name =
+            match prev_season_code with
+            | None -> None
+            | Some code ->
+                seasons
+                |> List.find_opt (fun (s: season_info) -> s.code = code)
+                |> Option.map (fun (s: season_info) -> s.name)
+          in
+          let* mvp_res = Db.get_stat_mvp_eff ~season ~include_mismatch () in
+          let* mip_res =
+            match prev_season_code with
+            | None -> Lwt.return (Ok [])
+            | Some prev_season -> Db.get_stat_mip_eff_delta ~season ~prev_season ~include_mismatch ()
+          in
+          match mvp_res, mip_res with
+          | Ok mvp, Ok mip -> Dream.html (Views.awards_page ~season ~seasons ~include_mismatch ~prev_season_name ~mvp ~mip)
+          | Error e, _ | _, Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+    );
+
     (* Compare *)
     Dream.get "/compare" (fun request ->
       let open Lwt.Syntax in

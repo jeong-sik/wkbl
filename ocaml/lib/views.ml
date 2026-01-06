@@ -423,6 +423,7 @@ let layout ~title ~content =
       </div>
       <nav class="flex flex-wrap justify-end gap-x-4 gap-y-2 text-xs sm:text-sm">
         <a href="/" class="text-slate-400 hover:text-white transition">Home</a>
+        <a href="/awards" class="text-slate-400 hover:text-white transition">Awards</a>
         <a href="/leaders" class="text-slate-400 hover:text-white transition">Leaders</a>
         <a href="/boxscores" class="text-slate-400 hover:text-white transition">Boxscores</a>
         <a href="/games" class="text-slate-400 hover:text-white transition">Games</a>
@@ -986,11 +987,92 @@ let leader_card title (leaders: leader_entry list) =
     in
     Printf.sprintf {html|<div class="bg-slate-900 rounded-xl border border-slate-800 p-5 shadow-lg"><h3 class="text-slate-400 font-bold uppercase tracking-wider text-xs mb-4">%s</h3><div class="flex items-center gap-4 mb-6 pb-6 border-b border-slate-800"><div class="relative">%s<div class="absolute -top-2 -right-2 bg-orange-500 text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center border-2 border-slate-900">1</div></div><div><div class="text-3xl font-black text-white">%.1f</div><div class="font-bold text-orange-400 flex items-center flex-wrap"><a href="/player/%s" class="hover:text-white transition-colors">%s</a>%s</div><div class="text-xs text-slate-500">%s</div></div></div><div class="space-y-1">%s</div></div>|html} (escape_html title) (player_img_tag ~class_name:"w-16 h-16" top.le_player_id top.le_player_name) top.le_stat_value top.le_player_id (escape_html (normalize_name top.le_player_name)) top_id_badge (escape_html top.le_team_name) others_rows
 
+let leader_card_signed title (leaders: leader_entry list) =
+  if leaders = [] then ""
+  else
+    let name_counts : (string, int) Hashtbl.t = Hashtbl.create 16 in
+    leaders
+    |> List.iter (fun (l: leader_entry) ->
+        let key = normalize_name l.le_player_name in
+        let prev = Hashtbl.find_opt name_counts key |> Option.value ~default:0 in
+        Hashtbl.replace name_counts key (prev + 1));
+    let show_id (l: leader_entry) =
+      match Hashtbl.find_opt name_counts (normalize_name l.le_player_name) with
+      | Some c when c > 1 -> true
+      | _ -> false
+    in
+    let signed v = if v > 0.0 then Printf.sprintf "+%.1f" v else Printf.sprintf "%.1f" v in
+    let top = List.hd leaders in
+    let top_id_badge =
+      if show_id top then Printf.sprintf {html|<span class="ml-2">%s</span>|html} (player_id_badge top.le_player_id) else ""
+    in
+    let others = List.tl leaders in
+    let others_rows =
+      others
+      |> List.mapi (fun i l ->
+          let id_badge = if show_id l then Printf.sprintf {html|<span class="ml-2">%s</span>|html} (player_id_badge l.le_player_id) else "" in
+          Printf.sprintf {html|<div class="flex items-center justify-between py-2 border-b border-slate-800/60 last:border-0"><div class="flex items-center gap-3"><span class="text-slate-500 font-mono text-sm w-4">%d</span>%s<div class="flex flex-col"><div class="text-sm font-medium text-slate-300"><a href="/player/%s" class="hover:text-orange-400 transition-colors">%s</a>%s</div><div class="text-xs text-slate-500">%s</div></div></div><div class="font-mono font-bold text-slate-400">%s</div></div>|html} (i + 2) (player_img_tag ~class_name:"w-8 h-8" l.le_player_id l.le_player_name) l.le_player_id (escape_html (normalize_name l.le_player_name)) id_badge (escape_html l.le_team_name) (escape_html (signed l.le_stat_value)))
+      |> String.concat "\n"
+    in
+    Printf.sprintf {html|<div class="bg-slate-900 rounded-xl border border-slate-800 p-5 shadow-lg"><h3 class="text-slate-400 font-bold uppercase tracking-wider text-xs mb-4">%s</h3><div class="flex items-center gap-4 mb-6 pb-6 border-b border-slate-800"><div class="relative">%s<div class="absolute -top-2 -right-2 bg-orange-500 text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center border-2 border-slate-900">1</div></div><div><div class="text-3xl font-black text-white">%s</div><div class="font-bold text-orange-400 flex items-center flex-wrap"><a href="/player/%s" class="hover:text-white transition-colors">%s</a>%s</div><div class="text-xs text-slate-500">%s</div></div></div><div class="space-y-1">%s</div></div>|html}
+      (escape_html title)
+      (player_img_tag ~class_name:"w-16 h-16" top.le_player_id top.le_player_name)
+      (escape_html (signed top.le_stat_value))
+      top.le_player_id
+      (escape_html (normalize_name top.le_player_name))
+      top_id_badge
+      (escape_html top.le_team_name)
+      others_rows
+
 let leaders_page ~season ~seasons ~scope pts reb ast stl blk =
   let season_options = let base = seasons |> List.map (fun (s: season_info) -> let selected = if s.code = season then "selected" else "" in Printf.sprintf {html|<option value="%s" %s>%s</option>|html} s.code selected (escape_html s.name)) |> String.concat "\n" in Printf.sprintf {html|<option value="ALL" %s>All Seasons</option>%s|html} (if season = "ALL" then "selected" else "") base in
   let scope_options = let opt v l = let sel = if scope = v then "selected" else "" in Printf.sprintf {html|<option value="%s" %s>%s</option>|html} v sel l in opt "per_game" "Per Game" ^ opt "per_36" "Per 36 Min" in
   let content = Printf.sprintf {html|<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">%s%s%s%s%s</div>|html} (leader_card "Points" pts) (leader_card "Rebounds" reb) (leader_card "Assists" ast) (leader_card "Steals" stl) (leader_card "Blocks" blk) in
   layout ~title:"WKBL Leaders" ~content:(Printf.sprintf {html|<div class="space-y-8 animate-fade-in"><div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3"><div><h2 class="text-3xl font-black text-white">League Leaders</h2><p class="text-slate-400">Top performers by category.</p></div><form action="/leaders" method="get" class="flex gap-3"><select name="season" class="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none w-40" onchange="this.form.submit()">%s</select><select name="scope" class="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none w-40" onchange="this.form.submit()">%s</select></form></div>%s</div>|html} season_options scope_options content)
+
+let awards_page ~(season: string) ~(seasons: season_info list) ~(include_mismatch: bool) ~(prev_season_name: string option) ~(mvp: leader_entry list) ~(mip: leader_entry list) =
+  let season_options =
+    let base =
+      seasons
+      |> List.map (fun (s: season_info) ->
+          let selected = if s.code = season then "selected" else "" in
+          Printf.sprintf {html|<option value="%s" %s>%s</option>|html} s.code selected (escape_html s.name))
+      |> String.concat "\n"
+    in
+    Printf.sprintf {html|<option value="ALL" %s>All Seasons</option>%s|html} (if season = "ALL" then "selected" else "") base
+  in
+  let include_checked = if include_mismatch then "checked" else "" in
+  let mvp_card =
+    if mvp = [] then
+      {html|<div class="bg-slate-900 rounded-xl border border-slate-800 p-5 shadow-lg"><h3 class="text-slate-400 font-bold uppercase tracking-wider text-xs mb-4">MVP (EFF)</h3><div class="text-slate-400 text-sm leading-relaxed">표시할 데이터가 없습니다.</div></div>|html}
+    else
+      leader_card "MVP (EFF)" mvp
+  in
+  let mip_card =
+    match prev_season_name with
+    | None ->
+        Printf.sprintf
+          {html|<div class="bg-slate-900 rounded-xl border border-slate-800 p-5 shadow-lg"><h3 class="text-slate-400 font-bold uppercase tracking-wider text-xs mb-4">MIP (ΔEFF)</h3><div class="text-slate-400 text-sm leading-relaxed">전 시즌 대비 <span class="font-mono text-slate-300">EFF(AVG(game_score))</span> 변화(Δ)를 계산합니다. 시즌 선택 시에만 표시됩니다.</div></div>|html}
+    | Some prev_name ->
+        if mip = [] then
+          Printf.sprintf
+            {html|<div class="bg-slate-900 rounded-xl border border-slate-800 p-5 shadow-lg"><h3 class="text-slate-400 font-bold uppercase tracking-wider text-xs mb-4">MIP (ΔEFF)</h3><div class="text-slate-400 text-sm leading-relaxed">%s 대비 ΔEFF 계산에 필요한 표본이 부족합니다. (두 시즌 모두 <span class="font-mono text-slate-300">GP≥10</span>)</div></div>|html}
+            (escape_html prev_name)
+        else
+          leader_card_signed (Printf.sprintf "MIP (ΔEFF vs %s)" prev_name) mip
+  in
+  let disclaimer_html =
+    {html|<div class="bg-slate-900/50 rounded-xl border border-slate-800/60 p-5 text-slate-400 text-sm leading-relaxed"><div class="font-bold text-slate-300 mb-2">Stat Awards (unofficial)</div><ul class="list-disc list-inside space-y-1"><li>MVP: <span class="font-mono text-slate-300">EFF = AVG(game_score)</span> 상위</li><li>MIP: 전 시즌 대비 <span class="font-mono text-slate-300">ΔEFF</span> 상위 (두 시즌 모두 <span class="font-mono text-slate-300">GP≥10</span>)</li><li>공식 수상 데이터가 DB에 없어서, 현재는 박스스코어 기반 지표로만 추정합니다.</li></ul></div>|html}
+  in
+  layout
+    ~title:"WKBL Awards"
+    ~content:(Printf.sprintf
+      {html|<div class="space-y-8 animate-fade-in"><div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3"><div><h2 class="text-3xl font-black text-white">Awards</h2><p class="text-slate-400">Stat-based awards for quick reference.</p></div><form action="/awards" method="get" class="flex flex-wrap items-center gap-3"><select name="season" class="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none w-40" onchange="this.form.submit()">%s</select><label class="flex items-center gap-2 text-xs text-slate-400"><input type="checkbox" name="include_mismatch" value="1" %s class="h-4 w-4 rounded border-slate-600 bg-slate-800 accent-orange-500" onchange="this.form.submit()" title="Final score != sum(points) 경기 포함"><span>Mismatch 포함</span></label></form></div><div class="grid grid-cols-1 md:grid-cols-2 gap-6">%s%s</div>%s</div>|html}
+      season_options
+      include_checked
+      mvp_card
+      mip_card
+      disclaimer_html)
 
 let player_profile_page (profile: player_profile) ~scope ~(seasons_catalog: season_info list) =
   let p = profile.player in
@@ -1015,6 +1097,9 @@ let player_profile_page (profile: player_profile) ~scope ~(seasons_catalog: seas
     let name = normalize_label p.name in
     let team = String.trim avg.team_name |> normalize_label in
     let base_query = if team = "" then name else Printf.sprintf "%s %s" name team in
+    let wkbl_profile =
+      "https://www.wkbl.or.kr/player/detail2.asp?pno=" ^ Uri.pct_encode p.id
+    in
     let youtube =
       "https://www.youtube.com/results?search_query="
       ^ Uri.pct_encode (Printf.sprintf "%s WKBL 하이라이트" base_query)
@@ -1024,8 +1109,8 @@ let player_profile_page (profile: player_profile) ~scope ~(seasons_catalog: seas
       ^ Uri.pct_encode (Printf.sprintf "site:instagram.com %s WKBL 인스타" base_query)
     in
     Printf.sprintf
-      {html|<a href="%s" target="_blank" rel="noopener noreferrer" class="bg-slate-800/60 text-slate-300 px-3 py-1 rounded text-sm font-mono hover:bg-slate-700/60 hover:text-white transition">▶ 영상</a><a href="%s" target="_blank" rel="noopener noreferrer" class="bg-slate-800/60 text-slate-300 px-3 py-1 rounded text-sm font-mono hover:bg-slate-700/60 hover:text-white transition">인스타</a>|html}
-      (escape_html youtube) (escape_html instagram)
+      {html|<a href="%s" target="_blank" rel="noopener noreferrer" class="bg-slate-800/60 text-slate-300 px-3 py-1 rounded text-sm font-mono hover:bg-slate-700/60 hover:text-white transition">WKBL</a><a href="%s" target="_blank" rel="noopener noreferrer" class="bg-slate-800/60 text-slate-300 px-3 py-1 rounded text-sm font-mono hover:bg-slate-700/60 hover:text-white transition">▶ 영상</a><a href="%s" target="_blank" rel="noopener noreferrer" class="bg-slate-800/60 text-slate-300 px-3 py-1 rounded text-sm font-mono hover:bg-slate-700/60 hover:text-white transition">인스타</a>|html}
+      (escape_html wkbl_profile) (escape_html youtube) (escape_html instagram)
   in
   let game_rows games =
     games
@@ -1159,7 +1244,7 @@ let player_profile_page (profile: player_profile) ~scope ~(seasons_catalog: seas
           |> String.concat "\n"
         in
         Printf.sprintf
-          {html|<div class="bg-slate-900 rounded-xl border border-slate-800 p-6 shadow-lg"><div class="flex items-start justify-between gap-4 mb-4"><div class="min-w-0"><h3 class="text-slate-300 font-bold uppercase tracking-wider text-xs flex items-center gap-2"><span class="text-lg">🔁</span> Team Movement</h3><div class="mt-1 text-[11px] text-slate-500 leading-relaxed break-keep">박스스코어 출전팀 변화로 추정한 연보입니다. (기간=첫/마지막 출전일)</div></div><span class="text-[11px] text-slate-500 font-mono shrink-0">박스스코어</span></div><div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs"><div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-3"><div class="text-slate-500 font-mono uppercase tracking-widest text-[11px]">Current</div><div class="mt-2 text-slate-300">%s</div></div><div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-3"><div class="text-slate-500 font-mono uppercase tracking-widest text-[11px]">Transfers</div><div class="mt-2 font-mono text-slate-200 text-lg font-black">%d</div></div><div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-3"><div class="text-slate-500 font-mono uppercase tracking-widest text-[11px]">Latest</div><div class="mt-2 text-slate-300">%s</div></div></div><div class="mt-4 rounded-lg border border-slate-800/60 bg-slate-950/30 p-4"><ol class="relative border-l border-slate-800/60 ml-2 space-y-4">%s</ol></div><div class="mt-4 pt-3 border-t border-slate-800/60 text-[11px] text-slate-500 leading-relaxed break-keep">공식 이적/드래프트 연보는 추가 수집 중입니다. (공식 페이지 기반)</div></div>|html}
+          {html|<div class="bg-slate-900 rounded-xl border border-slate-800 p-6 shadow-lg"><div class="flex items-start justify-between gap-4 mb-4"><div class="min-w-0"><h3 class="text-slate-300 font-bold uppercase tracking-wider text-xs flex items-center gap-2"><span class="text-lg">🔁</span> Team Movement</h3><div class="mt-1 text-[11px] text-slate-500 leading-relaxed break-keep">박스스코어 출전팀 변화로 추정한 연보입니다. (기간=첫/마지막 출전일)</div></div><span class="text-[11px] text-slate-500 font-mono shrink-0">박스스코어</span></div><div class="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3 gap-3 text-xs"><div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-3"><div class="text-slate-500 font-mono uppercase tracking-widest text-[11px]">Current</div><div class="mt-2 text-slate-300">%s</div></div><div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-3"><div class="text-slate-500 font-mono uppercase tracking-widest text-[11px]">Transfers</div><div class="mt-2 font-mono text-slate-200 text-lg font-black">%d</div></div><div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-3"><div class="text-slate-500 font-mono uppercase tracking-widest text-[11px]">Latest</div><div class="mt-2 text-slate-300">%s</div></div></div><div class="mt-4 rounded-lg border border-slate-800/60 bg-slate-950/30 p-4"><ol class="relative border-l border-slate-800/60 ml-2 space-y-4">%s</ol></div><div class="mt-4 pt-3 border-t border-slate-800/60 text-[11px] text-slate-500 leading-relaxed break-keep">공식 이적/드래프트 연보는 추가 수집 중입니다. (공식 페이지 기반)</div></div>|html}
           current_team_html transfers last_move_value_html stint_rows
   in
 
@@ -1254,7 +1339,7 @@ let player_profile_page (profile: player_profile) ~scope ~(seasons_catalog: seas
       {html|<div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-4"><div class="flex items-center justify-between gap-3"><div class="text-slate-400 font-bold uppercase tracking-widest text-[11px] flex items-center gap-2"><span class="text-base">🧩</span> Draft / Trade</div><span class="px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700/60 text-[10px] font-mono text-slate-300">예정</span></div><div class="mt-2 text-slate-400 text-xs leading-relaxed">공식 드래프트/이적 기록은 아직 수집 중입니다. 현재는 <span class="font-mono text-slate-300">박스스코어 출전팀</span> 변화로 팀 이동을 추정합니다. (공식 페이지 기반 추가 수집 필요)</div></div>|html}
     in
     Printf.sprintf
-      {html|<div class="bg-slate-900 rounded-xl border border-slate-800 p-6 shadow-lg"><div class="flex items-start justify-between gap-4 mb-4"><h3 class="text-slate-300 font-bold uppercase tracking-wider text-xs flex items-center gap-2"><span class="text-lg">🧾</span> Data Notes</h3><span class="text-[11px] text-slate-500 font-mono">커버리지</span></div><div class="grid grid-cols-1 sm:grid-cols-2 gap-3">%s%s</div><div class="mt-3">%s</div></div>|html}
+      {html|<div class="bg-slate-900 rounded-xl border border-slate-800 p-6 shadow-lg"><div class="flex items-start justify-between gap-4 mb-4"><h3 class="text-slate-300 font-bold uppercase tracking-wider text-xs flex items-center gap-2"><span class="text-lg">🧾</span> Data Notes</h3><span class="text-[11px] text-slate-500 font-mono">커버리지</span></div><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-3">%s%s</div><div class="mt-3">%s</div></div>|html}
       seasons_card_html
       pbp_card_html
       draft_card_html
