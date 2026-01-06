@@ -981,6 +981,67 @@ module Queries = struct
   let leaders_stl_per36 = (tup2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, (SUM(s.stl) * 1.0 / SUM(s.min_seconds)) * 36 * 60 FROM game_stats s JOIN players p ON s.player_id = p.player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id HAVING SUM(s.min_seconds) >= 6000 ORDER BY (SUM(s.stl) / SUM(s.min_seconds)) DESC LIMIT 5 |}
   let leaders_blk = (tup2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, AVG(s.blk) FROM game_stats s JOIN players p ON s.player_id = p.player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id HAVING COUNT(*) >= 5 ORDER BY AVG(s.blk) DESC LIMIT 5 |}
   let leaders_blk_per36 = (tup2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, (SUM(s.blk) * 1.0 / SUM(s.min_seconds)) * 36 * 60 FROM game_stats s JOIN players p ON s.player_id = p.player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id HAVING SUM(s.min_seconds) >= 6000 ORDER BY (SUM(s.blk) / SUM(s.min_seconds)) DESC LIMIT 5 |}
+
+  (** Stat Awards (unofficial) *)
+  let stat_mvp_eff = (tup2 string (tup2 string int) ->* Types.leader_entry) {|
+    SELECT
+      p.player_id,
+      p.player_name,
+      t.team_name_kr,
+      AVG(s.game_score)
+    FROM game_stats s
+    JOIN players p ON s.player_id = p.player_id
+    JOIN teams t ON s.team_code = t.team_code
+    JOIN games g ON g.game_id = s.game_id
+    WHERE (? = 'ALL' OR g.season_code = ?)
+      AND g.game_type != '10'
+      AND (? = 1 OR g.game_id NOT IN (SELECT game_id FROM score_mismatch_games))
+    GROUP BY p.player_id
+    HAVING COUNT(*) >= 5
+    ORDER BY AVG(s.game_score) DESC
+    LIMIT 5
+  |}
+
+  let stat_mip_eff_delta = (tup2 string (tup2 int (tup2 string int)) ->* Types.leader_entry) {|
+    WITH cur AS (
+      SELECT
+        s.player_id AS player_id,
+        AVG(s.game_score) AS eff_cur,
+        COUNT(*) AS gp_cur,
+        MAX(t.team_name_kr) AS team_name
+      FROM game_stats s
+      JOIN games g ON g.game_id = s.game_id
+      JOIN teams t ON t.team_code = s.team_code
+      WHERE g.season_code = ?
+        AND g.game_type != '10'
+        AND (? = 1 OR g.game_id NOT IN (SELECT game_id FROM score_mismatch_games))
+      GROUP BY s.player_id
+    ),
+    prev AS (
+      SELECT
+        s.player_id AS player_id,
+        AVG(s.game_score) AS eff_prev,
+        COUNT(*) AS gp_prev
+      FROM game_stats s
+      JOIN games g ON g.game_id = s.game_id
+      WHERE g.season_code = ?
+        AND g.game_type != '10'
+        AND (? = 1 OR g.game_id NOT IN (SELECT game_id FROM score_mismatch_games))
+      GROUP BY s.player_id
+    )
+    SELECT
+      p.player_id,
+      p.player_name,
+      cur.team_name,
+      (cur.eff_cur - prev.eff_prev) AS delta
+    FROM cur
+    JOIN prev ON prev.player_id = cur.player_id
+    JOIN players p ON p.player_id = cur.player_id
+    WHERE cur.gp_cur >= 10
+      AND prev.gp_prev >= 10
+    ORDER BY delta DESC
+    LIMIT 5
+  |}
   let player_info = (string ->? Types.player_info) "SELECT player_id, player_name, position, birth_date, height, weight FROM players WHERE player_id = ?"
   
   (** Queries for Per Game (Average) *)
@@ -1273,6 +1334,15 @@ module Repo = struct
   let get_game_info ~game_id (module Db : Caqti_lwt.CONNECTION) = Db.find_opt Queries.game_info_by_id game_id
   let get_boxscore_stats ~game_id (module Db : Caqti_lwt.CONNECTION) = Db.collect_list Queries.boxscore_stats_by_game_id game_id
   let get_leaders ~category ~scope ~season (module Db : Caqti_lwt.CONNECTION) = let q = match (category, scope) with | "pts", "per_36" -> Queries.leaders_pts_per36 | "pts", _ -> Queries.leaders_pts | "reb", "per_36" -> Queries.leaders_reb_per36 | "reb", _ -> Queries.leaders_reb | "ast", "per_36" -> Queries.leaders_ast_per36 | "ast", _ -> Queries.leaders_ast | "stl", "per_36" -> Queries.leaders_stl_per36 | "stl", _ -> Queries.leaders_stl | "blk", "per_36" -> Queries.leaders_blk_per36 | "blk", _ -> Queries.leaders_blk | _ -> Queries.leaders_pts in Db.collect_list q (season, season)
+
+  let get_stat_mvp_eff ~season ~include_mismatch (module Db : Caqti_lwt.CONNECTION) =
+    let include_int = if include_mismatch then 1 else 0 in
+    let s = if String.trim season = "" then "ALL" else season in
+    Db.collect_list Queries.stat_mvp_eff (s, (s, include_int))
+
+  let get_stat_mip_eff_delta ~season ~prev_season ~include_mismatch (module Db : Caqti_lwt.CONNECTION) =
+    let include_int = if include_mismatch then 1 else 0 in
+    Db.collect_list Queries.stat_mip_eff_delta (season, (include_int, (prev_season, include_int)))
   
 	  let get_player_profile ~player_id (module Db : Caqti_lwt.CONNECTION) = 
 	    let open Lwt.Syntax in 
@@ -1432,7 +1502,11 @@ let dedupe_team_stats (items : team_stats list) =
   let seen : (string, unit) Hashtbl.t = Hashtbl.create 16 in
   items
   |> List.filter (fun (row: team_stats) ->
-      let key = normalize_label row.team |> String.uppercase_ascii in
+      let key =
+        match team_code_of_string row.team with
+        | Some code -> code
+        | None -> normalize_label row.team |> String.uppercase_ascii
+      in
       if Hashtbl.mem seen key then
         false
       else (
@@ -1470,6 +1544,13 @@ let get_team_active_player_ids ~team_name ~game_id () =
   with_db (fun db -> Repo.get_team_active_player_ids ~team_name ~game_id db)
 let get_boxscore ~game_id () = let open Lwt.Syntax in let* game_info_result = with_db (fun db -> Repo.get_game_info ~game_id db) in let* stats_result = with_db (fun db -> Repo.get_boxscore_stats ~game_id db) in match game_info_result, stats_result with | Ok (Some game_info), Ok stats -> let home_players = List.filter (fun s -> s.bs_team_code = game_info.gi_home_team_code) stats in let away_players = List.filter (fun s -> s.bs_team_code = game_info.gi_away_team_code) stats in Lwt.return (Ok { boxscore_game = game_info; boxscore_home_players = home_players; boxscore_away_players = away_players }) | Ok None, _ -> Lwt.return (Error (QueryFailed "Game not found")) | Error err, _ -> Lwt.return (Error err) | _, Error err -> Lwt.return (Error err)
 let get_leaders ?(season="ALL") ?(scope="per_game") category = with_db (fun db -> Repo.get_leaders ~category ~scope ~season db)
+
+let get_stat_mvp_eff ?(season="ALL") ?(include_mismatch=false) () =
+  with_db (fun db -> Repo.get_stat_mvp_eff ~season ~include_mismatch db)
+
+let get_stat_mip_eff_delta ~season ~prev_season ?(include_mismatch=false) () =
+  with_db (fun db -> Repo.get_stat_mip_eff_delta ~season ~prev_season ~include_mismatch db)
+
 let get_player_profile ~player_id () = with_db (fun db -> Repo.get_player_profile ~player_id db)
 let get_player_season_stats ~player_id ~scope () = with_db (fun db -> Repo.get_player_season_stats ~player_id ~scope db)
 let get_player_game_logs ~player_id ?(season="ALL") ?(include_mismatch=false) () =
