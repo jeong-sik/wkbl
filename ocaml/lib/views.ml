@@ -906,9 +906,8 @@ let player_profile_page (profile: player_profile) ~scope =
     |> List.map (fun (g: player_game_stat) ->
         let res_color = if g.pts >= 20 then "text-orange-400" else "text-slate-300" in
         let pm_class, pm_str =
-          match g.plus_minus with
-          | None -> ("text-slate-500", "-")
-          | Some v ->
+          match g.plus_minus, g.team_score, g.opponent_score with
+          | Some v, _, _ ->
               let cls =
                 if v > 0 then "text-sky-400"
                 else if v < 0 then "text-rose-400"
@@ -916,6 +915,19 @@ let player_profile_page (profile: player_profile) ~scope =
               in
               let s = if v > 0 then Printf.sprintf "+%d" v else string_of_int v in
               (cls, s)
+          | None, Some team_score, Some opponent_score ->
+              let margin = team_score - opponent_score in
+              let cls =
+                if margin > 0 then "text-sky-400"
+                else if margin < 0 then "text-rose-400"
+                else "text-slate-400"
+              in
+              let s =
+                if margin > 0 then Printf.sprintf "M +%d" margin
+                else Printf.sprintf "M %d" margin
+              in
+              (cls, s)
+          | None, _, _ -> ("text-slate-500", "-")
         in
         let margin_badge =
           match g.team_score, g.opponent_score with
@@ -1042,7 +1054,7 @@ let player_profile_page (profile: player_profile) ~scope =
         (if backfill_row_html = "" then "" else Printf.sprintf {html|<details class="mt-3 text-[11px] text-slate-500"><summary class="cursor-pointer select-none text-slate-400 font-bold">Backfill</summary><div class="mt-2">%s</div></details>|html} backfill_row_html)
     in
     let pbp_card_html =
-      {html|<div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-4"><div class="flex items-center justify-between gap-3"><div class="text-slate-400 font-bold uppercase tracking-widest text-[11px] flex items-center gap-2"><span class="text-base">🎥</span> PBP +/-</div><span class="px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700/60 text-[10px] font-mono text-slate-300">부분</span></div><div class="mt-2 text-slate-400 text-xs leading-relaxed">개인 <span class="font-mono text-slate-300">+/-</span>는 문자중계(PBP) 기반이라 <span class="text-slate-300 font-bold">일부 경기만</span> 제공됩니다. 데이터가 없거나 PBP/박스스코어 최종 스코어 불일치 등 품질 이슈가 있으면 <span class="font-mono text-slate-300">-</span>로 표시합니다.</div></div>|html}
+      {html|<div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-4"><div class="flex items-center justify-between gap-3"><div class="text-slate-400 font-bold uppercase tracking-widest text-[11px] flex items-center gap-2"><span class="text-base">🎥</span> PBP +/-</div><span class="px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700/60 text-[10px] font-mono text-slate-300">부분</span></div><div class="mt-2 text-slate-400 text-xs leading-relaxed">개인 <span class="font-mono text-slate-300">+/-</span>는 문자중계(PBP) 기반이라 <span class="text-slate-300 font-bold">일부 경기만</span> 제공됩니다. PBP가 없으면 <span class="font-mono text-slate-300">M</span>으로 팀 득실마진(경기 최종 점수)을 대신 표시합니다. (품질 이슈면 <span class="font-mono text-slate-300">-</span>)</div></div>|html}
     in
     let draft_card_html =
       {html|<div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-4"><div class="flex items-center justify-between gap-3"><div class="text-slate-400 font-bold uppercase tracking-widest text-[11px] flex items-center gap-2"><span class="text-base">🧩</span> Draft / Trade</div><span class="px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700/60 text-[10px] font-mono text-slate-300">예정</span></div><div class="mt-2 text-slate-400 text-xs leading-relaxed">공식 드래프트/이적 기록은 아직 수집 중입니다. 현재는 <span class="font-mono text-slate-300">박스스코어 출전팀</span> 변화로 팀 이동을 추정합니다. (공식 페이지 기반 추가 수집 필요)</div></div>|html}
@@ -1061,7 +1073,7 @@ let player_profile_page (profile: player_profile) ~scope =
   in
 
   layout ~title:(p.name ^ " | WKBL Profile")
-    ~content:(Printf.sprintf {html|<div class="space-y-8 animate-fade-in"><div class="bg-slate-900 rounded-xl border border-slate-800 p-8 shadow-2xl flex flex-col md:flex-row items-center md:items-start gap-8"><div class="relative">%s<div class="absolute -bottom-3 -right-3 bg-slate-800 border border-slate-700 text-white text-xs font-bold px-3 py-1 rounded-full">%s</div></div><div class="text-center md:text-left space-y-2"><h1 class="text-4xl font-black text-white">%s</h1><div class="text-slate-400 text-lg">%s</div><div class="flex flex-wrap gap-2 justify-center md:justify-start pt-2"><span class="bg-slate-800 text-slate-300 px-3 py-1 rounded text-sm">%s</span>%s%s%s</div></div></div><div class="grid grid-cols-1 lg:grid-cols-4 gap-8"><div class="lg:col-span-3 space-y-8">%s<div class="space-y-4"><div class="flex flex-col gap-1"><h3 class="text-xl font-bold text-white">Recent Games</h3><p class="text-[11px] text-slate-500">개인 <span class="font-mono text-slate-300">+/-</span>는 문자중계(PBP) 기반이며, 데이터가 없거나 PBP/박스스코어 최종 스코어 불일치 등 품질 이슈가 있으면 <span class="font-mono text-slate-300">-</span>로 표시합니다.</p></div><div class="bg-slate-900 rounded-xl border border-slate-800 overflow-x-auto shadow-lg"><table class="min-w-[920px] w-full text-sm font-mono table-fixed"><thead class="bg-slate-800/80 text-slate-400 uppercase tracking-wider text-xs"><tr><th class="px-4 py-3 text-left font-sans w-[110px] whitespace-nowrap">Date</th><th class="px-4 py-3 text-left font-sans">Opponent</th><th class="px-4 py-3 text-right w-[72px]">MIN</th><th class="px-4 py-3 text-right text-orange-400 w-[72px]">PTS</th><th class="px-4 py-3 text-right w-[72px]">+/-</th><th class="px-4 py-3 text-right w-[72px]">REB</th><th class="px-4 py-3 text-right w-[72px]">AST</th><th class="px-4 py-3 text-right w-[72px]">STL</th><th class="px-4 py-3 text-right w-[72px]">BLK</th></tr></thead><tbody>%s</tbody></table></div></div>%s</div><div class="space-y-8"><div class="space-y-4">%s%s%s%s</div></div></div></div>|html}
+    ~content:(Printf.sprintf {html|<div class="space-y-8 animate-fade-in"><div class="bg-slate-900 rounded-xl border border-slate-800 p-8 shadow-2xl flex flex-col md:flex-row items-center md:items-start gap-8"><div class="relative">%s<div class="absolute -bottom-3 -right-3 bg-slate-800 border border-slate-700 text-white text-xs font-bold px-3 py-1 rounded-full">%s</div></div><div class="text-center md:text-left space-y-2"><h1 class="text-4xl font-black text-white">%s</h1><div class="text-slate-400 text-lg">%s</div><div class="flex flex-wrap gap-2 justify-center md:justify-start pt-2"><span class="bg-slate-800 text-slate-300 px-3 py-1 rounded text-sm">%s</span>%s%s%s</div></div></div><div class="grid grid-cols-1 lg:grid-cols-4 gap-8"><div class="lg:col-span-3 space-y-8">%s<div class="space-y-4"><div class="flex flex-col gap-1"><h3 class="text-xl font-bold text-white">Recent Games</h3><p class="text-[11px] text-slate-500">개인 <span class="font-mono text-slate-300">+/-</span>는 문자중계(PBP) 기반입니다. PBP가 없으면 <span class="font-mono text-slate-300">M</span>으로 팀 득실마진(경기 최종 점수)을 대신 표시합니다. (데이터가 없거나 PBP/박스스코어 최종 스코어 불일치 등 품질 이슈면 <span class="font-mono text-slate-300">-</span>)</p></div><div class="bg-slate-900 rounded-xl border border-slate-800 overflow-x-auto shadow-lg"><table class="min-w-[920px] w-full text-sm font-mono table-fixed"><thead class="bg-slate-800/80 text-slate-400 uppercase tracking-wider text-xs"><tr><th class="px-4 py-3 text-left font-sans w-[110px] whitespace-nowrap">Date</th><th class="px-4 py-3 text-left font-sans">Opponent</th><th class="px-4 py-3 text-right w-[72px]">MIN</th><th class="px-4 py-3 text-right text-orange-400 w-[72px]">PTS</th><th class="px-4 py-3 text-right w-[72px]">+/-</th><th class="px-4 py-3 text-right w-[72px]">REB</th><th class="px-4 py-3 text-right w-[72px]">AST</th><th class="px-4 py-3 text-right w-[72px]">STL</th><th class="px-4 py-3 text-right w-[72px]">BLK</th></tr></thead><tbody>%s</tbody></table></div></div>%s</div><div class="space-y-8"><div class="space-y-4">%s%s%s%s</div></div></div></div>|html}
           (player_img_tag ~class_name:"w-32 h-32 border-4 border-slate-700 shadow-2xl" p.id p.name)
           (escape_html p.id)
           (escape_html p.name)
