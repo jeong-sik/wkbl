@@ -290,21 +290,90 @@ let () =
     (* Compare *)
     Dream.get "/compare" (fun request ->
       let open Lwt.Syntax in
-      let p1_name = Dream.query request "p1" |> Option.value ~default:"" in
-      let p2_name = Dream.query request "p2" |> Option.value ~default:"" in
-      if p1_name = "" || p2_name = "" then
-        Dream.html (Views.compare_page None None [])
-      else
-        let* p1_res = Db.get_player_by_name p1_name in
-        let* p2_res = Db.get_player_by_name p2_name in
-        match p1_res, p2_res with
-        | Ok (Some a), Ok (Some b) ->
-            let* h2h_res = Db.get_player_h2h_data ~p1_id:a.player_id ~p2_id:b.player_id () in
-            let h2h = match h2h_res with Ok h -> h | Error _ -> [] in
-            Dream.html (Views.compare_page (Some a) (Some b) h2h)
-        | Ok None, _ -> Dream.html (Views.error_page (Printf.sprintf "Player not found: %s" p1_name))
-        | _, Ok None -> Dream.html (Views.error_page (Printf.sprintf "Player not found: %s" p2_name))
-        | Error e, _ | _, Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+      let season = Dream.query request "season" |> Option.value ~default:"ALL" in
+      let p1_query = Dream.query request "p1" |> Option.value ~default:"" in
+      let p2_query = Dream.query request "p2" |> Option.value ~default:"" in
+      let p1_id = Dream.query request "p1_id" |> Option.value ~default:"" in
+      let p2_id = Dream.query request "p2_id" |> Option.value ~default:"" in
+      let p1_id_opt = if String.trim p1_id = "" then None else Some (String.trim p1_id) in
+      let p2_id_opt = if String.trim p2_id = "" then None else Some (String.trim p2_id) in
+
+      let* seasons_res = Db.get_seasons () in
+      match seasons_res with
+      | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+      | Ok seasons ->
+          let errors : string list ref = ref [] in
+          let add_error msg = errors := msg :: !errors in
+
+          if p1_id_opt <> None && p1_id_opt = p2_id_opt then add_error "Players must be different.";
+
+          let* p1_sel_res =
+            match p1_id_opt with
+            | None -> Lwt.return (Ok None)
+            | Some pid -> Db.get_player_aggregate_by_id ~player_id:pid ~season ()
+          in
+          let* p2_sel_res =
+            match p2_id_opt with
+            | None -> Lwt.return (Ok None)
+            | Some pid -> Db.get_player_aggregate_by_id ~player_id:pid ~season ()
+          in
+          let p1_selected =
+            match p1_sel_res with
+            | Ok v -> v
+            | Error e -> add_error (Db.show_db_error e); None
+          in
+          let p2_selected =
+            match p2_sel_res with
+            | Ok v -> v
+            | Error e -> add_error (Db.show_db_error e); None
+          in
+          (match p1_id_opt, p1_selected with
+          | Some pid, None -> add_error (Printf.sprintf "No stats for player_id=%s (season=%s)" pid season)
+          | _ -> ());
+          (match p2_id_opt, p2_selected with
+          | Some pid, None -> add_error (Printf.sprintf "No stats for player_id=%s (season=%s)" pid season)
+          | _ -> ());
+
+          let* p1_candidates_res =
+            if p1_selected = None && String.trim p1_query <> "" then
+              Db.get_players ~search:p1_query ~sort:ByMinutes ~limit:8 ()
+            else
+              Lwt.return (Ok [])
+          in
+          let* p2_candidates_res =
+            if p2_selected = None && String.trim p2_query <> "" then
+              Db.get_players ~search:p2_query ~sort:ByMinutes ~limit:8 ()
+            else
+              Lwt.return (Ok [])
+          in
+          let p1_candidates = match p1_candidates_res with Ok xs -> xs | Error _ -> [] in
+          let p2_candidates = match p2_candidates_res with Ok xs -> xs | Error _ -> [] in
+
+          let* h2h_res =
+            match p1_selected, p2_selected with
+            | Some a, Some b -> Db.get_player_h2h_data ~p1_id:a.player_id ~p2_id:b.player_id ~season ()
+            | _ -> Lwt.return (Ok [])
+          in
+          let h2h = match h2h_res with Ok h -> h | Error _ -> [] in
+          let error_opt =
+            match List.rev !errors with
+            | [] -> None
+            | xs -> Some (String.concat " / " xs)
+          in
+          Dream.html
+            (Views.compare_page
+               ~season
+               ~seasons
+               ~p1_query
+               ~p2_query
+               ~p1_id:p1_id_opt
+               ~p2_id:p2_id_opt
+               ~p1_candidates
+               ~p2_candidates
+               ~error:error_opt
+               p1_selected
+               p2_selected
+               h2h)
     );
 
     (* Predict (Team vs Team) *)
@@ -313,6 +382,7 @@ let () =
       let season = Dream.query request "season" |> Option.value ~default:"ALL" in
       let home = Dream.query request "home" |> Option.value ~default:"" in
       let away = Dream.query request "away" |> Option.value ~default:"" in
+      let include_mismatch = query_bool request "include_mismatch" in
       let context_enabled =
         Dream.query request "context"
         |> Option.map String.lowercase_ascii
@@ -334,7 +404,7 @@ let () =
       let render result error =
         match seasons_res, teams_res with
         | Ok seasons, Ok teams ->
-            Dream.html (Views.predict_page ~season ~seasons ~teams ~home ~away ~is_neutral ~context_enabled result error)
+            Dream.html (Views.predict_page ~season ~seasons ~teams ~home ~away ~is_neutral ~context_enabled ~include_mismatch result error)
         | Error e, _ | _, Error e -> Dream.html (Views.error_page (Db.show_db_error e))
       in
 
@@ -343,20 +413,36 @@ let () =
       else if normalize_label home = normalize_label away then
         render None (Some "Home/Away teams must be different.")
       else
-        let* totals_res = Db.get_team_stats ~season ~scope:Totals () in
-        let* standings_res = Db.get_standings ~season () in
-        let* games_res = Db.get_scored_games ~season () in
-        match totals_res, standings_res, games_res with
-        | Ok totals, Ok standings, Ok games ->
+        let* totals_res = Db.get_team_stats ~season ~scope:Totals ~include_mismatch () in
+        let* games_res = Db.get_scored_games ~season ~include_mismatch () in
+        match totals_res, games_res with
+        | Ok totals, Ok games ->
             let find_team (name : string) =
               let key = normalize_label name in
               List.find_opt (fun (row : team_stats) -> normalize_label row.team = key) totals
             in
-            let find_win_pct (name : string) =
+            let win_pct_of_team (name : string) =
               let key = normalize_label name in
-              match List.find_opt (fun (s : team_standing) -> normalize_label s.team_name = key) standings with
-              | Some s -> s.win_pct
-              | None -> 0.5
+              let wins, losses =
+                games
+                |> List.fold_left
+                  (fun (w, l) (g : game_summary) ->
+                    if normalize_label g.home_team <> key && normalize_label g.away_team <> key then
+                      (w, l)
+                    else
+                      match g.home_score, g.away_score with
+                      | Some hs, Some as_ ->
+                          if normalize_label g.home_team = key then
+                            if hs > as_ then (w + 1, l) else if hs < as_ then (w, l + 1) else (w, l)
+                          else if normalize_label g.away_team = key then
+                            if as_ > hs then (w + 1, l) else if as_ < hs then (w, l + 1) else (w, l)
+                          else
+                            (w, l)
+                      | _ -> (w, l))
+                  (0, 0)
+              in
+              let total = wins + losses in
+              if total <= 0 then 0.5 else (float_of_int wins /. float_of_int total)
             in
             let last_game_for_team (name : string) =
               let key = normalize_label name in
@@ -422,15 +508,15 @@ let () =
                     ~games
                     ~home:home_row
                     ~away:away_row
-                    ~home_win_pct:(find_win_pct home)
-                    ~away_win_pct:(find_win_pct away)
+                    ~home_win_pct:(win_pct_of_team home)
+                    ~away_win_pct:(win_pct_of_team away)
                     ~name_home:home
                     ~name_away:away
                 in
                 render (Some output) None
             | None, _ -> render None (Some (Printf.sprintf "Team not found: %s" home))
             | _, None -> render None (Some (Printf.sprintf "Team not found: %s" away)))
-        | Error e, _, _ | _, Error e, _ | _, _, Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+        | Error e, _ | _, Error e -> Dream.html (Views.error_page (Db.show_db_error e))
     );
 
     (* Player Profile *)
