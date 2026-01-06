@@ -423,6 +423,22 @@ let () =
       | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
     );
 
+    (* Player Game Log *)
+    Dream.get "/player/:id/games" (fun request ->
+      let player_id = Dream.param request "id" in
+      let season = Dream.query request "season" |> Option.value ~default:"ALL" in
+      let include_mismatch = query_bool request "include_mismatch" in
+      let open Lwt.Syntax in
+      let* profile_res = Db.get_player_profile ~player_id () in
+      let* seasons_res = Db.get_seasons () in
+      let* games_res = Db.get_player_game_logs ~player_id ~season ~include_mismatch () in
+      match profile_res, seasons_res, games_res with
+      | Ok (Some profile), Ok seasons, Ok games ->
+          Dream.html (Views.player_game_logs_page profile ~season ~seasons ~include_mismatch games)
+      | Ok None, _, _ -> Dream.html (Views.error_page "Player not found")
+      | Error e, _, _ | _, Error e, _ | _, _, Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+    );
+
     (* Player Season Stats HTMX Partial *)
     Dream.get "/player/:id/season-stats" (fun request ->
       let player_id = Dream.param request "id" in
