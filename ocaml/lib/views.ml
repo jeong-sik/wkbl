@@ -1411,20 +1411,20 @@ let player_profile_page (profile: player_profile) ~scope ~(seasons_catalog: seas
     match profile.team_stints with
     | [] -> ""
     | stints ->
-        let badge_max_width = "max-w-[140px] sm:max-w-[220px]" in
+        let badge_max_width = "max-w-full" in
         let stints_asc = stints in
         let stints_desc = List.rev stints_asc in
         let current_team_html =
           let t = String.trim avg.team_name in
           if t = "" then {html|<span class="text-slate-500">-</span>|html}
-          else Printf.sprintf {html|<div class="shrink-0">%s</div>|html} (team_badge ~max_width:badge_max_width t)
+          else team_badge ~max_width:badge_max_width t
         in
         let transfers = max 0 (List.length stints_asc - 1) in
         let last_move_value_html =
           match stints_desc with
           | current :: prev :: _ when prev.pts_team_name <> current.pts_team_name ->
               Printf.sprintf
-                {html|<div class="space-y-1 min-w-0"><div class="flex items-center gap-2 flex-wrap">%s<span class="text-slate-600">→</span>%s</div><div class="text-[11px] text-slate-500 font-mono whitespace-nowrap">%s~</div></div>|html}
+                {html|<div class="space-y-1 min-w-0"><div class="flex flex-col gap-1 min-w-0"><div class="flex items-center gap-2 flex-wrap min-w-0">%s<span class="text-slate-600">→</span>%s</div></div><div class="text-[11px] text-slate-500 font-mono whitespace-nowrap">%s~</div></div>|html}
                 (team_badge ~max_width:badge_max_width prev.pts_team_name)
                 (team_badge ~max_width:badge_max_width current.pts_team_name)
                 (escape_html current.pts_start_date)
@@ -1435,9 +1435,14 @@ let player_profile_page (profile: player_profile) ~scope ~(seasons_catalog: seas
           stints_asc
           |> List.mapi (fun idx (s: player_team_stint) ->
               let is_current = idx = total_stints - 1 in
-              let range =
-                if s.pts_start_date = s.pts_end_date then s.pts_start_date
-                else Printf.sprintf "%s ~ %s" s.pts_start_date s.pts_end_date
+              let range_html =
+                if s.pts_start_date = s.pts_end_date then
+                  Printf.sprintf {html|<span class="whitespace-nowrap">%s</span>|html} (escape_html s.pts_start_date)
+                else
+                  Printf.sprintf
+                    {html|<span class="inline-flex flex-wrap items-baseline gap-x-1 gap-y-1"><span class="whitespace-nowrap">%s</span><span class="text-slate-600 whitespace-nowrap">~</span><span class="whitespace-nowrap">%s</span></span>|html}
+                    (escape_html s.pts_start_date)
+                    (escape_html s.pts_end_date)
               in
               let dot_class =
                 if is_current then "bg-orange-500 border-orange-400"
@@ -1450,16 +1455,16 @@ let player_profile_page (profile: player_profile) ~scope ~(seasons_catalog: seas
                   ""
               in
               Printf.sprintf
-                {html|<li class="relative pl-6"><span class="absolute -left-1.5 top-2 w-3 h-3 rounded-full border %s"></span><div class="flex items-start justify-between gap-3"><div class="min-w-0"><div class="flex items-center gap-2 flex-wrap min-w-0">%s%s</div><div class="mt-1 text-[11px] text-slate-500 font-mono break-keep">%s</div></div><div class="text-xs text-slate-400 font-mono shrink-0 whitespace-nowrap">GP %d</div></div></li>|html}
+                {html|<li class="relative pl-6"><span class="absolute -left-1.5 top-2 w-3 h-3 rounded-full border %s"></span><div class="flex items-start justify-between gap-3"><div class="min-w-0"><div class="flex items-center gap-2 flex-wrap min-w-0">%s%s</div><div class="mt-1 text-[11px] text-slate-500 font-mono">%s</div></div><div class="text-xs text-slate-400 font-mono shrink-0 whitespace-nowrap">GP %d</div></div></li>|html}
                 dot_class
                 (team_badge ~max_width:badge_max_width s.pts_team_name)
                 current_chip
-                (escape_html range)
+                range_html
                 s.pts_games_played)
           |> String.concat "\n"
         in
         Printf.sprintf
-          {html|<div class="bg-slate-900 rounded-xl border border-slate-800 p-6 shadow-lg"><div class="flex items-start justify-between gap-4 mb-4"><div class="min-w-0"><h3 class="text-slate-300 font-bold uppercase tracking-wider text-xs flex items-center gap-2"><span class="text-lg">🔁</span> Team Movement</h3><div class="mt-1 text-[11px] text-slate-500 leading-relaxed break-keep">박스스코어 출전팀 변화로 추정한 연보입니다. (기간=첫/마지막 출전일)</div></div><span class="text-[11px] text-slate-500 font-mono shrink-0">박스스코어</span></div><div class="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3 gap-3 text-xs"><div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-3"><div class="text-slate-500 font-mono uppercase tracking-widest text-[11px]">Current</div><div class="mt-2 text-slate-300">%s</div></div><div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-3"><div class="text-slate-500 font-mono uppercase tracking-widest text-[11px]">Transfers</div><div class="mt-2 font-mono text-slate-200 text-lg font-black">%d</div></div><div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-3"><div class="text-slate-500 font-mono uppercase tracking-widest text-[11px]">Latest</div><div class="mt-2 text-slate-300">%s</div></div></div><div class="mt-4 rounded-lg border border-slate-800/60 bg-slate-950/30 p-4"><ol class="relative border-l border-slate-800/60 ml-2 space-y-4">%s</ol></div><div class="mt-4 pt-3 border-t border-slate-800/60 text-[11px] text-slate-500 leading-relaxed break-keep">공식 이적/드래프트 연보는 추가 수집 중입니다. (공식 페이지 기반)</div></div>|html}
+          {html|<div class="bg-slate-900 rounded-xl border border-slate-800 p-6 shadow-lg"><div class="flex items-start justify-between gap-4 mb-4"><div class="min-w-0"><h3 class="text-slate-300 font-bold uppercase tracking-wider text-xs flex items-center gap-2"><span class="text-lg">🔁</span> Team Movement</h3><div class="mt-1 text-[11px] text-slate-500 leading-relaxed break-words">박스스코어 출전팀 변화로 추정한 연보입니다. (기간=첫/마지막 출전일)</div></div><span class="text-[11px] text-slate-500 font-mono shrink-0">박스스코어</span></div><div class="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 gap-3 text-xs"><div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-3 min-w-0"><div class="text-slate-500 font-mono uppercase tracking-widest text-[11px]">Current</div><div class="mt-2 text-slate-300 min-w-0">%s</div></div><div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-3"><div class="text-slate-500 font-mono uppercase tracking-widest text-[11px]">Transfers</div><div class="mt-2 font-mono text-slate-200 text-lg font-black">%d</div></div><div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-3 min-w-0"><div class="text-slate-500 font-mono uppercase tracking-widest text-[11px]">Latest</div><div class="mt-2 text-slate-300 min-w-0">%s</div></div></div><div class="mt-4 rounded-lg border border-slate-800/60 bg-slate-950/30 p-4"><ol class="relative border-l border-slate-800/60 ml-2 space-y-4">%s</ol></div><div class="mt-4 pt-3 border-t border-slate-800/60 text-[11px] text-slate-500 leading-relaxed break-words">공식 이적/드래프트 연보는 추가 수집 중입니다. (공식 페이지 기반)</div></div>|html}
           current_team_html transfers last_move_value_html stint_rows
   in
 
