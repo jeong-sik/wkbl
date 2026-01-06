@@ -17,6 +17,22 @@ let query_bool request name =
       | _ -> false)
   |> Option.value ~default:false
 
+let query_nonempty request name =
+  match Dream.query request name with
+  | None -> None
+  | Some v ->
+      let trimmed = String.trim v in
+      if trimmed = "" then None else Some trimmed
+
+let latest_season_code (seasons : season_info list) =
+  match List.rev seasons with
+  | s :: _ -> s.code
+  | [] -> "ALL"
+
+let query_season_or_latest request (seasons : season_info list) =
+  query_nonempty request "season"
+  |> Option.value ~default:(latest_season_code seasons)
+
 let rec find_static_path start_dir =
   let has_styles path = Sys.file_exists (Filename.concat path "css/styles.css") in
   let candidates = [ Filename.concat start_dir "static"; Filename.concat start_dir "ocaml/static" ] in
@@ -131,17 +147,20 @@ let () =
     (* Teams Page & Table HTMX *)
     Dream.get "/teams" (fun request ->
       let open Lwt.Syntax in
-      let season = Dream.query request "season" |> Option.value ~default:"ALL" in
       let scope_str = Dream.query request "scope" |> Option.value ~default:"per_game" in
       let scope = Domain.team_scope_of_string scope_str in
       let sort_str = Dream.query request "sort" |> Option.value ~default:"pts" in
       let sort = Domain.team_sort_of_string sort_str in
       let include_mismatch = query_bool request "include_mismatch" in
       let* seasons_res = Db.get_seasons () in
-      let* stats_res = Db.get_team_stats ~season ~scope ~sort ~include_mismatch () in
-      match seasons_res, stats_res with
-      | Ok seasons, Ok stats -> Dream.html (Views.teams_page ~season ~seasons ~scope ~sort:sort_str ~include_mismatch stats)
-      | Error e, _ | _, Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+      match seasons_res with
+      | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+      | Ok seasons ->
+          let season = query_season_or_latest request seasons in
+          let* stats_res = Db.get_team_stats ~season ~scope ~sort ~include_mismatch () in
+          (match stats_res with
+          | Ok stats -> Dream.html (Views.teams_page ~season ~seasons ~scope ~sort:sort_str ~include_mismatch stats)
+          | Error e -> Dream.html (Views.error_page (Db.show_db_error e)))
     );
 
     Dream.get "/teams/table" (fun request ->
@@ -161,12 +180,15 @@ let () =
     (* Standings *)
     Dream.get "/standings" (fun request ->
       let open Lwt.Syntax in
-      let season = Dream.query request "season" |> Option.value ~default:"ALL" in
       let* seasons_res = Db.get_seasons () in
-      let* standings_res = Db.get_standings ~season () in
-      match seasons_res, standings_res with
-      | Ok seasons, Ok standings -> Dream.html (Views.standings_page ~season ~seasons standings)
-      | Error e, _ | _, Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+      match seasons_res with
+      | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+      | Ok seasons ->
+          let season = query_season_or_latest request seasons in
+          let* standings_res = Db.get_standings ~season () in
+          (match standings_res with
+          | Ok standings -> Dream.html (Views.standings_page ~season ~seasons standings)
+          | Error e -> Dream.html (Views.error_page (Db.show_db_error e)))
     );
 
     Dream.get "/standings/table" (fun request ->
@@ -181,12 +203,15 @@ let () =
     (* Games & Boxscores List *)
     Dream.get "/games" (fun request ->
       let open Lwt.Syntax in
-      let season = Dream.query request "season" |> Option.value ~default:"ALL" in
       let* seasons_res = Db.get_seasons () in
-      let* games_res = Db.get_games ~season () in
-      match seasons_res, games_res with
-      | Ok seasons, Ok games -> Dream.html (Views.games_page ~season ~seasons games)
-      | Error e, _ | _, Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+      match seasons_res with
+      | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+      | Ok seasons ->
+          let season = query_season_or_latest request seasons in
+          let* games_res = Db.get_games ~season () in
+          (match games_res with
+          | Ok games -> Dream.html (Views.games_page ~season ~seasons games)
+          | Error e -> Dream.html (Views.error_page (Db.show_db_error e)))
     );
 
     Dream.get "/games/table" (fun request ->
@@ -201,12 +226,15 @@ let () =
     (* Boxscores List *)
     Dream.get "/boxscores" (fun request ->
       let open Lwt.Syntax in
-      let season = Dream.query request "season" |> Option.value ~default:"ALL" in
       let* seasons_res = Db.get_seasons () in
-      let* games_res = Db.get_games ~season () in
-      match seasons_res, games_res with
-      | Ok seasons, Ok games -> Dream.html (Views.boxscores_page ~season ~seasons games)
-      | Error e, _ | _, Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+      match seasons_res with
+      | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+      | Ok seasons ->
+          let season = query_season_or_latest request seasons in
+          let* games_res = Db.get_games ~season () in
+          (match games_res with
+          | Ok games -> Dream.html (Views.boxscores_page ~season ~seasons games)
+          | Error e -> Dream.html (Views.error_page (Db.show_db_error e)))
     );
 
     Dream.get "/boxscores/table" (fun request ->
@@ -231,33 +259,35 @@ let () =
     (* Leaders *)
     Dream.get "/leaders" (fun request ->
       let open Lwt.Syntax in
-      let season = Dream.query request "season" |> Option.value ~default:"ALL" in
       let scope = Dream.query request "scope" |> Option.value ~default:"per_game" in
-      let* seasons = Db.get_seasons () in
-      let* pts = Db.get_leaders ~season ~scope "pts" in
-      let* reb = Db.get_leaders ~season ~scope "reb" in
-      let* ast = Db.get_leaders ~season ~scope "ast" in
-      let* stl = Db.get_leaders ~season ~scope "stl" in
-      let* blk = Db.get_leaders ~season ~scope "blk" in
-      match seasons, pts, reb, ast, stl, blk with
-      | Ok s, Ok p, Ok r, Ok a, Ok st, Ok b -> Dream.html (Views.leaders_page ~season ~seasons:s ~scope p r a st b)
-      | Error e, _, _, _, _, _ -> Dream.html (Views.error_page (Db.show_db_error e))
-      | _, Error e, _, _, _, _ -> Dream.html (Views.error_page (Db.show_db_error e))
-      | _, _, Error e, _, _, _ -> Dream.html (Views.error_page (Db.show_db_error e))
-      | _, _, _, Error e, _, _ -> Dream.html (Views.error_page (Db.show_db_error e))
-      | _, _, _, _, Error e, _ -> Dream.html (Views.error_page (Db.show_db_error e))
-      | _, _, _, _, _, Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+      let* seasons_res = Db.get_seasons () in
+      match seasons_res with
+      | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+      | Ok seasons ->
+          let season = query_season_or_latest request seasons in
+          let* pts = Db.get_leaders ~season ~scope "pts" in
+          let* reb = Db.get_leaders ~season ~scope "reb" in
+          let* ast = Db.get_leaders ~season ~scope "ast" in
+          let* stl = Db.get_leaders ~season ~scope "stl" in
+          let* blk = Db.get_leaders ~season ~scope "blk" in
+          (match pts, reb, ast, stl, blk with
+          | Ok p, Ok r, Ok a, Ok st, Ok b -> Dream.html (Views.leaders_page ~season ~seasons ~scope p r a st b)
+          | Error e, _, _, _, _ -> Dream.html (Views.error_page (Db.show_db_error e))
+          | _, Error e, _, _, _ -> Dream.html (Views.error_page (Db.show_db_error e))
+          | _, _, Error e, _, _ -> Dream.html (Views.error_page (Db.show_db_error e))
+          | _, _, _, Error e, _ -> Dream.html (Views.error_page (Db.show_db_error e))
+          | _, _, _, _, Error e -> Dream.html (Views.error_page (Db.show_db_error e)))
     );
 
     (* Awards (Stat-based, unofficial) *)
     Dream.get "/awards" (fun request ->
       let open Lwt.Syntax in
-      let season = Dream.query request "season" |> Option.value ~default:"ALL" in
       let include_mismatch = query_bool request "include_mismatch" in
       let* seasons_res = Db.get_seasons () in
       match seasons_res with
       | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
       | Ok seasons ->
+          let season = query_season_or_latest request seasons in
           let prev_season_code =
             if season = "ALL" then None
             else
@@ -290,7 +320,6 @@ let () =
     (* Compare *)
     Dream.get "/compare" (fun request ->
       let open Lwt.Syntax in
-      let season = Dream.query request "season" |> Option.value ~default:"ALL" in
       let p1_query = Dream.query request "p1" |> Option.value ~default:"" in
       let p2_query = Dream.query request "p2" |> Option.value ~default:"" in
       let p1_id = Dream.query request "p1_id" |> Option.value ~default:"" in
@@ -302,6 +331,7 @@ let () =
       match seasons_res with
       | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
       | Ok seasons ->
+          let season = query_season_or_latest request seasons in
           let errors : string list ref = ref [] in
           let add_error msg = errors := msg :: !errors in
 
@@ -379,7 +409,6 @@ let () =
     (* Predict (Team vs Team) *)
     Dream.get "/predict" (fun request ->
       let open Lwt.Syntax in
-      let season = Dream.query request "season" |> Option.value ~default:"ALL" in
       let home = Dream.query request "home" |> Option.value ~default:"" in
       let away = Dream.query request "away" |> Option.value ~default:"" in
       let include_mismatch = query_bool request "include_mismatch" in
@@ -400,123 +429,123 @@ let () =
 
       let* seasons_res = Db.get_seasons () in
       let* teams_res = Db.get_all_teams () in
-
-      let render result error =
-        match seasons_res, teams_res with
-        | Ok seasons, Ok teams ->
+      match seasons_res, teams_res with
+      | Error e, _ | _, Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+      | Ok seasons, Ok teams ->
+          let season = query_season_or_latest request seasons in
+          let render result error =
             Dream.html (Views.predict_page ~season ~seasons ~teams ~home ~away ~is_neutral ~context_enabled ~include_mismatch result error)
-        | Error e, _ | _, Error e -> Dream.html (Views.error_page (Db.show_db_error e))
-      in
+          in
 
-      if String.trim home = "" || String.trim away = "" then
-        render None None
-      else if normalize_label home = normalize_label away then
-        render None (Some "Home/Away teams must be different.")
-      else
-        let* totals_res = Db.get_team_stats ~season ~scope:Totals ~include_mismatch () in
-        let* games_res = Db.get_scored_games ~season ~include_mismatch () in
-        match totals_res, games_res with
-        | Ok totals, Ok games ->
-            let find_team (name : string) =
-              let key = normalize_label name in
-              List.find_opt (fun (row : team_stats) -> normalize_label row.team = key) totals
-            in
-            let win_pct_of_team (name : string) =
-              let key = normalize_label name in
-              let wins, losses =
-                games
-                |> List.fold_left
-                  (fun (w, l) (g : game_summary) ->
-                    if normalize_label g.home_team <> key && normalize_label g.away_team <> key then
-                      (w, l)
-                    else
-                      match g.home_score, g.away_score with
-                      | Some hs, Some as_ ->
-                          if normalize_label g.home_team = key then
-                            if hs > as_ then (w + 1, l) else if hs < as_ then (w, l + 1) else (w, l)
-                          else if normalize_label g.away_team = key then
-                            if as_ > hs then (w + 1, l) else if as_ < hs then (w, l + 1) else (w, l)
-                          else
-                            (w, l)
-                      | _ -> (w, l))
-                  (0, 0)
-              in
-              let total = wins + losses in
-              if total <= 0 then 0.5 else (float_of_int wins /. float_of_int total)
-            in
-            let last_game_for_team (name : string) =
-              let key = normalize_label name in
-              games
-              |> List.filter (fun (g : game_summary) ->
-                  normalize_label g.home_team = key || normalize_label g.away_team = key)
-              |> List.sort (fun (a : game_summary) (b : game_summary) ->
-                  let by_date = String.compare b.game_date a.game_date in
-                  if by_date <> 0 then by_date else String.compare b.game_id a.game_id)
-              |> function
-              | [] -> None
-              | g :: _ -> Some g
-            in
-            let roster_for_team ~team_name ~game_id ~season_code =
-              let open Lwt.Syntax in
-              let* core_res = Db.get_team_core_player_ids ~season:season_code ~team_name () in
-              let* active_res = Db.get_team_active_player_ids ~team_name ~game_id () in
-              match core_res, active_res with
-              | Ok core_ids, Ok active_ids ->
-                  let present =
-                    core_ids
-                    |> List.filter (fun pid -> List.mem pid active_ids)
-                    |> List.length
+          if String.trim home = "" || String.trim away = "" then
+            render None None
+          else if normalize_label home = normalize_label away then
+            render None (Some "Home/Away teams must be different.")
+          else
+            let* totals_res = Db.get_team_stats ~season ~scope:Totals ~include_mismatch () in
+            let* games_res = Db.get_scored_games ~season ~include_mismatch () in
+            match totals_res, games_res with
+            | Ok totals, Ok games ->
+                let find_team (name : string) =
+                  let key = normalize_label name in
+                  List.find_opt (fun (row : team_stats) -> normalize_label row.team = key) totals
+                in
+                let win_pct_of_team (name : string) =
+                  let key = normalize_label name in
+                  let wins, losses =
+                    games
+                    |> List.fold_left
+                      (fun (w, l) (g : game_summary) ->
+                        if normalize_label g.home_team <> key && normalize_label g.away_team <> key then
+                          (w, l)
+                        else
+                          match g.home_score, g.away_score with
+                          | Some hs, Some as_ ->
+                              if normalize_label g.home_team = key then
+                                if hs > as_ then (w + 1, l) else if hs < as_ then (w, l + 1) else (w, l)
+                              else if normalize_label g.away_team = key then
+                                if as_ > hs then (w + 1, l) else if as_ < hs then (w, l + 1) else (w, l)
+                              else
+                                (w, l)
+                          | _ -> (w, l))
+                      (0, 0)
                   in
-                  Lwt.return (Some { rcs_present = present; rcs_total = List.length core_ids })
-              | _ -> Lwt.return None
-            in
-            let season_for_game_id (game_id : string) =
-              if season <> "ALL" then Lwt.return season
-              else
-                let open Lwt.Syntax in
-                let* res = Db.get_game_season_code ~game_id () in
-                match res with
-                | Ok (Some s) -> Lwt.return s
-                | _ -> Lwt.return "ALL"
-            in
-            (match find_team home, find_team away with
-            | Some home_row, Some away_row ->
-                let* context_input =
-                  if not context_enabled then Lwt.return None
+                  let total = wins + losses in
+                  if total <= 0 then 0.5 else (float_of_int wins /. float_of_int total)
+                in
+                let last_game_for_team (name : string) =
+                  let key = normalize_label name in
+                  games
+                  |> List.filter (fun (g : game_summary) ->
+                      normalize_label g.home_team = key || normalize_label g.away_team = key)
+                  |> List.sort (fun (a : game_summary) (b : game_summary) ->
+                      let by_date = String.compare b.game_date a.game_date in
+                      if by_date <> 0 then by_date else String.compare b.game_id a.game_id)
+                  |> function
+                  | [] -> None
+                  | g :: _ -> Some g
+                in
+                let roster_for_team ~team_name ~game_id ~season_code =
+                  let open Lwt.Syntax in
+                  let* core_res = Db.get_team_core_player_ids ~season:season_code ~team_name () in
+                  let* active_res = Db.get_team_active_player_ids ~team_name ~game_id () in
+                  match core_res, active_res with
+                  | Ok core_ids, Ok active_ids ->
+                      let present =
+                        core_ids
+                        |> List.filter (fun pid -> List.mem pid active_ids)
+                        |> List.length
+                      in
+                      Lwt.return (Some { rcs_present = present; rcs_total = List.length core_ids })
+                  | _ -> Lwt.return None
+                in
+                let season_for_game_id (game_id : string) =
+                  if season <> "ALL" then Lwt.return season
                   else
-                    let* home_roster =
-                      match last_game_for_team home with
-                      | None -> Lwt.return None
-                      | Some g ->
-                          let* sc = season_for_game_id g.game_id in
-                          roster_for_team ~team_name:home ~game_id:g.game_id ~season_code:sc
-                    in
-                    let* away_roster =
-                      match last_game_for_team away with
-                      | None -> Lwt.return None
-                      | Some g ->
-                          let* sc = season_for_game_id g.game_id in
-                          roster_for_team ~team_name:away ~game_id:g.game_id ~season_code:sc
-                    in
-                    Lwt.return (Some { pci_home_roster = home_roster; pci_away_roster = away_roster })
+                    let open Lwt.Syntax in
+                    let* res = Db.get_game_season_code ~game_id () in
+                    match res with
+                    | Ok (Some s) -> Lwt.return s
+                    | _ -> Lwt.return "ALL"
                 in
-                let output =
-                  Prediction.predict_match_nerd
-                    ~context:context_input
-                    ~season
-                    ~is_neutral
-                    ~games
-                    ~home:home_row
-                    ~away:away_row
-                    ~home_win_pct:(win_pct_of_team home)
-                    ~away_win_pct:(win_pct_of_team away)
-                    ~name_home:home
-                    ~name_away:away
-                in
-                render (Some output) None
-            | None, _ -> render None (Some (Printf.sprintf "Team not found: %s" home))
-            | _, None -> render None (Some (Printf.sprintf "Team not found: %s" away)))
-        | Error e, _ | _, Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+                (match find_team home, find_team away with
+                | Some home_row, Some away_row ->
+                    let* context_input =
+                      if not context_enabled then Lwt.return None
+                      else
+                        let* home_roster =
+                          match last_game_for_team home with
+                          | None -> Lwt.return None
+                          | Some g ->
+                              let* sc = season_for_game_id g.game_id in
+                              roster_for_team ~team_name:home ~game_id:g.game_id ~season_code:sc
+                        in
+                        let* away_roster =
+                          match last_game_for_team away with
+                          | None -> Lwt.return None
+                          | Some g ->
+                              let* sc = season_for_game_id g.game_id in
+                              roster_for_team ~team_name:away ~game_id:g.game_id ~season_code:sc
+                        in
+                        Lwt.return (Some { pci_home_roster = home_roster; pci_away_roster = away_roster })
+                    in
+                    let output =
+                      Prediction.predict_match_nerd
+                        ~context:context_input
+                        ~season
+                        ~is_neutral
+                        ~games
+                        ~home:home_row
+                        ~away:away_row
+                        ~home_win_pct:(win_pct_of_team home)
+                        ~away_win_pct:(win_pct_of_team away)
+                        ~name_home:home
+                        ~name_away:away
+                    in
+                    render (Some output) None
+                | None, _ -> render None (Some (Printf.sprintf "Team not found: %s" home))
+                | _, None -> render None (Some (Printf.sprintf "Team not found: %s" away)))
+            | Error e, _ | _, Error e -> Dream.html (Views.error_page (Db.show_db_error e))
     );
 
     (* Player Profile *)
@@ -550,17 +579,19 @@ let () =
     (* Player Game Log *)
     Dream.get "/player/:id/games" (fun request ->
       let player_id = Dream.param request "id" in
-      let season = Dream.query request "season" |> Option.value ~default:"ALL" in
       let include_mismatch = query_bool request "include_mismatch" in
       let open Lwt.Syntax in
       let* profile_res = Db.get_player_profile ~player_id () in
       let* seasons_res = Db.get_seasons () in
-      let* games_res = Db.get_player_game_logs ~player_id ~season ~include_mismatch () in
-      match profile_res, seasons_res, games_res with
-      | Ok (Some profile), Ok seasons, Ok games ->
-          Dream.html (Views.player_game_logs_page profile ~season ~seasons ~include_mismatch games)
-      | Ok None, _, _ -> Dream.html (Views.error_page "Player not found")
-      | Error e, _, _ | _, Error e, _ | _, _, Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+      match profile_res, seasons_res with
+      | Ok None, _ -> Dream.html (Views.error_page "Player not found")
+      | Error e, _ | _, Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+      | Ok (Some profile), Ok seasons ->
+          let season = query_season_or_latest request seasons in
+          let* games_res = Db.get_player_game_logs ~player_id ~season ~include_mismatch () in
+          (match games_res with
+          | Ok games -> Dream.html (Views.player_game_logs_page profile ~season ~seasons ~include_mismatch games)
+          | Error e -> Dream.html (Views.error_page (Db.show_db_error e)))
     );
 
     (* Player Season Stats HTMX Partial *)
@@ -577,13 +608,16 @@ let () =
     (* Team Profile *)
     Dream.get "/team/:name" (fun request ->
       let team_name = Dream.param request "name" |> Uri.pct_decode in
-      let season = Dream.query request "season" |> Option.value ~default:"ALL" in
       let open Lwt.Syntax in
       let* seasons_res = Db.get_seasons () in
-      let* detail_res = Db.get_team_full_detail ~team_name ~season () in
-      match seasons_res, detail_res with
-      | Ok seasons, Ok detail -> Dream.html (Views.team_profile_page detail ~season ~seasons)
-      | Error e, _ | _, Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+      match seasons_res with
+      | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+      | Ok seasons ->
+          let season = query_season_or_latest request seasons in
+          let* detail_res = Db.get_team_full_detail ~team_name ~season () in
+          (match detail_res with
+          | Ok detail -> Dream.html (Views.team_profile_page detail ~season ~seasons)
+          | Error e -> Dream.html (Views.error_page (Db.show_db_error e)))
     );
 
     (* QA & System *)
