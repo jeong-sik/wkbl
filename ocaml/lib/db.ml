@@ -424,7 +424,7 @@ module Queries = struct
       OR
       (away_score IS NOT NULL AND away_sum IS NOT NULL AND away_score != away_sum)
   |}
-  let all_teams = (unit ->* string) "SELECT team_name_kr FROM teams ORDER BY team_name_kr"
+  let all_teams = (unit ->* string) "SELECT DISTINCT team_name_kr FROM teams ORDER BY team_name_kr"
   let all_seasons = (unit ->* Types.season_info) "SELECT season_code, season_name FROM seasons ORDER BY season_code"
   let player_stats_base = (tup2 (tup2 string string) int ->* Types.player_aggregate) {| SELECT p.player_id, p.player_name, t.team_name_kr, COUNT(*) as gp, COALESCE(SUM(s.min_seconds) / 60.0, 0), COALESCE(AVG(s.pts), 0), COALESCE((SUM(((COALESCE((CASE WHEN g.home_team_code = s.team_code THEN COALESCE(g.home_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code)) ELSE COALESCE(g.away_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code)) END), 0) - COALESCE((CASE WHEN g.home_team_code = s.team_code THEN COALESCE(g.away_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code)) ELSE COALESCE(g.home_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code)) END), 0))) * s.min_seconds) * 1.0) / NULLIF(SUM(s.min_seconds), 0), 0) as margin, COALESCE(AVG(s.reb_tot), 0), COALESCE(AVG(s.ast), 0), COALESCE(AVG(s.stl), 0), COALESCE(AVG(s.blk), 0), COALESCE(AVG(s.tov), 0), COALESCE(AVG(s.game_score), 0) FROM game_stats s JOIN games g ON g.game_id = s.game_id JOIN players p ON s.player_id = p.player_id JOIN teams t ON s.team_code = t.team_code WHERE g.game_type != '10' AND (? = 'ALL' OR t.team_name_kr = ?) GROUP BY p.player_id ORDER BY AVG(s.game_score) DESC LIMIT ? |}
   let player_career_aggregate = (string ->? Types.player_aggregate) {|
@@ -1568,10 +1568,11 @@ let dedupe_team_stats (items : team_stats list) =
   let seen : (string, unit) Hashtbl.t = Hashtbl.create 16 in
   items
   |> List.filter (fun (row: team_stats) ->
+      let team = normalize_label row.team in
       let key =
-        match team_code_of_string row.team with
+        match team_code_of_string team with
         | Some code -> code
-        | None -> normalize_label row.team |> String.uppercase_ascii
+        | None -> team |> String.uppercase_ascii
       in
       if Hashtbl.mem seen key then
         false
