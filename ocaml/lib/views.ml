@@ -30,7 +30,7 @@ let escape_html s =
   |> String.concat ""
 
 (** Player image component with fallback *)
-let player_img_tag ?(class_name="w-12 h-12") player_id player_name =
+let player_img_tag ?(class_name="w-12 h-12") player_id _player_name =
   let local_src = Printf.sprintf "/static/images/player_%s.png" player_id in
   let remote_src = Printf.sprintf "https://www.wkbl.or.kr/static/images/player/pimg/m_%s.jpg" player_id in
   let placeholder_src = "/static/images/player_placeholder.svg" in
@@ -51,9 +51,8 @@ let player_img_tag ?(class_name="w-12 h-12") player_id player_name =
   in
   let src = if has_local_player_image then local_src else remote_src in
   Printf.sprintf
-    {html|<img src="%s" alt="%s" class="%s rounded-full object-cover bg-slate-800 border border-slate-700 shadow-sm" loading="lazy" data-placeholder="%s">|html}
+    {html|<img src="%s" alt="" aria-hidden="true" class="%s rounded-full object-cover bg-slate-800 border border-slate-700 shadow-sm" loading="lazy" data-placeholder="%s">|html}
     (escape_html src)
-    (escape_html player_name)
     (escape_html class_name)
     (escape_html placeholder_src)
 
@@ -65,7 +64,7 @@ let team_logo_tag ?(class_name="w-8 h-8") team_name =
     | None -> None
   in
   match logo_file with
-  | Some f -> Printf.sprintf {html|<img src="/static/images/%s" alt="%s" class="%s object-contain">|html} f (escape_html team_name) class_name
+  | Some f -> Printf.sprintf {html|<img src="/static/images/%s" alt="" aria-hidden="true" class="%s object-contain">|html} f class_name
   | None ->
       Printf.sprintf
         {html|<div class="%s bg-slate-800 rounded flex items-center justify-center text-xs">🏀</div>|html}
