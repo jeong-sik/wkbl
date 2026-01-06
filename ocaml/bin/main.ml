@@ -425,13 +425,13 @@ let () =
     );
 
     (* QA & System *)
-    Dream.get "/qa" (fun _ -> 
-      let content = 
-        match Qa.load_markdown () with
-        | Ok md -> Printf.sprintf {html|<div class="prose dark:prose-invert max-w-none">%s</div>|html} md
-        | Error _ -> "QA Report not available."
-      in
-      Dream.html (Views.layout ~title:"QA Report" ~content)
+    Dream.get "/qa" (fun _ ->
+      let open Lwt.Syntax in
+      let markdown = Qa.read_markdown_if_exists () in
+      let* report_res = Db.get_db_quality_report () in
+      match report_res with
+      | Ok report -> Dream.html (Views.qa_dashboard_page report ~markdown ())
+      | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
     );
     Dream.get "/health" (fun _ -> Dream.json "{\"status\": \"ok\", \"engine\": \"OCaml/Dream\"}");
   ]

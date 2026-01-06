@@ -1127,5 +1127,112 @@ let team_profile_page (detail: team_full_detail) =
     ~content:(Printf.sprintf {html|<div class="space-y-8 animate-fade-in"><div class="bg-slate-900 rounded-xl border border-slate-800 p-8 shadow-2xl flex flex-col md:flex-row items-center md:items-start gap-8"><div class="w-32 h-32 bg-slate-800 rounded-xl flex items-center justify-center p-4 border-2 border-slate-700 shadow-inner">%s</div><div class="text-center md:text-left space-y-4"><h1 class="text-4xl font-black text-white">%s</h1>%s</div></div><div class="grid grid-cols-1 lg:grid-cols-3 gap-8"><div class="space-y-4 lg:col-span-2"><h3 class="text-xl font-bold text-white">Roster</h3><div class="bg-slate-900 rounded-xl border border-slate-800 overflow-x-auto shadow-lg"><table class="roster-table min-w-[900px] w-full text-sm font-mono table-fixed"><thead class="bg-slate-800/80 text-slate-400 uppercase tracking-wider text-xs"><tr><th class="px-3 py-3 text-left font-sans w-12 whitespace-nowrap">#</th><th class="px-3 py-3 text-left font-sans w-[220px] whitespace-nowrap">Player</th><th class="px-3 py-3 text-left font-sans w-[140px] whitespace-nowrap">Team</th><th class="px-3 py-3 text-right w-[60px] whitespace-nowrap">GP</th><th class="px-3 py-3 text-right text-orange-400 w-[72px] whitespace-nowrap">PTS</th><th class="px-3 py-3 text-right w-[72px] whitespace-nowrap">MG</th><th class="px-3 py-3 text-right w-[72px] whitespace-nowrap">REB</th><th class="px-3 py-3 text-right w-[72px] whitespace-nowrap">AST</th><th class="px-3 py-3 text-right w-[72px] whitespace-nowrap">STL</th><th class="px-3 py-3 text-right w-[72px] whitespace-nowrap">BLK</th><th class="px-3 py-2 text-right w-[72px] whitespace-nowrap">TO</th><th class="px-3 py-2 text-right text-orange-400 w-[72px] whitespace-nowrap">EFF</th></tr></thead><tbody>%s</tbody></table></div></div><div class="space-y-4 lg:col-span-1"><h3 class="text-xl font-bold text-white">Recent Results</h3><div class="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden shadow-lg"><table class="w-full text-sm font-mono"><thead class="bg-slate-800/80 text-slate-400 uppercase tracking-wider text-xs"><tr><th class="px-4 py-3 text-left font-sans">Date</th><th class="px-4 py-3 text-left font-sans">Opponent</th><th class="px-4 py-3 text-center font-sans">Result</th><th class="px-4 py-3 text-right font-sans">Score</th></tr></thead><tbody>%s</tbody></table></div></div></div></div>|html}
           (team_logo_tag ~class_name:"w-24 h-24" t) (escape_html t) standing_info roster_rows game_rows)
 
+(** DB QA dashboard page *)
+let qa_dashboard_page (report: Db.qa_db_report) ?(markdown=None) () =
+  let int_chip v =
+    Printf.sprintf {html|<div class="text-2xl font-black text-white font-mono tabular-nums">%d</div>|html} v
+  in
+  let pct_chip v =
+    Printf.sprintf {html|<div class="text-2xl font-black text-white font-mono tabular-nums">%.1f<span class="text-base text-slate-400">%%</span></div>|html} v
+  in
+  let kpi_card ~label ~value_html ~hint_html =
+    Printf.sprintf
+      {html|<div class="bg-slate-900 rounded-xl border border-slate-800 p-5 shadow-lg"><div class="text-slate-400 text-[11px] uppercase tracking-widest font-bold">%s</div><div class="mt-2">%s</div><div class="mt-2 text-[11px] text-slate-500 leading-relaxed">%s</div></div>|html}
+      (escape_html label)
+      value_html
+      hint_html
+  in
+  let score_or_dash = function | None -> "-" | Some v -> string_of_int v in
+  let delta_or_dash a b =
+    match (a, b) with
+    | Some stored, Some summed -> Printf.sprintf "%+d" (summed - stored)
+    | _ -> "-"
+  in
+  let mismatch_rows =
+    report.qdr_score_mismatch_sample
+    |> List.map (fun (row: Db.qa_score_mismatch) ->
+      let stored = Printf.sprintf "%s - %s" (score_or_dash row.qsm_home_score) (score_or_dash row.qsm_away_score) in
+      let summed = Printf.sprintf "%s - %s" (score_or_dash row.qsm_home_sum) (score_or_dash row.qsm_away_sum) in
+      let home_delta = delta_or_dash row.qsm_home_score row.qsm_home_sum in
+      let away_delta = delta_or_dash row.qsm_away_score row.qsm_away_sum in
+      Printf.sprintf
+        {html|<tr class="border-b border-slate-800/60 hover:bg-slate-800/30 transition-colors"><td class="px-3 py-2 text-slate-400 font-mono text-xs whitespace-nowrap">%s</td><td class="px-3 py-2 text-white font-mono text-xs"><a class="hover:text-orange-400" href="/boxscore/%s">%s</a></td><td class="px-3 py-2 text-slate-300 text-xs">%s</td><td class="px-3 py-2 text-right font-mono text-xs text-slate-200 tabular-nums">%s</td><td class="px-3 py-2 text-right font-mono text-xs text-slate-200 tabular-nums">%s</td><td class="px-3 py-2 text-right font-mono text-xs text-slate-400 tabular-nums">%s</td><td class="px-3 py-2 text-right font-mono text-xs text-slate-400 tabular-nums">%s</td></tr>|html}
+        (escape_html row.qsm_game_date)
+        (Uri.pct_encode row.qsm_game_id)
+        (escape_html row.qsm_game_id)
+        (escape_html (row.qsm_home_team ^ " vs " ^ row.qsm_away_team))
+        (escape_html stored)
+        (escape_html summed)
+        (escape_html home_delta)
+        (escape_html away_delta))
+    |> String.concat "\n"
+  in
+  let team_count_rows =
+    report.qdr_team_count_anomaly_sample
+    |> List.map (fun (row: Db.qa_team_count_anomaly) ->
+      Printf.sprintf
+        {html|<tr class="border-b border-slate-800/60 hover:bg-slate-800/30 transition-colors"><td class="px-3 py-2 text-white font-mono text-xs"><a class="hover:text-orange-400" href="/boxscore/%s">%s</a></td><td class="px-3 py-2 text-right font-mono text-xs text-slate-200 tabular-nums">%d</td></tr>|html}
+        (Uri.pct_encode row.qtca_game_id)
+        (escape_html row.qtca_game_id)
+        row.qtca_team_count)
+    |> String.concat "\n"
+  in
+  let dup_row_rows =
+    report.qdr_duplicate_player_row_sample
+    |> List.map (fun (row: Db.qa_duplicate_player_row) ->
+      Printf.sprintf
+        {html|<tr class="border-b border-slate-800/60 hover:bg-slate-800/30 transition-colors"><td class="px-3 py-2 text-white font-mono text-xs"><a class="hover:text-orange-400" href="/boxscore/%s">%s</a></td><td class="px-3 py-2 text-xs">%s</td><td class="px-3 py-2 text-xs"><a class="hover:text-orange-400" href="/player/%s">%s</a></td><td class="px-3 py-2 text-right font-mono text-xs text-slate-200 tabular-nums">%d</td></tr>|html}
+        (Uri.pct_encode row.qdpr_game_id)
+        (escape_html row.qdpr_game_id)
+        (team_badge row.qdpr_team_name)
+        (escape_html row.qdpr_player_id)
+        (escape_html row.qdpr_player_name)
+        row.qdpr_row_count)
+    |> String.concat "\n"
+  in
+  let dup_name_rows =
+    report.qdr_duplicate_player_name_sample
+    |> List.map (fun (row: Db.qa_duplicate_player_name) ->
+      let ids =
+        row.qdpn_player_ids
+        |> List.map (fun id -> Printf.sprintf {html|<a href="/player/%s" class="px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700/60 text-[10px] font-mono text-slate-200 hover:text-orange-400">%s</a>|html} (escape_html id) (escape_html id))
+        |> String.concat " "
+      in
+      Printf.sprintf
+        {html|<tr class="border-b border-slate-800/60 hover:bg-slate-800/30 transition-colors"><td class="px-3 py-2 text-slate-200 text-xs">%s</td><td class="px-3 py-2 text-right font-mono text-xs text-slate-200 tabular-nums">%d</td><td class="px-3 py-2">%s</td></tr>|html}
+        (escape_html row.qdpn_player_name)
+        row.qdpn_id_count
+        ids)
+    |> String.concat "\n"
+  in
+  let markdown_block =
+    match markdown with
+    | None -> ""
+    | Some md ->
+        Printf.sprintf
+          {html|<details class="bg-slate-900 rounded-xl border border-slate-800 p-6 shadow-lg"><summary class="cursor-pointer select-none text-slate-300 font-bold">Legacy QA (Markdown)</summary><pre class="mt-4 text-[11px] text-slate-300 whitespace-pre-wrap break-words">%s</pre></details>|html}
+          (escape_html md)
+  in
+  layout ~title:"QA | WKBL"
+    ~content:(Printf.sprintf
+      {html|<div class="space-y-6 animate-fade-in"><div class="flex flex-col gap-2"><h2 class="text-2xl font-black text-white">Data Quality (QA)</h2><div class="text-slate-400 text-sm leading-relaxed">기록 신뢰도를 위해 <span class="font-mono text-slate-200">스코어 불일치</span>, <span class="font-mono text-slate-200">팀 수 이상</span>, <span class="font-mono text-slate-200">중복 스탯 row</span>, <span class="font-mono text-slate-200">중복 선수 ID</span>를 점검합니다. (Generated: <span class="font-mono">%s</span>)</div></div><div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">%s%s%s%s</div><div class="grid grid-cols-1 lg:grid-cols-3 gap-4">%s%s%s</div><div class="grid grid-cols-1 gap-4"><div class="bg-slate-900 rounded-xl border border-slate-800 p-6 shadow-lg"><div class="flex items-center justify-between gap-3"><h3 class="text-slate-300 font-bold uppercase tracking-wider text-xs">Score Mismatch</h3><span class="text-[11px] text-slate-500 font-mono">count=%d</span></div><div class="mt-3 text-[11px] text-slate-500 leading-relaxed"><span class="font-mono text-slate-200">games.home/away_score</span> vs <span class="font-mono text-slate-200">SUM(game_stats.pts)</span> 비교</div><div class="mt-4 overflow-x-auto"><table class="min-w-[860px] w-full text-sm font-mono table-fixed"><thead class="bg-slate-800/80 text-slate-400 uppercase tracking-wider text-[10px]"><tr><th class="px-3 py-2 text-left w-[90px]">Date</th><th class="px-3 py-2 text-left w-[120px]">Game</th><th class="px-3 py-2 text-left">Matchup</th><th class="px-3 py-2 text-right w-[120px]">Stored</th><th class="px-3 py-2 text-right w-[120px]">Summed</th><th class="px-3 py-2 text-right w-[80px]">HΔ</th><th class="px-3 py-2 text-right w-[80px]">AΔ</th></tr></thead><tbody>%s</tbody></table></div></div><div class="bg-slate-900 rounded-xl border border-slate-800 p-6 shadow-lg"><div class="flex items-center justify-between gap-3"><h3 class="text-slate-300 font-bold uppercase tracking-wider text-xs">Team Count Anomaly</h3><span class="text-[11px] text-slate-500 font-mono">count=%d</span></div><div class="mt-3 text-[11px] text-slate-500 leading-relaxed">한 경기에서 <span class="font-mono text-slate-200">game_stats.team_code</span>가 2개가 아닌 케이스</div><div class="mt-4 overflow-x-auto"><table class="min-w-[320px] w-full text-sm font-mono table-fixed"><thead class="bg-slate-800/80 text-slate-400 uppercase tracking-wider text-[10px]"><tr><th class="px-3 py-2 text-left">Game</th><th class="px-3 py-2 text-right w-[90px]">Teams</th></tr></thead><tbody>%s</tbody></table></div></div><div class="bg-slate-900 rounded-xl border border-slate-800 p-6 shadow-lg"><div class="flex items-center justify-between gap-3"><h3 class="text-slate-300 font-bold uppercase tracking-wider text-xs">Duplicate Player Rows</h3><span class="text-[11px] text-slate-500 font-mono">count=%d</span></div><div class="mt-3 text-[11px] text-slate-500 leading-relaxed"><span class="font-mono text-slate-200">(game_id, team_code, player_id)</span> 중복</div><div class="mt-4 overflow-x-auto"><table class="min-w-[720px] w-full text-sm font-mono table-fixed"><thead class="bg-slate-800/80 text-slate-400 uppercase tracking-wider text-[10px]"><tr><th class="px-3 py-2 text-left w-[120px]">Game</th><th class="px-3 py-2 text-left w-[160px]">Team</th><th class="px-3 py-2 text-left">Player</th><th class="px-3 py-2 text-right w-[80px]">Rows</th></tr></thead><tbody>%s</tbody></table></div></div><div class="bg-slate-900 rounded-xl border border-slate-800 p-6 shadow-lg"><div class="flex items-center justify-between gap-3"><h3 class="text-slate-300 font-bold uppercase tracking-wider text-xs">Duplicate Player Names</h3><span class="text-[11px] text-slate-500 font-mono">count=%d</span></div><div class="mt-3 text-[11px] text-slate-500 leading-relaxed">동일 이름으로 <span class="font-mono text-slate-200">player_id</span>가 여러 개인 케이스</div><div class="mt-4 overflow-x-auto"><table class="min-w-[720px] w-full text-sm font-mono table-fixed"><thead class="bg-slate-800/80 text-slate-400 uppercase tracking-wider text-[10px]"><tr><th class="px-3 py-2 text-left">Name</th><th class="px-3 py-2 text-right w-[80px]">IDs</th><th class="px-3 py-2 text-left">player_id</th></tr></thead><tbody>%s</tbody></table></div></div></div>%s</div>|html}
+      (escape_html report.qdr_generated_at)
+      (kpi_card ~label:"Games" ~value_html:(int_chip report.qdr_games_total) ~hint_html:"전체 경기 수(정규/PO, 시범 제외)")
+      (kpi_card ~label:"Games w/ Stats" ~value_html:(int_chip report.qdr_games_with_stats) ~hint_html:"game_stats가 존재하는 경기")
+      (kpi_card ~label:"PBP +/- Coverage" ~value_html:(pct_chip report.qdr_plus_minus_coverage_pct) ~hint_html:(Printf.sprintf "PBP 기반 +/-가 있는 경기: %d" report.qdr_plus_minus_games))
+      (kpi_card ~label:"Generated" ~value_html:(Printf.sprintf {html|<div class="text-sm font-mono text-slate-200 break-all">%s</div>|html} (escape_html report.qdr_generated_at)) ~hint_html:"UTC 기준")
+      (kpi_card ~label:"Score Mismatch" ~value_html:(int_chip report.qdr_score_mismatch_count) ~hint_html:"최종 스코어 vs 합계 불일치")
+      (kpi_card ~label:"Team Count != 2" ~value_html:(int_chip report.qdr_team_count_anomaly_count) ~hint_html:"한 경기 팀 수가 2가 아님")
+      (kpi_card ~label:"Dup Player Rows" ~value_html:(int_chip report.qdr_duplicate_player_row_count) ~hint_html:"중복으로 라인이 2개 뜨는 원인")
+      report.qdr_score_mismatch_count
+      mismatch_rows
+      report.qdr_team_count_anomaly_count
+      team_count_rows
+      report.qdr_duplicate_player_row_count
+      dup_row_rows
+      report.qdr_duplicate_player_name_count
+      dup_name_rows
+      markdown_block)
+
 (** Error page *)
 let error_page message = layout ~title:"Error" ~content:(Printf.sprintf {html|<div class="flex flex-col items-center justify-center py-20"><span class="text-6xl mb-4">😵</span><h2 class="text-xl font-bold text-white mb-2">Something went wrong</h2><p class="text-slate-400">%s</p><a href="/" class="mt-4 text-orange-500 hover:underline">← Back to home</a></div>|html} (escape_html message))

@@ -720,3 +720,10 @@ let load_markdown ?(refresh=false) () =
     | Ok report ->
         Ok (write_markdown report paths.qa_md)
     | Error err -> Error err
+
+let read_markdown_if_exists () =
+  let paths = resolve_paths () in
+  if Sys.file_exists paths.qa_md then
+    Some (In_channel.with_open_text paths.qa_md In_channel.input_all)
+  else
+    None
