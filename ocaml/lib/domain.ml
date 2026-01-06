@@ -371,7 +371,7 @@ let normalize_label (s: string) =
     if i >= len then ()
     else
       let c0 = s.[i] in
-      if c0 = '"' then (
+      if c0 = '"' || c0 = '\\' then (
         add_space prev_space;
         loop (i + 1) true
       ) else if is_ascii_space c0 then (
@@ -381,6 +381,22 @@ let normalize_label (s: string) =
         (* NBSP in UTF-8 is 0xC2 0xA0. Avoid corrupting multi-byte UTF-8 chars. *)
         add_space prev_space;
         loop (i + 2) true
+      ) else if c0 = '\xEF' && i + 2 < len && s.[i + 1] = '\xBB' && s.[i + 2] = '\xBF' then (
+        (* UTF-8 BOM (zero width no-break space): 0xEF 0xBB 0xBF *)
+        add_space prev_space;
+        loop (i + 3) true
+      ) else if c0 = '\xE2' && i + 2 < len && s.[i + 1] = '\x80' &&
+                (s.[i + 2] = '\x8B' (* ZWSP *)
+                 || s.[i + 2] = '\x8C' (* ZWNJ *)
+                 || s.[i + 2] = '\x8D' (* ZWJ *)
+                 || s.[i + 2] = '\x89' (* THIN SPACE *)
+                 || s.[i + 2] = '\xAF' (* NARROW NBSP *)) then (
+        add_space prev_space;
+        loop (i + 3) true
+      ) else if c0 = '\xE3' && i + 2 < len && s.[i + 1] = '\x80' && s.[i + 2] = '\x80' then (
+        (* IDEOGRAPHIC SPACE (U+3000): 0xE3 0x80 0x80 *)
+        add_space prev_space;
+        loop (i + 3) true
       ) else (
         Buffer.add_char buf c0;
         loop (i + 1) false
