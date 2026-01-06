@@ -18,6 +18,54 @@ type db_error =
 (** Result type alias for convenience *)
 type 'a db_result = ('a, db_error) result Lwt.t
 
+(** DB QA (data quality) report types. *)
+type qa_score_mismatch = {
+  qsm_game_id: string;
+  qsm_game_date: string;
+  qsm_home_team: string;
+  qsm_away_team: string;
+  qsm_home_score: int option;
+  qsm_away_score: int option;
+  qsm_home_sum: int option;
+  qsm_away_sum: int option;
+}
+
+type qa_team_count_anomaly = {
+  qtca_game_id: string;
+  qtca_team_count: int;
+}
+
+type qa_duplicate_player_row = {
+  qdpr_game_id: string;
+  qdpr_team_code: string;
+  qdpr_team_name: string;
+  qdpr_player_id: string;
+  qdpr_player_name: string;
+  qdpr_row_count: int;
+}
+
+type qa_duplicate_player_name = {
+  qdpn_player_name: string;
+  qdpn_id_count: int;
+  qdpn_player_ids: string list;
+}
+
+type qa_db_report = {
+  qdr_generated_at: string;
+  qdr_games_total: int;
+  qdr_games_with_stats: int;
+  qdr_plus_minus_games: int;
+  qdr_plus_minus_coverage_pct: float;
+  qdr_score_mismatch_count: int;
+  qdr_score_mismatch_sample: qa_score_mismatch list;
+  qdr_team_count_anomaly_count: int;
+  qdr_team_count_anomaly_sample: qa_team_count_anomaly list;
+  qdr_duplicate_player_row_count: int;
+  qdr_duplicate_player_row_sample: qa_duplicate_player_row list;
+  qdr_duplicate_player_name_count: int;
+  qdr_duplicate_player_name_sample: qa_duplicate_player_name list;
+}
+
 (** Database connection URI *)
 let default_db_path = "../data/wkbl.db"
 
@@ -142,6 +190,55 @@ module Types = struct
     in
     custom ~encode ~decode
       (tup2 string (tup2 string (tup2 string (tup2 string (tup2 (option int) (tup2 (option int) string))))))
+
+  let qa_score_mismatch =
+    let encode _ = assert false in
+    let decode (game_id, (game_date, (home_team, (away_team, (home_score, (away_score, (home_sum, away_sum))))))) =
+      Ok { qsm_game_id = game_id;
+           qsm_game_date = game_date;
+           qsm_home_team = home_team;
+           qsm_away_team = away_team;
+           qsm_home_score = home_score;
+           qsm_away_score = away_score;
+           qsm_home_sum = home_sum;
+           qsm_away_sum = away_sum;
+      }
+    in
+    let t = tup2 in
+    custom ~encode ~decode
+      (t string
+         (t string
+            (t string
+               (t string
+                  (t (option int)
+                     (t (option int)
+                        (t (option int) (option int))))))))
+
+  let qa_team_count_anomaly =
+    let encode _ = assert false in
+    let decode (game_id, team_count) = Ok { qtca_game_id = game_id; qtca_team_count = team_count } in
+    custom ~encode ~decode (tup2 string int)
+
+  let qa_duplicate_player_row =
+    let encode _ = assert false in
+    let decode (game_id, (team_code, (team_name, (player_id, (player_name, row_count))))) =
+      Ok { qdpr_game_id = game_id;
+           qdpr_team_code = team_code;
+           qdpr_team_name = team_name;
+           qdpr_player_id = player_id;
+           qdpr_player_name = player_name;
+           qdpr_row_count = row_count;
+      }
+    in
+    let t = tup2 in
+    custom ~encode ~decode (t string (t string (t string (t string (t string int)))))
+
+  let qa_duplicate_player_name_row =
+    let encode _ = assert false in
+    let decode (player_name, (id_count, player_ids_csv)) =
+      Ok (player_name, id_count, player_ids_csv)
+    in
+    custom ~encode ~decode (tup2 string (tup2 int string))
 
   let boxscore_player_stat =
     let encode _ = assert false in
@@ -550,6 +647,161 @@ module Queries = struct
       ORDER BY s.min_seconds DESC
     |}
 
+  (** DB QA (data quality) queries. *)
+  let qa_games_total = (unit ->? int) {|
+    SELECT COUNT(*)
+    FROM games
+    WHERE game_type != '10'
+  |}
+
+  let qa_games_with_stats = (unit ->? int) {|
+    SELECT COUNT(DISTINCT s.game_id)
+    FROM game_stats s
+    JOIN games g ON g.game_id = s.game_id
+    WHERE g.game_type != '10'
+  |}
+
+  let qa_plus_minus_games = (unit ->? int) {|
+    SELECT COUNT(DISTINCT pm.game_id)
+    FROM player_plus_minus pm
+    JOIN games g ON g.game_id = pm.game_id
+    WHERE g.game_type != '10'
+  |}
+
+  let qa_score_mismatch_count = (unit ->? int) {|
+    WITH sums AS (
+      SELECT game_id, team_code, SUM(pts) AS pts_sum
+      FROM game_stats
+      GROUP BY game_id, team_code
+    ),
+    joined AS (
+      SELECT
+        g.game_id,
+        g.home_score AS home_score,
+        g.away_score AS away_score,
+        sh.pts_sum AS home_sum,
+        sa.pts_sum AS away_sum
+      FROM games g
+      LEFT JOIN sums sh ON sh.game_id = g.game_id AND sh.team_code = g.home_team_code
+      LEFT JOIN sums sa ON sa.game_id = g.game_id AND sa.team_code = g.away_team_code
+      WHERE g.game_type != '10'
+    )
+    SELECT COUNT(*)
+    FROM joined
+    WHERE
+      (home_score IS NOT NULL AND home_sum IS NOT NULL AND home_score != home_sum)
+      OR
+      (away_score IS NOT NULL AND away_sum IS NOT NULL AND away_score != away_sum)
+  |}
+
+  let qa_score_mismatch_sample = (unit ->* Types.qa_score_mismatch) {|
+    WITH sums AS (
+      SELECT game_id, team_code, SUM(pts) AS pts_sum
+      FROM game_stats
+      GROUP BY game_id, team_code
+    )
+    SELECT
+      g.game_id,
+      COALESCE(g.game_date, 'Unknown'),
+      t1.team_name_kr,
+      t2.team_name_kr,
+      g.home_score,
+      g.away_score,
+      sh.pts_sum,
+      sa.pts_sum
+    FROM games g
+    JOIN teams t1 ON g.home_team_code = t1.team_code
+    JOIN teams t2 ON g.away_team_code = t2.team_code
+    LEFT JOIN sums sh ON sh.game_id = g.game_id AND sh.team_code = g.home_team_code
+    LEFT JOIN sums sa ON sa.game_id = g.game_id AND sa.team_code = g.away_team_code
+    WHERE g.game_type != '10'
+      AND (
+        (g.home_score IS NOT NULL AND sh.pts_sum IS NOT NULL AND g.home_score != sh.pts_sum)
+        OR
+        (g.away_score IS NOT NULL AND sa.pts_sum IS NOT NULL AND g.away_score != sa.pts_sum)
+      )
+    ORDER BY g.game_date DESC, g.game_id DESC
+    LIMIT 50
+  |}
+
+  let qa_team_count_anomaly_count = (unit ->? int) {|
+    SELECT COUNT(*)
+    FROM (
+      SELECT s.game_id
+      FROM game_stats s
+      JOIN games g ON g.game_id = s.game_id
+      WHERE g.game_type != '10'
+      GROUP BY s.game_id
+      HAVING COUNT(DISTINCT s.team_code) != 2
+    )
+  |}
+
+  let qa_team_count_anomaly_sample = (unit ->* Types.qa_team_count_anomaly) {|
+    SELECT
+      s.game_id,
+      COUNT(DISTINCT s.team_code) AS team_count
+    FROM game_stats s
+    JOIN games g ON g.game_id = s.game_id
+    WHERE g.game_type != '10'
+    GROUP BY s.game_id
+    HAVING COUNT(DISTINCT s.team_code) != 2
+    ORDER BY team_count DESC, s.game_id DESC
+    LIMIT 50
+  |}
+
+  let qa_duplicate_player_row_count = (unit ->? int) {|
+    SELECT COUNT(*)
+    FROM (
+      SELECT s.game_id, s.team_code, s.player_id
+      FROM game_stats s
+      JOIN games g ON g.game_id = s.game_id
+      WHERE g.game_type != '10'
+      GROUP BY s.game_id, s.team_code, s.player_id
+      HAVING COUNT(*) > 1
+    )
+  |}
+
+	  let qa_duplicate_player_row_sample = (unit ->* Types.qa_duplicate_player_row) {|
+	    SELECT
+	      s.game_id,
+	      s.team_code,
+	      t.team_name_kr,
+	      s.player_id,
+	      TRIM(REPLACE(REPLACE(p.player_name, char(92), ''), '"', '')) AS player_name,
+	      COUNT(*) AS row_count
+	    FROM game_stats s
+	    JOIN games g ON g.game_id = s.game_id
+	    JOIN teams t ON t.team_code = s.team_code
+	    JOIN players p ON p.player_id = s.player_id
+    WHERE g.game_type != '10'
+    GROUP BY s.game_id, s.team_code, s.player_id
+    HAVING COUNT(*) > 1
+    ORDER BY row_count DESC, s.game_id DESC
+    LIMIT 50
+  |}
+
+	  let qa_duplicate_player_name_count = (unit ->? int) {|
+	    SELECT COUNT(*)
+	    FROM (
+	      SELECT TRIM(REPLACE(REPLACE(player_name, char(92), ''), '"', '')) AS normalized_name
+	      FROM players
+	      GROUP BY TRIM(REPLACE(REPLACE(player_name, char(92), ''), '"', ''))
+	      HAVING COUNT(DISTINCT player_id) > 1
+	    )
+	  |}
+	
+	  let qa_duplicate_player_name_sample = (unit ->* Types.qa_duplicate_player_name_row) {|
+	    SELECT
+	      TRIM(REPLACE(REPLACE(player_name, char(92), ''), '"', '')) AS normalized_name,
+	      COUNT(DISTINCT player_id) AS id_count,
+	      GROUP_CONCAT(DISTINCT player_id) AS player_ids
+	    FROM players
+	    GROUP BY TRIM(REPLACE(REPLACE(player_name, char(92), ''), '"', ''))
+	    HAVING COUNT(DISTINCT player_id) > 1
+	    ORDER BY id_count DESC, normalized_name ASC
+	    LIMIT 50
+	  |}
+
   let game_info_by_id = (string ->? Types.game_info) {|
     WITH scored_games AS (
       SELECT
@@ -807,6 +1059,18 @@ module Repo = struct
     Db.collect_list Queries.team_core_player_ids (team_name, ((season, season), limit))
   let get_team_active_player_ids ~team_name ~game_id (module Db : Caqti_lwt.CONNECTION) =
     Db.collect_list Queries.team_active_player_ids (team_name, game_id)
+
+  let qa_games_total (module Db : Caqti_lwt.CONNECTION) = Db.find_opt Queries.qa_games_total ()
+  let qa_games_with_stats (module Db : Caqti_lwt.CONNECTION) = Db.find_opt Queries.qa_games_with_stats ()
+  let qa_plus_minus_games (module Db : Caqti_lwt.CONNECTION) = Db.find_opt Queries.qa_plus_minus_games ()
+  let qa_score_mismatch_count (module Db : Caqti_lwt.CONNECTION) = Db.find_opt Queries.qa_score_mismatch_count ()
+  let qa_score_mismatch_sample (module Db : Caqti_lwt.CONNECTION) = Db.collect_list Queries.qa_score_mismatch_sample ()
+  let qa_team_count_anomaly_count (module Db : Caqti_lwt.CONNECTION) = Db.find_opt Queries.qa_team_count_anomaly_count ()
+  let qa_team_count_anomaly_sample (module Db : Caqti_lwt.CONNECTION) = Db.collect_list Queries.qa_team_count_anomaly_sample ()
+  let qa_duplicate_player_row_count (module Db : Caqti_lwt.CONNECTION) = Db.find_opt Queries.qa_duplicate_player_row_count ()
+  let qa_duplicate_player_row_sample (module Db : Caqti_lwt.CONNECTION) = Db.collect_list Queries.qa_duplicate_player_row_sample ()
+  let qa_duplicate_player_name_count (module Db : Caqti_lwt.CONNECTION) = Db.find_opt Queries.qa_duplicate_player_name_count ()
+  let qa_duplicate_player_name_sample (module Db : Caqti_lwt.CONNECTION) = Db.collect_list Queries.qa_duplicate_player_name_sample ()
   let get_game_info ~game_id (module Db : Caqti_lwt.CONNECTION) = Db.find_opt Queries.game_info_by_id game_id
   let get_boxscore_stats ~game_id (module Db : Caqti_lwt.CONNECTION) = Db.collect_list Queries.boxscore_stats_by_game_id game_id
   let get_leaders ~category ~scope ~season (module Db : Caqti_lwt.CONNECTION) = let q = match (category, scope) with | "pts", "per_36" -> Queries.leaders_pts_per36 | "pts", _ -> Queries.leaders_pts | "reb", "per_36" -> Queries.leaders_reb_per36 | "reb", _ -> Queries.leaders_reb | "ast", "per_36" -> Queries.leaders_ast_per36 | "ast", _ -> Queries.leaders_ast | "stl", "per_36" -> Queries.leaders_stl_per36 | "stl", _ -> Queries.leaders_stl | "blk", "per_36" -> Queries.leaders_blk_per36 | "blk", _ -> Queries.leaders_blk | _ -> Queries.leaders_pts in Db.collect_list q (season, season)
@@ -910,6 +1174,22 @@ let pool_ref : (Caqti_lwt.connection, Caqti_error.t) Caqti_lwt.Pool.t option ref
 let init_pool db_path = let uri = Uri.of_string ("sqlite3:" ^ db_path) in match Caqti_lwt.connect_pool uri with | Ok pool -> pool_ref := Some pool; Ok () | Error e -> Error (ConnectionFailed (Caqti_error.show e))
 let with_db f = let open Lwt.Syntax in match !pool_ref with | None -> Lwt.return (Error (ConnectionFailed "Pool not initialized")) | Some pool -> let* result = Caqti_lwt.Pool.use f pool in match result with | Ok v -> Lwt.return (Ok v) | Error e -> Lwt.return (Error (QueryFailed (Caqti_error.show e)))
 
+let iso8601_utc () =
+  let tm = Unix.gmtime (Unix.time ()) in
+  Printf.sprintf "%04d-%02d-%02dT%02d:%02d:%02dZ"
+    (tm.tm_year + 1900)
+    (tm.tm_mon + 1)
+    tm.tm_mday
+    tm.tm_hour
+    tm.tm_min
+    tm.tm_sec
+
+let split_csv_ids (ids : string) =
+  ids
+  |> String.split_on_char ','
+  |> List.map String.trim
+  |> List.filter (fun s -> s <> "")
+
 (** Public API *)
 let ensure_schema () = with_db (fun db -> Repo.ensure_schema db)
 let get_all_teams () = with_db (fun db -> Repo.get_teams db)
@@ -935,3 +1215,49 @@ let get_player_profile ~player_id () = with_db (fun db -> Repo.get_player_profil
 let get_player_season_stats ~player_id ~scope () = with_db (fun db -> Repo.get_player_season_stats ~player_id ~scope db)
 let get_team_full_detail ~team_name ?(season="ALL") () = let open Lwt.Syntax in let* standing_res = get_standings ~season () in let* roster_res = get_players_by_team ~team_name () in let* games_res = with_db (fun db -> Repo.get_team_recent_games ~team_name db) in match standing_res, roster_res, games_res with | Ok standings, Ok roster, Ok games -> let standing = List.find_opt (fun (s: team_standing) -> s.team_name = team_name) standings in Lwt.return (Ok { tfd_team_name = team_name; tfd_standing = standing; tfd_roster = roster; tfd_recent_games = games }) | Error e, _, _ | _, Error e, _ | _, _, Error e -> Lwt.return (Error e)
 let get_player_h2h_data ~p1_id ~p2_id ?(season="ALL") () = with_db (fun db -> Repo.get_player_h2h ~p1_id ~p2_id ~season db)
+
+let get_db_quality_report () : qa_db_report db_result =
+  let open Lwt_result.Syntax in
+  let int_or_zero = function | None -> 0 | Some v -> v in
+  let round1 v = Float.round (v *. 10.0) /. 10.0 in
+  let* games_total_opt = with_db (fun db -> Repo.qa_games_total db) in
+  let* games_with_stats_opt = with_db (fun db -> Repo.qa_games_with_stats db) in
+  let* plus_minus_games_opt = with_db (fun db -> Repo.qa_plus_minus_games db) in
+  let* mismatch_count_opt = with_db (fun db -> Repo.qa_score_mismatch_count db) in
+  let* mismatch_sample = with_db (fun db -> Repo.qa_score_mismatch_sample db) in
+  let* team_count_anomaly_count_opt = with_db (fun db -> Repo.qa_team_count_anomaly_count db) in
+  let* team_count_anomaly_sample = with_db (fun db -> Repo.qa_team_count_anomaly_sample db) in
+  let* dup_row_count_opt = with_db (fun db -> Repo.qa_duplicate_player_row_count db) in
+  let* dup_row_sample = with_db (fun db -> Repo.qa_duplicate_player_row_sample db) in
+  let* dup_name_count_opt = with_db (fun db -> Repo.qa_duplicate_player_name_count db) in
+  let* dup_name_rows = with_db (fun db -> Repo.qa_duplicate_player_name_sample db) in
+  let games_total = int_or_zero games_total_opt in
+  let games_with_stats = int_or_zero games_with_stats_opt in
+  let plus_minus_games = int_or_zero plus_minus_games_opt in
+  let plus_minus_coverage_pct =
+    if games_total <= 0 then 0.0
+    else round1 ((float_of_int plus_minus_games /. float_of_int games_total) *. 100.0)
+  in
+  let dup_name_sample =
+    dup_name_rows
+    |> List.map (fun (name, id_count, ids_csv) ->
+        { qdpn_player_name = name;
+          qdpn_id_count = id_count;
+          qdpn_player_ids = split_csv_ids ids_csv;
+        })
+  in
+  Lwt_result.return
+    { qdr_generated_at = iso8601_utc ();
+      qdr_games_total = games_total;
+      qdr_games_with_stats = games_with_stats;
+      qdr_plus_minus_games = plus_minus_games;
+      qdr_plus_minus_coverage_pct = plus_minus_coverage_pct;
+      qdr_score_mismatch_count = int_or_zero mismatch_count_opt;
+      qdr_score_mismatch_sample = mismatch_sample;
+      qdr_team_count_anomaly_count = int_or_zero team_count_anomaly_count_opt;
+      qdr_team_count_anomaly_sample = team_count_anomaly_sample;
+      qdr_duplicate_player_row_count = int_or_zero dup_row_count_opt;
+      qdr_duplicate_player_row_sample = dup_row_sample;
+      qdr_duplicate_player_name_count = int_or_zero dup_name_count_opt;
+      qdr_duplicate_player_name_sample = dup_name_sample;
+    }
