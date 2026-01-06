@@ -1165,7 +1165,19 @@ let player_profile_page (profile: player_profile) ~scope ~(seasons_catalog: seas
 
   let career_highs_html = career_highs_card profile.career_highs in
   let data_notes_html =
-    let seasons_value_html, show_backfill, season_count =
+    let season_range_html ~count ~oldest ~latest =
+      if count <= 0 then
+        {html|<span class="font-mono text-slate-500">-</span>|html}
+      else if count = 1 then
+        Printf.sprintf {html|<span class="font-mono text-slate-300">%s</span>|html} (escape_html oldest)
+      else
+        Printf.sprintf
+          {html|<span class="font-mono text-slate-300">%s</span><span class="mx-1 text-slate-600">→</span><span class="font-mono text-slate-300">%s</span>|html}
+          (escape_html oldest)
+          (escape_html latest)
+    in
+
+    let db_seasons_value_html, show_backfill, db_season_count =
       match seasons_catalog with
       | [] -> ({html|<span class="font-mono text-slate-500">-</span>|html}, false, 0)
       | oldest :: _ ->
@@ -1175,34 +1187,68 @@ let player_profile_page (profile: player_profile) ~scope ~(seasons_catalog: seas
             | latest :: _ -> latest
             | [] -> oldest
           in
-          let value_html =
-            if count <= 1 then
-              Printf.sprintf {html|<span class="font-mono text-slate-300">%s</span>|html} (escape_html oldest.name)
-            else
-              Printf.sprintf
-                {html|<span class="font-mono text-slate-300">%s</span><span class="mx-1 text-slate-600">→</span><span class="font-mono text-slate-300">%s</span>|html}
-                (escape_html oldest.name)
-                (escape_html latest.name)
+          (season_range_html ~count ~oldest:oldest.name ~latest:latest.name, count <= 3, count)
+    in
+
+    let player_seasons_value_html, player_season_count =
+      match profile.season_breakdown with
+      | [] -> ({html|<span class="font-mono text-slate-500">-</span>|html}, 0)
+      | latest :: _ ->
+          let count = List.length profile.season_breakdown in
+          let rec last = function
+            | [] -> None
+            | [x] -> Some x
+            | _ :: xs -> last xs
           in
-          (value_html, count <= 3, count)
+          let oldest = last profile.season_breakdown |> Option.value ~default:latest in
+          (season_range_html ~count ~oldest:oldest.ss_season_name ~latest:latest.ss_season_name, count)
     in
     let backfill_row_html =
       if show_backfill then
         Printf.sprintf
-          {html|<div class="text-slate-500 leading-relaxed">아직 데이터가 %d시즌 정도만 있어요. 더 채우려면 아래를 실행하세요:</div><code class="mt-2 block font-mono text-slate-300 bg-slate-800/40 border border-slate-700/60 px-2 py-1 rounded break-all">python3 scripts/wkbl_refresh_all.py -- --years 10</code>|html}
-          season_count
+          {html|<div class="text-slate-500 leading-relaxed">현재 DB에 %d시즌 정도만 있어요. 더 채우려면 아래를 실행하세요:</div><code class="mt-2 block font-mono text-slate-300 bg-slate-800/40 border border-slate-700/60 px-2 py-1 rounded break-all">python3 scripts/wkbl_refresh_all.py -- --years 10</code>|html}
+          db_season_count
       else
         ""
     in
     let seasons_card_html =
       Printf.sprintf
-        {html|<div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-4"><div class="flex items-center justify-between gap-3"><div class="text-slate-400 font-bold uppercase tracking-widest text-[11px] flex items-center gap-2"><span class="text-base">🗓</span> Seasons</div><div class="text-[11px] text-slate-500 font-mono">n=%d</div></div><div class="mt-2 text-slate-200 font-mono">%s</div>%s</div>|html}
-        season_count
-        seasons_value_html
+        {html|<div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-4"><div class="flex items-center justify-between gap-3"><div class="text-slate-400 font-bold uppercase tracking-widest text-[11px] flex items-center gap-2"><span class="text-base">🗓</span> Seasons</div><div class="flex items-center gap-2 text-[10px] font-mono"><span class="px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700/60 text-slate-300">DB n=%d</span><span class="px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700/60 text-slate-300">Player n=%d</span></div></div><div class="mt-2 space-y-2 text-slate-200"><div><div class="text-[10px] text-slate-500 font-mono uppercase tracking-widest">DB</div><div class="mt-1 font-mono">%s</div></div><div><div class="text-[10px] text-slate-500 font-mono uppercase tracking-widest">Player</div><div class="mt-1 font-mono">%s</div></div></div>%s</div>|html}
+        db_season_count
+        player_season_count
+        db_seasons_value_html
+        player_seasons_value_html
         (if backfill_row_html = "" then "" else Printf.sprintf {html|<details class="mt-3 text-[11px] text-slate-500"><summary class="cursor-pointer select-none text-slate-400 font-bold">Backfill</summary><div class="mt-2">%s</div></details>|html} backfill_row_html)
     in
+    let total_recent = List.length profile.recent_games in
+    let count_pm, count_m, count_issue =
+      profile.recent_games
+      |> List.fold_left
+        (fun (pm_cnt, m_cnt, issue_cnt) (g: player_game_stat) ->
+          let issue_cnt' = if g.score_quality = Mismatch then issue_cnt + 1 else issue_cnt in
+          match g.plus_minus, g.team_score, g.opponent_score with
+          | Some _, _, _ -> (pm_cnt + 1, m_cnt, issue_cnt')
+          | None, Some _, Some _ -> (pm_cnt, m_cnt + 1, issue_cnt')
+          | None, _, _ -> (pm_cnt, m_cnt, issue_cnt'))
+        (0, 0, 0)
+    in
+    let count_dash = max 0 (total_recent - count_pm - count_m) in
+    let pbp_stat_line =
+      if total_recent <= 0 then
+        {html|<div class="mt-2 text-[11px] text-slate-500 font-mono">최근 경기 데이터 없음</div>|html}
+      else
+        Printf.sprintf
+          {html|<div class="mt-2 text-[11px] text-slate-500 font-mono">최근 %d경기: +/- %d · M %d · - %d%s</div>|html}
+          total_recent
+          count_pm
+          count_m
+          count_dash
+          (if count_issue > 0 then Printf.sprintf " · Mismatch %d" count_issue else "")
+    in
     let pbp_card_html =
-      {html|<div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-4"><div class="flex items-center justify-between gap-3"><div class="text-slate-400 font-bold uppercase tracking-widest text-[11px] flex items-center gap-2"><span class="text-base">🎥</span> PBP +/-</div><span class="px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700/60 text-[10px] font-mono text-slate-300">부분</span></div><div class="mt-2 text-slate-400 text-xs leading-relaxed">개인 <span class="font-mono text-slate-300">+/-</span>는 문자중계(PBP) 기반이라 <span class="text-slate-300 font-bold">일부 경기만</span> 제공됩니다. PBP가 없으면 <span class="font-mono text-slate-300">M</span>으로 팀 득실마진(경기 최종 점수)을 대신 표시합니다. (품질 이슈면 <span class="font-mono text-slate-300">-</span>)</div></div>|html}
+      Printf.sprintf
+        {html|<div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-4"><div class="flex items-center justify-between gap-3"><div class="text-slate-400 font-bold uppercase tracking-widest text-[11px] flex items-center gap-2"><span class="text-base">🎥</span> PBP +/-</div><span class="px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700/60 text-[10px] font-mono text-slate-300">부분</span></div>%s<div class="mt-2 text-slate-400 text-xs leading-relaxed"><div><span class="font-mono text-slate-300">+/-</span>: 문자중계(PBP) 기반</div><div><span class="font-mono text-slate-300">M</span>: PBP가 없을 때 팀 득실마진(경기 최종 점수)</div><div><span class="font-mono text-slate-300">-</span>: 데이터 없음/품질 이슈</div></div></div>|html}
+        pbp_stat_line
     in
     let draft_card_html =
       {html|<div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-4"><div class="flex items-center justify-between gap-3"><div class="text-slate-400 font-bold uppercase tracking-widest text-[11px] flex items-center gap-2"><span class="text-base">🧩</span> Draft / Trade</div><span class="px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700/60 text-[10px] font-mono text-slate-300">예정</span></div><div class="mt-2 text-slate-400 text-xs leading-relaxed">공식 드래프트/이적 기록은 아직 수집 중입니다. 현재는 <span class="font-mono text-slate-300">박스스코어 출전팀</span> 변화로 팀 이동을 추정합니다. (공식 페이지 기반 추가 수집 필요)</div></div>|html}
