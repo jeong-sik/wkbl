@@ -719,16 +719,226 @@ let h2h_game_table (p1_name: string) (p2_name: string) (games: h2h_game list) =
   let rows = games |> List.map h2h_game_row |> String.concat "\n" in
   Printf.sprintf {html|<div class="space-y-3 mt-8"><h3 class="text-center text-slate-500 text-sm font-bold uppercase tracking-widest">Match History</h3><div class="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden shadow-xl"><table class="w-full text-sm table-fixed"><thead class="bg-slate-800/80 text-slate-500 uppercase text-[10px] tracking-tighter"><tr><th class="px-3 py-2 text-left font-sans w-[100px]">Date</th><th class="px-3 py-2 text-right font-sans text-orange-400 w-[60px]">%s PTS</th><th class="px-3 py-2 text-right font-sans w-[60px]">REB</th><th class="px-3 py-2 text-right font-sans w-[60px]">AST</th><th class="px-3 py-2 w-[40px]"></th><th class="px-3 py-2 text-left font-sans text-sky-400 w-[60px]">%s PTS</th><th class="px-3 py-2 text-left font-sans w-[60px]">REB</th><th class="px-3 py-2 text-left font-sans w-[60px]">AST</th><th class="px-3 py-2 w-[80px]"></th></tr></thead><tbody>%s</tbody></table></div></div>|html} (escape_html p1_name) (escape_html p2_name) rows
 
-let compare_page (p1: player_aggregate option) (p2: player_aggregate option) (h2h: h2h_game list) =
-  let content =
-    match p1, p2 with
+let compare_page
+    ~season
+    ~seasons
+    ~p1_query
+    ~p2_query
+    ~p1_id
+    ~p2_id
+    ~p1_candidates
+    ~p2_candidates
+    ~error
+    (p1_selected: player_aggregate option)
+    (p2_selected: player_aggregate option)
+    (h2h: h2h_game list)
+  =
+  let season_options =
+    let base =
+      seasons
+      |> List.map (fun (s : season_info) ->
+          let selected = if s.code = season then "selected" else "" in
+          Printf.sprintf {html|<option value="%s" %s>%s</option>|html} s.code selected (escape_html s.name))
+      |> String.concat "\n"
+    in
+    Printf.sprintf {html|<option value="ALL" %s>All Seasons</option>%s|html} (if season = "ALL" then "selected" else "") base
+  in
+  let query_display (query : string) (selected : player_aggregate option) =
+    if String.trim query <> "" then query
+    else
+      match selected with
+      | None -> ""
+      | Some p -> normalize_name p.name
+  in
+  let p1_display = query_display p1_query p1_selected in
+  let p2_display = query_display p2_query p2_selected in
+  let compare_url ~season ~p1 ~p2 ~p1_id ~p2_id =
+    let params =
+      [ ("season", season); ("p1", p1); ("p2", p2) ]
+      @ (match p1_id with None -> [] | Some id -> [ ("p1_id", id) ])
+      @ (match p2_id with None -> [] | Some id -> [ ("p2_id", id) ])
+    in
+    let encode (k, v) = k ^ "=" ^ Uri.pct_encode v in
+    "/compare?" ^ String.concat "&" (List.map encode params)
+  in
+  let selected_card ~accent_border (p : player_aggregate) =
+    let mp =
+      if p.games_played <= 0 then 0.0 else p.total_minutes /. float_of_int p.games_played
+    in
+    let id_badge_html = Printf.sprintf {html|<span class="ml-2">%s</span>|html} (player_id_badge p.player_id) in
+    Printf.sprintf
+      {html|<div class="bg-slate-900 rounded-xl border border-slate-800 p-4 shadow-lg border-t-4 %s">
+        <div class="flex items-center gap-4">
+          %s
+          <div class="min-w-0">
+            <div class="text-lg font-black text-white truncate">
+              <a href="/player/%s" class="hover:text-orange-400 transition-colors">%s</a>%s
+            </div>
+            <div class="mt-1 text-xs text-slate-500 flex flex-wrap items-center gap-2">
+              <span class="truncate">%s</span>
+              <span class="font-mono">GP %d</span>
+              <span class="font-mono">MP %.1f</span>
+              <span class="font-mono">EFF %.1f</span>
+            </div>
+          </div>
+        </div>
+        <div class="mt-3 text-[11px] text-slate-500">이름을 다시 입력하면 선택이 초기화됩니다.</div>
+      </div>|html}
+      accent_border
+      (player_img_tag ~class_name:"w-14 h-14" p.player_id p.name)
+      p.player_id
+      (escape_html (normalize_name p.name))
+      id_badge_html
+      (escape_html p.team_name)
+      p.games_played
+      mp
+      p.efficiency
+  in
+  let candidate_row ~accent_btn_class ~slot (c : player_aggregate) =
+    let mp =
+      if c.games_played <= 0 then 0.0 else c.total_minutes /. float_of_int c.games_played
+    in
+    let p1_for_link, p2_for_link, p1_id_for_link, p2_id_for_link =
+      match slot with
+      | `P1 ->
+          ( normalize_name c.name,
+            p2_display,
+            Some c.player_id,
+            p2_id )
+      | `P2 ->
+          ( p1_display,
+            normalize_name c.name,
+            p1_id,
+            Some c.player_id )
+    in
+    let url = compare_url ~season ~p1:p1_for_link ~p2:p2_for_link ~p1_id:p1_id_for_link ~p2_id:p2_id_for_link in
+    let id_badge_html = Printf.sprintf {html|<span class="ml-2">%s</span>|html} (player_id_badge c.player_id) in
+    Printf.sprintf
+      {html|<div class="flex items-center justify-between gap-3 py-2 border-b border-slate-800/60 last:border-0">
+        <div class="flex items-center gap-3 min-w-0">
+          %s
+          <div class="min-w-0">
+            <div class="text-sm font-medium text-slate-300 truncate">
+              <a href="%s" class="hover:text-orange-400 transition-colors">%s</a>%s
+            </div>
+            <div class="mt-0.5 text-[11px] text-slate-500 flex flex-wrap items-center gap-2">
+              <span class="truncate">%s</span>
+              <span class="font-mono">GP %d</span>
+              <span class="font-mono">MP %.1f</span>
+              <span class="font-mono">EFF %.1f</span>
+            </div>
+          </div>
+        </div>
+        <a href="%s" class="shrink-0 px-3 py-1 rounded-lg border border-slate-700 bg-slate-800/60 text-xs font-bold %s hover:brightness-125 transition">Select</a>
+      </div>|html}
+      (player_img_tag ~class_name:"w-10 h-10" c.player_id c.name)
+      (escape_html url)
+      (escape_html (normalize_name c.name))
+      id_badge_html
+      (escape_html c.team_name)
+      c.games_played
+      mp
+      c.efficiency
+      (escape_html url)
+      accent_btn_class
+  in
+  let candidates_panel ~title ~slot ~accent_btn_class (query : string) (candidates : player_aggregate list) =
+    let body =
+      if String.trim query = "" then
+        {html|<div class="text-slate-500 text-sm">이름을 입력해 검색하세요.</div>|html}
+      else if candidates = [] then
+        {html|<div class="text-slate-500 text-sm">검색 결과가 없습니다.</div>|html}
+      else
+        candidates |> List.map (candidate_row ~accent_btn_class ~slot) |> String.concat "\n"
+    in
+    Printf.sprintf
+      {html|<div class="bg-slate-900 rounded-xl border border-slate-800 p-4 shadow-lg">
+        <div class="flex items-center justify-between mb-3">
+          <div class="text-xs font-bold uppercase tracking-wider text-slate-400">%s</div>
+          <div class="text-[10px] text-slate-600 font-mono">ID 선택</div>
+        </div>
+        <div class="space-y-1">%s</div>
+      </div>|html}
+      (escape_html title)
+      body
+  in
+  let error_html =
+    match error with
+    | None -> ""
+    | Some msg ->
+        Printf.sprintf
+          {html|<div class="bg-rose-500/10 border border-rose-500/30 text-rose-300 rounded-xl p-5">%s</div>|html}
+          (escape_html msg)
+  in
+  let compare_result_html =
+    match p1_selected, p2_selected with
     | Some a, Some b ->
         Printf.sprintf
           {html|<div class="space-y-8 animate-fade-in"><div class="grid grid-cols-1 md:grid-cols-3 gap-8 items-start"><div class="bg-slate-900 rounded-xl border border-slate-800 p-6 flex flex-col items-center gap-4 shadow-xl border-t-4 border-t-orange-500">%s<div class="text-center"><div class="text-2xl font-black text-white hover:text-orange-400"><a href="/player/%s">%s</a></div><div class="text-slate-400">%s</div></div></div><div class="bg-slate-900/50 rounded-xl border border-slate-800 p-6 space-y-6"><div class="text-center space-y-2"><h3 class="text-slate-500 text-sm font-bold uppercase">Average Stats</h3><p class="text-[11px] text-slate-500 leading-relaxed"><span class="font-mono">MG</span>는 팀 득실마진(출전시간 가중)이며, 개인 +/-는 문자중계(PBP) 기반으로 일부 경기에서만 제공됩니다. (데이터가 없으면 -)</p></div>%s%s%s%s%s%s%s%s</div><div class="bg-slate-900 rounded-xl border border-slate-800 p-6 flex flex-col items-center gap-4 shadow-xl border-t-4 border-t-sky-500">%s<div class="text-center"><div class="text-2xl font-black text-white hover:text-sky-400"><a href="/player/%s">%s</a></div><div class="text-slate-400">%s</div></div></div></div>%s</div>|html}
-          (player_img_tag ~class_name:"w-32 h-32" a.player_id a.name) a.player_id (escape_html (normalize_name a.name)) (escape_html a.team_name) (compare_stat_row "Points" a.avg_points b.avg_points) (compare_stat_row ~signed:true "MG" a.avg_margin b.avg_margin) (compare_stat_row "Rebounds" a.avg_rebounds b.avg_rebounds) (compare_stat_row "Assists" a.avg_assists b.avg_assists) (compare_stat_row "Steals" a.avg_steals b.avg_steals) (compare_stat_row "Blocks" a.avg_blocks b.avg_blocks) (compare_stat_row "Turnovers" a.avg_turnovers b.avg_turnovers) (compare_stat_row "Efficiency" a.efficiency b.efficiency) (player_img_tag ~class_name:"w-32 h-32" b.player_id b.name) b.player_id (escape_html (normalize_name b.name)) (escape_html b.team_name) (h2h_game_table (normalize_name a.name) (normalize_name b.name) h2h)
-    | _ -> {html|<div class="text-center py-20 bg-slate-900 rounded-xl border border-slate-800"><div class="text-4xl mb-4">🔍</div><h3 class="text-xl font-bold text-white">Compare Players</h3><p class="text-slate-400 mt-2">Enter player names in the URL query (e.g., ?p1=김단비&p2=박지현)</p></div>|html}
+          (player_img_tag ~class_name:"w-32 h-32" a.player_id a.name)
+          a.player_id
+          (escape_html (normalize_name a.name))
+          (escape_html a.team_name)
+          (compare_stat_row "Points" a.avg_points b.avg_points)
+          (compare_stat_row ~signed:true "MG" a.avg_margin b.avg_margin)
+          (compare_stat_row "Rebounds" a.avg_rebounds b.avg_rebounds)
+          (compare_stat_row "Assists" a.avg_assists b.avg_assists)
+          (compare_stat_row "Steals" a.avg_steals b.avg_steals)
+          (compare_stat_row "Blocks" a.avg_blocks b.avg_blocks)
+          (compare_stat_row "Turnovers" a.avg_turnovers b.avg_turnovers)
+          (compare_stat_row "Efficiency" a.efficiency b.efficiency)
+          (player_img_tag ~class_name:"w-32 h-32" b.player_id b.name)
+          b.player_id
+          (escape_html (normalize_name b.name))
+          (escape_html b.team_name)
+          (h2h_game_table (normalize_name a.name) (normalize_name b.name) h2h)
+    | _ -> ""
   in
-  layout ~title:"Player Comparison" ~content:(Printf.sprintf {html|<div class="space-y-8"><div class="flex justify-between items-end"><div><h2 class="text-3xl font-black text-white">Head to Head</h2><p class="text-slate-400">Side-by-side performance analysis.</p></div></div>%s</div>|html} content)
+  layout ~title:"WKBL Compare"
+    ~content:(Printf.sprintf
+      {html|<div class="space-y-8">
+        <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+          <div>
+            <h2 class="text-3xl font-black text-white">Compare Players</h2>
+            <p class="text-slate-400 text-sm">동명이인/표기 이슈를 피하기 위해 <span class="font-mono text-slate-200">player_id</span>를 선택해 비교합니다.</p>
+          </div>
+        </div>
+
+        <form action="/compare" method="get" class="bg-slate-900 rounded-xl border border-slate-800 p-4">
+          <input type="hidden" id="p1_id" name="p1_id" value="%s">
+          <input type="hidden" id="p2_id" name="p2_id" value="%s">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <select name="season" class="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none">%s</select>
+            <input name="p1" value="%s" placeholder="Player 1 (search name)" oninput="document.getElementById('p1_id').value='';" class="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none">
+            <input name="p2" value="%s" placeholder="Player 2 (search name)" oninput="document.getElementById('p2_id').value='';" class="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none">
+            <div class="md:col-span-3 flex justify-end">
+              <button type="submit" class="px-4 py-2 rounded-lg bg-orange-500 text-white font-bold hover:bg-orange-400 transition">Search</button>
+            </div>
+          </div>
+        </form>
+
+        %s
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          %s
+          %s
+        </div>
+
+        %s
+      </div>|html}
+      (escape_html (Option.value ~default:"" p1_id))
+      (escape_html (Option.value ~default:"" p2_id))
+      season_options
+      (escape_html p1_display)
+      (escape_html p2_display)
+      error_html
+      (match p1_selected with
+      | Some p -> selected_card ~accent_border:"border-t-orange-500" p
+      | None -> candidates_panel ~title:"Player 1" ~slot:`P1 ~accent_btn_class:"text-orange-300" p1_display p1_candidates)
+      (match p2_selected with
+      | Some p -> selected_card ~accent_border:"border-t-sky-500" p
+      | None -> candidates_panel ~title:"Player 2" ~slot:`P2 ~accent_btn_class:"text-sky-300" p2_display p2_candidates)
+      compare_result_html)
 
 let prediction_result_card ~(home: string) ~(away: string) (output: prediction_output) =
   let pct value = value *. 100.0 in
@@ -896,7 +1106,7 @@ let prediction_result_card ~(home: string) ~(away: string) (output: prediction_o
     context_card_html
     context_note_html
 
-let predict_page ~season ~seasons ~teams ~home ~away ~is_neutral ~context_enabled (result: prediction_output option) (error: string option) =
+let predict_page ~season ~seasons ~teams ~home ~away ~is_neutral ~context_enabled ~include_mismatch (result: prediction_output option) (error: string option) =
   let season_options =
     let base =
       seasons
@@ -946,6 +1156,10 @@ let predict_page ~season ~seasons ~teams ~home ~away ~is_neutral ~context_enable
             <input type="checkbox" name="neutral" value="1" class="accent-orange-500" %s>
             Neutral site (no home advantage)
           </label>
+          <label class="md:col-span-3 flex items-center gap-2 text-xs text-slate-400">
+            <input type="checkbox" name="include_mismatch" value="1" class="accent-orange-500" %s>
+            Mismatch 포함 (스코어 불일치 경기 포함)
+          </label>
           <div class="md:col-span-3 flex justify-end">
             <button type="submit" class="bg-orange-500 hover:bg-orange-400 text-black font-bold px-4 py-2 rounded text-sm transition">Predict</button>
           </div>
@@ -957,6 +1171,7 @@ let predict_page ~season ~seasons ~teams ~home ~away ~is_neutral ~context_enable
       (team_options away)
       (if context_enabled then "checked" else "")
       (if is_neutral then "checked" else "")
+      (if include_mismatch then "checked" else "")
       result_html)
 
 let leader_card title (leaders: leader_entry list) =

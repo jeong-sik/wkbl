@@ -480,6 +480,64 @@ module Queries = struct
     WHERE s.player_id = ? AND g.game_type != '10'
     GROUP BY p.player_id
   |}
+
+  let player_aggregate_by_id = (tup2 string (tup2 string string) ->? Types.player_aggregate) {|
+    SELECT
+      p.player_id,
+      p.player_name,
+      COALESCE(
+        (
+          SELECT t2.team_name_kr
+          FROM game_stats s2
+          JOIN games g2 ON g2.game_id = s2.game_id
+          JOIN teams t2 ON t2.team_code = s2.team_code
+          WHERE s2.player_id = p.player_id
+            AND g2.game_type != '10'
+            AND (? = 'ALL' OR g2.season_code = ?)
+          ORDER BY g2.game_date DESC, g2.game_id DESC
+          LIMIT 1
+        ),
+        ''
+      ) AS team_name_kr,
+      COUNT(*) as gp,
+      COALESCE(SUM(s.min_seconds) / 60.0, 0),
+      COALESCE(AVG(s.pts), 0),
+      COALESCE(
+        (SUM(
+          (
+            COALESCE(
+              (CASE
+                WHEN g.home_team_code = s.team_code THEN COALESCE(g.home_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code))
+                ELSE COALESCE(g.away_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code))
+              END),
+              0
+            )
+            -
+            COALESCE(
+              (CASE
+                WHEN g.home_team_code = s.team_code THEN COALESCE(g.away_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code))
+                ELSE COALESCE(g.home_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code))
+              END),
+              0
+            )
+          ) * s.min_seconds
+        ) * 1.0) / NULLIF(SUM(s.min_seconds), 0),
+        0
+      ) as margin,
+      COALESCE(AVG(s.reb_tot), 0),
+      COALESCE(AVG(s.ast), 0),
+      COALESCE(AVG(s.stl), 0),
+      COALESCE(AVG(s.blk), 0),
+      COALESCE(AVG(s.tov), 0),
+      COALESCE(AVG(s.game_score), 0)
+    FROM game_stats s
+    JOIN games g ON g.game_id = s.game_id
+    JOIN players p ON s.player_id = p.player_id
+    WHERE s.player_id = ?
+      AND g.game_type != '10'
+      AND (? = 'ALL' OR g.season_code = ?)
+    GROUP BY p.player_id
+  |}
   let team_totals_by_season = (tup2 string (tup2 string (tup2 string int)) ->* Types.team_totals) {|
     SELECT
       CASE WHEN ? = 'ALL' THEN 'ALL' ELSE g.season_code END as season,
@@ -614,7 +672,7 @@ module Queries = struct
     LIMIT 100
   |}
 
-  let scored_games_by_season = (tup2 string string ->* Types.game_summary) {|
+  let scored_games_by_season = (tup2 string (tup2 string int) ->* Types.game_summary) {|
     WITH scored_games AS (
       SELECT
         g.*,
@@ -643,6 +701,7 @@ module Queries = struct
       AND g.game_type != '10'
       AND g.home_score_calc IS NOT NULL
       AND g.away_score_calc IS NOT NULL
+      AND (? = 1 OR g.game_id NOT IN (SELECT game_id FROM score_mismatch_games))
     ORDER BY g.game_date ASC, g.game_id ASC
   |}
 
@@ -1297,6 +1356,9 @@ module Repo = struct
   let get_teams (module Db : Caqti_lwt.CONNECTION) = Db.collect_list Queries.all_teams ()
   let get_seasons (module Db : Caqti_lwt.CONNECTION) = Db.collect_list Queries.all_seasons ()
   let get_player_by_name ~name ~season (module Db : Caqti_lwt.CONNECTION) = let s = if season = "" then "ALL" else season in Db.find_opt Queries.player_by_name (name, (s, s))
+  let get_player_aggregate_by_id ~player_id ~season (module Db : Caqti_lwt.CONNECTION) =
+    let s = if String.trim season = "" then "ALL" else season in
+    Db.find_opt Queries.player_aggregate_by_id (player_id, (s, s))
   let query_for_sort = function | ByPoints -> Queries.player_stats_by_points | ByMargin -> Queries.player_stats_by_margin | ByRebounds -> Queries.player_stats_by_rebounds | ByAssists -> Queries.player_stats_by_assists | ByEfficiency -> Queries.player_stats_by_efficiency | ByMinutes -> Queries.player_stats_by_minutes
   let get_players_filtered ~sort ~search ~limit ~include_mismatch (module Db : Caqti_lwt.CONNECTION) =
     let pattern = normalize_search_pattern search in
@@ -1313,7 +1375,9 @@ module Repo = struct
     Db.collect_list Queries.team_margin_by_season (season, (season, (season, include_int)))
   let get_standings ~season (module Db : Caqti_lwt.CONNECTION) = Db.collect_list Queries.team_standings_by_season (season, season)
   let get_games ~season (module Db : Caqti_lwt.CONNECTION) = Db.collect_list Queries.all_games_by_season (season, season)
-  let get_scored_games ~season (module Db : Caqti_lwt.CONNECTION) = Db.collect_list Queries.scored_games_by_season (season, season)
+  let get_scored_games ~season ~include_mismatch (module Db : Caqti_lwt.CONNECTION) =
+    let include_int = if include_mismatch then 1 else 0 in
+    Db.collect_list Queries.scored_games_by_season (season, (season, include_int))
   let get_game_season_code ~game_id (module Db : Caqti_lwt.CONNECTION) = Db.find_opt Queries.game_season_by_id game_id
   let get_team_core_player_ids ~season ~team_name ~limit (module Db : Caqti_lwt.CONNECTION) =
     Db.collect_list Queries.team_core_player_ids (team_name, ((season, season), limit))
@@ -1468,6 +1532,8 @@ let ensure_schema () = with_db (fun db -> Repo.ensure_schema db)
 let get_all_teams () = with_db (fun db -> Repo.get_teams db)
 let get_seasons () = with_db (fun db -> Repo.get_seasons db)
 let get_player_by_name ?(season="ALL") name = with_db (fun db -> Repo.get_player_by_name ~name ~season db)
+let get_player_aggregate_by_id ~player_id ?(season="ALL") () =
+  with_db (fun db -> Repo.get_player_aggregate_by_id ~player_id ~season db)
 let get_players ?(limit=50) ?(search="") ?(sort=ByEfficiency) ?(include_mismatch=false) () =
   with_db (fun db -> Repo.get_players_filtered ~sort ~search ~limit ~include_mismatch db)
 let get_players_by_team ~team_name ?(limit=20) () = with_db (fun db -> Repo.get_players_by_team ~team_name ~limit db)
@@ -1536,7 +1602,8 @@ let get_team_stats ?(season="ALL") ?(scope=PerGame) ?(sort=TeamByPoints) ?(inclu
 let calculate_gb (standings : team_standing list) = match standings with | [] -> [] | leader :: others -> let calc s = let wins_diff = Stdlib.float (leader.wins - s.wins) in let losses_diff = Stdlib.float (s.losses - leader.losses) in (wins_diff +. losses_diff) /. 2.0 in leader :: List.map (fun s -> { s with gb = calc s }) others
 let get_standings ?(season = "ALL") () = let open Lwt.Syntax in let* result = with_db (fun db -> Repo.get_standings ~season db) in match result with | Ok standings -> Lwt.return (Ok (calculate_gb standings)) | Error err -> Lwt.return (Error err)
 let get_games ?(season = "ALL") () = with_db (fun db -> Repo.get_games ~season db)
-let get_scored_games ?(season = "ALL") () = with_db (fun db -> Repo.get_scored_games ~season db)
+let get_scored_games ?(season = "ALL") ?(include_mismatch=false) () =
+  with_db (fun db -> Repo.get_scored_games ~season ~include_mismatch db)
 let get_game_season_code ~game_id () = with_db (fun db -> Repo.get_game_season_code ~game_id db)
 let get_team_core_player_ids ~season ~team_name ?(limit=7) () =
   with_db (fun db -> Repo.get_team_core_player_ids ~season ~team_name ~limit db)
