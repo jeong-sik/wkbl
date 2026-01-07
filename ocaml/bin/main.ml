@@ -266,6 +266,34 @@ let () =
       | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
     );
 
+    (* Play-by-Play (PBP) Detail *)
+    Dream.get "/boxscore/:id/pbp" (fun request ->
+      let game_id = Dream.param request "id" in
+      let period_opt = query_nonempty request "period" in
+      let open Lwt.Syntax in
+      let* boxscore_res = Db.get_boxscore ~game_id () in
+      match boxscore_res with
+      | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+      | Ok bs ->
+          let* periods_res = Db.get_pbp_periods ~game_id () in
+          (match periods_res with
+          | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+          | Ok periods ->
+              let selected_period =
+                match period_opt with
+                | Some p when List.mem p periods -> p
+                | _ -> (match periods with | p :: _ -> p | [] -> "Q1")
+              in
+              let* events_res =
+                match periods with
+                | [] -> Lwt.return (Ok [])
+                | _ -> Db.get_pbp_events ~game_id ~period_code:selected_period ()
+              in
+              match events_res with
+              | Ok events -> Dream.html (Views.pbp_page ~game:bs.boxscore_game ~periods ~selected_period ~events)
+              | Error e -> Dream.html (Views.error_page (Db.show_db_error e)))
+    );
+
     (* Leaders *)
     Dream.get "/leaders" (fun request ->
       let open Lwt.Syntax in

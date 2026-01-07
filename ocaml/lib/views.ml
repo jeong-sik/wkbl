@@ -75,7 +75,7 @@ let player_img_tag ?(class_name="w-12 h-12") player_id _player_name =
   in
   let src = if has_local_player_image then local_src else remote_src in
   Printf.sprintf
-    {html|<img src="%s" alt="" aria-hidden="true" class="%s rounded-full object-cover bg-slate-800 border border-slate-700 shadow-sm" loading="lazy" data-placeholder="%s">|html}
+    {html|<img src="%s" alt="" aria-hidden="true" class="%s rounded-full object-cover bg-slate-800 border border-slate-700 shadow-sm" loading="lazy" data-placeholder="%s" onerror="if(!this.dataset.placeholderApplied){this.dataset.placeholderApplied='1';this.src=this.dataset.placeholder;}">|html}
     (escape_html src)
     (escape_html class_name)
     (escape_html placeholder_src)
@@ -352,7 +352,7 @@ let career_highs_card (ch: career_high_item list option) =
       Printf.sprintf {html|<div class="bg-slate-900 rounded-xl border border-slate-800 p-6 shadow-lg h-full"><h3 class="text-orange-400 font-bold uppercase tracking-wider text-xs mb-4 flex items-center gap-2"><span class="text-lg">🚀</span> Career Highs</h3><div class="space-y-3">%s</div></div>|html} items_html
 
 (** Player row component *)
-let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2") (rank: int) (p: player_aggregate) =
+let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2") ?(include_team=true) (rank: int) (p: player_aggregate) =
   let id_badge =
     if show_player_id then
       player_id_badge p.player_id
@@ -360,7 +360,12 @@ let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2") (rank: int
       ""
   in
   let display_name = normalize_name p.name in
-  let team_cell = Printf.sprintf {html|<td class="%s">%s</td>|html} (escape_html team_cell_class) (team_badge p.team_name) in
+  let team_cell =
+    if include_team then
+      Printf.sprintf {html|<td class="%s">%s</td>|html} (escape_html team_cell_class) (team_badge p.team_name)
+    else
+      ""
+  in
   Printf.sprintf
     {html|<tr class="group border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors">
       <td class="px-3 py-2 text-slate-500 text-sm">%d</td>
@@ -796,6 +801,11 @@ let boxscore_page (bs: game_boxscore) =
           {html|<a href="%s" target="_blank" rel="noreferrer" class="text-orange-400 hover:text-orange-300 underline-offset-2 hover:underline">WKBL 원본</a>|html}
           (escape_html url)
   in
+  let pbp_link =
+    Printf.sprintf
+      {html|<a href="/boxscore/%s/pbp" class="px-2 py-1 rounded-full bg-slate-800/70 border border-slate-700 text-[10px] font-mono tracking-wider text-slate-300 hover:text-white hover:border-slate-500 transition">PBP</a>|html}
+      (escape_html gi.gi_game_id)
+  in
   let data_notes =
     Printf.sprintf
       {html|<details class="max-w-2xl mx-auto bg-slate-900/50 rounded-lg border border-slate-800 p-4 text-xs text-slate-500">
@@ -820,16 +830,161 @@ let boxscore_page (bs: game_boxscore) =
   let away_table = boxscore_player_table gi.gi_away_team_name bs.boxscore_away_players in
   layout ~title:(Printf.sprintf "Boxscore: %s vs %s" gi.gi_home_team_name gi.gi_away_team_name)
     ~content:(Printf.sprintf
-      {html|<div class="space-y-8 animate-fade-in"><div class="bg-slate-900 rounded-xl border border-slate-800 p-6 shadow-2xl"><div class="flex flex-col items-center gap-6"><div class="text-slate-500 font-mono text-sm uppercase tracking-widest">%s</div><div class="flex items-center justify-between w-full max-w-2xl"><div class="flex flex-col items-center gap-3"><div class="text-2xl font-black text-white flex items-center gap-3">%s<a href="/team/%s" class="hover:text-orange-400 transition-colors">%s</a></div><div class="text-slate-400 text-sm">HOME</div></div><div class="flex items-center gap-8"><div class="text-5xl font-black text-white">%d</div><div class="flex flex-col items-center gap-2"><div class="text-2xl text-slate-700 font-light">vs</div>%s%s</div><div class="text-5xl font-black text-white">%d</div></div><div class="flex flex-col items-center gap-3"><div class="text-2xl font-black text-white flex items-center gap-3"><a href="/team/%s" class="hover:text-orange-400 transition-colors">%s</a>%s</div><div class="text-slate-400 text-sm">AWAY</div></div></div></div></div>%s<div class="grid grid-cols-1 gap-8">%s%s</div><div class="flex justify-center"><a href="/games" class="text-slate-500 hover:text-orange-500 transition text-sm">← Back to Games</a></div></div>|html}
+      {html|<div class="space-y-8 animate-fade-in"><div class="bg-slate-900 rounded-xl border border-slate-800 p-6 shadow-2xl"><div class="flex flex-col items-center gap-6"><div class="text-slate-500 font-mono text-sm uppercase tracking-widest">%s</div><div class="flex items-center justify-between w-full max-w-2xl"><div class="flex flex-col items-center gap-3"><div class="text-2xl font-black text-white flex items-center gap-3">%s<a href="/team/%s" class="hover:text-orange-400 transition-colors">%s</a></div><div class="text-slate-400 text-sm">HOME</div></div><div class="flex items-center gap-8"><div class="text-5xl font-black text-white">%d</div><div class="flex flex-col items-center gap-2"><div class="text-2xl text-slate-700 font-light">vs</div>%s%s%s</div><div class="text-5xl font-black text-white">%d</div></div><div class="flex flex-col items-center gap-3"><div class="text-2xl font-black text-white flex items-center gap-3"><a href="/team/%s" class="hover:text-orange-400 transition-colors">%s</a>%s</div><div class="text-slate-400 text-sm">AWAY</div></div></div></div></div>%s<div class="grid grid-cols-1 gap-8">%s%s</div><div class="flex justify-center"><a href="/games" class="text-slate-500 hover:text-orange-500 transition text-sm">← Back to Games</a></div></div>|html}
       (escape_html gi.gi_game_date)
       (team_logo_tag ~class_name:"w-10 h-10" gi.gi_home_team_name) (Uri.pct_encode gi.gi_home_team_name) (escape_html gi.gi_home_team_name)
       gi.gi_home_score
       margin_badge
       quality_badge
+      pbp_link
       gi.gi_away_score
       (Uri.pct_encode gi.gi_away_team_name) (escape_html gi.gi_away_team_name) (team_logo_tag ~class_name:"w-10 h-10" gi.gi_away_team_name)
       data_notes
       home_table away_table)
+
+let pbp_period_label = function
+  | "Q1" -> "1Q"
+  | "Q2" -> "2Q"
+  | "Q3" -> "3Q"
+  | "Q4" -> "4Q"
+  | "X1" -> "OT1"
+  | "X2" -> "OT2"
+  | "X3" -> "OT3"
+  | "X4" -> "OT4"
+  | p -> p
+
+let pbp_page ~(game: game_info) ~(periods: string list) ~(selected_period: string) ~(events: pbp_event list) =
+  let official_link =
+    match wkbl_official_game_result_url game.gi_game_id with
+    | None -> ""
+    | Some url ->
+        Printf.sprintf
+          {html|<a href="%s" target="_blank" rel="noreferrer" class="text-orange-400 hover:text-orange-300 underline-offset-2 hover:underline">WKBL 원본</a>|html}
+          (escape_html url)
+  in
+  let tabs =
+    match periods with
+    | [] -> ""
+    | _ ->
+        periods
+        |> List.map (fun p ->
+            let is_selected = p = selected_period in
+            let cls =
+              if is_selected then "bg-orange-500/15 border-orange-500/30 text-orange-300"
+              else "bg-slate-800/40 border-slate-700/40 text-slate-400 hover:text-slate-200"
+            in
+            Printf.sprintf
+              {html|<a href="/boxscore/%s/pbp?period=%s" class="px-3 py-1.5 rounded-full border text-xs font-mono tracking-wider transition %s">%s</a>|html}
+              (escape_html game.gi_game_id)
+              (Uri.pct_encode p)
+              cls
+              (escape_html (pbp_period_label p)))
+        |> String.concat "\n"
+        |> fun s -> Printf.sprintf {html|<div class="flex flex-wrap items-center justify-center gap-2">%s</div>|html} s
+  in
+  let rows =
+    events
+    |> List.map (fun (e: pbp_event) ->
+        let team_name, side_label =
+          match e.pe_team_side with
+          | 1 -> (game.gi_away_team_name, "AWAY")
+          | 2 -> (game.gi_home_team_name, "HOME")
+          | _ -> ("", "—")
+        in
+        let side_badge =
+          match e.pe_team_side with
+          | 1 | 2 ->
+              Printf.sprintf
+                {html|<div class="flex items-center gap-2">%s<span class="text-[10px] font-mono text-slate-500 tracking-wider">%s</span></div>|html}
+                (team_badge ~max_width:"max-w-[110px] sm:max-w-[140px]" team_name)
+                (escape_html side_label)
+          | _ ->
+              {html|<div class="flex items-center gap-2"><div class="w-6 h-6 rounded bg-slate-800 flex items-center justify-center text-xs">🏀</div><span class="text-[10px] font-mono text-slate-500 tracking-wider">—</span></div>|html}
+        in
+        let score_badge =
+          match e.pe_team1_score, e.pe_team2_score with
+          | Some a, Some h ->
+              Printf.sprintf
+                {html|<span class="px-2 py-0.5 rounded bg-slate-800/40 border border-slate-700/40 text-[10px] font-mono text-slate-300 whitespace-nowrap" title="AWAY %s / HOME %s">A %d - %d H</span>|html}
+                (escape_html game.gi_away_team_name)
+                (escape_html game.gi_home_team_name)
+                a
+                h
+          | _ -> ""
+        in
+        let is_score = score_badge <> "" in
+        let row_cls =
+          if is_score then "bg-slate-800/15"
+          else "hover:bg-slate-800/30"
+        in
+        Printf.sprintf
+          {html|<li class="flex items-start gap-3 px-4 py-3 border-b border-slate-800/60 last:border-0 %s transition-colors">
+            <div class="w-[56px] text-right text-xs font-mono text-slate-500 pt-1">%s</div>
+            <div class="min-w-0 flex-1">
+              <div class="flex flex-wrap items-center gap-2">
+                %s
+                %s
+                <span class="text-sm text-slate-200 break-words">%s</span>
+              </div>
+            </div>
+          </li>|html}
+          row_cls
+          (escape_html e.pe_clock)
+          side_badge
+          score_badge
+          (escape_html e.pe_description))
+    |> String.concat "\n"
+  in
+  let body =
+    match periods with
+    | [] ->
+        Printf.sprintf
+          {html|<div class="bg-slate-900 rounded-xl border border-slate-800 p-6 text-slate-400 text-sm">
+            <div class="font-bold text-white mb-2">PBP 데이터가 없습니다</div>
+            <div class="leading-relaxed">
+              WKBL 문자중계(PBP)가 제공되지 않았거나 아직 수집되지 않은 경기입니다.
+              개인 <span class="font-mono text-slate-200">+/-</span> 계산도 PBP 기반이라 이 경기에는 표시되지 않을 수 있습니다.
+            </div>
+          </div>|html}
+    | _ ->
+        Printf.sprintf
+          {html|<div class="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden shadow-xl">%s<ul class="divide-y divide-slate-800/60">%s</ul></div>|html}
+          tabs
+          rows
+  in
+  layout
+    ~title:(Printf.sprintf "PBP: %s vs %s" game.gi_home_team_name game.gi_away_team_name)
+    ~content:(Printf.sprintf
+      {html|<div class="space-y-6 animate-fade-in">
+        <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+          <div class="space-y-2">
+            <div class="text-slate-500 font-mono text-sm uppercase tracking-widest">%s</div>
+            <h2 class="text-2xl font-black text-white">Play-by-Play</h2>
+            <div class="flex flex-wrap items-center gap-2 text-sm">
+              %s
+              <span class="text-slate-600">vs</span>
+              %s
+              <span class="text-slate-500 font-mono">%d - %d</span>
+            </div>
+          </div>
+          <div class="flex items-center gap-3">
+            %s
+            <a href="/boxscore/%s" class="px-3 py-2 rounded-lg bg-slate-800/60 border border-slate-700 text-sm text-slate-200 hover:text-white hover:border-slate-500 transition">← Boxscore</a>
+          </div>
+        </div>
+        <div class="text-xs text-slate-500 leading-relaxed">
+          <span class="font-mono text-slate-200">team1/team2</span> 스코어는 WKBL 문자중계(XML) 기준이며, 일반적으로 <span class="font-mono text-slate-200">A(원정)</span> / <span class="font-mono text-slate-200">H(홈)</span> 순으로 표시됩니다.
+        </div>
+        %s
+      </div>|html}
+      (escape_html game.gi_game_date)
+      (team_badge ~max_width:"max-w-[160px]" game.gi_home_team_name)
+      (team_badge ~max_width:"max-w-[160px]" game.gi_away_team_name)
+      game.gi_home_score
+      game.gi_away_score
+      official_link
+      (escape_html game.gi_game_id)
+      body)
 
 let compare_stat_row ?(signed=false) label val1 val2 =
   let max_val = max (abs_float val1) (abs_float val2) in
@@ -1715,7 +1870,7 @@ let player_profile_page (profile: player_profile) ~scope ~(seasons_catalog: seas
           |> String.concat "\n"
         in
         Printf.sprintf
-          {html|<div class="bg-slate-900 rounded-xl border border-slate-800 p-6 shadow-lg"><div class="flex items-start justify-between gap-4 mb-4"><div class="min-w-0"><h3 class="text-slate-300 font-bold uppercase tracking-wider text-xs flex items-center gap-2"><span class="text-lg">🔁</span> Team Movement</h3><div class="mt-1 text-[11px] text-slate-500 leading-relaxed break-words">박스스코어 출전팀 변화로 추정한 연보입니다. (기간=첫/마지막 출전일)</div></div><span class="text-[11px] text-slate-500 font-mono shrink-0">박스스코어</span></div><div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs"><div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-3 min-w-0"><div class="text-slate-500 font-mono uppercase tracking-widest text-[11px]">Current</div><div class="mt-2 text-slate-300 min-w-0">%s</div></div><div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-3"><div class="text-slate-500 font-mono uppercase tracking-widest text-[11px]">Transfers</div><div class="mt-2 font-mono text-slate-200 text-lg font-black">%d</div></div><div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-3 min-w-0"><div class="text-slate-500 font-mono uppercase tracking-widest text-[11px]">Latest</div><div class="mt-2 text-slate-300 min-w-0">%s</div></div></div><div class="mt-4 rounded-lg border border-slate-800/60 bg-slate-950/30 p-4"><ol class="relative border-l border-slate-800/60 ml-2 space-y-4">%s</ol></div><div class="mt-4 pt-3 border-t border-slate-800/60 text-[11px] text-slate-500 leading-relaxed break-words">공식 이적/드래프트 연보는 추가 수집 중입니다. (공식 페이지 기반)</div></div>|html}
+          {html|<div class="bg-slate-900 rounded-xl border border-slate-800 p-6 shadow-lg"><div class="flex items-start justify-between gap-4 mb-4"><div class="min-w-0"><h3 class="text-slate-300 font-bold uppercase tracking-wider text-xs flex items-center gap-2"><span class="text-lg">🔁</span> Team Movement</h3><div class="mt-1 text-[11px] text-slate-500 leading-relaxed break-words">박스스코어 출전팀 변화로 추정한 연보입니다. (기간=첫/마지막 출전일)</div></div><span class="text-[11px] text-slate-500 font-mono shrink-0">박스스코어</span></div><div class="grid grid-cols-1 lg:grid-cols-3 gap-3 text-xs"><div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-3 min-w-0"><div class="text-slate-500 font-mono uppercase tracking-widest text-[11px]">Current</div><div class="mt-2 text-slate-300 min-w-0">%s</div></div><div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-3"><div class="text-slate-500 font-mono uppercase tracking-widest text-[11px]">Transfers</div><div class="mt-2 font-mono text-slate-200 text-lg font-black">%d</div></div><div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-3 min-w-0"><div class="text-slate-500 font-mono uppercase tracking-widest text-[11px]">Latest</div><div class="mt-2 text-slate-300 min-w-0">%s</div></div></div><div class="mt-4 rounded-lg border border-slate-800/60 bg-slate-950/30 p-4"><ol class="relative border-l border-slate-800/60 ml-2 space-y-4">%s</ol></div><div class="mt-4 pt-3 border-t border-slate-800/60 text-[11px] text-slate-500 leading-relaxed break-words">공식 이적/드래프트 연보는 추가 수집 중입니다. (공식 페이지 기반)</div></div>|html}
           current_team_html transfers last_move_value_html stint_rows
   in
 
@@ -1810,7 +1965,7 @@ let player_profile_page (profile: player_profile) ~scope ~(seasons_catalog: seas
       {html|<div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-5 min-w-0"><div class="flex flex-wrap items-start justify-between gap-3 min-w-0"><div class="text-slate-400 font-bold uppercase tracking-widest text-[11px] flex items-center gap-2"><span class="text-base">🧩</span> Draft / Trade</div><span class="px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700/60 text-[10px] font-mono text-slate-300 whitespace-nowrap">예정</span></div><div class="mt-3 text-slate-400 text-xs leading-relaxed space-y-1"><div><span class="font-mono text-slate-300">Official</span>: 공식 드래프트/이적 기록은 아직 수집 중입니다.</div><div><span class="font-mono text-slate-300">Fallback</span>: 현재는 <span class="font-mono text-slate-300">박스스코어 출전팀</span> 변화로 팀 이동을 추정합니다. (공식 페이지 기반 추가 수집 필요)</div></div></div>|html}
     in
     Printf.sprintf
-      {html|<div class="bg-slate-900 rounded-xl border border-slate-800 p-6 shadow-lg"><div class="flex items-start justify-between gap-4 mb-4"><h3 class="text-slate-300 font-bold uppercase tracking-wider text-xs flex items-center gap-2"><span class="text-lg">🧾</span> Data Notes</h3><span class="px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700/60 text-[10px] font-mono text-slate-300 whitespace-nowrap">Coverage</span></div><div class="grid grid-cols-1 md:grid-cols-2 gap-4">%s%s<div class="md:col-span-2">%s</div></div></div>|html}
+      {html|<div class="bg-slate-900 rounded-xl border border-slate-800 p-6 shadow-lg"><div class="flex items-start justify-between gap-4 mb-4"><h3 class="text-slate-300 font-bold uppercase tracking-wider text-xs flex items-center gap-2"><span class="text-lg">🧾</span> Data Notes</h3><span class="px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700/60 text-[10px] font-mono text-slate-300 whitespace-nowrap">Coverage</span></div><div class="grid grid-cols-1 lg:grid-cols-2 gap-4">%s%s<div class="lg:col-span-2">%s</div></div></div>|html}
       seasons_card_html
       pbp_card_html
       draft_card_html
@@ -1984,7 +2139,7 @@ let team_profile_page (detail: team_full_detail) ~season ~seasons =
           | Some c when c > 1 -> true
           | _ -> false
         in
-        player_row ~show_player_id ~team_cell_class:"px-3 py-2 hidden sm:table-cell" (i + 1) p)
+        player_row ~show_player_id ~include_team:false (i + 1) p)
     |> String.concat "\n"
   in
   let roster_cards =
@@ -2055,7 +2210,7 @@ let team_profile_page (detail: team_full_detail) ~season ~seasons =
   in
   let roster_table_inner =
     Printf.sprintf
-      {html|<table class="roster-table min-w-[900px] w-full text-sm font-mono table-fixed"><thead class="bg-slate-800/80 text-slate-400 uppercase tracking-wider text-xs"><tr><th class="px-3 py-3 text-left font-sans w-12 whitespace-nowrap">#</th><th class="px-3 py-3 text-left font-sans w-[220px] whitespace-nowrap">Player</th><th class="px-3 py-3 text-left font-sans w-[140px] whitespace-nowrap hidden sm:table-cell">Team</th><th class="px-3 py-3 text-right w-[60px] whitespace-nowrap">GP</th><th class="px-3 py-3 text-right text-orange-400 w-[72px] whitespace-nowrap">PTS</th><th class="px-3 py-3 text-right w-[72px] whitespace-nowrap">MG</th><th class="px-3 py-3 text-right w-[72px] whitespace-nowrap">REB</th><th class="px-3 py-3 text-right w-[72px] whitespace-nowrap">AST</th><th class="px-3 py-3 text-right w-[72px] whitespace-nowrap">STL</th><th class="px-3 py-3 text-right w-[72px] whitespace-nowrap">BLK</th><th class="px-3 py-2 text-right w-[72px] whitespace-nowrap">TO</th><th class="px-3 py-2 text-right text-orange-400 w-[72px] whitespace-nowrap">EFF</th></tr></thead><tbody>%s</tbody></table>|html}
+      {html|<table class="roster-table min-w-[820px] w-full text-sm font-mono table-fixed"><thead class="bg-slate-800/80 text-slate-400 uppercase tracking-wider text-xs"><tr><th class="px-3 py-3 text-left font-sans w-12 whitespace-nowrap">#</th><th class="px-3 py-3 text-left font-sans w-[260px] whitespace-nowrap">Player</th><th class="px-3 py-3 text-right w-[60px] whitespace-nowrap">GP</th><th class="px-3 py-3 text-right text-orange-400 w-[72px] whitespace-nowrap">PTS</th><th class="px-3 py-3 text-right w-[72px] whitespace-nowrap">MG</th><th class="px-3 py-3 text-right w-[72px] whitespace-nowrap">REB</th><th class="px-3 py-3 text-right w-[72px] whitespace-nowrap">AST</th><th class="px-3 py-3 text-right w-[72px] whitespace-nowrap">STL</th><th class="px-3 py-3 text-right w-[72px] whitespace-nowrap">BLK</th><th class="px-3 py-2 text-right w-[72px] whitespace-nowrap">TO</th><th class="px-3 py-2 text-right text-orange-400 w-[72px] whitespace-nowrap">EFF</th></tr></thead><tbody>%s</tbody></table>|html}
       roster_rows
   in
   let game_rows =

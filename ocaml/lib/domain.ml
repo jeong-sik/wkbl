@@ -202,6 +202,16 @@ type game_boxscore = {
   boxscore_away_players: boxscore_player_stat list;
 }
 
+type pbp_event = {
+  pe_period_code: string;
+  pe_event_index: int;
+  pe_team_side: int;
+  pe_description: string;
+  pe_team1_score: int option;
+  pe_team2_score: int option;
+  pe_clock: string;
+}
+
 type leader_entry = {
   le_player_id: string;
   le_player_name: string;
@@ -425,6 +435,18 @@ let normalize_label (s: string) =
 
 let team_code_of_string team_name =
   let key = team_name |> normalize_label |> String.uppercase_ascii in
+  let contains (needle : string) =
+    let nlen = String.length needle in
+    let hlen = String.length key in
+    if nlen = 0 then false
+    else
+      let rec loop i =
+        if i + nlen > hlen then false
+        else if String.sub key i nlen = needle then true
+        else loop (i + 1)
+      in
+      loop 0
+  in
   match key with
   | "아산 우리은행 우리WON" | "우리은행" | "우리WON" | "WO" -> Some "WO"
   | "용인 삼성생명 블루밍스" | "삼성생명" | "SS" -> Some "SS"
@@ -432,6 +454,12 @@ let team_code_of_string team_name =
   | "청주 KB스타즈" | "KB스타즈" | "KB" -> Some "KB"
   | "부천 하나은행" | "하나은행" | "HN" -> Some "HN"
   | "부산 BNK 썸" | "BNK 썸" | "BNK썸" | "BNK" | "BN" -> Some "BN"
+  | _ when contains "우리은행" -> Some "WO"
+  | _ when contains "삼성생명" -> Some "SS"
+  | _ when contains "신한은행" -> Some "SH"
+  | _ when contains "하나은행" -> Some "HN"
+  | _ when contains "BNK" -> Some "BN"
+  | _ when contains "KB" -> Some "KB"
   | _ -> None
 
 let team_code_to_color = function
