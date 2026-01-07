@@ -160,19 +160,48 @@ def fetch_player_detail_html(player_id: str) -> tuple[str | None, str | None]:
 
 def parse_player_draft(player_id: str, html_text: str, *, source_url: str) -> PlayerDraft | None:
     soup = BeautifulSoup(html_text, "html.parser")
-    draft_li = soup.select_one(".player_draft .list_text li")
-    if draft_li is None:
+    draft_lis = soup.select(".player_draft .list_text li")
+    if not draft_lis:
         return None
 
-    raw = draft_li.get_text(" ", strip=True)
-    raw = normalize_text(raw)
-    if not raw or raw in {"-", "없음"}:
+    entries: list[str] = []
+    seen: set[str] = set()
+    for li in draft_lis:
+        raw = li.get_text(" ", strip=True)
+        raw = normalize_text(raw)
+        if not raw or raw in {"-", "없음"}:
+            continue
+
+        if raw.startswith("드래프트"):
+            raw = normalize_text(raw[len("드래프트") :])
+
+        if not raw:
+            continue
+
+        if raw not in seen:
+            entries.append(raw)
+            seen.add(raw)
+
+    if not entries:
         return None
 
-    # Drop the leading label "드래프트" if present.
-    raw_clean = raw
-    if raw_clean.startswith("드래프트"):
-        raw_clean = normalize_text(raw_clean[len("드래프트") :])
+    # Foreign/Asian quota players may have multiple draft entries across seasons.
+    # Our schema stores a single row per player_id, so we keep the full raw text
+    # as multi-line and avoid parsing ambiguous structured fields.
+    if len(entries) > 1:
+        return PlayerDraft(
+            player_id=player_id,
+            raw_text="\n".join(entries),
+            draft_year=None,
+            draft_round=None,
+            pick_in_round=None,
+            overall_pick=None,
+            draft_team=None,
+            source_url=source_url,
+            scraped_at=iso8601_utc(),
+        )
+
+    raw_clean = entries[0]
 
     # Example:
     # 2017 WKBL 신입선수선발회 / 1라운드 / 1순위 (전체 1순위) / KB스타즈
@@ -429,4 +458,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
