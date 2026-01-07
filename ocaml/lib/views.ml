@@ -273,7 +273,7 @@ let player_season_stats_table ~scope (stats: season_stats list) =
     @ (stats |> List.map row_html)
     |> String.concat "\n"
   in
-  Printf.sprintf {html|<div class="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden shadow-lg animate-fade-in"><table class="season-stats-table w-full text-sm font-mono table-fixed">
+  Printf.sprintf {html|<div class="bg-slate-900 rounded-xl border border-slate-800 overflow-x-auto shadow-lg animate-fade-in"><table class="season-stats-table min-w-[720px] w-full text-sm font-mono table-fixed">
     <thead class="bg-slate-800/80 text-slate-400 uppercase tracking-wider text-xs">
       <tr>
         <th class="px-4 py-3 text-left font-sans">Season</th>
@@ -1505,6 +1505,67 @@ let player_profile_page (profile: player_profile) ~scope ~(seasons_catalog: seas
   let recent_rows = game_rows profile.recent_games in
   let all_star_rows = game_rows profile.all_star_games in
   let season_stats_component = player_season_stats_component ~player_id:p.id ~scope profile.season_breakdown in
+  let rec take n xs =
+    match n, xs with
+    | n, _ when n <= 0 -> []
+    | _, [] -> []
+    | n, x :: rest -> x :: take (n - 1) rest
+  in
+  let recent_wl_summary_html =
+    let games = take 5 profile.recent_games in
+    let n = List.length games in
+    if n = 0 then
+      ""
+    else
+      let chips_rev, wins, losses, unknown =
+        games
+        |> List.fold_left
+          (fun (chips, w, l, u) (g: player_game_stat) ->
+            match g.team_score, g.opponent_score with
+            | Some team_score, Some opp_score ->
+                let margin = team_score - opp_score in
+                let label, cls, w', l' =
+                  if margin > 0 then ("W", "bg-sky-500/10 border-sky-500/30 text-sky-300", w + 1, l)
+                  else if margin < 0 then ("L", "bg-rose-500/10 border-rose-500/30 text-rose-300", w, l + 1)
+                  else ("T", "bg-slate-800/60 border-slate-700/60 text-slate-300", w, l)
+                in
+                let margin_str = if margin > 0 then Printf.sprintf "+%d" margin else string_of_int margin in
+                let title = Printf.sprintf "%s %s (%s)" label margin_str g.game_date in
+                let chip =
+                  Printf.sprintf
+                    {html|<span title="%s" class="inline-flex items-center justify-center w-6 h-6 rounded border %s text-[11px] font-mono">%s</span>|html}
+                    (escape_html title)
+                    cls
+                    label
+                in
+                (chip :: chips, w', l', u)
+            | _ ->
+                let chip =
+                  {html|<span title="Score unavailable" class="inline-flex items-center justify-center w-6 h-6 rounded border bg-slate-800/40 border-slate-700/40 text-[11px] font-mono text-slate-500">?</span>|html}
+                in
+                (chip :: chips, w, l, u + 1))
+          ([], 0, 0, 0)
+      in
+      let record =
+        let base =
+          if wins + losses = 0 then "-"
+          else Printf.sprintf "%d-%d" wins losses
+        in
+        if unknown > 0 then Printf.sprintf "%s (%d ?)" base unknown else base
+      in
+      let label = Printf.sprintf "최근 %d경기 %s" n record in
+      let chips_html = chips_rev |> List.rev |> String.concat "" in
+      Printf.sprintf
+        {html|<div class="flex items-center gap-2"><span class="text-[11px] text-slate-500 font-mono whitespace-nowrap">%s</span><div class="flex items-center gap-1">%s</div></div>|html}
+        (escape_html label)
+        chips_html
+  in
+  let recent_games_header_html =
+    Printf.sprintf
+      {html|<div class="flex items-start justify-between gap-3"><h3 class="text-xl font-bold text-white">Recent Games</h3><div class="flex flex-wrap items-center justify-end gap-2 shrink-0">%s<a href="/player/%s/games" class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-2 rounded text-slate-300 hover:text-white transition whitespace-nowrap">전체 경기</a></div></div><p class="text-[11px] text-slate-500 mt-1">개인 <span class="font-mono text-slate-300">+/-</span>는 문자중계(PBP) 기반입니다. PBP가 없으면 <span class="font-mono text-slate-300">M</span>으로 팀 득실마진(경기 최종 점수)을 대신 표시합니다. (데이터가 없거나 PBP/박스스코어 최종 스코어 불일치 등 품질 이슈면 <span class="font-mono text-slate-300">-</span>)</p>|html}
+      recent_wl_summary_html
+      (Uri.pct_encode p.id)
+  in
   let all_star_section_html =
     if profile.all_star_games = [] then
       ""
@@ -1680,7 +1741,7 @@ let player_profile_page (profile: player_profile) ~scope ~(seasons_catalog: seas
 
   let display_name = normalize_name p.name in
   layout ~title:(display_name ^ " | WKBL Profile")
-    ~content:(Printf.sprintf {html|<div class="space-y-8 animate-fade-in"><div class="bg-slate-900 rounded-xl border border-slate-800 p-8 shadow-2xl flex flex-col md:flex-row items-center md:items-start gap-8"><div class="relative">%s<div class="absolute -bottom-3 -right-3 bg-slate-800 border border-slate-700 text-white text-xs font-bold px-3 py-1 rounded-full">%s</div></div><div class="text-center md:text-left space-y-2"><h1 class="text-4xl font-black text-white">%s</h1><div class="text-slate-400 text-lg">%s</div><div class="flex flex-wrap gap-2 justify-center md:justify-start pt-2"><span class="bg-slate-800 text-slate-300 px-3 py-1 rounded text-sm">%s</span>%s%s%s</div></div></div><div class="grid grid-cols-1 lg:grid-cols-5 gap-8"><div class="lg:col-span-3 space-y-8">%s<div class="space-y-4"><div class="flex items-end justify-between gap-3"><div class="flex flex-col gap-1 min-w-0"><h3 class="text-xl font-bold text-white">Recent Games</h3><p class="text-[11px] text-slate-500">개인 <span class="font-mono text-slate-300">+/-</span>는 문자중계(PBP) 기반입니다. PBP가 없으면 <span class="font-mono text-slate-300">M</span>으로 팀 득실마진(경기 최종 점수)을 대신 표시합니다. (데이터가 없거나 PBP/박스스코어 최종 스코어 불일치 등 품질 이슈면 <span class="font-mono text-slate-300">-</span>)</p></div><a href="/player/%s/games" class="shrink-0 text-xs bg-slate-800 hover:bg-slate-700 px-3 py-2 rounded text-slate-300 hover:text-white transition whitespace-nowrap">전체 경기</a></div><div class="bg-slate-900 rounded-xl border border-slate-800 overflow-x-auto shadow-lg"><table class="min-w-[920px] w-full text-sm font-mono table-fixed"><thead class="bg-slate-800/80 text-slate-400 uppercase tracking-wider text-xs"><tr><th class="px-4 py-3 text-left font-sans w-[110px] whitespace-nowrap">Date</th><th class="px-4 py-3 text-left font-sans">Opponent</th><th class="px-4 py-3 text-right w-[72px]">MIN</th><th class="px-4 py-3 text-right text-orange-400 w-[72px]">PTS</th><th class="px-4 py-3 text-right w-[72px]">+/-</th><th class="px-4 py-3 text-right w-[72px]">REB</th><th class="px-4 py-3 text-right w-[72px]">AST</th><th class="px-4 py-3 text-right w-[72px]">STL</th><th class="px-4 py-3 text-right w-[72px]">BLK</th></tr></thead><tbody>%s</tbody></table></div></div>%s</div><div class="space-y-8 lg:col-span-2"><div class="space-y-4">%s%s%s</div></div></div>%s</div>|html}
+    ~content:(Printf.sprintf {html|<div class="space-y-8 animate-fade-in"><div class="bg-slate-900 rounded-xl border border-slate-800 p-8 shadow-2xl flex flex-col md:flex-row items-center md:items-start gap-8"><div class="relative">%s<div class="absolute -bottom-3 -right-3 bg-slate-800 border border-slate-700 text-white text-xs font-bold px-3 py-1 rounded-full">%s</div></div><div class="text-center md:text-left space-y-2"><h1 class="text-4xl font-black text-white">%s</h1><div class="text-slate-400 text-lg">%s</div><div class="flex flex-wrap gap-2 justify-center md:justify-start pt-2"><span class="bg-slate-800 text-slate-300 px-3 py-1 rounded text-sm">%s</span>%s%s%s</div></div></div><div class="grid grid-cols-1 lg:grid-cols-5 gap-8"><div class="lg:col-span-3 space-y-8">%s<div class="space-y-4">%s<div class="bg-slate-900 rounded-xl border border-slate-800 overflow-x-auto shadow-lg"><table class="min-w-[920px] w-full text-sm font-mono table-fixed"><thead class="bg-slate-800/80 text-slate-400 uppercase tracking-wider text-xs"><tr><th class="px-4 py-3 text-left font-sans w-[110px] whitespace-nowrap">Date</th><th class="px-4 py-3 text-left font-sans">Opponent</th><th class="px-4 py-3 text-right w-[72px]">MIN</th><th class="px-4 py-3 text-right text-orange-400 w-[72px]">PTS</th><th class="px-4 py-3 text-right w-[72px]">+/-</th><th class="px-4 py-3 text-right w-[72px]">REB</th><th class="px-4 py-3 text-right w-[72px]">AST</th><th class="px-4 py-3 text-right w-[72px]">STL</th><th class="px-4 py-3 text-right w-[72px]">BLK</th></tr></thead><tbody>%s</tbody></table></div></div>%s</div><div class="space-y-8 lg:col-span-2"><div class="space-y-4">%s%s%s</div></div></div>%s</div>|html}
           (player_img_tag ~class_name:"w-32 h-32 border-4 border-slate-700 shadow-2xl" p.id p.name)
           (escape_html p.id)
           (escape_html display_name)
@@ -1690,7 +1751,7 @@ let player_profile_page (profile: player_profile) ~scope ~(seasons_catalog: seas
           video_links_html
           career_chips
           season_stats_component
-          (Uri.pct_encode p.id)
+          recent_games_header_html
           recent_rows
           all_star_section_html
           team_movement_html
