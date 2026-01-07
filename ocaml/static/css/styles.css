@@ -80,7 +80,7 @@ tbody tr {
 
 /* Roster table: keep layout stable even if Tailwind is delayed/blocked */
 .roster-table {
-  min-width: 900px;
+  min-width: 944px;
   table-layout: fixed;
 }
 

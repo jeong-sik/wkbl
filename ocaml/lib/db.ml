@@ -399,6 +399,28 @@ module Types = struct
     in
     let t = tup2 in
     custom ~encode ~decode (t string (t string (t string (t string (t int (t int (t int (t int (t int (t int (t string int)))))))))))
+
+  let pbp_event =
+    let encode _ = assert false in
+    let decode (period_code, rest) =
+      let (event_index, rest) = rest in
+      let (team_side, rest) = rest in
+      let (description, rest) = rest in
+      let (team1_score, rest) = rest in
+      let (team2_score, clock) = rest in
+      Ok {
+        pe_period_code = period_code;
+        pe_event_index = event_index;
+        pe_team_side = team_side;
+        pe_description = description;
+        pe_team1_score = team1_score;
+        pe_team2_score = team2_score;
+        pe_clock = clock;
+      }
+    in
+    let t = tup2 in
+    custom ~encode ~decode
+      (t string (t int (t int (t string (t (option int) (t (option int) string))))))
 end
 
 (** SQL Queries *)
@@ -415,6 +437,26 @@ module Queries = struct
   |}
   let ensure_player_plus_minus_index = (unit ->. unit) {|
     CREATE INDEX IF NOT EXISTS idx_player_plus_minus_player_id ON player_plus_minus(player_id)
+  |}
+  let ensure_play_by_play_events_table = (unit ->. unit) {|
+    CREATE TABLE IF NOT EXISTS play_by_play_events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      game_id TEXT NOT NULL,
+      period_code TEXT NOT NULL,
+      event_index INTEGER NOT NULL,
+      team_side INTEGER NOT NULL,
+      description TEXT NOT NULL,
+      team1_score INTEGER,
+      team2_score INTEGER,
+      clock TEXT NOT NULL,
+      UNIQUE (game_id, period_code, event_index)
+    )
+  |}
+  let ensure_play_by_play_events_index_game = (unit ->. unit) {|
+    CREATE INDEX IF NOT EXISTS idx_pbp_game_id ON play_by_play_events(game_id)
+  |}
+  let ensure_play_by_play_events_index_game_period = (unit ->. unit) {|
+    CREATE INDEX IF NOT EXISTS idx_pbp_game_period ON play_by_play_events(game_id, period_code)
   |}
   let ensure_score_mismatch_view = (unit ->. unit) {|
     CREATE VIEW IF NOT EXISTS score_mismatch_games AS
@@ -458,6 +500,36 @@ module Queries = struct
     FROM games g
     LEFT JOIN sums sh ON sh.game_id = g.game_id AND sh.team_code = g.home_team_code
     LEFT JOIN sums sa ON sa.game_id = g.game_id AND sa.team_code = g.away_team_code
+  |}
+  let pbp_periods_by_game = (string ->* string) {|
+    SELECT DISTINCT period_code
+    FROM play_by_play_events
+    WHERE game_id = ?
+    ORDER BY CASE period_code
+      WHEN 'Q1' THEN 1
+      WHEN 'Q2' THEN 2
+      WHEN 'Q3' THEN 3
+      WHEN 'Q4' THEN 4
+      WHEN 'X1' THEN 5
+      WHEN 'X2' THEN 6
+      WHEN 'X3' THEN 7
+      WHEN 'X4' THEN 8
+      ELSE 99
+    END
+  |}
+  let pbp_events_by_game_period = (tup2 string string ->* Types.pbp_event) {|
+    SELECT
+      period_code,
+      event_index,
+      team_side,
+      description,
+      team1_score,
+      team2_score,
+      clock
+    FROM play_by_play_events
+    WHERE game_id = ?
+      AND period_code = ?
+    ORDER BY event_index ASC
   |}
   let all_teams = (unit ->* string) "SELECT DISTINCT team_name_kr FROM teams ORDER BY team_name_kr"
   let all_seasons = (unit ->* Types.season_info) "SELECT season_code, season_name FROM seasons ORDER BY season_code"
@@ -2076,6 +2148,9 @@ end
       let open Lwt_result.Syntax in
       let* () = Db.exec Queries.ensure_player_plus_minus_table () in
       let* () = Db.exec Queries.ensure_player_plus_minus_index () in
+      let* () = Db.exec Queries.ensure_play_by_play_events_table () in
+      let* () = Db.exec Queries.ensure_play_by_play_events_index_game () in
+      let* () = Db.exec Queries.ensure_play_by_play_events_index_game_period () in
       let* () = Db.exec Queries.ensure_score_mismatch_view () in
       Db.exec Queries.ensure_games_calc_view ()
   let get_teams (module Db : Caqti_lwt.CONNECTION) = Db.collect_list Queries.all_teams ()
@@ -2107,6 +2182,10 @@ end
     let include_int = if include_mismatch then 1 else 0 in
     Db.collect_list Queries.scored_games_by_season (season, (season, include_int))
   let get_game_season_code ~game_id (module Db : Caqti_lwt.CONNECTION) = Db.find_opt Queries.game_season_by_id game_id
+  let get_pbp_periods ~game_id (module Db : Caqti_lwt.CONNECTION) =
+    Db.collect_list Queries.pbp_periods_by_game game_id
+  let get_pbp_events ~game_id ~period_code (module Db : Caqti_lwt.CONNECTION) =
+    Db.collect_list Queries.pbp_events_by_game_period (game_id, period_code)
   let get_team_core_player_ids ~season ~team_name ~limit (module Db : Caqti_lwt.CONNECTION) =
     Db.collect_list Queries.team_core_player_ids (team_name, ((season, season), limit))
   let get_team_active_player_ids ~team_name ~game_id (module Db : Caqti_lwt.CONNECTION) =
@@ -2348,6 +2427,9 @@ let get_games ?(season = "ALL") () = with_db (fun db -> Repo.get_games ~season d
 let get_scored_games ?(season = "ALL") ?(include_mismatch=false) () =
   with_db (fun db -> Repo.get_scored_games ~season ~include_mismatch db)
 let get_game_season_code ~game_id () = with_db (fun db -> Repo.get_game_season_code ~game_id db)
+let get_pbp_periods ~game_id () = with_db (fun db -> Repo.get_pbp_periods ~game_id db)
+let get_pbp_events ~game_id ~period_code () =
+  with_db (fun db -> Repo.get_pbp_events ~game_id ~period_code db)
 let get_team_core_player_ids ~season ~team_name ?(limit=7) () =
   with_db (fun db -> Repo.get_team_core_player_ids ~season ~team_name ~limit db)
 let get_team_active_player_ids ~team_name ~game_id () =
