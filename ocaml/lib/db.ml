@@ -362,27 +362,44 @@ module Types = struct
                   (t (option int)
                      (t (option string) (t string (t string string))))))))
 
-  let official_trade_event =
-    let encode _ = assert false in
-    let decode (event_date, rest) =
-      let (event_year, rest) = rest in
-      let (event_text, rest) = rest in
-      let (source_url, scraped_at) = rest in
-      Ok {
-        ote_event_date = event_date;
-        ote_event_year = event_year;
-        ote_event_text = event_text;
-        ote_source_url = source_url;
-        ote_scraped_at = scraped_at;
-      }
-    in
-    let t = tup2 in
-    custom ~encode ~decode (t string (t int (t string (t string string))))
+	  let official_trade_event =
+	    let encode _ = assert false in
+	    let decode (event_date, rest) =
+	      let (event_year, rest) = rest in
+	      let (event_text, rest) = rest in
+	      let (source_url, scraped_at) = rest in
+	      Ok {
+	        ote_event_date = event_date;
+	        ote_event_year = event_year;
+	        ote_event_text = event_text;
+	        ote_source_url = source_url;
+	        ote_scraped_at = scraped_at;
+	      }
+	    in
+	    let t = tup2 in
+	    custom ~encode ~decode (t string (t int (t string (t string string))))
 
-  let season_stats =
-    let encode _ = assert false in
-    let decode (season_code, rest) =
-      let (season_name, rest) = rest in
+	  let player_external_link =
+	    let encode _ = assert false in
+	    let decode (player_id, rest) =
+	      let (link_type, rest) = rest in
+	      let (url, rest) = rest in
+	      let (source_url, scraped_at) = rest in
+	      Ok {
+	        pel_player_id = player_id;
+	        pel_link_type = link_type;
+	        pel_url = url;
+	        pel_source_url = source_url;
+	        pel_scraped_at = scraped_at;
+	      }
+	    in
+	    let t = tup2 in
+	    custom ~encode ~decode (t string (t string (t string (t (option string) string))))
+
+	  let season_stats =
+	    let encode _ = assert false in
+	    let decode (season_code, rest) =
+	      let (season_name, rest) = rest in
       let (gp, rest) = rest in
       let (min, rest) = rest in
       let (pts, rest) = rest in
@@ -539,6 +556,19 @@ module Queries = struct
   |}
   let ensure_official_trade_events_index_year = (unit ->. unit) {|
     CREATE INDEX IF NOT EXISTS idx_trade_events_year ON official_trade_events(event_year)
+  |}
+  let ensure_player_external_links_table = (unit ->. unit) {|
+    CREATE TABLE IF NOT EXISTS player_external_links (
+      player_id TEXT NOT NULL,
+      link_type TEXT NOT NULL,
+      url TEXT NOT NULL,
+      source_url TEXT,
+      scraped_at TEXT NOT NULL,
+      PRIMARY KEY (player_id, link_type)
+    )
+  |}
+  let ensure_player_external_links_index_player = (unit ->. unit) {|
+    CREATE INDEX IF NOT EXISTS idx_player_external_links_player_id ON player_external_links(player_id)
   |}
   let ensure_score_mismatch_view = (unit ->. unit) {|
     CREATE VIEW IF NOT EXISTS score_mismatch_games AS
@@ -1817,6 +1847,18 @@ module Queries = struct
     ORDER BY event_date DESC, id DESC
     LIMIT 30
   |}
+
+  let player_external_links_by_player_id = (string ->* Types.player_external_link) {|
+    SELECT
+      player_id,
+      link_type,
+      url,
+      source_url,
+      scraped_at
+    FROM player_external_links
+    WHERE player_id = ?
+    ORDER BY link_type ASC
+  |}
   
   (** Queries for Per Game (Average) *)
 		  let player_seasons_per_game = (string ->* Types.season_stats) {|
@@ -2263,11 +2305,13 @@ end
       let* () = Db.exec Queries.ensure_play_by_play_events_index_game_period () in
       let* () = Db.exec Queries.ensure_player_drafts_table () in
       let* () = Db.exec Queries.ensure_player_drafts_index_year () in
-      let* () = Db.exec Queries.ensure_official_trade_events_table () in
-      let* () = Db.exec Queries.ensure_official_trade_events_index_date () in
-      let* () = Db.exec Queries.ensure_official_trade_events_index_year () in
-      let* () = Db.exec Queries.ensure_score_mismatch_view () in
-      Db.exec Queries.ensure_games_calc_view ()
+	      let* () = Db.exec Queries.ensure_official_trade_events_table () in
+	      let* () = Db.exec Queries.ensure_official_trade_events_index_date () in
+	      let* () = Db.exec Queries.ensure_official_trade_events_index_year () in
+	      let* () = Db.exec Queries.ensure_player_external_links_table () in
+	      let* () = Db.exec Queries.ensure_player_external_links_index_player () in
+	      let* () = Db.exec Queries.ensure_score_mismatch_view () in
+	      Db.exec Queries.ensure_games_calc_view ()
   let get_teams (module Db : Caqti_lwt.CONNECTION) = Db.collect_list Queries.all_teams ()
   let get_seasons (module Db : Caqti_lwt.CONNECTION) = Db.collect_list Queries.all_seasons ()
   let get_player_by_name ~name ~season (module Db : Caqti_lwt.CONNECTION) = let s = if season = "" then "ALL" else season in Db.find_opt Queries.player_by_name (name, (s, s))
@@ -2388,20 +2432,23 @@ end
               let* draft_res = Db.find_opt Queries.player_draft_by_player_id player_id in
               let name_norm = normalize_label p.name in
               let trade_pattern = "%" ^ name_norm ^ "%" in
-              let* trade_events_res =
-                if String.trim name_norm = "" then
-                  Lwt.return (Ok [])
-                else
-                  Db.collect_list Queries.official_trade_events_by_player_name_norm trade_pattern
-              in
-			        let* ch_points = Db.find_opt Queries.career_high_points_game player_id in
-			        let* ch_rebounds = Db.find_opt Queries.career_high_rebounds_game player_id in
-			        let* ch_assists = Db.find_opt Queries.career_high_assists_game player_id in
-			        let* ch_steals = Db.find_opt Queries.career_high_steals_game player_id in
-			        let* ch_blocks = Db.find_opt Queries.career_high_blocks_game player_id in
-			        let dummy_avg = { player_id = p.id; name = p.name; team_name = ""; games_played = 0; total_minutes = 0.0; total_points = 0; total_rebounds = 0; total_assists = 0; total_steals = 0; total_blocks = 0; total_turnovers = 0; avg_points = 0.0; avg_margin = 0.0; avg_rebounds = 0.0; avg_assists = 0.0; avg_steals = 0.0; avg_blocks = 0.0; avg_turnovers = 0.0; efficiency = 0.0; } in 
-			        match seasons, recent, all_star, team_games, averages_res, draft_res, trade_events_res, ch_points, ch_rebounds, ch_assists, ch_steals, ch_blocks with 
-			        | Ok ss, Ok rg, Ok asg, Ok tgs, Ok avg_opt, Ok draft_opt, Ok trade_events, Ok pts_g, Ok reb_g, Ok ast_g, Ok stl_g, Ok blk_g -> 
+	              let* trade_events_res =
+	                if String.trim name_norm = "" then
+	                  Lwt.return (Ok [])
+	                else
+	                  Db.collect_list Queries.official_trade_events_by_player_name_norm trade_pattern
+	              in
+	              let* external_links_res =
+	                Db.collect_list Queries.player_external_links_by_player_id player_id
+	              in
+				        let* ch_points = Db.find_opt Queries.career_high_points_game player_id in
+				        let* ch_rebounds = Db.find_opt Queries.career_high_rebounds_game player_id in
+				        let* ch_assists = Db.find_opt Queries.career_high_assists_game player_id in
+				        let* ch_steals = Db.find_opt Queries.career_high_steals_game player_id in
+				        let* ch_blocks = Db.find_opt Queries.career_high_blocks_game player_id in
+				        let dummy_avg = { player_id = p.id; name = p.name; team_name = ""; games_played = 0; total_minutes = 0.0; total_points = 0; total_rebounds = 0; total_assists = 0; total_steals = 0; total_blocks = 0; total_turnovers = 0; avg_points = 0.0; avg_margin = 0.0; avg_rebounds = 0.0; avg_assists = 0.0; avg_steals = 0.0; avg_blocks = 0.0; avg_turnovers = 0.0; efficiency = 0.0; } in 
+			        match seasons, recent, all_star, team_games, averages_res, draft_res, trade_events_res, external_links_res, ch_points, ch_rebounds, ch_assists, ch_steals, ch_blocks with 
+			        | Ok ss, Ok rg, Ok asg, Ok tgs, Ok avg_opt, Ok draft_opt, Ok trade_events, Ok external_links, Ok pts_g, Ok reb_g, Ok ast_g, Ok stl_g, Ok blk_g -> 
 			            let add_opt opt mk acc = match opt with | None -> acc | Some v -> mk v :: acc in
 			            let items =
 			              []
@@ -2415,19 +2462,20 @@ end
 			            let career_highs = match items with | [] -> None | _ -> Some items in
 			            let averages = match avg_opt with Some a -> a | None -> dummy_avg in
 			            let team_stints = team_stints_of_games tgs in
-			            Lwt.return (Ok (Some { player = p; averages; recent_games = rg; all_star_games = asg; draft = draft_opt; official_trade_events = trade_events; team_stints; season_breakdown = ss; career_highs })) 
-			        | Error e, _, _, _, _, _, _, _, _, _, _, _
-			        | _, Error e, _, _, _, _, _, _, _, _, _, _
-			        | _, _, Error e, _, _, _, _, _, _, _, _, _
-			        | _, _, _, Error e, _, _, _, _, _, _, _, _
-			        | _, _, _, _, Error e, _, _, _, _, _, _, _
-			        | _, _, _, _, _, Error e, _, _, _, _, _, _
-			        | _, _, _, _, _, _, Error e, _, _, _, _, _
-			        | _, _, _, _, _, _, _, Error e, _, _, _, _
-			        | _, _, _, _, _, _, _, _, Error e, _, _, _
-			        | _, _, _, _, _, _, _, _, _, Error e, _, _
-			        | _, _, _, _, _, _, _, _, _, _, Error e, _
-			        | _, _, _, _, _, _, _, _, _, _, _, Error e ->
+			            Lwt.return (Ok (Some { player = p; averages; recent_games = rg; all_star_games = asg; draft = draft_opt; official_trade_events = trade_events; external_links; team_stints; season_breakdown = ss; career_highs })) 
+			        | Error e, _, _, _, _, _, _, _, _, _, _, _, _
+			        | _, Error e, _, _, _, _, _, _, _, _, _, _, _
+			        | _, _, Error e, _, _, _, _, _, _, _, _, _, _
+			        | _, _, _, Error e, _, _, _, _, _, _, _, _, _
+			        | _, _, _, _, Error e, _, _, _, _, _, _, _, _
+			        | _, _, _, _, _, Error e, _, _, _, _, _, _, _
+			        | _, _, _, _, _, _, Error e, _, _, _, _, _, _
+			        | _, _, _, _, _, _, _, Error e, _, _, _, _, _
+			        | _, _, _, _, _, _, _, _, Error e, _, _, _, _
+			        | _, _, _, _, _, _, _, _, _, Error e, _, _, _
+			        | _, _, _, _, _, _, _, _, _, _, Error e, _, _
+			        | _, _, _, _, _, _, _, _, _, _, _, Error e, _
+			        | _, _, _, _, _, _, _, _, _, _, _, _, Error e ->
 			            Lwt.return (Error e)
 
   let get_player_season_stats ~player_id ~scope (module Db : Caqti_lwt.CONNECTION) = let q = match scope with | "totals" -> Queries.player_seasons_totals | "per_36" -> Queries.player_seasons_per36 | _ -> Queries.player_seasons_per_game in Db.collect_list q player_id

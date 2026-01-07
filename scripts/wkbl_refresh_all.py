@@ -4,6 +4,7 @@ Refresh WKBL data pipeline: collect -> aggregate -> QA.
 Use `--` to pass arguments through to the collector.
 Example: python3 scripts/wkbl_refresh_all.py -- --years 10
 Example (+/-): python3 scripts/wkbl_refresh_all.py --sync-pbp --pbp-season 046 --compute-plus-minus -- --years 1
+Example (links): python3 scripts/wkbl_refresh_all.py --sync-player-links --skip-collect --skip-aggregate --skip-qa
 """
 
 from __future__ import annotations
@@ -37,6 +38,11 @@ def main() -> None:
         help="Sync official Draft/Trade data from wkbl.or.kr into SQLite.",
     )
     parser.add_argument(
+        "--sync-player-links",
+        action="store_true",
+        help="Sync player external links (instagram/youtube) into SQLite from local JSON.",
+    )
+    parser.add_argument(
         "--pbp-season",
         default="",
         help="Season code for PBP sync (e.g. 046). Empty = all seasons.",
@@ -65,6 +71,9 @@ def main() -> None:
 
     if args.sync_draft_trade:
         run_step([python, "scripts/wkbl_draft_trade_sync.py", "--only-missing"])
+
+    if args.sync_player_links:
+        run_step([python, "scripts/wkbl_player_links_sync.py"])
 
     if args.sync_pbp:
         cmd = [python, "scripts/wkbl_pbp_sync.py"]
