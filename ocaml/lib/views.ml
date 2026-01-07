@@ -1299,7 +1299,9 @@ let prediction_result_card ~(home: string) ~(away: string) (output: prediction_o
   let context_card_html, context_note_html =
     match breakdown.pb_context with
     | None ->
-        ("", {html|<div>부상/로스터/일정/전술/PBP 등의 컨텍스트는 반영하지 않습니다.</div>|html})
+        ("",
+          {html|<div>기본 모델(Elo/Pythag(Log5)/Stats)만 사용합니다.</div>
+          <div class="text-slate-500">컨텍스트 옵션을 켜면 “최근 5경기 폼/코어 로스터/휴식”을 Δ로 소폭 반영합니다. (부상/전술/PBP 등은 미반영)</div>|html})
     | Some ctx ->
         let delta_pp = ctx.pcb_delta *. 100.0 in
         let delta_cls =
