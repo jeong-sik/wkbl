@@ -1578,7 +1578,7 @@ let predict_page ~season ~seasons ~teams ~home ~away ~is_neutral ~context_enable
       (if include_mismatch then "checked" else "")
       result_html)
 
-let leader_card title (leaders: leader_entry list) =
+let leader_card ?(value_fmt=(fun v -> Printf.sprintf "%.1f" v)) title (leaders: leader_entry list) =
   if leaders = [] then ""
   else
     let name_counts : (string, int) Hashtbl.t = Hashtbl.create 16 in
@@ -1601,10 +1601,10 @@ let leader_card title (leaders: leader_entry list) =
       others
       |> List.mapi (fun i l ->
           let id_badge = if show_id l then Printf.sprintf {html|<span class="ml-2">%s</span>|html} (player_id_badge l.le_player_id) else "" in
-          Printf.sprintf {html|<div class="flex items-center justify-between py-2 border-b border-slate-800/60 last:border-0"><div class="flex items-center gap-3"><span class="text-slate-500 font-mono text-sm w-4">%d</span>%s<div class="flex flex-col"><div class="text-sm font-medium text-slate-300"><a href="/player/%s" class="hover:text-orange-400 transition-colors">%s</a>%s</div><div class="text-xs text-slate-500">%s</div></div></div><div class="font-mono font-bold text-slate-400">%.1f</div></div>|html} (i + 2) (player_img_tag ~class_name:"w-8 h-8" l.le_player_id l.le_player_name) l.le_player_id (escape_html (normalize_name l.le_player_name)) id_badge (escape_html l.le_team_name) l.le_stat_value)
+          Printf.sprintf {html|<div class="flex items-center justify-between py-2 border-b border-slate-800/60 last:border-0"><div class="flex items-center gap-3"><span class="text-slate-500 font-mono text-sm w-4">%d</span>%s<div class="flex flex-col"><div class="text-sm font-medium text-slate-300"><a href="/player/%s" class="hover:text-orange-400 transition-colors">%s</a>%s</div><div class="text-xs text-slate-500">%s</div></div></div><div class="font-mono font-bold text-slate-400">%s</div></div>|html} (i + 2) (player_img_tag ~class_name:"w-8 h-8" l.le_player_id l.le_player_name) l.le_player_id (escape_html (normalize_name l.le_player_name)) id_badge (escape_html l.le_team_name) (escape_html (value_fmt l.le_stat_value)))
       |> String.concat "\n"
     in
-    Printf.sprintf {html|<div class="bg-slate-900 rounded-xl border border-slate-800 p-5 shadow-lg"><h3 class="text-slate-400 font-bold uppercase tracking-wider text-xs mb-4">%s</h3><div class="flex items-center gap-4 mb-6 pb-6 border-b border-slate-800"><div class="relative">%s<div class="absolute -top-2 -right-2 bg-orange-500 text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center border-2 border-slate-900">1</div></div><div><div class="text-3xl font-black text-white">%.1f</div><div class="font-bold text-orange-400 flex items-center flex-wrap"><a href="/player/%s" class="hover:text-white transition-colors">%s</a>%s</div><div class="text-xs text-slate-500">%s</div></div></div><div class="space-y-1">%s</div></div>|html} (escape_html title) (player_img_tag ~class_name:"w-16 h-16" top.le_player_id top.le_player_name) top.le_stat_value top.le_player_id (escape_html (normalize_name top.le_player_name)) top_id_badge (escape_html top.le_team_name) others_rows
+    Printf.sprintf {html|<div class="bg-slate-900 rounded-xl border border-slate-800 p-5 shadow-lg"><h3 class="text-slate-400 font-bold uppercase tracking-wider text-xs mb-4">%s</h3><div class="flex items-center gap-4 mb-6 pb-6 border-b border-slate-800"><div class="relative">%s<div class="absolute -top-2 -right-2 bg-orange-500 text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center border-2 border-slate-900">1</div></div><div><div class="text-3xl font-black text-white">%s</div><div class="font-bold text-orange-400 flex items-center flex-wrap"><a href="/player/%s" class="hover:text-white transition-colors">%s</a>%s</div><div class="text-xs text-slate-500">%s</div></div></div><div class="space-y-1">%s</div></div>|html} (escape_html title) (player_img_tag ~class_name:"w-16 h-16" top.le_player_id top.le_player_name) (escape_html (value_fmt top.le_stat_value)) top.le_player_id (escape_html (normalize_name top.le_player_name)) top_id_badge (escape_html top.le_team_name) others_rows
 
 let leader_card_signed title (leaders: leader_entry list) =
   if leaders = [] then ""
@@ -1643,11 +1643,119 @@ let leader_card_signed title (leaders: leader_entry list) =
       (escape_html top.le_team_name)
       others_rows
 
-let leaders_page ~season ~seasons ~scope pts reb ast stl blk =
-  let season_options = let base = seasons |> List.map (fun (s: season_info) -> let selected = if s.code = season then "selected" else "" in Printf.sprintf {html|<option value="%s" %s>%s</option>|html} s.code selected (escape_html s.name)) |> String.concat "\n" in Printf.sprintf {html|<option value="ALL" %s>All Seasons</option>%s|html} (if season = "ALL" then "selected" else "") base in
-  let scope_options = let opt v l = let sel = if scope = v then "selected" else "" in Printf.sprintf {html|<option value="%s" %s>%s</option>|html} v sel l in opt "per_game" "Per Game" ^ opt "per_36" "Per 36 Min" in
-  let content = Printf.sprintf {html|<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">%s%s%s%s%s</div>|html} (leader_card "Points" pts) (leader_card "Rebounds" reb) (leader_card "Assists" ast) (leader_card "Steals" stl) (leader_card "Blocks" blk) in
-  layout ~title:"WKBL Leaders" ~content:(Printf.sprintf {html|<div class="space-y-8 animate-fade-in"><div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3"><div><h2 class="text-3xl font-black text-white">League Leaders</h2><p class="text-slate-400">Top performers by category.</p></div><form action="/leaders" method="get" class="flex gap-3"><select name="season" class="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none w-40" onchange="this.form.submit()">%s</select><select name="scope" class="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none w-40" onchange="this.form.submit()">%s</select></form></div>%s</div>|html} season_options scope_options content)
+let leaders_page ~season ~seasons ~scope (leaders_by_category: (string * leader_entry list) list) =
+  let season_options =
+    let base =
+      seasons
+      |> List.map (fun (s: season_info) ->
+          let selected = if s.code = season then "selected" else "" in
+          Printf.sprintf {html|<option value="%s" %s>%s</option>|html} s.code selected (escape_html s.name))
+      |> String.concat "\n"
+    in
+    Printf.sprintf
+      {html|<option value="ALL" %s>All Seasons</option>%s|html}
+      (if season = "ALL" then "selected" else "")
+      base
+  in
+  let scope_value = scope |> String.trim |> String.lowercase_ascii in
+  let scope_options =
+    let opt v label =
+      let sel = if scope_value = v then "selected" else "" in
+      Printf.sprintf {html|<option value="%s" %s>%s</option>|html} v sel label
+    in
+    opt "per_game" "Per Game" ^ opt "totals" "Totals" ^ opt "per_36" "Per 36"
+  in
+  let lookup category =
+    leaders_by_category
+    |> List.find_opt (fun (k, _) -> k = category)
+    |> Option.map snd
+    |> Option.value ~default:[]
+  in
+  let fmt_int v = Printf.sprintf "%.0f" v in
+  let fmt_f1 v = Printf.sprintf "%.1f" v in
+  let fmt_f3 v = Printf.sprintf "%.3f" v in
+  let main_categories, shooting_categories =
+    match scope_value with
+    | "totals" ->
+        ( [ ("Games", "gp", fmt_int)
+          ; ("Minutes", "min", fmt_f1)
+          ; ("Points", "pts", fmt_int)
+          ; ("Rebounds", "reb", fmt_int)
+          ; ("Assists", "ast", fmt_int)
+          ; ("Steals", "stl", fmt_int)
+          ; ("Blocks", "blk", fmt_int)
+          ; ("Turnovers", "tov", fmt_int)
+          ]
+        , [ ("FG%", "fg_pct", fmt_f3)
+          ; ("3P%", "fg3_pct", fmt_f3)
+          ; ("FT%", "ft_pct", fmt_f3)
+          ; ("TS%", "ts_pct", fmt_f3)
+          ; ("eFG%", "efg_pct", fmt_f3)
+          ]
+        )
+    | "per_36" ->
+        ( [ ("PTS/36", "pts", fmt_f1)
+          ; ("REB/36", "reb", fmt_f1)
+          ; ("AST/36", "ast", fmt_f1)
+          ; ("STL/36", "stl", fmt_f1)
+          ; ("BLK/36", "blk", fmt_f1)
+          ; ("TOV/36", "tov", fmt_f1)
+          ; ("EFF/36", "eff", fmt_f1)
+          ]
+        , [ ("FG%", "fg_pct", fmt_f3)
+          ; ("3P%", "fg3_pct", fmt_f3)
+          ; ("FT%", "ft_pct", fmt_f3)
+          ; ("TS%", "ts_pct", fmt_f3)
+          ; ("eFG%", "efg_pct", fmt_f3)
+          ]
+        )
+    | _ ->
+        ( [ ("Points", "pts", fmt_f1)
+          ; ("Rebounds", "reb", fmt_f1)
+          ; ("Assists", "ast", fmt_f1)
+          ; ("Steals", "stl", fmt_f1)
+          ; ("Blocks", "blk", fmt_f1)
+          ; ("Turnovers", "tov", fmt_f1)
+          ; ("Minutes", "min", fmt_f1)
+          ; ("Efficiency", "eff", fmt_f1)
+          ]
+        , [ ("FG%", "fg_pct", fmt_f3)
+          ; ("3P%", "fg3_pct", fmt_f3)
+          ; ("FT%", "ft_pct", fmt_f3)
+          ; ("TS%", "ts_pct", fmt_f3)
+          ; ("eFG%", "efg_pct", fmt_f3)
+          ]
+        )
+  in
+  let render_cards categories =
+    categories
+    |> List.map (fun (title, key, fmt) ->
+        leader_card ~value_fmt:fmt title (lookup key))
+    |> String.concat ""
+  in
+  let main_grid =
+    Printf.sprintf
+      {html|<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">%s</div>|html}
+      (render_cards main_categories)
+  in
+  let shooting_grid =
+    Printf.sprintf
+      {html|<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">%s</div>|html}
+      (render_cards shooting_categories)
+  in
+  let note_html =
+    {html|<div class="text-[11px] text-slate-500 leading-relaxed">Shooting leaders require minimum attempts: <span class="font-mono text-slate-300">FG≥50</span>, <span class="font-mono text-slate-300">3P≥20</span>, <span class="font-mono text-slate-300">FT≥20</span>. Per-36 leaders require <span class="font-mono text-slate-300">MIN≥100</span>.</div>|html}
+  in
+  let content =
+    Printf.sprintf
+      {html|<div class="space-y-8">%s%s<div class="flex items-baseline justify-between"><h3 class="text-lg font-bold text-white">Shooting</h3><div class="text-xs text-slate-500">FG / 3P / FT / TS / eFG</div></div>%s</div>|html}
+      main_grid note_html shooting_grid
+  in
+  layout
+    ~title:"WKBL Leaders"
+    ~content:(Printf.sprintf
+      {html|<div class="space-y-8 animate-fade-in"><div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3"><div><h2 class="text-3xl font-black text-white">League Leaders</h2><p class="text-slate-400">Basketball-reference style leaderboards.</p></div><form action="/leaders" method="get" class="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full md:w-auto"><select name="season" class="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none w-full sm:w-48" onchange="this.form.submit()">%s</select><select name="scope" class="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none w-full sm:w-48" onchange="this.form.submit()">%s</select></form></div>%s</div>|html}
+      season_options scope_options content)
 
 let awards_page ~(season: string) ~(seasons: season_info list) ~(include_mismatch: bool) ~(prev_season_name: string option) ~(mvp: leader_entry list) ~(mip: leader_entry list) =
   let season_options =
