@@ -689,7 +689,43 @@ let () =
             | Ok seasons -> seasons
             | Error _ -> []
           in
-          Dream.html (Views.player_profile_page final_profile ~scope ~seasons_catalog)
+          let season_for_leaderboards =
+            match seasons_catalog with
+            | [] -> "ALL"
+            | seasons -> query_season_or_latest request seasons
+          in
+          let season_name_for_leaderboards =
+            seasons_catalog
+            |> List.find_opt (fun (s: season_info) -> s.code = season_for_leaderboards)
+            |> Option.map (fun (s: season_info) -> s.name)
+            |> Option.value ~default:season_for_leaderboards
+          in
+          let leaderboard_categories =
+            match String.lowercase_ascii scope with
+            | "totals" ->
+                [ "gp"; "min"; "pts"; "reb"; "ast"; "stl"; "blk"; "tov"; "fg_pct"; "fg3_pct"; "ft_pct"; "ts_pct"; "efg_pct" ]
+            | "per_36" ->
+                [ "pts"; "reb"; "ast"; "stl"; "blk"; "tov"; "eff"; "fg_pct"; "fg3_pct"; "ft_pct"; "ts_pct"; "efg_pct" ]
+            | _ ->
+                [ "pts"; "reb"; "ast"; "stl"; "blk"; "tov"; "min"; "eff"; "fg_pct"; "fg3_pct"; "ft_pct"; "ts_pct"; "efg_pct" ]
+          in
+          let rec fetch_all acc = function
+            | [] -> Lwt.return (Ok (List.rev acc))
+            | category :: rest ->
+                let* res = Db.get_leaders ~season:season_for_leaderboards ~scope category in
+                (match res with
+                | Error e -> Lwt.return (Error e)
+                | Ok leaders -> fetch_all ((category, leaders) :: acc) rest)
+          in
+          let* leaderboards_res = fetch_all [] leaderboard_categories in
+          let leaderboards =
+            match leaderboards_res with
+            | Ok leaders_by_category ->
+                Some (season_for_leaderboards, season_name_for_leaderboards, leaders_by_category)
+            | Error _ ->
+                None
+          in
+          Dream.html (Views.player_profile_page ~leaderboards final_profile ~scope ~seasons_catalog)
       | Ok None -> Dream.html (Views.error_page "Player not found")
       | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
     );

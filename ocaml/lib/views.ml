@@ -1801,7 +1801,7 @@ let awards_page ~(season: string) ~(seasons: season_info list) ~(include_mismatc
       mip_card
       disclaimer_html)
 
-let player_profile_page (profile: player_profile) ~scope ~(seasons_catalog: season_info list) =
+let player_profile_page ?(leaderboards=None) (profile: player_profile) ~scope ~(seasons_catalog: season_info list) =
   let p = profile.player in
   let pos = match p.position with Some s -> s | None -> "-" in
   let info_text = Printf.sprintf "%s | %dcm" pos (match p.height with Some h -> h | None -> 0) in
@@ -2159,6 +2159,112 @@ let player_profile_page (profile: player_profile) ~scope ~(seasons_catalog: seas
   in
 
   let career_highs_html = career_highs_card profile.career_highs in
+  let leaderboards_html =
+    match leaderboards with
+    | None -> ""
+    | Some (lb_season_code, lb_season_name, lb_leaders) ->
+        let scope_value = scope |> String.trim |> String.lowercase_ascii in
+        let scope_label =
+          match scope_value with
+          | "totals" -> "Totals"
+          | "per_36" -> "Per 36"
+          | _ -> "Per Game"
+        in
+        let leaders_href =
+          Printf.sprintf
+            "/leaders?season=%s&scope=%s"
+            (Uri.pct_encode lb_season_code)
+            (Uri.pct_encode scope_value)
+        in
+        let lookup category =
+          lb_leaders
+          |> List.find_opt (fun (k, _) -> k = category)
+          |> Option.map snd
+          |> Option.value ~default:[]
+        in
+        let fmt_int v = Printf.sprintf "%.0f" v in
+        let fmt_f1 v = Printf.sprintf "%.1f" v in
+        let fmt_f3 v = Printf.sprintf "%.3f" v in
+        let categories =
+          match scope_value with
+          | "totals" ->
+              [ ("GP", "gp", fmt_int)
+              ; ("MIN", "min", fmt_f1)
+              ; ("PTS", "pts", fmt_int)
+              ; ("REB", "reb", fmt_int)
+              ; ("AST", "ast", fmt_int)
+              ; ("STL", "stl", fmt_int)
+              ; ("BLK", "blk", fmt_int)
+              ; ("TO", "tov", fmt_int)
+              ; ("FG%", "fg_pct", fmt_f3)
+              ; ("3P%", "fg3_pct", fmt_f3)
+              ; ("FT%", "ft_pct", fmt_f3)
+              ; ("TS%", "ts_pct", fmt_f3)
+              ; ("eFG%", "efg_pct", fmt_f3)
+              ]
+          | "per_36" ->
+              [ ("PTS/36", "pts", fmt_f1)
+              ; ("REB/36", "reb", fmt_f1)
+              ; ("AST/36", "ast", fmt_f1)
+              ; ("STL/36", "stl", fmt_f1)
+              ; ("BLK/36", "blk", fmt_f1)
+              ; ("TO/36", "tov", fmt_f1)
+              ; ("EFF/36", "eff", fmt_f1)
+              ; ("FG%", "fg_pct", fmt_f3)
+              ; ("3P%", "fg3_pct", fmt_f3)
+              ; ("FT%", "ft_pct", fmt_f3)
+              ; ("TS%", "ts_pct", fmt_f3)
+              ; ("eFG%", "efg_pct", fmt_f3)
+              ]
+          | _ ->
+              [ ("PTS", "pts", fmt_f1)
+              ; ("REB", "reb", fmt_f1)
+              ; ("AST", "ast", fmt_f1)
+              ; ("STL", "stl", fmt_f1)
+              ; ("BLK", "blk", fmt_f1)
+              ; ("TO", "tov", fmt_f1)
+              ; ("MIN", "min", fmt_f1)
+              ; ("EFF", "eff", fmt_f1)
+              ; ("FG%", "fg_pct", fmt_f3)
+              ; ("3P%", "fg3_pct", fmt_f3)
+              ; ("FT%", "ft_pct", fmt_f3)
+              ; ("TS%", "ts_pct", fmt_f3)
+              ; ("eFG%", "efg_pct", fmt_f3)
+              ]
+        in
+        let find_rank category =
+          lookup category
+          |> List.mapi (fun idx (l: leader_entry) -> (idx + 1, l))
+          |> List.find_opt (fun (_, (l: leader_entry)) -> l.le_player_id = p.id)
+        in
+        let rows =
+          categories
+          |> List.filter_map (fun (label, category, fmt) ->
+              match find_rank category with
+              | None -> None
+              | Some (rank, l) ->
+                  Some
+                    (Printf.sprintf
+                       {html|<div class="flex items-center justify-between gap-3"><div class="min-w-0 flex items-center gap-2"><span class="text-slate-500 font-mono text-xs w-10">#%d</span><span class="text-slate-300 font-mono whitespace-nowrap">%s</span></div><div class="text-slate-200 font-mono font-bold">%s</div></div>|html}
+                       rank
+                       (escape_html label)
+                       (escape_html (fmt l.le_stat_value))))
+        in
+        let rows_html =
+          match rows with
+          | [] ->
+              Printf.sprintf
+                {html|<div class="text-xs text-slate-500 leading-relaxed">해당 시즌 <span class="font-mono text-slate-300">%s</span> 기준 Top 5 리더보드 진입 기록이 없습니다.</div>|html}
+                (escape_html scope_label)
+          | _ ->
+              Printf.sprintf {html|<div class="space-y-2">%s</div>|html} (String.concat "\n" rows)
+        in
+        Printf.sprintf
+          {html|<div class="bg-slate-900 rounded-xl border border-slate-800 p-4 sm:p-6 shadow-lg"><div class="flex items-start justify-between gap-4 mb-4"><div class="min-w-0"><h3 class="text-slate-300 font-bold uppercase tracking-wider text-xs flex items-center gap-2"><span class="text-lg">🏅</span> Leaderboards</h3><div class="mt-1 text-[11px] text-slate-500 leading-relaxed"><span class="font-mono text-slate-300">%s</span> · <span class="font-mono text-slate-300">%s</span> · Top 5</div></div><a href="%s" class="text-[11px] text-slate-500 hover:text-slate-300 underline font-mono shrink-0 whitespace-nowrap">Leaders</a></div>%s</div>|html}
+          (escape_html lb_season_name)
+          (escape_html scope_label)
+          (escape_html leaders_href)
+          rows_html
   let data_notes_html =
     let season_range_html ~count ~oldest ~latest =
       if count <= 0 then
@@ -2296,7 +2402,7 @@ let player_profile_page (profile: player_profile) ~scope ~(seasons_catalog: seas
 
   let display_name = normalize_name p.name in
   layout ~title:(display_name ^ " | WKBL Profile")
-    ~content:(Printf.sprintf {html|<div class="space-y-6 sm:space-y-8 animate-fade-in"><div class="bg-slate-900 rounded-xl border border-slate-800 p-5 sm:p-8 shadow-2xl flex flex-col md:flex-row items-center md:items-start gap-6 sm:gap-8"><div class="relative">%s<div class="absolute -bottom-3 -right-3 bg-slate-800 border border-slate-700 text-white text-[11px] sm:text-xs font-bold px-2.5 py-0.5 rounded-full">%s</div></div><div class="text-center md:text-left space-y-2"><h1 class="text-3xl sm:text-4xl font-black text-white">%s</h1><div class="text-slate-400 text-base sm:text-lg">%s</div><div class="flex flex-wrap gap-2 justify-center md:justify-start pt-2"><span class="bg-slate-800 text-slate-300 px-2.5 py-1 rounded text-[11px] sm:text-sm">%s</span>%s%s%s</div></div></div><div class="grid grid-cols-1 lg:grid-cols-6 gap-6 sm:gap-8"><div class="lg:col-span-4 space-y-6 sm:space-y-8">%s<div class="space-y-4">%s<div class="bg-slate-900 rounded-xl border border-slate-800 overflow-x-auto shadow-lg"><table class="min-w-[920px] w-full text-xs sm:text-sm font-mono table-fixed tabular-nums"><thead class="bg-slate-800/80 text-slate-400 uppercase tracking-wider text-[10px] sm:text-xs whitespace-nowrap"><tr><th class="px-4 py-3 text-left font-sans w-[110px] whitespace-nowrap">Date</th><th class="px-4 py-3 text-left font-sans">Opponent</th><th class="px-4 py-3 text-right w-[72px]">MIN</th><th class="px-4 py-3 text-right text-orange-400 w-[72px]">PTS</th><th class="px-4 py-3 text-right w-[72px]">+/-</th><th class="px-4 py-3 text-right w-[72px]">REB</th><th class="px-4 py-3 text-right w-[72px]">AST</th><th class="px-4 py-3 text-right w-[72px]">STL</th><th class="px-4 py-3 text-right w-[72px]">BLK</th></tr></thead><tbody>%s</tbody></table></div></div>%s</div><div class="space-y-6 sm:space-y-8 lg:col-span-2"><div class="space-y-4">%s%s%s</div></div></div>%s</div>|html}
+    ~content:(Printf.sprintf {html|<div class="space-y-6 sm:space-y-8 animate-fade-in"><div class="bg-slate-900 rounded-xl border border-slate-800 p-5 sm:p-8 shadow-2xl flex flex-col md:flex-row items-center md:items-start gap-6 sm:gap-8"><div class="relative">%s<div class="absolute -bottom-3 -right-3 bg-slate-800 border border-slate-700 text-white text-[11px] sm:text-xs font-bold px-2.5 py-0.5 rounded-full">%s</div></div><div class="text-center md:text-left space-y-2"><h1 class="text-3xl sm:text-4xl font-black text-white">%s</h1><div class="text-slate-400 text-base sm:text-lg">%s</div><div class="flex flex-wrap gap-2 justify-center md:justify-start pt-2"><span class="bg-slate-800 text-slate-300 px-2.5 py-1 rounded text-[11px] sm:text-sm">%s</span>%s%s%s</div></div></div><div class="grid grid-cols-1 lg:grid-cols-6 gap-6 sm:gap-8"><div class="lg:col-span-4 space-y-6 sm:space-y-8">%s<div class="space-y-4">%s<div class="bg-slate-900 rounded-xl border border-slate-800 overflow-x-auto shadow-lg"><table class="min-w-[920px] w-full text-xs sm:text-sm font-mono table-fixed tabular-nums"><thead class="bg-slate-800/80 text-slate-400 uppercase tracking-wider text-[10px] sm:text-xs whitespace-nowrap"><tr><th class="px-4 py-3 text-left font-sans w-[110px] whitespace-nowrap">Date</th><th class="px-4 py-3 text-left font-sans">Opponent</th><th class="px-4 py-3 text-right w-[72px]">MIN</th><th class="px-4 py-3 text-right text-orange-400 w-[72px]">PTS</th><th class="px-4 py-3 text-right w-[72px]">+/-</th><th class="px-4 py-3 text-right w-[72px]">REB</th><th class="px-4 py-3 text-right w-[72px]">AST</th><th class="px-4 py-3 text-right w-[72px]">STL</th><th class="px-4 py-3 text-right w-[72px]">BLK</th></tr></thead><tbody>%s</tbody></table></div></div>%s</div><div class="space-y-6 sm:space-y-8 lg:col-span-2"><div class="space-y-4">%s%s%s%s</div></div></div>%s</div>|html}
           (player_img_tag ~class_name:"w-24 h-24 sm:w-32 sm:h-32 border-4 border-slate-700 shadow-2xl" p.id p.name)
           (escape_html p.id)
           (escape_html display_name)
@@ -2310,6 +2416,7 @@ let player_profile_page (profile: player_profile) ~scope ~(seasons_catalog: seas
           recent_rows
           all_star_section_html
           team_movement_html
+          leaderboards_html
           career_highs_html
           missing_data_html
           data_notes_html)
