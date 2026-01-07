@@ -436,11 +436,18 @@ let normalize_label (s: string) =
         add_space prev_space;
         loop (i + 3) true
       ) else if c0 = '\xE2' && i + 2 < len && s.[i + 1] = '\x80' &&
-                (s.[i + 2] = '\x8B' (* ZWSP *)
+                (s.[i + 2] = '\x8A' (* HAIR SPACE *)
+                 || s.[i + 2] = '\x8B' (* ZWSP *)
                  || s.[i + 2] = '\x8C' (* ZWNJ *)
                  || s.[i + 2] = '\x8D' (* ZWJ *)
+                 || s.[i + 2] = '\x8E' (* LRM *)
+                 || s.[i + 2] = '\x8F' (* RLM *)
                  || s.[i + 2] = '\x89' (* THIN SPACE *)
                  || s.[i + 2] = '\xAF' (* NARROW NBSP *)) then (
+        add_space prev_space;
+        loop (i + 3) true
+      ) else if c0 = '\xE2' && i + 2 < len && s.[i + 1] = '\x81' && s.[i + 2] = '\xA0' then (
+        (* WORD JOINER (U+2060): 0xE2 0x81 0xA0 *)
         add_space prev_space;
         loop (i + 3) true
       ) else if c0 = '\xE3' && i + 2 < len && s.[i + 1] = '\x80' && s.[i + 2] = '\x80' then (
