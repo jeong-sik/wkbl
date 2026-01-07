@@ -116,6 +116,14 @@ let stat_cell ?(highlight=false) value =
   let class_name = if highlight then "text-orange-400 font-bold" else "text-slate-300" in
   Printf.sprintf {html|<td class="px-3 py-2 text-right %s font-mono">%.1f</td>|html} class_name value
 
+let stat_total_cell ?(highlight=false) (avg_value: float) (total_value: int) =
+  let class_name = if highlight then "text-orange-400 font-bold" else "text-slate-300" in
+  Printf.sprintf
+    {html|<td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="%s font-mono">%.1f</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT %d</span></div></td>|html}
+    class_name
+    avg_value
+    total_value
+
 (** Points cell with career total *)
 let points_total_cell (avg_points: float) (total_points: int) =
   Printf.sprintf
@@ -378,11 +386,11 @@ let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2") (rank: int
     p.games_played
     (points_total_cell p.avg_points p.total_points)
     (margin_cell p.avg_margin)
-    (stat_cell p.avg_rebounds)
-    (stat_cell p.avg_assists)
-    (stat_cell p.avg_steals)
-    (stat_cell p.avg_blocks)
-    (stat_cell p.avg_turnovers)
+    (stat_total_cell p.avg_rebounds p.total_rebounds)
+    (stat_total_cell p.avg_assists p.total_assists)
+    (stat_total_cell p.avg_steals p.total_steals)
+    (stat_total_cell p.avg_blocks p.total_blocks)
+    (stat_total_cell p.avg_turnovers p.total_turnovers)
     (stat_cell ~highlight:true p.efficiency)
 
 (** Players table - HTMX partial *)
@@ -468,7 +476,17 @@ let home_page players =
       {html|<div class="space-y-6"><div class="flex items-center justify-between"><h2 class="text-xl font-bold text-white">Top Players by Efficiency</h2><div class="flex gap-2"><input type="text" placeholder="Search player..." class="bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-sm focus:border-orange-500 focus:outline-none" hx-get="/players/table" hx-trigger="keyup changed delay:300ms" hx-target="#players-table" name="search"></div></div><div id="players-table" class="bg-slate-900 rounded-lg border border-slate-800 overflow-hidden">%s</div></div>|html}
       table)
 
-let players_page ~search ~sort ~include_mismatch players =
+let players_page ~season ~seasons ~search ~sort ~include_mismatch players =
+  let season_options =
+    let base =
+      seasons
+      |> List.map (fun (s: season_info) ->
+          let selected = if s.code = season then "selected" else "" in
+          Printf.sprintf {html|<option value="%s" %s>%s</option>|html} s.code selected (escape_html s.name))
+      |> String.concat "\n"
+    in
+    Printf.sprintf {html|<option value="ALL" %s>All Seasons</option>%s|html} (if season = "ALL" then "selected" else "") base
+  in
   let sort_value = match String.lowercase_ascii sort with | "pts" | "points" -> "pts" | "mg" | "margin" -> "mg" | "reb" | "rebounds" -> "reb" | "ast" | "assists" -> "ast" | "min" | "minutes" -> "min" | "eff" | "efficiency" -> "eff" | _ -> "eff" in
   let sort_option value label = let selected = if sort_value = value then "selected" else "" in Printf.sprintf {html|<option value="%s" %s>%s</option>|html} value selected label in
   let table = players_table players in
@@ -488,8 +506,19 @@ let players_page ~search ~sort ~include_mismatch players =
   in
   layout ~title:"WKBL Players"
     ~content:(Printf.sprintf
-      {html|<div class="space-y-6"><div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3"><div><h2 class="text-2xl font-bold text-white">Players</h2><p class="text-slate-400 text-sm">Filter and sort player aggregates.</p></div><a class="text-orange-400 hover:text-orange-300 text-sm" href="/players">Reset</a></div><form id="players-filter" class="grid grid-cols-1 md:grid-cols-3 gap-3" hx-get="/players/table" hx-target="#players-table" hx-trigger="change, keyup delay:250ms"><input type="text" name="search" placeholder="Search player..." value="%s" class="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none"><select name="sort" class="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none">%s%s%s%s%s%s</select><div class="flex items-center justify-between gap-3 text-xs"><div class="text-slate-500 flex items-center">Sorted by %s</div><label class="flex items-center gap-2 text-slate-400 whitespace-nowrap"><input type="checkbox" name="include_mismatch" value="1" %s class="h-4 w-4 rounded border-slate-600 bg-slate-800 accent-orange-500" title="Final score != sum(points) 경기 포함"><span>Mismatch 포함</span></label></div></form>%s<div id="players-table" class="bg-slate-900 rounded-lg border border-slate-800 overflow-hidden">%s</div></div>|html}
-      (escape_html search) (sort_option "eff" "EFF") (sort_option "pts" "PTS") (sort_option "mg" "MG") (sort_option "reb" "REB") (sort_option "ast" "AST") (sort_option "min" "MIN") (String.uppercase_ascii sort_value) include_checked mg_note table)
+      {html|<div class="space-y-6"><div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3"><div><h2 class="text-2xl font-bold text-white">Players</h2><p class="text-slate-400 text-sm">Season-filtered player aggregates.</p></div><a class="text-orange-400 hover:text-orange-300 text-sm" href="/players">Reset</a></div><form id="players-filter" class="grid grid-cols-1 md:grid-cols-4 gap-3" hx-get="/players/table" hx-target="#players-table" hx-trigger="change, keyup delay:250ms"><select name="season" class="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none">%s</select><input type="text" name="search" placeholder="Search player..." value="%s" class="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none"><select name="sort" class="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none">%s%s%s%s%s%s</select><div class="flex items-center justify-between gap-3 text-xs"><div class="text-slate-500 flex items-center">Sorted by %s</div><label class="flex items-center gap-2 text-slate-400 whitespace-nowrap"><input type="checkbox" name="include_mismatch" value="1" %s class="h-4 w-4 rounded border-slate-600 bg-slate-800 accent-orange-500" title="Final score != sum(points) 경기 포함"><span>Mismatch 포함</span></label></div></form>%s<div id="players-table" class="bg-slate-900 rounded-lg border border-slate-800 overflow-hidden">%s</div></div>|html}
+      season_options
+      (escape_html search)
+      (sort_option "eff" "EFF")
+      (sort_option "pts" "PTS")
+      (sort_option "mg" "MG")
+      (sort_option "reb" "REB")
+      (sort_option "ast" "AST")
+      (sort_option "min" "MIN")
+      (String.uppercase_ascii sort_value)
+      include_checked
+      mg_note
+      table)
 
 let format_float ?(digits=1) value = Printf.sprintf "%.*f" digits value
 

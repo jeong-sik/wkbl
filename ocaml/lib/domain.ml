@@ -7,6 +7,11 @@ type player_aggregate = {
   games_played: int;
   total_minutes: float;
   total_points: int;
+  total_rebounds: int;
+  total_assists: int;
+  total_steals: int;
+  total_blocks: int;
+  total_turnovers: int;
   avg_points: float;
   avg_margin: float;
   avg_rebounds: float;

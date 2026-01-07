@@ -126,10 +126,15 @@ let () =
       let sort_str = Dream.query request "sort" |> Option.value ~default:"eff" in
       let include_mismatch = query_bool request "include_mismatch" in
       let sort = Domain.player_sort_of_string sort_str in
-      let* players_res = Db.get_players ~search ~sort ~include_mismatch () in
-      match players_res with
-      | Ok p -> Dream.html (Views.players_page ~search ~sort:sort_str ~include_mismatch p)
+      let* seasons_res = Db.get_seasons () in
+      match seasons_res with
       | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+      | Ok seasons ->
+          let season = query_season_or_latest request seasons in
+          let* players_res = Db.get_players ~season ~search ~sort ~include_mismatch () in
+          match players_res with
+          | Ok p -> Dream.html (Views.players_page ~season ~seasons ~search ~sort:sort_str ~include_mismatch p)
+          | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
     );
 
     Dream.get "/players/table" (fun request ->
@@ -138,10 +143,15 @@ let () =
       let sort_str = Dream.query request "sort" |> Option.value ~default:"eff" in
       let include_mismatch = query_bool request "include_mismatch" in
       let sort = Domain.player_sort_of_string sort_str in
-      let* players_res = Db.get_players ~search ~sort ~include_mismatch () in
-      match players_res with
-      | Ok p -> Dream.html (Views.players_table p)
+      let* seasons_res = Db.get_seasons () in
+      match seasons_res with
       | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+      | Ok seasons ->
+          let season = query_season_or_latest request seasons in
+          let* players_res = Db.get_players ~season ~search ~sort ~include_mismatch () in
+          match players_res with
+          | Ok p -> Dream.html (Views.players_table p)
+          | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
     );
 
     (* Teams Page & Table HTMX *)
