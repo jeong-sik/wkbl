@@ -207,7 +207,7 @@ let score_quality_badge ?(compact=false) (q: game_score_quality) =
     match q with
     | Verified ->
         ( "VERIFIED"
-        , "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+        , "bg-slate-800/60 text-slate-200 border-slate-700/60"
         , "WKBL 공식 스코어(result.asp)와 박스스코어 득점합(ajax_game_result_2.asp)이 일치합니다."
         )
     | Derived ->
@@ -217,16 +217,16 @@ let score_quality_badge ?(compact=false) (q: game_score_quality) =
         )
     | Mismatch ->
         ( "MISMATCH"
-        , "bg-rose-500/10 text-rose-400 border-rose-500/30"
+        , "bg-amber-500/10 text-amber-400 border-amber-500/30"
         , "WKBL 공식 스코어와 박스스코어 득점합이 불일치합니다. (/qa 참고)"
         )
   in
   let text =
     if compact then
       match q with
-      | Verified -> "V"
-      | Derived -> "D"
-      | Mismatch -> "X"
+      | Verified -> "✓"
+      | Derived -> "Σ"
+      | Mismatch -> "!"
     else
       label
   in
@@ -865,9 +865,9 @@ let boxscore_page (bs: game_boxscore) =
           <div>• 박스스코어: WKBL 공식 박스스코어(AJAX) → <span class="font-mono text-slate-300">game_stats</span></div>
           <div>• 개인 <span class="font-mono text-slate-300">+/-</span>: WKBL 문자중계(PBP) → <span class="font-mono text-slate-300">player_plus_minus</span> (일부 경기만)</div>
           <div class="pt-1 text-slate-400 font-bold">검증 기준</div>
-          <div>• <span class="font-mono text-slate-200">VERIFIED (V)</span>: <span class="font-mono text-slate-300">games.home/away_score</span>가 있고, 양 팀 <span class="font-mono text-slate-300">SUM(game_stats.pts)</span>와 모두 일치</div>
-          <div>• <span class="font-mono text-slate-200">DERIVED (D)</span>: 스코어/합계 누락으로 교차검증 불가. 표시 스코어는 <span class="font-mono text-slate-300">COALESCE(games score, sum pts)</span></div>
-          <div>• <span class="font-mono text-slate-200">MISMATCH (X)</span>: 스코어와 합계가 모두 있는데 값이 다름 (<a href="/qa" class="text-orange-400 hover:underline">QA</a>)</div>
+          <div>• <span class="font-mono text-slate-200">VERIFIED (✓)</span>: <span class="font-mono text-slate-300">games.home/away_score</span>가 있고, 양 팀 <span class="font-mono text-slate-300">SUM(game_stats.pts)</span>와 모두 일치</div>
+          <div>• <span class="font-mono text-slate-200">DERIVED (Σ)</span>: 스코어/합계 누락으로 교차검증 불가. 표시 스코어는 <span class="font-mono text-slate-300">COALESCE(games score, sum pts)</span></div>
+          <div>• <span class="font-mono text-slate-200">MISMATCH (!)</span>: 스코어와 합계가 모두 있는데 값이 다름 (<a href="/qa" class="text-orange-400 hover:underline">QA</a>)</div>
           <div class="pt-1">※ 이 검증은 “최종 득점”만 대상으로, 다른 스탯(리바운드/어시스트 등)은 별도 검증이 필요합니다.</div>
           <div>※ 동명이인 매칭 오류로 동일 스탯 라인이 중복될 수 있어, 동일 라인은 1개만 표시합니다.</div>
         </div>
@@ -2220,9 +2220,9 @@ let player_game_logs_page (profile: player_profile) ~(season: string) ~(seasons:
         | Mismatch -> (v, d, m + 1))
       (0, 0, 0)
   in
-  let quality_chips =
-    Printf.sprintf
-      {html|<div class="flex flex-wrap items-center gap-2 text-[11px] font-mono text-slate-400"><span class="px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700/60 whitespace-nowrap">V %d</span><span class="px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700/60 whitespace-nowrap">D %d</span><span class="px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700/60 whitespace-nowrap">X %d</span></div>|html}
+    let quality_chips =
+      Printf.sprintf
+      {html|<div class="flex flex-wrap items-center gap-2 text-[11px] font-mono text-slate-400"><span class="px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700/60 whitespace-nowrap">✓ %d</span><span class="px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700/60 whitespace-nowrap">Σ %d</span><span class="px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700/60 whitespace-nowrap">! %d</span></div>|html}
       verified_cnt derived_cnt mismatch_cnt
   in
   let rows =
@@ -2547,9 +2547,9 @@ let qa_dashboard_page (report: Db.qa_db_report) ?(markdown=None) () =
         <div>• 박스스코어: <span class="font-mono text-slate-200">/game/ajax/ajax_game_result_2.asp</span> (POST) → <span class="font-mono text-slate-200">game_stats</span></div>
         <div>• PBP +/-: <a href="https://www.wkbl.or.kr/live11/path_live_sms.asp" target="_blank" rel="noreferrer" class="text-orange-400 hover:underline">wkbl.or.kr/live11/path_live_sms.asp</a> → <span class="font-mono text-slate-200">player_plus_minus</span></div>
         <div class="pt-1 text-slate-400 font-bold">검증 기준 (스코어 교차검증)</div>
-        <div>• <span class="font-mono text-slate-200">VERIFIED (V)</span>: <span class="font-mono text-slate-200">games.home/away_score</span>가 존재하고, 양 팀 <span class="font-mono text-slate-200">SUM(game_stats.pts)</span>와 모두 일치</div>
-        <div>• <span class="font-mono text-slate-200">DERIVED (D)</span>: 스코어/합계 누락으로 교차검증 불가. 표시 스코어는 <span class="font-mono text-slate-200">COALESCE(games score, sum pts)</span></div>
-        <div>• <span class="font-mono text-slate-200">MISMATCH (X)</span>: 스코어와 합계가 모두 있는데 값이 다름</div>
+        <div>• <span class="font-mono text-slate-200">VERIFIED (✓)</span>: <span class="font-mono text-slate-200">games.home/away_score</span>가 존재하고, 양 팀 <span class="font-mono text-slate-200">SUM(game_stats.pts)</span>와 모두 일치</div>
+        <div>• <span class="font-mono text-slate-200">DERIVED (Σ)</span>: 스코어/합계 누락으로 교차검증 불가. 표시 스코어는 <span class="font-mono text-slate-200">COALESCE(games score, sum pts)</span></div>
+        <div>• <span class="font-mono text-slate-200">MISMATCH (!)</span>: 스코어와 합계가 모두 있는데 값이 다름</div>
         <div class="pt-1">※ 이 검증은 “최종 득점”만 대상으로, 다른 스탯(리바운드/어시스트 등)은 별도 검증이 필요합니다.</div>
       </div>
     </details>|html}
