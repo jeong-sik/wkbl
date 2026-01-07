@@ -299,6 +299,14 @@ type official_trade_event = {
   ote_scraped_at: string;
 }
 
+type player_external_link = {
+  pel_player_id: string;
+  pel_link_type: string;
+  pel_url: string;
+  pel_source_url: string option;
+  pel_scraped_at: string;
+}
+
 type player_profile = {
   player: player_info;
   averages: player_aggregate;
@@ -306,6 +314,7 @@ type player_profile = {
   all_star_games: player_game_stat list;
   draft: player_draft option;
   official_trade_events: official_trade_event list;
+  external_links: player_external_link list;
   team_stints: player_team_stint list;
   season_breakdown: season_stats list;
   career_highs: career_high_item list option;

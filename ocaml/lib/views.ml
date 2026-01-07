@@ -39,6 +39,52 @@ let normalize_name s =
   |> List.map (String.make 1)
   |> String.concat ""
 
+(** Naive substring search (byte-based). *)
+let find_substring_from ~sub s ~from =
+  let sub_len = String.length sub in
+  let len = String.length s in
+  if sub_len = 0 then None
+  else
+    let rec loop i =
+      if i + sub_len > len then None
+      else if String.sub s i sub_len = sub then Some i
+      else loop (i + 1)
+    in
+    loop (max 0 from)
+
+(** Best-effort extraction of contract duration from official trade text. *)
+let extract_contract_years (text : string) : int option =
+  let key = "계약" in
+  let year_marker = "년" in
+  match find_substring_from ~sub:key text ~from:0 with
+  | None -> None
+  | Some idx ->
+      let start = idx + String.length key in
+      let len = String.length text in
+      let is_digit c = c >= '0' && c <= '9' in
+      let rec scan i =
+        if i >= len then None
+        else if is_digit text.[i] then (
+          let j = ref i in
+          while !j < len && is_digit text.[!j] do
+            incr j
+          done;
+          let digits = String.sub text i (!j - i) in
+          let k = ref !j in
+          while !k < len && (text.[!k] = ' ' || text.[!k] = '\t') do
+            incr k
+          done;
+          if !k + String.length year_marker <= len
+             && String.sub text !k (String.length year_marker) = year_marker
+          then
+            int_of_string_opt digits
+          else
+            scan (!j + 1)
+        ) else
+          scan (i + 1)
+      in
+      scan start
+
 (** Short player id for compact UI (keeps disambiguation readable). *)
 let short_player_id player_id =
   let s = String.trim player_id in
@@ -1656,23 +1702,78 @@ let player_profile_page (profile: player_profile) ~scope ~(seasons_catalog: seas
     if t = "" then "" else team_badge t
   in
   let video_links_html =
+    let find_external_link link_type =
+      let key = String.lowercase_ascii (String.trim link_type) in
+      profile.external_links
+      |> List.find_opt (fun (l: player_external_link) ->
+          String.lowercase_ascii (String.trim l.pel_link_type) = key)
+    in
+    let link_button ~label ~url ?(title="") () =
+      let title_attr = if title = "" then "" else Printf.sprintf {html| title="%s"|html} (escape_html title) in
+      Printf.sprintf
+        {html|<a href="%s" target="_blank" rel="noopener noreferrer" class="bg-slate-800/60 text-slate-300 px-3 py-1 rounded text-sm font-mono hover:bg-slate-700/60 hover:text-white transition"%s>%s</a>|html}
+        (escape_html url)
+        title_attr
+        label
+    in
+    let source_chip ~source_url =
+      Printf.sprintf
+        {html|<a href="%s" target="_blank" rel="noopener noreferrer" class="bg-slate-800/40 text-slate-400 px-2 py-1 rounded text-xs font-mono hover:bg-slate-700/40 hover:text-white transition" title="Source">src</a>|html}
+        (escape_html source_url)
+    in
     let name = normalize_label p.name in
     let team = String.trim avg.team_name |> normalize_label in
     let base_query = if team = "" then name else Printf.sprintf "%s %s" name team in
     let wkbl_profile =
       "https://www.wkbl.or.kr/player/detail2.asp?pno=" ^ Uri.pct_encode p.id
     in
-    let youtube =
+    let youtube_search =
       "https://www.youtube.com/results?search_query="
       ^ Uri.pct_encode (Printf.sprintf "%s WKBL 하이라이트" base_query)
     in
-    let instagram =
+    let instagram_search =
       "https://www.google.com/search?q="
       ^ Uri.pct_encode (Printf.sprintf "site:instagram.com %s WKBL 인스타" base_query)
     in
+    let youtube_html =
+      match find_external_link "youtube" with
+      | None ->
+          link_button ~label:"▶ 검색" ~url:youtube_search ~title:"YouTube search" ()
+      | Some l ->
+          let title =
+            match l.pel_source_url with
+            | None -> "YouTube (verified link)"
+            | Some src -> "YouTube (source: " ^ src ^ ")"
+          in
+          let src_html =
+            match l.pel_source_url with
+            | Some src when String.trim src <> "" && src <> l.pel_url -> source_chip ~source_url:src
+            | _ -> ""
+          in
+          Printf.sprintf {html|%s%s|html} (link_button ~label:"▶ 영상" ~url:l.pel_url ~title ()) src_html
+    in
+    let instagram_html =
+      match find_external_link "instagram" with
+      | None ->
+          link_button ~label:"인스타 검색" ~url:instagram_search ~title:"Instagram search" ()
+      | Some l ->
+          let title =
+            match l.pel_source_url with
+            | None -> "Instagram (verified link)"
+            | Some src -> "Instagram (source: " ^ src ^ ")"
+          in
+          let src_html =
+            match l.pel_source_url with
+            | Some src when String.trim src <> "" && src <> l.pel_url -> source_chip ~source_url:src
+            | _ -> ""
+          in
+          Printf.sprintf {html|%s%s|html} (link_button ~label:"인스타" ~url:l.pel_url ~title ()) src_html
+    in
     Printf.sprintf
-      {html|<a href="%s" target="_blank" rel="noopener noreferrer" class="bg-slate-800/60 text-slate-300 px-3 py-1 rounded text-sm font-mono hover:bg-slate-700/60 hover:text-white transition">WKBL</a><a href="%s" target="_blank" rel="noopener noreferrer" class="bg-slate-800/60 text-slate-300 px-3 py-1 rounded text-sm font-mono hover:bg-slate-700/60 hover:text-white transition">▶ 영상</a><a href="%s" target="_blank" rel="noopener noreferrer" class="bg-slate-800/60 text-slate-300 px-3 py-1 rounded text-sm font-mono hover:bg-slate-700/60 hover:text-white transition">인스타</a>|html}
-      (escape_html wkbl_profile) (escape_html youtube) (escape_html instagram)
+      {html|%s%s%s|html}
+      (link_button ~label:"WKBL" ~url:wkbl_profile ~title:"Official profile" ())
+      youtube_html
+      instagram_html
   in
   let game_rows games =
     games
@@ -1903,9 +2004,19 @@ let player_profile_page (profile: player_profile) ~scope ~(seasons_catalog: seas
 	              let items =
 	                events
 	                |> List.map (fun (e: official_trade_event) ->
+                      let contract_chip_html =
+                        match extract_contract_years e.ote_event_text with
+                        | None -> ""
+                        | Some years ->
+                            Printf.sprintf
+                              {html|<span title="계약 %d년" class="shrink-0 px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-[10px] font-mono text-emerald-300 whitespace-nowrap">%dY</span>|html}
+                              years
+                              years
+                      in
 	                    Printf.sprintf
-	                      {html|<li class="flex gap-3"><span class="shrink-0 font-mono text-[11px] text-slate-500 whitespace-nowrap">%s</span><span class="text-slate-300 text-xs leading-relaxed break-words">%s</span></li>|html}
+	                      {html|<li class="flex flex-wrap items-start gap-2"><span class="shrink-0 font-mono text-[11px] text-slate-500 whitespace-nowrap">%s</span>%s<span class="text-slate-300 text-xs leading-relaxed break-words">%s</span></li>|html}
 	                      (escape_html e.ote_event_date)
+                        contract_chip_html
 	                      (escape_html e.ote_event_text))
 	                |> String.concat "\n"
 	              in
