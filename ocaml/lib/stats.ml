@@ -52,24 +52,33 @@ let team_stats_of_totals ~(scope: team_scope) ~(margin: team_margin option) (tot
   in
 
   (* Scope conversion *)
-  let transform v = if scope = PerGame then v /. gp_div else v in
+  let transform_total v = if scope = PerGame then v /. gp_div else v in
+  let transform_margin v =
+    match scope, margin with
+    | PerGame, Some m ->
+        let gp_m = float m.gp in
+        let gp_m_div = if gp_m = 0.0 then gp_div else gp_m in
+        v /. gp_m_div
+    | PerGame, None -> v /. gp_div
+    | Totals, _ -> v
+  in
   
   {
     team = totals.team;
     gp = totals.gp;
-    min_total = transform totals.min_total;
-    pts = transform (float totals.pts);
-    margin = transform pts_margin;
-    pts_against = transform pts_against;
-    reb = transform (float totals.reb);
-    ast = transform (float totals.ast);
-    stl = transform (float totals.stl);
-    blk = transform (float totals.blk);
-    turnovers = transform (float totals.turnovers);
+    min_total = transform_total totals.min_total;
+    pts = transform_total (float totals.pts);
+    margin = transform_margin pts_margin;
+    pts_against = transform_margin pts_against;
+    reb = transform_total (float totals.reb);
+    ast = transform_total (float totals.ast);
+    stl = transform_total (float totals.stl);
+    blk = transform_total (float totals.blk);
+    turnovers = transform_total (float totals.turnovers);
     fg_pct;
     fg3_pct;
     ft_pct;
     efg_pct;
     ts_pct;
-    eff = transform eff_total;
+    eff = transform_total eff_total;
   }
