@@ -334,6 +334,7 @@ type team_full_detail = {
   tfd_team_name: string;
   tfd_standing: team_standing option;
   tfd_roster: player_aggregate list;
+  tfd_game_results: team_game_result list;
   tfd_recent_games: team_game_result list;
 }
 
