@@ -418,6 +418,20 @@ button:active:not(:disabled),
   pointer-events: none;
 }
 
+/* ===========================================
+   7. Mobile Utilities
+   =========================================== */
+
+/* Hide scrollbars for horizontal menus/tables while keeping scroll enabled */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none; /* IE/Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
 .dropdown-menu.open {
   opacity: 1;
   transform: translateY(0) scale(1);

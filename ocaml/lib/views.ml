@@ -141,19 +141,20 @@ let team_logo_tag ?(class_name="w-8 h-8") team_name =
         class_name
 
 (** Team badge component *)
-let team_badge ?(max_width="max-w-[96px] sm:max-w-[140px]") team_name =
+let team_badge ?(max_width="max-w-[88px] sm:max-w-[140px]") team_name =
   let color =
     team_code_of_string team_name
     |> Option.map team_code_to_color
     |> Option.value ~default:"#666"
   in
   Printf.sprintf
-    {html|<a href="/team/%s" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium hover:brightness-125 transition" style="background-color: %s20; color: %s; border: 1px solid %s40">%s<span class="truncate %s">%s</span></a>|html}
+    {html|<a href="/team/%s" class="inline-flex min-w-0 items-center gap-1.5 px-1.5 sm:px-2 py-0.5 rounded text-[11px] sm:text-xs font-medium hover:brightness-125 transition" style="background-color: %s20; color: %s; border: 1px solid %s40" title="%s">%s<span class="truncate min-w-0 %s">%s</span></a>|html}
     (Uri.pct_encode team_name)
     color
     color
     color
-    (team_logo_tag ~class_name:"w-4 h-4" team_name)
+    (escape_html team_name)
+    (team_logo_tag ~class_name:"w-4 h-4 shrink-0" team_name)
     max_width
     (escape_html team_name)
 
@@ -347,15 +348,15 @@ let player_season_stats_table ~scope (stats: season_stats list) =
 (** Player Season Stats Component (Tabs + Table) *)
 let player_season_stats_component ~player_id ~scope (stats: season_stats list) =
   let btn_class active =
-    if active then "season-stats-tab px-4 py-2 bg-transparent border-0 border-b-2 border-orange-500 text-white font-medium cursor-default pointer-events-none"
-    else "season-stats-tab px-4 py-2 bg-transparent border-0 border-b-2 border-transparent text-slate-400 hover:text-white transition cursor-pointer font-medium"
+    if active then "season-stats-tab px-3 sm:px-4 py-2 bg-transparent border-0 border-b-2 border-orange-500 text-white font-medium cursor-default pointer-events-none whitespace-nowrap"
+    else "season-stats-tab px-3 sm:px-4 py-2 bg-transparent border-0 border-b-2 border-transparent text-slate-400 hover:text-white transition cursor-pointer font-medium whitespace-nowrap"
   in
   let s_per = btn_class (scope = "per_game") in
   let s_tot = btn_class (scope = "totals") in
   let s_36 = btn_class (scope = "per_36") in
 
   let tabs = Printf.sprintf
-    {html|<div id="season-stats-tabs" class="flex items-center gap-4 border-b border-slate-800 mb-4">
+    {html|<div id="season-stats-tabs" class="flex items-center gap-2 sm:gap-4 border-b border-slate-800 mb-4 overflow-x-auto no-scrollbar whitespace-nowrap -mx-4 px-4 sm:mx-0 sm:px-0">
       <button type="button" class="%s" hx-get="/player/%s/season-stats?scope=per_game" hx-target="#season-stats-component" hx-swap="outerHTML transition:true" hx-indicator="#season-stats-indicator" hx-disabled-elt="#season-stats-tabs button">Per Game</button>
       <button type="button" class="%s" hx-get="/player/%s/season-stats?scope=totals" hx-target="#season-stats-component" hx-swap="outerHTML transition:true" hx-indicator="#season-stats-indicator" hx-disabled-elt="#season-stats-tabs button">Totals</button>
       <button type="button" class="%s" hx-get="/player/%s/season-stats?scope=per_36" hx-target="#season-stats-component" hx-swap="outerHTML transition:true" hx-indicator="#season-stats-indicator" hx-disabled-elt="#season-stats-tabs button">Per 36</button>
@@ -395,7 +396,7 @@ let career_highs_card (ch: career_high_item list option) =
               item.chi_value)
         |> String.concat "\n"
       in
-      Printf.sprintf {html|<div class="bg-slate-900 rounded-xl border border-slate-800 p-6 shadow-lg h-full"><h3 class="text-orange-400 font-bold uppercase tracking-wider text-xs mb-4 flex items-center gap-2"><span class="text-lg">🚀</span> Career Highs</h3><div class="space-y-3">%s</div></div>|html} items_html
+      Printf.sprintf {html|<div class="bg-slate-900 rounded-xl border border-slate-800 p-4 sm:p-6 shadow-lg h-full"><h3 class="text-orange-400 font-bold uppercase tracking-wider text-xs mb-4 flex items-center gap-2"><span class="text-lg">🚀</span> Career Highs</h3><div class="space-y-3">%s</div></div>|html} items_html
 
 (** Player row component *)
 let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2") ?(include_team=true) (rank: int) (p: player_aggregate) =
@@ -466,12 +467,13 @@ let players_table (players: player_aggregate list) =
     |> String.concat "\n"
   in
   Printf.sprintf
-    {html|<table class="w-full">
-      <thead class="bg-slate-800/80 sticky top-0 text-slate-400 text-xs uppercase tracking-wider">
+    {html|<div class="overflow-x-auto">
+    <table class="min-w-[1040px] w-full text-xs sm:text-sm font-mono tabular-nums">
+      <thead class="bg-slate-800/80 text-slate-400 text-[10px] sm:text-xs uppercase tracking-wider whitespace-nowrap">
         <tr><th class="px-3 py-3 text-left w-12">#</th><th class="px-3 py-3 text-left">Player</th><th class="px-3 py-3 text-left">Team</th><th class="px-3 py-3 text-right">GP</th><th class="px-3 py-3 text-right cursor-pointer hover:text-orange-400" hx-get="/players/table?sort=pts" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter">PTS</th><th class="px-3 py-3 text-right cursor-pointer hover:text-orange-400" hx-get="/players/table?sort=mg" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter">MG</th><th class="px-3 py-3 text-right cursor-pointer hover:text-orange-400" hx-get="/players/table?sort=reb" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter">REB</th><th class="px-3 py-3 text-right cursor-pointer hover:text-orange-400" hx-get="/players/table?sort=ast" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter">AST</th><th class="px-3 py-3 text-right">STL</th><th class="px-3 py-3 text-right">BLK</th><th class="px-3 py-3 text-right">TO</th><th class="px-3 py-3 text-right cursor-pointer hover:text-orange-400" hx-get="/players/table?sort=eff" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter">EFF</th></tr>
       </thead>
       <tbody id="players-body">%s</tbody>
-    </table>|html}
+    </table></div>|html}
     rows
 
 (** Main layout *)
@@ -492,29 +494,29 @@ let layout ~title ~content =
   <script data-cfasync="false">tailwind.config = { darkMode: 'class', theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] } } } }</script>
 </head>
 <body class="bg-[#0b0e14] text-slate-200 font-sans antialiased min-h-screen">
-  <header class="sticky top-0 z-50 bg-slate-900/95 backdrop-blur border-b border-slate-800 px-4 sm:px-6 py-4">
+  <header class="sticky top-0 z-50 bg-slate-900/95 backdrop-blur border-b border-slate-800 px-4 sm:px-6 py-3 sm:py-4">
     <div class="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
       <div class="flex items-center gap-3 shrink-0">
         <span class="text-2xl">🏀</span>
         <h1 class="text-lg font-bold text-white">WKBL <span class="text-orange-500">Analytics</span></h1>
         <span class="hidden sm:inline text-xs text-slate-500 font-mono">OCaml Edition</span>
       </div>
-      <nav class="flex flex-wrap justify-end gap-x-4 gap-y-2 text-xs sm:text-sm">
-        <a href="/" class="text-slate-400 hover:text-white transition">Home</a>
-        <a href="/awards" class="text-slate-400 hover:text-white transition">Awards</a>
-        <a href="/leaders" class="text-slate-400 hover:text-white transition">Leaders</a>
-        <a href="/boxscores" class="text-slate-400 hover:text-white transition">Boxscores</a>
-        <a href="/games" class="text-slate-400 hover:text-white transition">Games</a>
-        <a href="/standings" class="text-slate-400 hover:text-white transition">Standings</a>
-        <a href="/teams" class="text-slate-400 hover:text-white transition">Teams</a>
-        <a href="/players" class="text-slate-400 hover:text-white transition">Players</a>
-        <a href="/predict" class="text-slate-400 hover:text-white transition">Predict</a>
-        <a href="/compare" class="text-slate-400 hover:text-white transition">Compare</a>
-        <a href="/qa" class="text-slate-400 hover:text-white transition">QA</a>
+      <nav class="flex items-center gap-3 sm:gap-x-4 sm:gap-y-2 text-xs sm:text-sm overflow-x-auto no-scrollbar whitespace-nowrap -mx-4 px-4 sm:mx-0 sm:px-0 flex-nowrap sm:flex-wrap sm:justify-end sm:overflow-visible">
+        <a href="/" class="shrink-0 text-slate-400 hover:text-white transition">Home</a>
+        <a href="/awards" class="shrink-0 text-slate-400 hover:text-white transition">Awards</a>
+        <a href="/leaders" class="shrink-0 text-slate-400 hover:text-white transition">Leaders</a>
+        <a href="/boxscores" class="shrink-0 text-slate-400 hover:text-white transition">Boxscores</a>
+        <a href="/games" class="shrink-0 text-slate-400 hover:text-white transition">Games</a>
+        <a href="/standings" class="shrink-0 text-slate-400 hover:text-white transition">Standings</a>
+        <a href="/teams" class="shrink-0 text-slate-400 hover:text-white transition">Teams</a>
+        <a href="/players" class="shrink-0 text-slate-400 hover:text-white transition">Players</a>
+        <a href="/predict" class="shrink-0 text-slate-400 hover:text-white transition">Predict</a>
+        <a href="/compare" class="shrink-0 text-slate-400 hover:text-white transition">Compare</a>
+        <a href="/qa" class="shrink-0 text-slate-400 hover:text-white transition">QA</a>
       </nav>
     </div>
   </header>
-  <main class="max-w-7xl mx-auto px-4 sm:px-6 py-8">%s</main>
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">%s</main>
   <footer class="border-t border-slate-800 py-6 text-center text-slate-500 text-sm">Built with OCaml + Dream + HTMX</footer>
 </body>
 </html>|html}
@@ -632,7 +634,7 @@ let standings_table ~season (standings : team_standing list) =
     |> String.concat "\n"
   in
   Printf.sprintf
-    {html|<div class="bg-slate-900 rounded-lg border border-slate-800 overflow-hidden shadow-2xl"><table class="w-full text-sm font-mono"><thead class="bg-slate-800/80 text-slate-400 text-xs uppercase tracking-wider"><tr><th class="px-4 py-3 text-left w-12">Rk</th><th class="px-4 py-3 text-left font-sans">Team</th><th class="px-4 py-3 text-right">GP</th><th class="px-4 py-3 text-right">W</th><th class="px-4 py-3 text-right">L</th><th class="px-4 py-3 text-right">PCT</th><th class="px-4 py-3 text-right">GB</th><th class="px-4 py-3 text-right">PS/G</th><th class="px-4 py-3 text-right">PA/G</th><th class="px-4 py-3 text-right">DIFF</th></tr></thead><tbody id="standings-body">%s</tbody></table></div>|html}
+    {html|<div class="bg-slate-900 rounded-lg border border-slate-800 overflow-x-auto overflow-y-hidden shadow-2xl"><table class="min-w-[760px] w-full text-xs sm:text-sm font-mono tabular-nums"><thead class="bg-slate-800/80 text-slate-400 text-[10px] sm:text-xs uppercase tracking-wider whitespace-nowrap"><tr><th class="px-4 py-3 text-left w-12">Rk</th><th class="px-4 py-3 text-left font-sans">Team</th><th class="px-4 py-3 text-right">GP</th><th class="px-4 py-3 text-right">W</th><th class="px-4 py-3 text-right">L</th><th class="px-4 py-3 text-right">PCT</th><th class="px-4 py-3 text-right">GB</th><th class="px-4 py-3 text-right">PS/G</th><th class="px-4 py-3 text-right">PA/G</th><th class="px-4 py-3 text-right">DIFF</th></tr></thead><tbody id="standings-body">%s</tbody></table></div>|html}
     rows
 
 let standings_page ~season ~seasons standings =
@@ -656,7 +658,7 @@ let games_table (games : game_summary list) =
     |> String.concat "\n"
   in
   Printf.sprintf
-    {html|<div class="bg-slate-900 rounded-lg border border-slate-800 overflow-hidden shadow-2xl"><table class="w-full text-sm font-mono"><thead class="bg-slate-800/80 text-slate-400 text-xs uppercase tracking-wider"><tr><th class="px-4 py-3 text-left w-12">#</th><th class="px-4 py-3 text-left font-sans w-32">Date</th><th class="px-4 py-3 text-left font-sans">Home</th><th class="px-4 py-3 text-center w-32">Score</th><th class="px-4 py-3 text-right font-sans">Away</th><th class="px-4 py-3 text-right font-sans w-24">Action</th></tr></thead><tbody id="games-body">%s</tbody></table></div>|html}
+    {html|<div class="bg-slate-900 rounded-lg border border-slate-800 overflow-x-auto overflow-y-hidden shadow-2xl"><table class="min-w-[860px] w-full text-xs sm:text-sm font-mono tabular-nums"><thead class="bg-slate-800/80 text-slate-400 text-[10px] sm:text-xs uppercase tracking-wider whitespace-nowrap"><tr><th class="px-4 py-3 text-left w-12">#</th><th class="px-4 py-3 text-left font-sans w-32">Date</th><th class="px-4 py-3 text-left font-sans">Home</th><th class="px-4 py-3 text-center w-32">Score</th><th class="px-4 py-3 text-right font-sans">Away</th><th class="px-4 py-3 text-right font-sans w-24">Action</th></tr></thead><tbody id="games-body">%s</tbody></table></div>|html}
     rows
 
 let games_page ~season ~seasons games =
@@ -686,7 +688,7 @@ let boxscores_table (games : game_summary list) =
     |> String.concat "\n"
   in
   Printf.sprintf
-    {html|<div class="bg-slate-900 rounded-lg border border-slate-800 overflow-hidden shadow-2xl"><table class="w-full text-sm font-mono"><thead class="bg-slate-800/80 text-slate-400 text-xs uppercase tracking-wider"><tr><th class="px-4 py-3 text-left w-12">#</th><th class="px-4 py-3 text-left w-32 font-sans">Date</th><th class="px-4 py-3 text-left font-sans">Home</th><th class="px-4 py-3 text-center font-sans">PTS</th><th class="px-4 py-3 text-center font-sans">PTS</th><th class="px-4 py-3 text-right font-sans">Away</th><th class="px-4 py-3 text-right font-sans">Margin</th><th class="px-4 py-3 text-right w-20 font-sans">Link</th></tr></thead><tbody id="boxscores-body">%s</tbody></table></div>|html}
+    {html|<div class="bg-slate-900 rounded-lg border border-slate-800 overflow-x-auto overflow-y-hidden shadow-2xl"><table class="min-w-[900px] w-full text-xs sm:text-sm font-mono tabular-nums"><thead class="bg-slate-800/80 text-slate-400 text-[10px] sm:text-xs uppercase tracking-wider whitespace-nowrap"><tr><th class="px-4 py-3 text-left w-12">#</th><th class="px-4 py-3 text-left w-32 font-sans">Date</th><th class="px-4 py-3 text-left font-sans">Home</th><th class="px-4 py-3 text-center font-sans">PTS</th><th class="px-4 py-3 text-center font-sans">PTS</th><th class="px-4 py-3 text-right font-sans">Away</th><th class="px-4 py-3 text-right font-sans">Margin</th><th class="px-4 py-3 text-right w-20 font-sans">Link</th></tr></thead><tbody id="boxscores-body">%s</tbody></table></div>|html}
     rows
 
 let boxscores_page ~season ~seasons games =
@@ -2034,7 +2036,7 @@ let player_profile_page (profile: player_profile) ~scope ~(seasons_catalog: seas
 	            trade_details_html
 	        in
 	        Printf.sprintf
-	          {html|<div class="bg-slate-900 rounded-xl border border-slate-800 p-6 shadow-lg"><div class="flex items-start justify-between gap-4 mb-4"><div class="min-w-0"><h3 class="text-slate-300 font-bold uppercase tracking-wider text-xs flex items-center gap-2"><span class="text-lg">🔁</span> Team Movement</h3><div class="mt-1 text-[11px] text-slate-500 leading-relaxed break-words">박스스코어 출전팀 변화로 추정한 연보입니다. (기간=첫/마지막 출전일)</div></div><span class="text-[11px] text-slate-500 font-mono shrink-0">박스스코어</span></div><div class="grid grid-cols-1 lg:grid-cols-3 gap-3 text-xs"><div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-3 min-w-0"><div class="text-slate-500 font-mono uppercase tracking-widest text-[11px]">Current</div><div class="mt-2 text-slate-300 min-w-0">%s</div></div><div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-3"><div class="text-slate-500 font-mono uppercase tracking-widest text-[11px]">Transfers</div><div class="mt-2 font-mono text-slate-200 text-lg font-black">%d</div></div><div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-3 min-w-0"><div class="text-slate-500 font-mono uppercase tracking-widest text-[11px]">Latest</div><div class="mt-2 text-slate-300 min-w-0">%s</div></div></div><div class="mt-4 rounded-lg border border-slate-800/60 bg-slate-950/30 p-4"><ol class="relative border-l border-slate-800/60 ml-2 space-y-4">%s</ol></div>%s</div>|html}
+	          {html|<div class="bg-slate-900 rounded-xl border border-slate-800 p-4 sm:p-6 shadow-lg"><div class="flex items-start justify-between gap-4 mb-4"><div class="min-w-0"><h3 class="text-slate-300 font-bold uppercase tracking-wider text-xs flex items-center gap-2"><span class="text-lg">🔁</span> Team Movement</h3><div class="mt-1 text-[11px] text-slate-500 leading-relaxed break-words">박스스코어 출전팀 변화로 추정한 연보입니다. (기간=첫/마지막 출전일)</div></div><span class="text-[11px] text-slate-500 font-mono shrink-0">박스스코어</span></div><div class="grid grid-cols-1 lg:grid-cols-3 gap-3 text-xs"><div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-3 min-w-0"><div class="text-slate-500 font-mono uppercase tracking-widest text-[11px]">Current</div><div class="mt-2 text-slate-300 min-w-0">%s</div></div><div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-3"><div class="text-slate-500 font-mono uppercase tracking-widest text-[11px]">Transfers</div><div class="mt-2 font-mono text-slate-200 text-lg font-black">%d</div></div><div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-3 min-w-0"><div class="text-slate-500 font-mono uppercase tracking-widest text-[11px]">Latest</div><div class="mt-2 text-slate-300 min-w-0">%s</div></div></div><div class="mt-4 rounded-lg border border-slate-800/60 bg-slate-950/30 p-4"><ol class="relative border-l border-slate-800/60 ml-2 space-y-4">%s</ol></div>%s</div>|html}
 	          current_team_html transfers last_move_value_html stint_rows official_html
   in
 
@@ -2088,7 +2090,7 @@ let player_profile_page (profile: player_profile) ~scope ~(seasons_catalog: seas
     in
     let seasons_card_html =
       Printf.sprintf
-        {html|<div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-5 min-w-0"><div class="flex flex-wrap items-start justify-between gap-3 min-w-0"><div class="text-slate-400 font-bold uppercase tracking-widest text-[11px] flex items-center gap-2"><span class="text-base">🗓</span> Seasons</div><div class="flex flex-wrap items-center gap-2 text-[10px] font-mono min-w-0"><span class="px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700/60 text-slate-300 whitespace-nowrap">DB n=%d</span><span class="px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700/60 text-slate-300 whitespace-nowrap">Player n=%d</span></div></div><div class="mt-3 space-y-2 text-slate-200"><div><div class="text-[10px] text-slate-500 font-mono uppercase tracking-widest">DB</div><div class="mt-1 font-mono">%s</div></div><div><div class="text-[10px] text-slate-500 font-mono uppercase tracking-widest">Player</div><div class="mt-1 font-mono">%s</div></div></div>%s</div>|html}
+        {html|<div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-4 sm:p-5 min-w-0"><div class="flex flex-wrap items-start justify-between gap-3 min-w-0"><div class="text-slate-400 font-bold uppercase tracking-widest text-[11px] flex items-center gap-2"><span class="text-base">🗓</span> Seasons</div><div class="flex flex-wrap items-center gap-2 text-[10px] font-mono min-w-0"><span class="px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700/60 text-slate-300 whitespace-nowrap">DB n=%d</span><span class="px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700/60 text-slate-300 whitespace-nowrap">Player n=%d</span></div></div><div class="mt-3 space-y-2 text-slate-200"><div><div class="text-[10px] text-slate-500 font-mono uppercase tracking-widest">DB</div><div class="mt-1 font-mono">%s</div></div><div><div class="text-[10px] text-slate-500 font-mono uppercase tracking-widest">Player</div><div class="mt-1 font-mono">%s</div></div></div>%s</div>|html}
         db_season_count
         player_season_count
         db_seasons_value_html
@@ -2122,7 +2124,7 @@ let player_profile_page (profile: player_profile) ~scope ~(seasons_catalog: seas
     in
 	    let pbp_card_html =
 	      Printf.sprintf
-	        {html|<div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-5 min-w-0"><div class="flex flex-wrap items-start justify-between gap-3 min-w-0"><div class="text-slate-400 font-bold uppercase tracking-widest text-[11px] flex items-center gap-2"><span class="text-base">🎥</span> PBP +/-</div><span class="px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700/60 text-[10px] font-mono text-slate-300 whitespace-nowrap">부분</span></div>%s<div class="mt-3 text-slate-400 text-xs leading-relaxed space-y-1"><div><span class="font-mono text-slate-300">+/-</span>: 문자중계(PBP) 기반</div><div><span class="font-mono text-slate-300">M</span>: PBP가 없을 때 팀 득실마진(경기 최종 점수)</div><div><span class="font-mono text-slate-300">-</span>: 데이터 없음/품질 이슈</div></div></div>|html}
+	        {html|<div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-4 sm:p-5 min-w-0"><div class="flex flex-wrap items-start justify-between gap-3 min-w-0"><div class="text-slate-400 font-bold uppercase tracking-widest text-[11px] flex items-center gap-2"><span class="text-base">🎥</span> PBP +/-</div><span class="px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700/60 text-[10px] font-mono text-slate-300 whitespace-nowrap">부분</span></div>%s<div class="mt-3 text-slate-400 text-xs leading-relaxed space-y-1"><div><span class="font-mono text-slate-300">+/-</span>: 문자중계(PBP) 기반</div><div><span class="font-mono text-slate-300">M</span>: PBP가 없을 때 팀 득실마진(경기 최종 점수)</div><div><span class="font-mono text-slate-300">-</span>: 데이터 없음/품질 이슈</div></div></div>|html}
 	        pbp_stat_line
 	    in
 	    let draft_card_html =
@@ -2155,29 +2157,29 @@ let player_profile_page (profile: player_profile) ~scope ~(seasons_catalog: seas
 	          {html|<span class="text-slate-200 font-mono text-[11px]">Matched events available</span>|html}
 	      in
 	      Printf.sprintf
-	        {html|<div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-5 min-w-0"><div class="flex flex-wrap items-start justify-between gap-3 min-w-0"><div class="text-slate-400 font-bold uppercase tracking-widest text-[11px] flex items-center gap-2"><span class="text-base">🧩</span> Draft / Trade</div><div class="flex flex-wrap items-center gap-2">%s%s</div></div><div class="mt-3 text-slate-400 text-xs leading-relaxed space-y-3"><div><div class="text-[10px] text-slate-500 font-mono uppercase tracking-widest">Draft</div><div class="mt-1">%s</div></div><div><div class="text-[10px] text-slate-500 font-mono uppercase tracking-widest">Trade</div><div class="mt-1">%s</div><div class="mt-2 text-[11px] text-slate-500 leading-relaxed">공식 이적현황 원문에서 <span class="font-mono text-slate-300">이름 포함</span>으로만 매칭합니다. (동명이인/표기 차이로 오매칭/누락 가능)</div></div><details class="text-[11px] text-slate-500"><summary class="cursor-pointer select-none text-slate-400 font-bold">Sync</summary><div class="mt-2"><div class="leading-relaxed">공식 페이지 기반 추가 수집이 필요하면 아래를 실행하세요: (네트워크 필요)</div><code class="mt-2 block font-mono text-slate-300 bg-slate-900/40 border border-slate-700/60 px-3 py-2 rounded overflow-x-auto whitespace-nowrap">python3 scripts/wkbl_draft_trade_sync.py --only-missing</code></div></details></div></div>|html}
+	        {html|<div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-4 sm:p-5 min-w-0"><div class="flex flex-wrap items-start justify-between gap-3 min-w-0"><div class="text-slate-400 font-bold uppercase tracking-widest text-[11px] flex items-center gap-2"><span class="text-base">🧩</span> Draft / Trade</div><div class="flex flex-wrap items-center gap-2">%s%s</div></div><div class="mt-3 text-slate-400 text-xs leading-relaxed space-y-3"><div><div class="text-[10px] text-slate-500 font-mono uppercase tracking-widest">Draft</div><div class="mt-1">%s</div></div><div><div class="text-[10px] text-slate-500 font-mono uppercase tracking-widest">Trade</div><div class="mt-1">%s</div><div class="mt-2 text-[11px] text-slate-500 leading-relaxed">공식 이적현황 원문에서 <span class="font-mono text-slate-300">이름 포함</span>으로만 매칭합니다. (동명이인/표기 차이로 오매칭/누락 가능)</div></div><details class="text-[11px] text-slate-500"><summary class="cursor-pointer select-none text-slate-400 font-bold">Sync</summary><div class="mt-2"><div class="leading-relaxed">공식 페이지 기반 추가 수집이 필요하면 아래를 실행하세요: (네트워크 필요)</div><code class="mt-2 block font-mono text-slate-300 bg-slate-900/40 border border-slate-700/60 px-3 py-2 rounded overflow-x-auto whitespace-nowrap">python3 scripts/wkbl_draft_trade_sync.py --only-missing</code></div></details></div></div>|html}
 	        draft_chip
 	        trade_chip
 	        draft_value_html
 	        trade_value_html
 	    in
 	    Printf.sprintf
-	      {html|<div class="bg-slate-900 rounded-xl border border-slate-800 p-6 shadow-lg"><div class="flex items-start justify-between gap-4 mb-4"><h3 class="text-slate-300 font-bold uppercase tracking-wider text-xs flex items-center gap-2"><span class="text-lg">🧾</span> Data Notes</h3><span class="px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700/60 text-[10px] font-mono text-slate-300 whitespace-nowrap">Coverage</span></div><div class="grid grid-cols-1 lg:grid-cols-2 gap-4">%s%s<div class="lg:col-span-2">%s</div></div></div>|html}
+	      {html|<div class="bg-slate-900 rounded-xl border border-slate-800 p-4 sm:p-6 shadow-lg"><div class="flex items-start justify-between gap-4 mb-4"><h3 class="text-slate-300 font-bold uppercase tracking-wider text-xs flex items-center gap-2"><span class="text-lg">🧾</span> Data Notes</h3><span class="px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700/60 text-[10px] font-mono text-slate-300 whitespace-nowrap">Coverage</span></div><div class="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">%s%s<div class="lg:col-span-2">%s</div></div></div>|html}
 	      seasons_card_html
 	      pbp_card_html
 	      draft_card_html
   in
 	  let missing_data_html =
 	    if profile.season_breakdown = [] && profile.recent_games = [] && profile.all_star_games = [] && profile.draft = None && profile.official_trade_events = [] then
-	      {html|<div class="bg-slate-900/50 rounded-xl border border-slate-800/50 p-6 flex items-center justify-center text-slate-500 text-sm gap-2"><span class="text-xl">🚧</span><div><div class="font-bold">Data Collection in Progress</div><div>Draft info and play-by-play data coming soon.</div></div></div>|html}
+	      {html|<div class="bg-slate-900/50 rounded-xl border border-slate-800/50 p-4 sm:p-6 flex items-center justify-center text-slate-500 text-sm gap-2"><span class="text-xl">🚧</span><div><div class="font-bold">Data Collection in Progress</div><div>Draft info and play-by-play data coming soon.</div></div></div>|html}
 	    else
 	      ""
 	  in
 
   let display_name = normalize_name p.name in
   layout ~title:(display_name ^ " | WKBL Profile")
-    ~content:(Printf.sprintf {html|<div class="space-y-8 animate-fade-in"><div class="bg-slate-900 rounded-xl border border-slate-800 p-8 shadow-2xl flex flex-col md:flex-row items-center md:items-start gap-8"><div class="relative">%s<div class="absolute -bottom-3 -right-3 bg-slate-800 border border-slate-700 text-white text-xs font-bold px-3 py-1 rounded-full">%s</div></div><div class="text-center md:text-left space-y-2"><h1 class="text-4xl font-black text-white">%s</h1><div class="text-slate-400 text-lg">%s</div><div class="flex flex-wrap gap-2 justify-center md:justify-start pt-2"><span class="bg-slate-800 text-slate-300 px-3 py-1 rounded text-sm">%s</span>%s%s%s</div></div></div><div class="grid grid-cols-1 lg:grid-cols-5 gap-8"><div class="lg:col-span-3 space-y-8">%s<div class="space-y-4">%s<div class="bg-slate-900 rounded-xl border border-slate-800 overflow-x-auto shadow-lg"><table class="min-w-[920px] w-full text-sm font-mono table-fixed"><thead class="bg-slate-800/80 text-slate-400 uppercase tracking-wider text-xs"><tr><th class="px-4 py-3 text-left font-sans w-[110px] whitespace-nowrap">Date</th><th class="px-4 py-3 text-left font-sans">Opponent</th><th class="px-4 py-3 text-right w-[72px]">MIN</th><th class="px-4 py-3 text-right text-orange-400 w-[72px]">PTS</th><th class="px-4 py-3 text-right w-[72px]">+/-</th><th class="px-4 py-3 text-right w-[72px]">REB</th><th class="px-4 py-3 text-right w-[72px]">AST</th><th class="px-4 py-3 text-right w-[72px]">STL</th><th class="px-4 py-3 text-right w-[72px]">BLK</th></tr></thead><tbody>%s</tbody></table></div></div>%s</div><div class="space-y-8 lg:col-span-2"><div class="space-y-4">%s%s%s</div></div></div>%s</div>|html}
-          (player_img_tag ~class_name:"w-32 h-32 border-4 border-slate-700 shadow-2xl" p.id p.name)
+    ~content:(Printf.sprintf {html|<div class="space-y-6 sm:space-y-8 animate-fade-in"><div class="bg-slate-900 rounded-xl border border-slate-800 p-5 sm:p-8 shadow-2xl flex flex-col md:flex-row items-center md:items-start gap-6 sm:gap-8"><div class="relative">%s<div class="absolute -bottom-3 -right-3 bg-slate-800 border border-slate-700 text-white text-[11px] sm:text-xs font-bold px-2.5 py-0.5 rounded-full">%s</div></div><div class="text-center md:text-left space-y-2"><h1 class="text-3xl sm:text-4xl font-black text-white">%s</h1><div class="text-slate-400 text-base sm:text-lg">%s</div><div class="flex flex-wrap gap-2 justify-center md:justify-start pt-2"><span class="bg-slate-800 text-slate-300 px-2.5 py-1 rounded text-[11px] sm:text-sm">%s</span>%s%s%s</div></div></div><div class="grid grid-cols-1 lg:grid-cols-6 gap-6 sm:gap-8"><div class="lg:col-span-4 space-y-6 sm:space-y-8">%s<div class="space-y-4">%s<div class="bg-slate-900 rounded-xl border border-slate-800 overflow-x-auto shadow-lg"><table class="min-w-[920px] w-full text-xs sm:text-sm font-mono table-fixed tabular-nums"><thead class="bg-slate-800/80 text-slate-400 uppercase tracking-wider text-[10px] sm:text-xs whitespace-nowrap"><tr><th class="px-4 py-3 text-left font-sans w-[110px] whitespace-nowrap">Date</th><th class="px-4 py-3 text-left font-sans">Opponent</th><th class="px-4 py-3 text-right w-[72px]">MIN</th><th class="px-4 py-3 text-right text-orange-400 w-[72px]">PTS</th><th class="px-4 py-3 text-right w-[72px]">+/-</th><th class="px-4 py-3 text-right w-[72px]">REB</th><th class="px-4 py-3 text-right w-[72px]">AST</th><th class="px-4 py-3 text-right w-[72px]">STL</th><th class="px-4 py-3 text-right w-[72px]">BLK</th></tr></thead><tbody>%s</tbody></table></div></div>%s</div><div class="space-y-6 sm:space-y-8 lg:col-span-2"><div class="space-y-4">%s%s%s</div></div></div>%s</div>|html}
+          (player_img_tag ~class_name:"w-24 h-24 sm:w-32 sm:h-32 border-4 border-slate-700 shadow-2xl" p.id p.name)
           (escape_html p.id)
           (escape_html display_name)
           info_text
@@ -2407,7 +2409,7 @@ let team_profile_page (detail: team_full_detail) ~season ~seasons =
   in
   let roster_table_inner =
     Printf.sprintf
-      {html|<table class="roster-table min-w-[820px] w-full text-sm font-mono table-fixed"><thead class="bg-slate-800/80 text-slate-400 uppercase tracking-wider text-xs"><tr><th class="px-3 py-3 text-left font-sans w-12 whitespace-nowrap">#</th><th class="px-3 py-3 text-left font-sans w-[260px] whitespace-nowrap">Player</th><th class="px-3 py-3 text-right w-[60px] whitespace-nowrap">GP</th><th class="px-3 py-3 text-right text-orange-400 w-[72px] whitespace-nowrap">PTS</th><th class="px-3 py-3 text-right w-[72px] whitespace-nowrap">MG</th><th class="px-3 py-3 text-right w-[72px] whitespace-nowrap">REB</th><th class="px-3 py-3 text-right w-[72px] whitespace-nowrap">AST</th><th class="px-3 py-3 text-right w-[72px] whitespace-nowrap">STL</th><th class="px-3 py-3 text-right w-[72px] whitespace-nowrap">BLK</th><th class="px-3 py-2 text-right w-[72px] whitespace-nowrap">TO</th><th class="px-3 py-2 text-right text-orange-400 w-[72px] whitespace-nowrap">EFF</th></tr></thead><tbody>%s</tbody></table>|html}
+      {html|<table class="roster-table min-w-[820px] w-full text-xs sm:text-sm font-mono table-fixed tabular-nums"><thead class="bg-slate-800/80 text-slate-400 uppercase tracking-wider text-[10px] sm:text-xs whitespace-nowrap"><tr><th class="px-3 py-3 text-left font-sans w-12 whitespace-nowrap">#</th><th class="px-3 py-3 text-left font-sans w-[260px] whitespace-nowrap">Player</th><th class="px-3 py-3 text-right w-[60px] whitespace-nowrap">GP</th><th class="px-3 py-3 text-right text-orange-400 w-[72px] whitespace-nowrap">PTS</th><th class="px-3 py-3 text-right w-[72px] whitespace-nowrap">MG</th><th class="px-3 py-3 text-right w-[72px] whitespace-nowrap">REB</th><th class="px-3 py-3 text-right w-[72px] whitespace-nowrap">AST</th><th class="px-3 py-3 text-right w-[72px] whitespace-nowrap">STL</th><th class="px-3 py-3 text-right w-[72px] whitespace-nowrap">BLK</th><th class="px-3 py-2 text-right w-[72px] whitespace-nowrap">TO</th><th class="px-3 py-2 text-right text-orange-400 w-[72px] whitespace-nowrap">EFF</th></tr></thead><tbody>%s</tbody></table>|html}
       roster_rows
   in
   let game_rows =
@@ -2439,8 +2441,8 @@ let team_profile_page (detail: team_full_detail) ~season ~seasons =
     |> String.concat "\n"
   in
   layout ~title:(t ^ " | WKBL Team Profile")
-    ~content:(Printf.sprintf {html|<div class="space-y-8 animate-fade-in"><div class="bg-slate-900 rounded-xl border border-slate-800 p-8 shadow-2xl flex flex-col md:flex-row items-center md:items-start gap-8"><div class="w-32 h-32 bg-slate-800 rounded-xl flex items-center justify-center p-4 border-2 border-slate-700 shadow-inner">%s</div><div class="text-center md:text-left space-y-4 w-full"><div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3"><h1 class="text-4xl font-black text-white">%s</h1><form action="/team/%s" method="get" class="flex items-center justify-center sm:justify-end gap-2"><span class="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Season</span><select name="season" class="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none w-48" onchange="this.form.submit()">%s</select></form></div>%s</div></div><div class="grid grid-cols-1 lg:grid-cols-3 gap-8"><div class="space-y-4 lg:col-span-2"><h3 class="text-xl font-bold text-white">Roster</h3><div class="sm:hidden space-y-3">%s</div><details class="sm:hidden bg-slate-900/50 rounded-xl border border-slate-800 p-4"><summary class="cursor-pointer font-bold text-slate-300 select-none">Full table</summary><div class="mt-3 overflow-x-auto">%s</div></details><div class="hidden sm:block bg-slate-900 rounded-xl border border-slate-800 overflow-x-auto shadow-lg">%s</div></div><div class="space-y-4 lg:col-span-1"><h3 class="text-xl font-bold text-white">Recent Results</h3><div class="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden shadow-lg"><table class="w-full text-sm font-mono"><thead class="bg-slate-800/80 text-slate-400 uppercase tracking-wider text-xs"><tr><th class="px-4 py-3 text-left font-sans">Date</th><th class="px-4 py-3 text-left font-sans">Opponent</th><th class="px-4 py-3 text-center font-sans">Result</th><th class="px-4 py-3 text-right font-sans">Score</th></tr></thead><tbody>%s</tbody></table></div></div></div></div>|html}
-          (team_logo_tag ~class_name:"w-24 h-24" t)
+    ~content:(Printf.sprintf {html|<div class="space-y-6 sm:space-y-8 animate-fade-in"><div class="bg-slate-900 rounded-xl border border-slate-800 p-5 sm:p-8 shadow-2xl flex flex-col md:flex-row items-center md:items-start gap-6 sm:gap-8"><div class="w-24 h-24 sm:w-32 sm:h-32 bg-slate-800 rounded-xl flex items-center justify-center p-3 sm:p-4 border-2 border-slate-700 shadow-inner">%s</div><div class="text-center md:text-left space-y-4 w-full"><div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3"><h1 class="text-3xl sm:text-4xl font-black text-white">%s</h1><form action="/team/%s" method="get" class="flex flex-col sm:flex-row items-stretch sm:items-center justify-center sm:justify-end gap-2 w-full sm:w-auto"><span class="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Season</span><select name="season" class="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none w-full sm:w-48" onchange="this.form.submit()">%s</select></form></div>%s</div></div><div class="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8"><div class="space-y-4 lg:col-span-2"><h3 class="text-xl font-bold text-white">Roster</h3><div class="sm:hidden space-y-3">%s</div><details class="sm:hidden bg-slate-900/50 rounded-xl border border-slate-800 p-4"><summary class="cursor-pointer font-bold text-slate-300 select-none">Full table</summary><div class="mt-3 overflow-x-auto">%s</div></details><div class="hidden sm:block bg-slate-900 rounded-xl border border-slate-800 overflow-x-auto shadow-lg">%s</div></div><div class="space-y-4 lg:col-span-1"><h3 class="text-xl font-bold text-white">Recent Results</h3><div class="bg-slate-900 rounded-xl border border-slate-800 overflow-x-auto overflow-y-hidden shadow-lg"><table class="min-w-[480px] w-full text-xs sm:text-sm font-mono tabular-nums"><thead class="bg-slate-800/80 text-slate-400 uppercase tracking-wider text-[10px] sm:text-xs whitespace-nowrap"><tr><th class="px-4 py-3 text-left font-sans">Date</th><th class="px-4 py-3 text-left font-sans">Opponent</th><th class="px-4 py-3 text-center font-sans">Result</th><th class="px-4 py-3 text-right font-sans">Score</th></tr></thead><tbody>%s</tbody></table></div></div></div></div>|html}
+          (team_logo_tag ~class_name:"w-16 h-16 sm:w-24 sm:h-24" t)
           (escape_html t)
           (Uri.pct_encode t)
           season_options
