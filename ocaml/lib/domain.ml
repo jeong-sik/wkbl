@@ -279,11 +279,33 @@ type player_team_stint = {
   pts_games_played: int;
 }
 
+type player_draft = {
+  pd_player_id: string;
+  pd_draft_year: int option;
+  pd_draft_round: int option;
+  pd_pick_in_round: int option;
+  pd_overall_pick: int option;
+  pd_draft_team: string option;
+  pd_raw_text: string;
+  pd_source_url: string;
+  pd_scraped_at: string;
+}
+
+type official_trade_event = {
+  ote_event_date: string;
+  ote_event_year: int;
+  ote_event_text: string;
+  ote_source_url: string;
+  ote_scraped_at: string;
+}
+
 type player_profile = {
   player: player_info;
   averages: player_aggregate;
   recent_games: player_game_stat list;
   all_star_games: player_game_stat list;
+  draft: player_draft option;
+  official_trade_events: official_trade_event list;
   team_stints: player_team_stint list;
   season_breakdown: season_stats list;
   career_highs: career_high_item list option;

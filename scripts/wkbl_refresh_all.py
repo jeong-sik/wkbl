@@ -32,6 +32,11 @@ def main() -> None:
     parser.add_argument("--include-special", action="store_true", help="Include all-star/international games in aggregates.")
     parser.add_argument("--sync-pbp", action="store_true", help="Sync text play-by-play (PBP) into SQLite.")
     parser.add_argument(
+        "--sync-draft-trade",
+        action="store_true",
+        help="Sync official Draft/Trade data from wkbl.or.kr into SQLite.",
+    )
+    parser.add_argument(
         "--pbp-season",
         default="",
         help="Season code for PBP sync (e.g. 046). Empty = all seasons.",
@@ -57,6 +62,9 @@ def main() -> None:
         if collector_args:
             cmd.extend(collector_args)
         run_step(cmd)
+
+    if args.sync_draft_trade:
+        run_step([python, "scripts/wkbl_draft_trade_sync.py", "--only-missing"])
 
     if args.sync_pbp:
         cmd = [python, "scripts/wkbl_pbp_sync.py"]

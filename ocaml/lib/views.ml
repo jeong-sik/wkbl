@@ -1839,9 +1839,9 @@ let player_profile_page (profile: player_profile) ~scope ~(seasons_catalog: seas
           | _ -> {html|<span class="text-slate-500">-</span>|html}
         in
         let total_stints = List.length stints_asc in
-        let stint_rows =
-          stints_asc
-          |> List.mapi (fun idx (s: player_team_stint) ->
+	        let stint_rows =
+	          stints_asc
+	          |> List.mapi (fun idx (s: player_team_stint) ->
               let is_current = idx = total_stints - 1 in
               let range_html =
                 if s.pts_start_date = s.pts_end_date then
@@ -1867,13 +1867,64 @@ let player_profile_page (profile: player_profile) ~scope ~(seasons_catalog: seas
                 dot_class
                 (team_badge ~max_width:badge_max_width s.pts_team_name)
                 current_chip
-                range_html
-                s.pts_games_played)
-          |> String.concat "\n"
-        in
-        Printf.sprintf
-          {html|<div class="bg-slate-900 rounded-xl border border-slate-800 p-6 shadow-lg"><div class="flex items-start justify-between gap-4 mb-4"><div class="min-w-0"><h3 class="text-slate-300 font-bold uppercase tracking-wider text-xs flex items-center gap-2"><span class="text-lg">🔁</span> Team Movement</h3><div class="mt-1 text-[11px] text-slate-500 leading-relaxed break-words">박스스코어 출전팀 변화로 추정한 연보입니다. (기간=첫/마지막 출전일)</div></div><span class="text-[11px] text-slate-500 font-mono shrink-0">박스스코어</span></div><div class="grid grid-cols-1 lg:grid-cols-3 gap-3 text-xs"><div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-3 min-w-0"><div class="text-slate-500 font-mono uppercase tracking-widest text-[11px]">Current</div><div class="mt-2 text-slate-300 min-w-0">%s</div></div><div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-3"><div class="text-slate-500 font-mono uppercase tracking-widest text-[11px]">Transfers</div><div class="mt-2 font-mono text-slate-200 text-lg font-black">%d</div></div><div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-3 min-w-0"><div class="text-slate-500 font-mono uppercase tracking-widest text-[11px]">Latest</div><div class="mt-2 text-slate-300 min-w-0">%s</div></div></div><div class="mt-4 rounded-lg border border-slate-800/60 bg-slate-950/30 p-4"><ol class="relative border-l border-slate-800/60 ml-2 space-y-4">%s</ol></div><div class="mt-4 pt-3 border-t border-slate-800/60 text-[11px] text-slate-500 leading-relaxed break-words">공식 이적/드래프트 연보는 추가 수집 중입니다. (공식 페이지 기반)</div></div>|html}
-          current_team_html transfers last_move_value_html stint_rows
+	                range_html
+	                s.pts_games_played)
+	          |> String.concat "\n"
+	        in
+	        let draft_value_html =
+	          match profile.draft with
+	          | None -> {html|<span class="text-slate-500">-</span>|html}
+	          | Some (d: player_draft) ->
+	              let team_html =
+	                match d.pd_draft_team with
+	                | None -> ""
+	                | Some team_name ->
+	                    Printf.sprintf
+	                      {html|<div class="mt-2">%s</div>|html}
+	                      (team_badge ~max_width:badge_max_width team_name)
+	              in
+	              Printf.sprintf
+	                {html|<div class="text-slate-300 font-mono text-[11px] break-words">%s</div>%s<div class="mt-2 text-[11px]"><a class="text-slate-500 hover:text-slate-300 underline" href="%s" target="_blank" rel="noreferrer">Source</a></div>|html}
+	                (escape_html d.pd_raw_text)
+	                team_html
+	                (escape_html d.pd_source_url)
+	        in
+	        let trade_count = List.length profile.official_trade_events in
+	        let trade_source =
+	          match profile.official_trade_events with
+	          | (e: official_trade_event) :: _ -> e.ote_source_url
+	          | [] -> "https://www.wkbl.or.kr/player/trade_info.asp"
+	        in
+	        let trade_details_html =
+	          match profile.official_trade_events with
+	          | [] ->
+	              {html|<div class="mt-3 text-xs text-slate-500 leading-relaxed">이름 기반 매칭 결과가 없습니다. (동명이인/표기 차이/기간 외)</div>|html}
+	          | events ->
+	              let items =
+	                events
+	                |> List.map (fun (e: official_trade_event) ->
+	                    Printf.sprintf
+	                      {html|<li class="flex gap-3"><span class="shrink-0 font-mono text-[11px] text-slate-500 whitespace-nowrap">%s</span><span class="text-slate-300 text-xs leading-relaxed break-words">%s</span></li>|html}
+	                      (escape_html e.ote_event_date)
+	                      (escape_html e.ote_event_text))
+	                |> String.concat "\n"
+	              in
+	              Printf.sprintf
+	                {html|<details class="mt-3"><summary class="cursor-pointer select-none text-[11px] text-slate-400 font-mono">Events (%d)</summary><ol class="mt-3 space-y-2">%s</ol></details>|html}
+	                trade_count
+	                items
+	        in
+	        let official_html =
+	          Printf.sprintf
+	            {html|<div class="mt-4 pt-4 border-t border-slate-800/60"><div class="flex items-start justify-between gap-4"><div class="min-w-0"><div class="text-slate-400 font-bold uppercase tracking-widest text-[11px] flex items-center gap-2"><span class="text-base">🧩</span> Official Draft / Trade</div><div class="mt-1 text-[11px] text-slate-500 leading-relaxed break-words">WKBL 공식 페이지 원문 기준입니다. Trade는 <span class="font-mono text-slate-300">이름 포함</span>으로만 매칭합니다.</div></div><a class="text-[11px] text-slate-500 hover:text-slate-300 underline font-mono shrink-0 whitespace-nowrap" href="%s" target="_blank" rel="noreferrer">Source</a></div><div class="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-3 text-xs"><div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-3 min-w-0"><div class="text-slate-500 font-mono uppercase tracking-widest text-[11px]">Draft</div><div class="mt-2 min-w-0">%s</div></div><div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-3 min-w-0"><div class="flex items-center justify-between gap-3"><div class="text-slate-500 font-mono uppercase tracking-widest text-[11px]">Trade</div><span class="text-[11px] font-mono text-slate-500 whitespace-nowrap">n=%d</span></div>%s</div></div></div>|html}
+	            (escape_html trade_source)
+	            draft_value_html
+	            trade_count
+	            trade_details_html
+	        in
+	        Printf.sprintf
+	          {html|<div class="bg-slate-900 rounded-xl border border-slate-800 p-6 shadow-lg"><div class="flex items-start justify-between gap-4 mb-4"><div class="min-w-0"><h3 class="text-slate-300 font-bold uppercase tracking-wider text-xs flex items-center gap-2"><span class="text-lg">🔁</span> Team Movement</h3><div class="mt-1 text-[11px] text-slate-500 leading-relaxed break-words">박스스코어 출전팀 변화로 추정한 연보입니다. (기간=첫/마지막 출전일)</div></div><span class="text-[11px] text-slate-500 font-mono shrink-0">박스스코어</span></div><div class="grid grid-cols-1 lg:grid-cols-3 gap-3 text-xs"><div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-3 min-w-0"><div class="text-slate-500 font-mono uppercase tracking-widest text-[11px]">Current</div><div class="mt-2 text-slate-300 min-w-0">%s</div></div><div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-3"><div class="text-slate-500 font-mono uppercase tracking-widest text-[11px]">Transfers</div><div class="mt-2 font-mono text-slate-200 text-lg font-black">%d</div></div><div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-3 min-w-0"><div class="text-slate-500 font-mono uppercase tracking-widest text-[11px]">Latest</div><div class="mt-2 text-slate-300 min-w-0">%s</div></div></div><div class="mt-4 rounded-lg border border-slate-800/60 bg-slate-950/30 p-4"><ol class="relative border-l border-slate-800/60 ml-2 space-y-4">%s</ol></div>%s</div>|html}
+	          current_team_html transfers last_move_value_html stint_rows official_html
   in
 
   let career_highs_html = career_highs_card profile.career_highs in
@@ -1958,26 +2009,59 @@ let player_profile_page (profile: player_profile) ~scope ~(seasons_catalog: seas
           count_dash
           (if count_issue > 0 then Printf.sprintf {html|<span class="whitespace-nowrap">· Mismatch %d</span>|html} count_issue else "")
     in
-    let pbp_card_html =
-      Printf.sprintf
-        {html|<div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-5 min-w-0"><div class="flex flex-wrap items-start justify-between gap-3 min-w-0"><div class="text-slate-400 font-bold uppercase tracking-widest text-[11px] flex items-center gap-2"><span class="text-base">🎥</span> PBP +/-</div><span class="px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700/60 text-[10px] font-mono text-slate-300 whitespace-nowrap">부분</span></div>%s<div class="mt-3 text-slate-400 text-xs leading-relaxed space-y-1"><div><span class="font-mono text-slate-300">+/-</span>: 문자중계(PBP) 기반</div><div><span class="font-mono text-slate-300">M</span>: PBP가 없을 때 팀 득실마진(경기 최종 점수)</div><div><span class="font-mono text-slate-300">-</span>: 데이터 없음/품질 이슈</div></div></div>|html}
-        pbp_stat_line
-    in
-    let draft_card_html =
-      {html|<div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-5 min-w-0"><div class="flex flex-wrap items-start justify-between gap-3 min-w-0"><div class="text-slate-400 font-bold uppercase tracking-widest text-[11px] flex items-center gap-2"><span class="text-base">🧩</span> Draft / Trade</div><span class="px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700/60 text-[10px] font-mono text-slate-300 whitespace-nowrap">예정</span></div><div class="mt-3 text-slate-400 text-xs leading-relaxed space-y-1"><div><span class="font-mono text-slate-300">Official</span>: 공식 드래프트/이적 기록은 아직 수집 중입니다.</div><div><span class="font-mono text-slate-300">Fallback</span>: 현재는 <span class="font-mono text-slate-300">박스스코어 출전팀</span> 변화로 팀 이동을 추정합니다. (공식 페이지 기반 추가 수집 필요)</div></div></div>|html}
-    in
-    Printf.sprintf
-      {html|<div class="bg-slate-900 rounded-xl border border-slate-800 p-6 shadow-lg"><div class="flex items-start justify-between gap-4 mb-4"><h3 class="text-slate-300 font-bold uppercase tracking-wider text-xs flex items-center gap-2"><span class="text-lg">🧾</span> Data Notes</h3><span class="px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700/60 text-[10px] font-mono text-slate-300 whitespace-nowrap">Coverage</span></div><div class="grid grid-cols-1 lg:grid-cols-2 gap-4">%s%s<div class="lg:col-span-2">%s</div></div></div>|html}
-      seasons_card_html
-      pbp_card_html
-      draft_card_html
+	    let pbp_card_html =
+	      Printf.sprintf
+	        {html|<div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-5 min-w-0"><div class="flex flex-wrap items-start justify-between gap-3 min-w-0"><div class="text-slate-400 font-bold uppercase tracking-widest text-[11px] flex items-center gap-2"><span class="text-base">🎥</span> PBP +/-</div><span class="px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700/60 text-[10px] font-mono text-slate-300 whitespace-nowrap">부분</span></div>%s<div class="mt-3 text-slate-400 text-xs leading-relaxed space-y-1"><div><span class="font-mono text-slate-300">+/-</span>: 문자중계(PBP) 기반</div><div><span class="font-mono text-slate-300">M</span>: PBP가 없을 때 팀 득실마진(경기 최종 점수)</div><div><span class="font-mono text-slate-300">-</span>: 데이터 없음/품질 이슈</div></div></div>|html}
+	        pbp_stat_line
+	    in
+	    let draft_card_html =
+	      let draft_chip =
+	        match profile.draft with
+	        | Some _ ->
+	            {html|<span class="px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-[10px] font-mono text-emerald-300 whitespace-nowrap">Draft ✓</span>|html}
+	        | None ->
+	            {html|<span class="px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700/60 text-[10px] font-mono text-slate-300 whitespace-nowrap">Draft -</span>|html}
+	      in
+	      let trade_count = List.length profile.official_trade_events in
+	      let trade_chip =
+	        Printf.sprintf
+	          {html|<span class="px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700/60 text-[10px] font-mono text-slate-300 whitespace-nowrap">Trade n=%d</span>|html}
+	          trade_count
+	      in
+	      let draft_value_html =
+	        match profile.draft with
+	        | None -> {html|<span class="text-slate-500">-</span>|html}
+	        | Some (d: player_draft) ->
+	            Printf.sprintf
+	              {html|<div class="text-slate-200 font-mono text-[11px] break-words">%s</div><a class="mt-2 inline-block text-[11px] text-slate-500 hover:text-slate-300 underline font-mono" href="%s" target="_blank" rel="noreferrer">Source</a>|html}
+	              (escape_html d.pd_raw_text)
+	              (escape_html d.pd_source_url)
+	      in
+	      let trade_value_html =
+	        if trade_count <= 0 then
+	          {html|<span class="text-slate-500">-</span>|html}
+	        else
+	          {html|<span class="text-slate-200 font-mono text-[11px]">Matched events available</span>|html}
+	      in
+	      Printf.sprintf
+	        {html|<div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-5 min-w-0"><div class="flex flex-wrap items-start justify-between gap-3 min-w-0"><div class="text-slate-400 font-bold uppercase tracking-widest text-[11px] flex items-center gap-2"><span class="text-base">🧩</span> Draft / Trade</div><div class="flex flex-wrap items-center gap-2">%s%s</div></div><div class="mt-3 text-slate-400 text-xs leading-relaxed space-y-3"><div><div class="text-[10px] text-slate-500 font-mono uppercase tracking-widest">Draft</div><div class="mt-1">%s</div></div><div><div class="text-[10px] text-slate-500 font-mono uppercase tracking-widest">Trade</div><div class="mt-1">%s</div><div class="mt-2 text-[11px] text-slate-500 leading-relaxed">공식 이적현황 원문에서 <span class="font-mono text-slate-300">이름 포함</span>으로만 매칭합니다. (동명이인/표기 차이로 오매칭/누락 가능)</div></div><details class="text-[11px] text-slate-500"><summary class="cursor-pointer select-none text-slate-400 font-bold">Sync</summary><div class="mt-2"><div class="leading-relaxed">공식 페이지 기반 추가 수집이 필요하면 아래를 실행하세요: (네트워크 필요)</div><code class="mt-2 block font-mono text-slate-300 bg-slate-900/40 border border-slate-700/60 px-3 py-2 rounded overflow-x-auto whitespace-nowrap">python3 scripts/wkbl_draft_trade_sync.py --only-missing</code></div></details></div></div>|html}
+	        draft_chip
+	        trade_chip
+	        draft_value_html
+	        trade_value_html
+	    in
+	    Printf.sprintf
+	      {html|<div class="bg-slate-900 rounded-xl border border-slate-800 p-6 shadow-lg"><div class="flex items-start justify-between gap-4 mb-4"><h3 class="text-slate-300 font-bold uppercase tracking-wider text-xs flex items-center gap-2"><span class="text-lg">🧾</span> Data Notes</h3><span class="px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700/60 text-[10px] font-mono text-slate-300 whitespace-nowrap">Coverage</span></div><div class="grid grid-cols-1 lg:grid-cols-2 gap-4">%s%s<div class="lg:col-span-2">%s</div></div></div>|html}
+	      seasons_card_html
+	      pbp_card_html
+	      draft_card_html
   in
-  let missing_data_html =
-    if profile.season_breakdown = [] && profile.recent_games = [] && profile.all_star_games = [] then
-      {html|<div class="bg-slate-900/50 rounded-xl border border-slate-800/50 p-6 flex items-center justify-center text-slate-500 text-sm gap-2"><span class="text-xl">🚧</span><div><div class="font-bold">Data Collection in Progress</div><div>Draft info and play-by-play data coming soon.</div></div></div>|html}
-    else
-      ""
-  in
+	  let missing_data_html =
+	    if profile.season_breakdown = [] && profile.recent_games = [] && profile.all_star_games = [] && profile.draft = None && profile.official_trade_events = [] then
+	      {html|<div class="bg-slate-900/50 rounded-xl border border-slate-800/50 p-6 flex items-center justify-center text-slate-500 text-sm gap-2"><span class="text-xl">🚧</span><div><div class="font-bold">Data Collection in Progress</div><div>Draft info and play-by-play data coming soon.</div></div></div>|html}
+	    else
+	      ""
+	  in
 
   let display_name = normalize_name p.name in
   layout ~title:(display_name ^ " | WKBL Profile")
