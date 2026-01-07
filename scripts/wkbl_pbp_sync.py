@@ -113,6 +113,54 @@ def fetch_period_events(game: GameKey, period_code: str) -> list[PbpEvent]:
     return events
 
 
+def count_existing_events(conn: sqlite3.Connection, game_id: str) -> int:
+    cursor = conn.execute("SELECT COUNT(1) FROM play_by_play_events WHERE game_id = ?", (game_id,))
+    row = cursor.fetchone()
+    return int(row[0]) if row else 0
+
+
+def fetch_game_events(g: GameKey, *, delay_sec: float) -> tuple[list[PbpEvent], str | None]:
+    events: list[PbpEvent] = []
+
+    try:
+        q1_events = fetch_period_events(g, "Q1")
+    except Exception as exc:  # noqa: BLE001 - surface errors to caller
+        return [], f"Q1: {exc}"
+    finally:
+        time.sleep(delay_sec)
+
+    if not q1_events:
+        return [], None
+
+    events.extend(q1_events)
+
+    for period in ("Q2", "Q3", "Q4"):
+        try:
+            period_events = fetch_period_events(g, period)
+        except Exception as exc:  # noqa: BLE001 - surface errors to caller
+            return [], f"{period}: {exc}"
+        finally:
+            time.sleep(delay_sec)
+
+        if not period_events:
+            continue
+        events.extend(period_events)
+
+    for period in ("X1", "X2", "X3", "X4"):
+        try:
+            period_events = fetch_period_events(g, period)
+        except Exception as exc:  # noqa: BLE001 - surface errors to caller
+            return [], f"{period}: {exc}"
+        finally:
+            time.sleep(delay_sec)
+
+        if not period_events:
+            break
+        events.extend(period_events)
+
+    return events, None
+
+
 def iter_games(
     conn: sqlite3.Connection,
     *,
@@ -163,6 +211,22 @@ def main() -> int:
     parser.add_argument("--dry-run", action="store_true", help="Fetch and report without writing DB.")
     parser.add_argument("--backup", action="store_true", help="Create a .bak copy next to the DB before edits.")
     parser.add_argument("--include-special", action="store_true", help="Include all-star/international games.")
+    parser.add_argument(
+        "--prune-missing",
+        action="store_true",
+        help="If no events are found, delete existing rows for the game (default keeps existing).",
+    )
+    parser.add_argument(
+        "--only-missing",
+        action="store_true",
+        help="Skip games that already have PBP rows.",
+    )
+    parser.add_argument(
+        "--delay",
+        type=float,
+        default=REQUEST_DELAY_SEC,
+        help=f"Delay seconds between requests (default: {REQUEST_DELAY_SEC}).",
+    )
     args = parser.parse_args()
 
     if not args.db.exists():
@@ -190,49 +254,54 @@ def main() -> int:
 
         for idx, g in enumerate(games, start=1):
             print(f"[{idx}/{len(games)}] {g.game_id} ...", end=" ")
-            inserted = 0
+            existing = count_existing_events(conn, g.game_id)
 
-            if not args.dry_run:
-                conn.execute("DELETE FROM play_by_play_events WHERE game_id = ?", (g.game_id,))
+            if args.only_missing and existing:
+                print(f"skip (existing={existing})")
+                continue
 
-            for period in PERIOD_CODES:
-                try:
-                    events = fetch_period_events(g, period)
-                except Exception:
-                    continue
+            events, error = fetch_game_events(g, delay_sec=args.delay)
+            if error is not None:
+                print(f"error={error} (kept={existing})")
+                continue
 
-                if not events:
-                    continue
+            if not events:
+                if not args.dry_run and args.prune_missing and existing:
+                    conn.execute("DELETE FROM play_by_play_events WHERE game_id = ?", (g.game_id,))
+                    conn.commit()
+                    print(f"events=0 (pruned={existing})")
+                else:
+                    print(f"events=0 (kept={existing})")
+                continue
 
-                if not args.dry_run:
-                    conn.executemany(
-                        """
-                        INSERT OR REPLACE INTO play_by_play_events(
-                          game_id, period_code, event_index, team_side, description, team1_score, team2_score, clock
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                        """,
-                        [
-                            (
-                                g.game_id,
-                                e.period_code,
-                                i,
-                                e.team_side,
-                                e.description,
-                                e.team1_score,
-                                e.team2_score,
-                                e.clock,
-                            )
-                            for i, e in enumerate(events)
-                        ],
+            if args.dry_run:
+                print(f"events={len(events)} (existing={existing})")
+                continue
+
+            conn.execute("DELETE FROM play_by_play_events WHERE game_id = ?", (g.game_id,))
+            conn.executemany(
+                """
+                INSERT OR REPLACE INTO play_by_play_events(
+                  game_id, period_code, event_index, team_side, description, team1_score, team2_score, clock
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                [
+                    (
+                        g.game_id,
+                        e.period_code,
+                        i,
+                        e.team_side,
+                        e.description,
+                        e.team1_score,
+                        e.team2_score,
+                        e.clock,
                     )
-                inserted += len(events)
+                    for i, e in enumerate(events)
+                ],
+            )
+            conn.commit()
 
-                time.sleep(REQUEST_DELAY_SEC)
-
-            if not args.dry_run:
-                conn.commit()
-
-            print(f"events={inserted}")
+            print(f"events={len(events)} (replaced={existing})")
 
         return 0
     finally:
@@ -241,4 +310,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

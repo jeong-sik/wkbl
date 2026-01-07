@@ -408,22 +408,68 @@ let () =
             | Ok v -> v
             | Error e -> add_error (Db.show_db_error e); None
           in
+
+          let* p1_available_seasons =
+            match p1_id_opt, p1_selected with
+            | Some pid, None -> (
+                let* res = Db.get_player_season_stats ~player_id:pid ~scope:"per_game" () in
+                match res with
+                | Ok stats ->
+                    let codes =
+                      stats
+                      |> List.map (fun (s: season_stats) -> s.ss_season_code)
+                      |> List.sort_uniq String.compare
+                    in
+                    Lwt.return (Some codes)
+                | Error _ -> Lwt.return None
+              )
+            | _ -> Lwt.return None
+          in
+          let* p2_available_seasons =
+            match p2_id_opt, p2_selected with
+            | Some pid, None -> (
+                let* res = Db.get_player_season_stats ~player_id:pid ~scope:"per_game" () in
+                match res with
+                | Ok stats ->
+                    let codes =
+                      stats
+                      |> List.map (fun (s: season_stats) -> s.ss_season_code)
+                      |> List.sort_uniq String.compare
+                    in
+                    Lwt.return (Some codes)
+                | Error _ -> Lwt.return None
+              )
+            | _ -> Lwt.return None
+          in
+
           (match p1_id_opt, p1_selected with
-          | Some pid, None -> add_error (Printf.sprintf "No stats for player_id=%s (season=%s)" pid p1_season)
+          | Some pid, None ->
+              let suffix =
+                match p1_available_seasons with
+                | Some codes when codes <> [] -> Printf.sprintf " (available: %s)" (String.concat "," codes)
+                | _ -> ""
+              in
+              add_error (Printf.sprintf "No stats for player_id=%s (season=%s)%s" pid p1_season suffix)
           | _ -> ());
           (match p2_id_opt, p2_selected with
-          | Some pid, None -> add_error (Printf.sprintf "No stats for player_id=%s (season=%s)" pid p2_season)
+          | Some pid, None ->
+              let suffix =
+                match p2_available_seasons with
+                | Some codes when codes <> [] -> Printf.sprintf " (available: %s)" (String.concat "," codes)
+                | _ -> ""
+              in
+              add_error (Printf.sprintf "No stats for player_id=%s (season=%s)%s" pid p2_season suffix)
           | _ -> ());
 
           let* p1_candidates_res =
             if p1_selected = None && String.trim p1_query <> "" then
-              Db.get_players ~search:p1_query ~sort:ByMinutes ~limit:8 ()
+              Db.get_players ~season:p1_season ~search:p1_query ~sort:ByMinutes ~limit:8 ()
             else
               Lwt.return (Ok [])
           in
           let* p2_candidates_res =
             if p2_selected = None && String.trim p2_query <> "" then
-              Db.get_players ~search:p2_query ~sort:ByMinutes ~limit:8 ()
+              Db.get_players ~season:p2_season ~search:p2_query ~sort:ByMinutes ~limit:8 ()
             else
               Lwt.return (Ok [])
           in

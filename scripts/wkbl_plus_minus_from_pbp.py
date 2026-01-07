@@ -182,7 +182,17 @@ def compute_plus_minus_for_game(
     *,
     game_id: str,
 ) -> dict[str, int] | None:
-    home_team_code, away_team_code = load_game_teams(conn, game_id)
+    try:
+        home_team_code, away_team_code = load_game_teams(conn, game_id)
+    except ValueError as exc:
+        print(f"WARNING {game_id}: {exc}; skipping +/-")
+        return None
+
+    if not home_team_code.strip() or not away_team_code.strip() or home_team_code == away_team_code:
+        print(
+            f"WARNING {game_id}: invalid teams home={home_team_code!r} away={away_team_code!r}; skipping +/-"
+        )
+        return None
 
     # Live PBP uses team_side=1 as "left" (away), team_side=2 as "right" (home).
     team1_code = away_team_code
@@ -190,6 +200,12 @@ def compute_plus_minus_for_game(
 
     team1_players = load_team_player_ids(conn, game_id=game_id, team_code=team1_code)
     team2_players = load_team_player_ids(conn, game_id=game_id, team_code=team2_code)
+    if len(team1_players) < 5 or len(team2_players) < 5:
+        print(
+            f"WARNING {game_id}: roster incomplete team1={len(team1_players)} team2={len(team2_players)}; skipping +/-"
+        )
+        return None
+
     minutes_1 = load_team_minutes(conn, game_id=game_id, team_code=team1_code)
     minutes_2 = load_team_minutes(conn, game_id=game_id, team_code=team2_code)
     minutes_all = {**minutes_1, **minutes_2}
@@ -201,6 +217,8 @@ def compute_plus_minus_for_game(
     known_names_2 = sorted(name_to_id_2.keys(), key=len, reverse=True)
 
     pbp = load_pbp_rows(conn, game_id)
+    if not pbp:
+        return None
     if not pbp:
         raise ValueError(f"No PBP rows found for game: {game_id}")
 
@@ -358,10 +376,15 @@ def compute_plus_minus_for_game(
         print(
             f"WARNING {game_id}: sum_pm team1={sum_team1} team2={sum_team2} expected team1={expected} team2={-expected}"
         )
+        return None
 
     # Validate final score against official box score. If mismatched, plus/minus can be wrong
     # (missing scoring events or post-game corrections). Better to omit than mislead.
-    official_away, official_home = load_official_final_scores(conn, game_id)
+    try:
+        official_away, official_home = load_official_final_scores(conn, game_id)
+    except ValueError as exc:
+        print(f"WARNING {game_id}: {exc}; skipping +/-")
+        return None
     if score1 != official_away or score2 != official_home:
         print(
             f"WARNING {game_id}: PBP final {score1}-{score2} != official {official_away}-{official_home}; skipping +/-"
