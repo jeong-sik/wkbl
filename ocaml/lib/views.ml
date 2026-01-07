@@ -221,7 +221,7 @@ let score_quality_badge ?(compact=false) (q: game_score_quality) =
   let text =
     if compact then
       match q with
-      | Verified -> "✓"
+      | Verified -> "OK"
       | Derived -> "Σ"
       | Mismatch -> "!"
     else
