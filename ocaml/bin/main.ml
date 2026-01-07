@@ -303,18 +303,29 @@ let () =
       | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
       | Ok seasons ->
           let season = query_season_or_latest request seasons in
-          let* pts = Db.get_leaders ~season ~scope "pts" in
-          let* reb = Db.get_leaders ~season ~scope "reb" in
-          let* ast = Db.get_leaders ~season ~scope "ast" in
-          let* stl = Db.get_leaders ~season ~scope "stl" in
-          let* blk = Db.get_leaders ~season ~scope "blk" in
-          (match pts, reb, ast, stl, blk with
-          | Ok p, Ok r, Ok a, Ok st, Ok b -> Dream.html (Views.leaders_page ~season ~seasons ~scope p r a st b)
-          | Error e, _, _, _, _ -> Dream.html (Views.error_page (Db.show_db_error e))
-          | _, Error e, _, _, _ -> Dream.html (Views.error_page (Db.show_db_error e))
-          | _, _, Error e, _, _ -> Dream.html (Views.error_page (Db.show_db_error e))
-          | _, _, _, Error e, _ -> Dream.html (Views.error_page (Db.show_db_error e))
-          | _, _, _, _, Error e -> Dream.html (Views.error_page (Db.show_db_error e)))
+          let categories =
+            match String.lowercase_ascii scope with
+            | "totals" ->
+                [ "gp"; "min"; "pts"; "reb"; "ast"; "stl"; "blk"; "tov"; "fg_pct"; "fg3_pct"; "ft_pct"; "ts_pct"; "efg_pct" ]
+            | "per_36" ->
+                [ "pts"; "reb"; "ast"; "stl"; "blk"; "tov"; "eff"; "fg_pct"; "fg3_pct"; "ft_pct"; "ts_pct"; "efg_pct" ]
+            | _ ->
+                [ "pts"; "reb"; "ast"; "stl"; "blk"; "tov"; "min"; "eff"; "fg_pct"; "fg3_pct"; "ft_pct"; "ts_pct"; "efg_pct" ]
+          in
+          let rec fetch_all acc = function
+            | [] -> Lwt.return (Ok (List.rev acc))
+            | category :: rest ->
+                let* res = Db.get_leaders ~season ~scope category in
+                (match res with
+                | Error e -> Lwt.return (Error e)
+                | Ok leaders -> fetch_all ((category, leaders) :: acc) rest)
+          in
+          let* leaders_res = fetch_all [] categories in
+          match leaders_res with
+          | Ok leaders_by_category ->
+              Dream.html (Views.leaders_page ~season ~seasons ~scope leaders_by_category)
+          | Error e ->
+              Dream.html (Views.error_page (Db.show_db_error e))
     );
 
     (* Awards (Stat-based, unofficial) *)
