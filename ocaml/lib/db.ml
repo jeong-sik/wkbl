@@ -442,9 +442,82 @@ module Queries = struct
       OR
       (away_score IS NOT NULL AND away_sum IS NOT NULL AND away_score != away_sum)
   |}
+  let ensure_games_calc_view = (unit ->. unit) {|
+    CREATE VIEW IF NOT EXISTS games_calc AS
+    WITH sums AS (
+      SELECT game_id, team_code, SUM(pts) AS pts_sum
+      FROM game_stats
+      GROUP BY game_id, team_code
+    )
+    SELECT
+      g.*,
+      sh.pts_sum AS home_sum,
+      sa.pts_sum AS away_sum,
+      COALESCE(g.home_score, sh.pts_sum) AS home_score_calc,
+      COALESCE(g.away_score, sa.pts_sum) AS away_score_calc
+    FROM games g
+    LEFT JOIN sums sh ON sh.game_id = g.game_id AND sh.team_code = g.home_team_code
+    LEFT JOIN sums sa ON sa.game_id = g.game_id AND sa.team_code = g.away_team_code
+  |}
   let all_teams = (unit ->* string) "SELECT DISTINCT team_name_kr FROM teams ORDER BY team_name_kr"
   let all_seasons = (unit ->* Types.season_info) "SELECT season_code, season_name FROM seasons ORDER BY season_code"
-  let player_stats_base = (tup2 (tup2 string string) int ->* Types.player_aggregate) {| SELECT p.player_id, p.player_name, t.team_name_kr, COUNT(*) as gp, COALESCE(SUM(s.min_seconds) / 60.0, 0), COALESCE(SUM(s.pts), 0), COALESCE(SUM(s.reb_tot), 0), COALESCE(SUM(s.ast), 0), COALESCE(SUM(s.stl), 0), COALESCE(SUM(s.blk), 0), COALESCE(SUM(s.tov), 0), COALESCE(AVG(s.pts), 0), COALESCE((SUM(((COALESCE((CASE WHEN g.home_team_code = s.team_code THEN COALESCE(g.home_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code)) ELSE COALESCE(g.away_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code)) END), 0) - COALESCE((CASE WHEN g.home_team_code = s.team_code THEN COALESCE(g.away_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code)) ELSE COALESCE(g.home_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code)) END), 0))) * s.min_seconds) * 1.0) / NULLIF(SUM(s.min_seconds), 0), 0) as margin, COALESCE(AVG(s.reb_tot), 0), COALESCE(AVG(s.ast), 0), COALESCE(AVG(s.stl), 0), COALESCE(AVG(s.blk), 0), COALESCE(AVG(s.tov), 0), COALESCE(AVG(s.game_score), 0) FROM game_stats s JOIN games g ON g.game_id = s.game_id JOIN players p ON s.player_id = p.player_id JOIN teams t ON s.team_code = t.team_code WHERE g.game_type != '10' AND (? = 'ALL' OR t.team_name_kr = ?) GROUP BY p.player_id ORDER BY AVG(s.game_score) DESC LIMIT ? |}
+  let player_stats_base = (tup2 (tup2 string string) int ->* Types.player_aggregate) {|
+    SELECT
+      p.player_id,
+      p.player_name,
+      t.team_name_kr,
+      COUNT(*) as gp,
+      COALESCE(SUM(s.min_seconds) / 60.0, 0),
+      COALESCE(SUM(s.pts), 0),
+      COALESCE(SUM(s.reb_tot), 0),
+      COALESCE(SUM(s.ast), 0),
+      COALESCE(SUM(s.stl), 0),
+      COALESCE(SUM(s.blk), 0),
+      COALESCE(SUM(s.tov), 0),
+      COALESCE(AVG(s.pts), 0),
+      COALESCE(
+        (SUM(
+          CASE
+            WHEN g.home_score_calc IS NOT NULL
+              AND g.away_score_calc IS NOT NULL
+              AND (s.team_code = g.home_team_code OR s.team_code = g.away_team_code)
+            THEN (
+              (CASE WHEN g.home_team_code = s.team_code THEN g.home_score_calc ELSE g.away_score_calc END)
+              -
+              (CASE WHEN g.home_team_code = s.team_code THEN g.away_score_calc ELSE g.home_score_calc END)
+            ) * s.min_seconds
+            ELSE 0
+          END
+        ) * 1.0) / NULLIF(
+          SUM(
+            CASE
+              WHEN g.home_score_calc IS NOT NULL
+                AND g.away_score_calc IS NOT NULL
+                AND (s.team_code = g.home_team_code OR s.team_code = g.away_team_code)
+              THEN s.min_seconds
+              ELSE 0
+            END
+          ),
+          0
+        ),
+        0
+      ) as margin,
+      COALESCE(AVG(s.reb_tot), 0),
+      COALESCE(AVG(s.ast), 0),
+      COALESCE(AVG(s.stl), 0),
+      COALESCE(AVG(s.blk), 0),
+      COALESCE(AVG(s.tov), 0),
+      COALESCE(AVG(s.game_score), 0)
+    FROM game_stats s
+    JOIN games_calc g ON g.game_id = s.game_id
+    JOIN players p ON s.player_id = p.player_id
+    JOIN teams t ON s.team_code = t.team_code
+    WHERE g.game_type != '10'
+      AND (? = 'ALL' OR t.team_name_kr = ?)
+    GROUP BY p.player_id
+    ORDER BY AVG(s.game_score) DESC
+    LIMIT ?
+  |}
   let player_career_aggregate = (string ->? Types.player_aggregate) {|
     SELECT
       p.player_id,
@@ -472,24 +545,29 @@ module Queries = struct
       COALESCE(AVG(s.pts), 0),
       COALESCE(
         (SUM(
-          (
-            COALESCE(
-              (CASE
-                WHEN g.home_team_code = s.team_code THEN COALESCE(g.home_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code))
-                ELSE COALESCE(g.away_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code))
-              END),
-              0
-            )
-            -
-            COALESCE(
-              (CASE
-                WHEN g.home_team_code = s.team_code THEN COALESCE(g.away_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code))
-                ELSE COALESCE(g.home_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code))
-              END),
-              0
-            )
-          ) * s.min_seconds
-        ) * 1.0) / NULLIF(SUM(s.min_seconds), 0),
+          CASE
+            WHEN g.home_score_calc IS NOT NULL
+              AND g.away_score_calc IS NOT NULL
+              AND (s.team_code = g.home_team_code OR s.team_code = g.away_team_code)
+            THEN (
+              (CASE WHEN g.home_team_code = s.team_code THEN g.home_score_calc ELSE g.away_score_calc END)
+              -
+              (CASE WHEN g.home_team_code = s.team_code THEN g.away_score_calc ELSE g.home_score_calc END)
+            ) * s.min_seconds
+            ELSE 0
+          END
+        ) * 1.0) / NULLIF(
+          SUM(
+            CASE
+              WHEN g.home_score_calc IS NOT NULL
+                AND g.away_score_calc IS NOT NULL
+                AND (s.team_code = g.home_team_code OR s.team_code = g.away_team_code)
+              THEN s.min_seconds
+              ELSE 0
+            END
+          ),
+          0
+        ),
         0
       ) as margin,
       COALESCE(AVG(s.reb_tot), 0),
@@ -499,9 +577,10 @@ module Queries = struct
       COALESCE(AVG(s.tov), 0),
       COALESCE(AVG(s.game_score), 0)
     FROM game_stats s
-    JOIN games g ON g.game_id = s.game_id
+    JOIN games_calc g ON g.game_id = s.game_id
     JOIN players p ON s.player_id = p.player_id
-    WHERE s.player_id = ? AND g.game_type != '10'
+    WHERE s.player_id = ?
+      AND g.game_type != '10'
     GROUP BY p.player_id
   |}
 
@@ -534,24 +613,29 @@ module Queries = struct
       COALESCE(AVG(s.pts), 0),
       COALESCE(
         (SUM(
-          (
-            COALESCE(
-              (CASE
-                WHEN g.home_team_code = s.team_code THEN COALESCE(g.home_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code))
-                ELSE COALESCE(g.away_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code))
-              END),
-              0
-            )
-            -
-            COALESCE(
-              (CASE
-                WHEN g.home_team_code = s.team_code THEN COALESCE(g.away_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code))
-                ELSE COALESCE(g.home_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code))
-              END),
-              0
-            )
-          ) * s.min_seconds
-        ) * 1.0) / NULLIF(SUM(s.min_seconds), 0),
+          CASE
+            WHEN g.home_score_calc IS NOT NULL
+              AND g.away_score_calc IS NOT NULL
+              AND (s.team_code = g.home_team_code OR s.team_code = g.away_team_code)
+            THEN (
+              (CASE WHEN g.home_team_code = s.team_code THEN g.home_score_calc ELSE g.away_score_calc END)
+              -
+              (CASE WHEN g.home_team_code = s.team_code THEN g.away_score_calc ELSE g.home_score_calc END)
+            ) * s.min_seconds
+            ELSE 0
+          END
+        ) * 1.0) / NULLIF(
+          SUM(
+            CASE
+              WHEN g.home_score_calc IS NOT NULL
+                AND g.away_score_calc IS NOT NULL
+                AND (s.team_code = g.home_team_code OR s.team_code = g.away_team_code)
+              THEN s.min_seconds
+              ELSE 0
+            END
+          ),
+          0
+        ),
         0
       ) as margin,
       COALESCE(AVG(s.reb_tot), 0),
@@ -561,18 +645,18 @@ module Queries = struct
       COALESCE(AVG(s.tov), 0),
       COALESCE(AVG(s.game_score), 0)
     FROM game_stats s
-    JOIN games g ON g.game_id = s.game_id
+    JOIN games_calc g ON g.game_id = s.game_id
     JOIN players p ON s.player_id = p.player_id
     WHERE s.player_id = ?
       AND g.game_type != '10'
       AND (? = 'ALL' OR g.season_code = ?)
     GROUP BY p.player_id
   |}
-  let team_totals_by_season = (tup2 string (tup2 string (tup2 string int)) ->* Types.team_totals) {|
-    SELECT
-      CASE WHEN ? = 'ALL' THEN 'ALL' ELSE g.season_code END as season,
-      t.team_name_kr,
-      COUNT(DISTINCT s.game_id) as gp,
+	  let team_totals_by_season = (tup2 string (tup2 string (tup2 string int)) ->* Types.team_totals) {|
+	    SELECT
+	      CASE WHEN ? = 'ALL' THEN 'ALL' ELSE g.season_code END as season,
+	      t.team_name_kr,
+	      COUNT(DISTINCT s.game_id) as gp,
       COALESCE(SUM(s.min_seconds) / 60.0, 0),
       COALESCE(SUM(s.fg_2p_m), 0),
       COALESCE(SUM(s.fg_2p_a), 0),
@@ -586,60 +670,36 @@ module Queries = struct
       COALESCE(SUM(s.ast), 0),
       COALESCE(SUM(s.stl), 0),
       COALESCE(SUM(s.blk), 0),
-      COALESCE(SUM(s.tov), 0),
-      COALESCE(SUM(s.pts), 0)
-    FROM game_stats s
-    JOIN games g ON g.game_id = s.game_id
-    JOIN teams t ON t.team_code = s.team_code
-    WHERE g.game_type != '10'
-      AND (? = 'ALL' OR g.season_code = ?)
-      AND (? = 1 OR g.game_id NOT IN (SELECT game_id FROM score_mismatch_games))
-    GROUP BY season, t.team_code
-    ORDER BY t.team_name_kr ASC
-  |}
-  let team_margin_by_season = (tup2 string (tup2 string (tup2 string int)) ->* Types.team_margin) {|
-    WITH scored_games AS (
-      SELECT
-        g.*,
-        COALESCE(
-          g.home_score,
-          (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code)
-        ) AS home_score_calc,
-        COALESCE(
-          g.away_score,
-          (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code)
-        ) AS away_score_calc
-      FROM games g
-    )
-    SELECT
-      CASE WHEN ? = 'ALL' THEN 'ALL' ELSE g.season_code END as season,
-      t.team_name_kr,
-      COUNT(*) as gp,
-      COALESCE(SUM(CASE WHEN g.home_team_code = t.team_code THEN g.home_score_calc ELSE g.away_score_calc END), 0) as pts_for,
-      COALESCE(SUM(CASE WHEN g.home_team_code = t.team_code THEN g.away_score_calc ELSE g.home_score_calc END), 0) as pts_against
-    FROM scored_games g
-    JOIN teams t ON t.team_code = g.home_team_code OR t.team_code = g.away_team_code
-    WHERE (? = 'ALL' OR g.season_code = ?)
-      AND g.game_type != '10'
-      AND (? = 1 OR g.game_id NOT IN (SELECT game_id FROM score_mismatch_games))
-    GROUP BY season, t.team_code
-    ORDER BY t.team_name_kr ASC
-  |}
+	      COALESCE(SUM(s.tov), 0),
+	      COALESCE(SUM(s.pts), 0)
+	    FROM game_stats s
+	    JOIN games_calc g ON g.game_id = s.game_id
+	    JOIN teams t ON t.team_code = s.team_code
+	    WHERE g.game_type != '10'
+	      AND (? = 'ALL' OR g.season_code = ?)
+	      AND (? = 1 OR g.game_id NOT IN (SELECT game_id FROM score_mismatch_games))
+	    GROUP BY season, t.team_code
+	    ORDER BY t.team_name_kr ASC
+	  |}
+	  let team_margin_by_season = (tup2 string (tup2 string (tup2 string int)) ->* Types.team_margin) {|
+	    SELECT
+	      CASE WHEN ? = 'ALL' THEN 'ALL' ELSE g.season_code END as season,
+	      t.team_name_kr,
+	      COUNT(*) as gp,
+	      COALESCE(SUM(CASE WHEN g.home_team_code = t.team_code THEN g.home_score_calc ELSE g.away_score_calc END), 0) as pts_for,
+	      COALESCE(SUM(CASE WHEN g.home_team_code = t.team_code THEN g.away_score_calc ELSE g.home_score_calc END), 0) as pts_against
+	    FROM games_calc g
+	    JOIN teams t ON t.team_code = g.home_team_code OR t.team_code = g.away_team_code
+	    WHERE (? = 'ALL' OR g.season_code = ?)
+	      AND g.game_type != '10'
+	      AND g.home_score_calc IS NOT NULL
+	      AND g.away_score_calc IS NOT NULL
+	      AND (? = 1 OR g.game_id NOT IN (SELECT game_id FROM score_mismatch_games))
+	    GROUP BY season, t.team_code
+	    ORDER BY t.team_name_kr ASC
+	  |}
 
   let team_standings_by_season = (tup2 string string ->* Types.team_standing) {|
-    WITH scored_games AS (
-      SELECT
-        g.*,
-        COALESCE(
-          g.home_score,
-          (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code)
-        ) AS home_score_calc,
-        COALESCE(
-          g.away_score,
-          (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code)
-        ) AS away_score_calc
-      FROM games g
-    )
     SELECT
       t.team_name_kr,
       COUNT(*) as gp,
@@ -661,7 +721,7 @@ module Queries = struct
       ) as losses,
       AVG(CASE WHEN g.home_team_code = t.team_code THEN g.home_score_calc ELSE g.away_score_calc END) as avg_pts,
       AVG(CASE WHEN g.home_team_code = t.team_code THEN g.away_score_calc ELSE g.home_score_calc END) as avg_opp_pts
-    FROM scored_games g
+    FROM games_calc g
     JOIN teams t ON t.team_code = g.home_team_code OR t.team_code = g.away_team_code
     WHERE (? = 'ALL' OR g.season_code = ?)
       AND g.game_type != '10'
@@ -672,19 +732,6 @@ module Queries = struct
   |}
 
   let all_games_by_season = (tup2 string string ->* Types.game_summary) {|
-    WITH scored_games AS (
-      SELECT
-        g.*,
-        COALESCE(
-          g.home_score,
-          (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code)
-        ) AS home_score_calc,
-        COALESCE(
-          g.away_score,
-          (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code)
-        ) AS away_score_calc
-      FROM games g
-    )
     SELECT
       g.game_id,
       COALESCE(g.game_date, 'Unknown'),
@@ -693,7 +740,7 @@ module Queries = struct
       g.home_score_calc,
       g.away_score_calc,
       g.game_type
-    FROM scored_games g
+    FROM games_calc g
     JOIN teams t1 ON g.home_team_code = t1.team_code
     JOIN teams t2 ON g.away_team_code = t2.team_code
     WHERE (? = 'ALL' OR g.season_code = ?)
@@ -703,19 +750,6 @@ module Queries = struct
   |}
 
   let scored_games_by_season = (tup2 string (tup2 string int) ->* Types.game_summary) {|
-    WITH scored_games AS (
-      SELECT
-        g.*,
-        COALESCE(
-          g.home_score,
-          (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code)
-        ) AS home_score_calc,
-        COALESCE(
-          g.away_score,
-          (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code)
-        ) AS away_score_calc
-      FROM games g
-    )
     SELECT
       g.game_id,
       COALESCE(g.game_date, 'Unknown'),
@@ -724,7 +758,7 @@ module Queries = struct
       g.home_score_calc,
       g.away_score_calc,
       g.game_type
-    FROM scored_games g
+    FROM games_calc g
     JOIN teams t1 ON g.home_team_code = t1.team_code
     JOIN teams t2 ON g.away_team_code = t2.team_code
     WHERE (? = 'ALL' OR g.season_code = ?)
@@ -1052,14 +1086,483 @@ module Queries = struct
     WHERE rn = 1
     ORDER BY min_seconds DESC
   |}
-  let top_players = (int ->* Types.player_aggregate) {| SELECT p.player_id, p.player_name, t.team_name_kr, COUNT(*) as gp, COALESCE(SUM(s.min_seconds) / 60.0, 0), COALESCE(SUM(s.pts), 0), COALESCE(SUM(s.reb_tot), 0), COALESCE(SUM(s.ast), 0), COALESCE(SUM(s.stl), 0), COALESCE(SUM(s.blk), 0), COALESCE(SUM(s.tov), 0), COALESCE(AVG(s.pts), 0), COALESCE((SUM(((COALESCE((CASE WHEN g.home_team_code = s.team_code THEN COALESCE(g.home_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code)) ELSE COALESCE(g.away_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code)) END), 0) - COALESCE((CASE WHEN g.home_team_code = s.team_code THEN COALESCE(g.away_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code)) ELSE COALESCE(g.home_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code)) END), 0))) * s.min_seconds) * 1.0) / NULLIF(SUM(s.min_seconds), 0), 0) as margin, COALESCE(AVG(s.reb_tot), 0), COALESCE(AVG(s.ast), 0), COALESCE(AVG(s.stl), 0), COALESCE(AVG(s.blk), 0), COALESCE(AVG(s.tov), 0), COALESCE(AVG(s.game_score), 0) FROM game_stats s JOIN games g ON g.game_id = s.game_id JOIN players p ON s.player_id = p.player_id JOIN teams t ON s.team_code = t.team_code WHERE g.game_type != '10' GROUP BY p.player_id ORDER BY AVG(s.game_score) DESC LIMIT ? |}
-  let player_stats_by_points = (tup2 string (tup2 string (tup2 string (tup2 int int))) ->* Types.player_aggregate) {| SELECT p.player_id, p.player_name, t.team_name_kr, COUNT(*) as gp, COALESCE(SUM(s.min_seconds) / 60.0, 0), COALESCE(SUM(s.pts), 0), COALESCE(SUM(s.reb_tot), 0), COALESCE(SUM(s.ast), 0), COALESCE(SUM(s.stl), 0), COALESCE(SUM(s.blk), 0), COALESCE(SUM(s.tov), 0), COALESCE(AVG(s.pts), 0), COALESCE((SUM(((COALESCE((CASE WHEN g.home_team_code = s.team_code THEN COALESCE(g.home_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code)) ELSE COALESCE(g.away_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code)) END), 0) - COALESCE((CASE WHEN g.home_team_code = s.team_code THEN COALESCE(g.away_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code)) ELSE COALESCE(g.home_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code)) END), 0))) * s.min_seconds) * 1.0) / NULLIF(SUM(s.min_seconds), 0), 0) as margin, COALESCE(AVG(s.reb_tot), 0), COALESCE(AVG(s.ast), 0), COALESCE(AVG(s.stl), 0), COALESCE(AVG(s.blk), 0), COALESCE(AVG(s.tov), 0), COALESCE(AVG(s.game_score), 0) FROM game_stats s JOIN games g ON g.game_id = s.game_id JOIN players p ON s.player_id = p.player_id JOIN teams t ON s.team_code = t.team_code WHERE p.player_name LIKE ? AND g.game_type != '10' AND (? = 'ALL' OR g.season_code = ?) AND (? = 1 OR g.game_id NOT IN (SELECT game_id FROM score_mismatch_games)) GROUP BY p.player_id ORDER BY AVG(s.pts) DESC LIMIT ? |}
-  let player_stats_by_margin = (tup2 string (tup2 string (tup2 string (tup2 int int))) ->* Types.player_aggregate) {| SELECT p.player_id, p.player_name, t.team_name_kr, COUNT(*) as gp, COALESCE(SUM(s.min_seconds) / 60.0, 0), COALESCE(SUM(s.pts), 0), COALESCE(SUM(s.reb_tot), 0), COALESCE(SUM(s.ast), 0), COALESCE(SUM(s.stl), 0), COALESCE(SUM(s.blk), 0), COALESCE(SUM(s.tov), 0), COALESCE(AVG(s.pts), 0), COALESCE((SUM(((COALESCE((CASE WHEN g.home_team_code = s.team_code THEN COALESCE(g.home_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code)) ELSE COALESCE(g.away_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code)) END), 0) - COALESCE((CASE WHEN g.home_team_code = s.team_code THEN COALESCE(g.away_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code)) ELSE COALESCE(g.home_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code)) END), 0))) * s.min_seconds) * 1.0) / NULLIF(SUM(s.min_seconds), 0), 0) as margin, COALESCE(AVG(s.reb_tot), 0), COALESCE(AVG(s.ast), 0), COALESCE(AVG(s.stl), 0), COALESCE(AVG(s.blk), 0), COALESCE(AVG(s.tov), 0), COALESCE(AVG(s.game_score), 0) FROM game_stats s JOIN games g ON g.game_id = s.game_id JOIN players p ON s.player_id = p.player_id JOIN teams t ON s.team_code = t.team_code WHERE p.player_name LIKE ? AND g.game_type != '10' AND (? = 'ALL' OR g.season_code = ?) AND (? = 1 OR g.game_id NOT IN (SELECT game_id FROM score_mismatch_games)) GROUP BY p.player_id HAVING SUM(s.min_seconds) >= 6000 ORDER BY margin DESC LIMIT ? |}
-  let player_stats_by_rebounds = (tup2 string (tup2 string (tup2 string (tup2 int int))) ->* Types.player_aggregate) {| SELECT p.player_id, p.player_name, t.team_name_kr, COUNT(*) as gp, COALESCE(SUM(s.min_seconds) / 60.0, 0), COALESCE(SUM(s.pts), 0), COALESCE(SUM(s.reb_tot), 0), COALESCE(SUM(s.ast), 0), COALESCE(SUM(s.stl), 0), COALESCE(SUM(s.blk), 0), COALESCE(SUM(s.tov), 0), COALESCE(AVG(s.pts), 0), COALESCE((SUM(((COALESCE((CASE WHEN g.home_team_code = s.team_code THEN COALESCE(g.home_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code)) ELSE COALESCE(g.away_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code)) END), 0) - COALESCE((CASE WHEN g.home_team_code = s.team_code THEN COALESCE(g.away_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code)) ELSE COALESCE(g.home_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code)) END), 0))) * s.min_seconds) * 1.0) / NULLIF(SUM(s.min_seconds), 0), 0) as margin, COALESCE(AVG(s.reb_tot), 0), COALESCE(AVG(s.ast), 0), COALESCE(AVG(s.stl), 0), COALESCE(AVG(s.blk), 0), COALESCE(AVG(s.tov), 0), COALESCE(AVG(s.game_score), 0) FROM game_stats s JOIN games g ON g.game_id = s.game_id JOIN players p ON s.player_id = p.player_id JOIN teams t ON s.team_code = t.team_code WHERE p.player_name LIKE ? AND g.game_type != '10' AND (? = 'ALL' OR g.season_code = ?) AND (? = 1 OR g.game_id NOT IN (SELECT game_id FROM score_mismatch_games)) GROUP BY p.player_id ORDER BY AVG(s.reb_tot) DESC LIMIT ? |}
-  let player_stats_by_assists = (tup2 string (tup2 string (tup2 string (tup2 int int))) ->* Types.player_aggregate) {| SELECT p.player_id, p.player_name, t.team_name_kr, COUNT(*) as gp, COALESCE(SUM(s.min_seconds) / 60.0, 0), COALESCE(SUM(s.pts), 0), COALESCE(SUM(s.reb_tot), 0), COALESCE(SUM(s.ast), 0), COALESCE(SUM(s.stl), 0), COALESCE(SUM(s.blk), 0), COALESCE(SUM(s.tov), 0), COALESCE(AVG(s.pts), 0), COALESCE((SUM(((COALESCE((CASE WHEN g.home_team_code = s.team_code THEN COALESCE(g.home_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code)) ELSE COALESCE(g.away_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code)) END), 0) - COALESCE((CASE WHEN g.home_team_code = s.team_code THEN COALESCE(g.away_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code)) ELSE COALESCE(g.home_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code)) END), 0))) * s.min_seconds) * 1.0) / NULLIF(SUM(s.min_seconds), 0), 0) as margin, COALESCE(AVG(s.reb_tot), 0), COALESCE(AVG(s.ast), 0), COALESCE(AVG(s.stl), 0), COALESCE(AVG(s.blk), 0), COALESCE(AVG(s.tov), 0), COALESCE(AVG(s.game_score), 0) FROM game_stats s JOIN games g ON g.game_id = s.game_id JOIN players p ON s.player_id = p.player_id JOIN teams t ON s.team_code = t.team_code WHERE p.player_name LIKE ? AND g.game_type != '10' AND (? = 'ALL' OR g.season_code = ?) AND (? = 1 OR g.game_id NOT IN (SELECT game_id FROM score_mismatch_games)) GROUP BY p.player_id ORDER BY AVG(s.ast) DESC LIMIT ? |}
-  let player_stats_by_efficiency = (tup2 string (tup2 string (tup2 string (tup2 int int))) ->* Types.player_aggregate) {| SELECT p.player_id, p.player_name, t.team_name_kr, COUNT(*) as gp, COALESCE(SUM(s.min_seconds) / 60.0, 0), COALESCE(SUM(s.pts), 0), COALESCE(SUM(s.reb_tot), 0), COALESCE(SUM(s.ast), 0), COALESCE(SUM(s.stl), 0), COALESCE(SUM(s.blk), 0), COALESCE(SUM(s.tov), 0), COALESCE(AVG(s.pts), 0), COALESCE((SUM(((COALESCE((CASE WHEN g.home_team_code = s.team_code THEN COALESCE(g.home_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code)) ELSE COALESCE(g.away_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code)) END), 0) - COALESCE((CASE WHEN g.home_team_code = s.team_code THEN COALESCE(g.away_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code)) ELSE COALESCE(g.home_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code)) END), 0))) * s.min_seconds) * 1.0) / NULLIF(SUM(s.min_seconds), 0), 0) as margin, COALESCE(AVG(s.reb_tot), 0), COALESCE(AVG(s.ast), 0), COALESCE(AVG(s.stl), 0), COALESCE(AVG(s.blk), 0), COALESCE(AVG(s.tov), 0), COALESCE(AVG(s.game_score), 0) FROM game_stats s JOIN games g ON g.game_id = s.game_id JOIN players p ON s.player_id = p.player_id JOIN teams t ON s.team_code = t.team_code WHERE p.player_name LIKE ? AND g.game_type != '10' AND (? = 'ALL' OR g.season_code = ?) AND (? = 1 OR g.game_id NOT IN (SELECT game_id FROM score_mismatch_games)) GROUP BY p.player_id ORDER BY AVG(s.game_score) DESC LIMIT ? |}
-  let player_stats_by_minutes = (tup2 string (tup2 string (tup2 string (tup2 int int))) ->* Types.player_aggregate) {| SELECT p.player_id, p.player_name, t.team_name_kr, COUNT(*) as gp, COALESCE(SUM(s.min_seconds) / 60.0, 0), COALESCE(SUM(s.pts), 0), COALESCE(SUM(s.reb_tot), 0), COALESCE(SUM(s.ast), 0), COALESCE(SUM(s.stl), 0), COALESCE(SUM(s.blk), 0), COALESCE(SUM(s.tov), 0), COALESCE(AVG(s.pts), 0), COALESCE((SUM(((COALESCE((CASE WHEN g.home_team_code = s.team_code THEN COALESCE(g.home_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code)) ELSE COALESCE(g.away_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code)) END), 0) - COALESCE((CASE WHEN g.home_team_code = s.team_code THEN COALESCE(g.away_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code)) ELSE COALESCE(g.home_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code)) END), 0))) * s.min_seconds) * 1.0) / NULLIF(SUM(s.min_seconds), 0), 0) as margin, COALESCE(AVG(s.reb_tot), 0), COALESCE(AVG(s.ast), 0), COALESCE(AVG(s.stl), 0), COALESCE(AVG(s.blk), 0), COALESCE(AVG(s.tov), 0), COALESCE(AVG(s.game_score), 0) FROM game_stats s JOIN games g ON g.game_id = s.game_id JOIN players p ON s.player_id = p.player_id JOIN teams t ON s.team_code = t.team_code WHERE p.player_name LIKE ? AND g.game_type != '10' AND (? = 'ALL' OR g.season_code = ?) AND (? = 1 OR g.game_id NOT IN (SELECT game_id FROM score_mismatch_games)) GROUP BY p.player_id ORDER BY SUM(s.min_seconds) DESC LIMIT ? |}
-  let players_by_team = (tup2 string (tup2 string (tup2 string int)) ->* Types.player_aggregate) {| SELECT p.player_id, p.player_name, t.team_name_kr, COUNT(*) as gp, COALESCE(SUM(s.min_seconds) / 60.0, 0), COALESCE(SUM(s.pts), 0), COALESCE(SUM(s.reb_tot), 0), COALESCE(SUM(s.ast), 0), COALESCE(SUM(s.stl), 0), COALESCE(SUM(s.blk), 0), COALESCE(SUM(s.tov), 0), COALESCE(AVG(s.pts), 0), COALESCE((SUM(((COALESCE((CASE WHEN g.home_team_code = s.team_code THEN COALESCE(g.home_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code)) ELSE COALESCE(g.away_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code)) END), 0) - COALESCE((CASE WHEN g.home_team_code = s.team_code THEN COALESCE(g.away_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code)) ELSE COALESCE(g.home_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code)) END), 0))) * s.min_seconds) * 1.0) / NULLIF(SUM(s.min_seconds), 0), 0) as margin, COALESCE(AVG(s.reb_tot), 0), COALESCE(AVG(s.ast), 0), COALESCE(AVG(s.stl), 0), COALESCE(AVG(s.blk), 0), COALESCE(AVG(s.tov), 0), COALESCE(AVG(s.game_score), 0) FROM game_stats s JOIN games g ON g.game_id = s.game_id JOIN players p ON s.player_id = p.player_id JOIN teams t ON s.team_code = t.team_code WHERE t.team_name_kr = ? AND (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id ORDER BY AVG(s.game_score) DESC LIMIT ? |}
+  let top_players = (int ->* Types.player_aggregate) {|
+    SELECT
+      p.player_id,
+      p.player_name,
+      t.team_name_kr,
+      COUNT(*) as gp,
+      COALESCE(SUM(s.min_seconds) / 60.0, 0),
+      COALESCE(SUM(s.pts), 0),
+      COALESCE(SUM(s.reb_tot), 0),
+      COALESCE(SUM(s.ast), 0),
+      COALESCE(SUM(s.stl), 0),
+      COALESCE(SUM(s.blk), 0),
+      COALESCE(SUM(s.tov), 0),
+      COALESCE(AVG(s.pts), 0),
+      COALESCE(
+        (SUM(
+          CASE
+            WHEN g.home_score_calc IS NOT NULL
+              AND g.away_score_calc IS NOT NULL
+              AND (s.team_code = g.home_team_code OR s.team_code = g.away_team_code)
+            THEN (
+              (CASE WHEN g.home_team_code = s.team_code THEN g.home_score_calc ELSE g.away_score_calc END)
+              -
+              (CASE WHEN g.home_team_code = s.team_code THEN g.away_score_calc ELSE g.home_score_calc END)
+            ) * s.min_seconds
+            ELSE 0
+          END
+        ) * 1.0) / NULLIF(
+          SUM(
+            CASE
+              WHEN g.home_score_calc IS NOT NULL
+                AND g.away_score_calc IS NOT NULL
+                AND (s.team_code = g.home_team_code OR s.team_code = g.away_team_code)
+              THEN s.min_seconds
+              ELSE 0
+            END
+          ),
+          0
+        ),
+        0
+      ) as margin,
+      COALESCE(AVG(s.reb_tot), 0),
+      COALESCE(AVG(s.ast), 0),
+      COALESCE(AVG(s.stl), 0),
+      COALESCE(AVG(s.blk), 0),
+      COALESCE(AVG(s.tov), 0),
+      COALESCE(AVG(s.game_score), 0)
+    FROM game_stats s
+    JOIN games_calc g ON g.game_id = s.game_id
+    JOIN players p ON s.player_id = p.player_id
+    JOIN teams t ON s.team_code = t.team_code
+    WHERE g.game_type != '10'
+    GROUP BY p.player_id
+    ORDER BY AVG(s.game_score) DESC
+    LIMIT ?
+  |}
+  let player_stats_by_points = (tup2 string (tup2 string (tup2 string (tup2 int int))) ->* Types.player_aggregate) {|
+    SELECT
+      p.player_id,
+      p.player_name,
+      t.team_name_kr,
+      COUNT(*) as gp,
+      COALESCE(SUM(s.min_seconds) / 60.0, 0),
+      COALESCE(SUM(s.pts), 0),
+      COALESCE(SUM(s.reb_tot), 0),
+      COALESCE(SUM(s.ast), 0),
+      COALESCE(SUM(s.stl), 0),
+      COALESCE(SUM(s.blk), 0),
+      COALESCE(SUM(s.tov), 0),
+      COALESCE(AVG(s.pts), 0),
+      COALESCE(
+        (SUM(
+          CASE
+            WHEN g.home_score_calc IS NOT NULL
+              AND g.away_score_calc IS NOT NULL
+              AND (s.team_code = g.home_team_code OR s.team_code = g.away_team_code)
+            THEN (
+              (CASE WHEN g.home_team_code = s.team_code THEN g.home_score_calc ELSE g.away_score_calc END)
+              -
+              (CASE WHEN g.home_team_code = s.team_code THEN g.away_score_calc ELSE g.home_score_calc END)
+            ) * s.min_seconds
+            ELSE 0
+          END
+        ) * 1.0) / NULLIF(
+          SUM(
+            CASE
+              WHEN g.home_score_calc IS NOT NULL
+                AND g.away_score_calc IS NOT NULL
+                AND (s.team_code = g.home_team_code OR s.team_code = g.away_team_code)
+              THEN s.min_seconds
+              ELSE 0
+            END
+          ),
+          0
+        ),
+        0
+      ) as margin,
+      COALESCE(AVG(s.reb_tot), 0),
+      COALESCE(AVG(s.ast), 0),
+      COALESCE(AVG(s.stl), 0),
+      COALESCE(AVG(s.blk), 0),
+      COALESCE(AVG(s.tov), 0),
+      COALESCE(AVG(s.game_score), 0)
+    FROM game_stats s
+    JOIN games_calc g ON g.game_id = s.game_id
+    JOIN players p ON s.player_id = p.player_id
+    JOIN teams t ON s.team_code = t.team_code
+    WHERE p.player_name LIKE ?
+      AND g.game_type != '10'
+      AND (? = 'ALL' OR g.season_code = ?)
+      AND (? = 1 OR g.game_id NOT IN (SELECT game_id FROM score_mismatch_games))
+    GROUP BY p.player_id
+    ORDER BY AVG(s.pts) DESC
+    LIMIT ?
+  |}
+  let player_stats_by_margin = (tup2 string (tup2 string (tup2 string (tup2 int int))) ->* Types.player_aggregate) {|
+    SELECT
+      p.player_id,
+      p.player_name,
+      t.team_name_kr,
+      COUNT(*) as gp,
+      COALESCE(SUM(s.min_seconds) / 60.0, 0),
+      COALESCE(SUM(s.pts), 0),
+      COALESCE(SUM(s.reb_tot), 0),
+      COALESCE(SUM(s.ast), 0),
+      COALESCE(SUM(s.stl), 0),
+      COALESCE(SUM(s.blk), 0),
+      COALESCE(SUM(s.tov), 0),
+      COALESCE(AVG(s.pts), 0),
+      COALESCE(
+        (SUM(
+          CASE
+            WHEN g.home_score_calc IS NOT NULL
+              AND g.away_score_calc IS NOT NULL
+              AND (s.team_code = g.home_team_code OR s.team_code = g.away_team_code)
+            THEN (
+              (CASE WHEN g.home_team_code = s.team_code THEN g.home_score_calc ELSE g.away_score_calc END)
+              -
+              (CASE WHEN g.home_team_code = s.team_code THEN g.away_score_calc ELSE g.home_score_calc END)
+            ) * s.min_seconds
+            ELSE 0
+          END
+        ) * 1.0) / NULLIF(
+          SUM(
+            CASE
+              WHEN g.home_score_calc IS NOT NULL
+                AND g.away_score_calc IS NOT NULL
+                AND (s.team_code = g.home_team_code OR s.team_code = g.away_team_code)
+              THEN s.min_seconds
+              ELSE 0
+            END
+          ),
+          0
+        ),
+        0
+      ) as margin,
+      COALESCE(AVG(s.reb_tot), 0),
+      COALESCE(AVG(s.ast), 0),
+      COALESCE(AVG(s.stl), 0),
+      COALESCE(AVG(s.blk), 0),
+      COALESCE(AVG(s.tov), 0),
+      COALESCE(AVG(s.game_score), 0)
+    FROM game_stats s
+    JOIN games_calc g ON g.game_id = s.game_id
+    JOIN players p ON s.player_id = p.player_id
+    JOIN teams t ON s.team_code = t.team_code
+    WHERE p.player_name LIKE ?
+      AND g.game_type != '10'
+      AND (? = 'ALL' OR g.season_code = ?)
+      AND (? = 1 OR g.game_id NOT IN (SELECT game_id FROM score_mismatch_games))
+    GROUP BY p.player_id
+    HAVING SUM(
+      CASE
+        WHEN g.home_score_calc IS NOT NULL
+          AND g.away_score_calc IS NOT NULL
+          AND (s.team_code = g.home_team_code OR s.team_code = g.away_team_code)
+        THEN s.min_seconds
+        ELSE 0
+      END
+    ) >= 6000
+    ORDER BY margin DESC
+    LIMIT ?
+  |}
+  let player_stats_by_rebounds = (tup2 string (tup2 string (tup2 string (tup2 int int))) ->* Types.player_aggregate) {|
+    SELECT
+      p.player_id,
+      p.player_name,
+      t.team_name_kr,
+      COUNT(*) as gp,
+      COALESCE(SUM(s.min_seconds) / 60.0, 0),
+      COALESCE(SUM(s.pts), 0),
+      COALESCE(SUM(s.reb_tot), 0),
+      COALESCE(SUM(s.ast), 0),
+      COALESCE(SUM(s.stl), 0),
+      COALESCE(SUM(s.blk), 0),
+      COALESCE(SUM(s.tov), 0),
+      COALESCE(AVG(s.pts), 0),
+      COALESCE(
+        (SUM(
+          CASE
+            WHEN g.home_score_calc IS NOT NULL
+              AND g.away_score_calc IS NOT NULL
+              AND (s.team_code = g.home_team_code OR s.team_code = g.away_team_code)
+            THEN (
+              (CASE WHEN g.home_team_code = s.team_code THEN g.home_score_calc ELSE g.away_score_calc END)
+              -
+              (CASE WHEN g.home_team_code = s.team_code THEN g.away_score_calc ELSE g.home_score_calc END)
+            ) * s.min_seconds
+            ELSE 0
+          END
+        ) * 1.0) / NULLIF(
+          SUM(
+            CASE
+              WHEN g.home_score_calc IS NOT NULL
+                AND g.away_score_calc IS NOT NULL
+                AND (s.team_code = g.home_team_code OR s.team_code = g.away_team_code)
+              THEN s.min_seconds
+              ELSE 0
+            END
+          ),
+          0
+        ),
+        0
+      ) as margin,
+      COALESCE(AVG(s.reb_tot), 0),
+      COALESCE(AVG(s.ast), 0),
+      COALESCE(AVG(s.stl), 0),
+      COALESCE(AVG(s.blk), 0),
+      COALESCE(AVG(s.tov), 0),
+      COALESCE(AVG(s.game_score), 0)
+    FROM game_stats s
+    JOIN games_calc g ON g.game_id = s.game_id
+    JOIN players p ON s.player_id = p.player_id
+    JOIN teams t ON s.team_code = t.team_code
+    WHERE p.player_name LIKE ?
+      AND g.game_type != '10'
+      AND (? = 'ALL' OR g.season_code = ?)
+      AND (? = 1 OR g.game_id NOT IN (SELECT game_id FROM score_mismatch_games))
+    GROUP BY p.player_id
+    ORDER BY AVG(s.reb_tot) DESC
+    LIMIT ?
+  |}
+  let player_stats_by_assists = (tup2 string (tup2 string (tup2 string (tup2 int int))) ->* Types.player_aggregate) {|
+    SELECT
+      p.player_id,
+      p.player_name,
+      t.team_name_kr,
+      COUNT(*) as gp,
+      COALESCE(SUM(s.min_seconds) / 60.0, 0),
+      COALESCE(SUM(s.pts), 0),
+      COALESCE(SUM(s.reb_tot), 0),
+      COALESCE(SUM(s.ast), 0),
+      COALESCE(SUM(s.stl), 0),
+      COALESCE(SUM(s.blk), 0),
+      COALESCE(SUM(s.tov), 0),
+      COALESCE(AVG(s.pts), 0),
+      COALESCE(
+        (SUM(
+          CASE
+            WHEN g.home_score_calc IS NOT NULL
+              AND g.away_score_calc IS NOT NULL
+              AND (s.team_code = g.home_team_code OR s.team_code = g.away_team_code)
+            THEN (
+              (CASE WHEN g.home_team_code = s.team_code THEN g.home_score_calc ELSE g.away_score_calc END)
+              -
+              (CASE WHEN g.home_team_code = s.team_code THEN g.away_score_calc ELSE g.home_score_calc END)
+            ) * s.min_seconds
+            ELSE 0
+          END
+        ) * 1.0) / NULLIF(
+          SUM(
+            CASE
+              WHEN g.home_score_calc IS NOT NULL
+                AND g.away_score_calc IS NOT NULL
+                AND (s.team_code = g.home_team_code OR s.team_code = g.away_team_code)
+              THEN s.min_seconds
+              ELSE 0
+            END
+          ),
+          0
+        ),
+        0
+      ) as margin,
+      COALESCE(AVG(s.reb_tot), 0),
+      COALESCE(AVG(s.ast), 0),
+      COALESCE(AVG(s.stl), 0),
+      COALESCE(AVG(s.blk), 0),
+      COALESCE(AVG(s.tov), 0),
+      COALESCE(AVG(s.game_score), 0)
+    FROM game_stats s
+    JOIN games_calc g ON g.game_id = s.game_id
+    JOIN players p ON s.player_id = p.player_id
+    JOIN teams t ON s.team_code = t.team_code
+    WHERE p.player_name LIKE ?
+      AND g.game_type != '10'
+      AND (? = 'ALL' OR g.season_code = ?)
+      AND (? = 1 OR g.game_id NOT IN (SELECT game_id FROM score_mismatch_games))
+    GROUP BY p.player_id
+    ORDER BY AVG(s.ast) DESC
+    LIMIT ?
+  |}
+  let player_stats_by_efficiency = (tup2 string (tup2 string (tup2 string (tup2 int int))) ->* Types.player_aggregate) {|
+    SELECT
+      p.player_id,
+      p.player_name,
+      t.team_name_kr,
+      COUNT(*) as gp,
+      COALESCE(SUM(s.min_seconds) / 60.0, 0),
+      COALESCE(SUM(s.pts), 0),
+      COALESCE(SUM(s.reb_tot), 0),
+      COALESCE(SUM(s.ast), 0),
+      COALESCE(SUM(s.stl), 0),
+      COALESCE(SUM(s.blk), 0),
+      COALESCE(SUM(s.tov), 0),
+      COALESCE(AVG(s.pts), 0),
+      COALESCE(
+        (SUM(
+          CASE
+            WHEN g.home_score_calc IS NOT NULL
+              AND g.away_score_calc IS NOT NULL
+              AND (s.team_code = g.home_team_code OR s.team_code = g.away_team_code)
+            THEN (
+              (CASE WHEN g.home_team_code = s.team_code THEN g.home_score_calc ELSE g.away_score_calc END)
+              -
+              (CASE WHEN g.home_team_code = s.team_code THEN g.away_score_calc ELSE g.home_score_calc END)
+            ) * s.min_seconds
+            ELSE 0
+          END
+        ) * 1.0) / NULLIF(
+          SUM(
+            CASE
+              WHEN g.home_score_calc IS NOT NULL
+                AND g.away_score_calc IS NOT NULL
+                AND (s.team_code = g.home_team_code OR s.team_code = g.away_team_code)
+              THEN s.min_seconds
+              ELSE 0
+            END
+          ),
+          0
+        ),
+        0
+      ) as margin,
+      COALESCE(AVG(s.reb_tot), 0),
+      COALESCE(AVG(s.ast), 0),
+      COALESCE(AVG(s.stl), 0),
+      COALESCE(AVG(s.blk), 0),
+      COALESCE(AVG(s.tov), 0),
+      COALESCE(AVG(s.game_score), 0)
+    FROM game_stats s
+    JOIN games_calc g ON g.game_id = s.game_id
+    JOIN players p ON s.player_id = p.player_id
+    JOIN teams t ON s.team_code = t.team_code
+    WHERE p.player_name LIKE ?
+      AND g.game_type != '10'
+      AND (? = 'ALL' OR g.season_code = ?)
+      AND (? = 1 OR g.game_id NOT IN (SELECT game_id FROM score_mismatch_games))
+    GROUP BY p.player_id
+    ORDER BY AVG(s.game_score) DESC
+    LIMIT ?
+  |}
+  let player_stats_by_minutes = (tup2 string (tup2 string (tup2 string (tup2 int int))) ->* Types.player_aggregate) {|
+    SELECT
+      p.player_id,
+      p.player_name,
+      t.team_name_kr,
+      COUNT(*) as gp,
+      COALESCE(SUM(s.min_seconds) / 60.0, 0),
+      COALESCE(SUM(s.pts), 0),
+      COALESCE(SUM(s.reb_tot), 0),
+      COALESCE(SUM(s.ast), 0),
+      COALESCE(SUM(s.stl), 0),
+      COALESCE(SUM(s.blk), 0),
+      COALESCE(SUM(s.tov), 0),
+      COALESCE(AVG(s.pts), 0),
+      COALESCE(
+        (SUM(
+          CASE
+            WHEN g.home_score_calc IS NOT NULL
+              AND g.away_score_calc IS NOT NULL
+              AND (s.team_code = g.home_team_code OR s.team_code = g.away_team_code)
+            THEN (
+              (CASE WHEN g.home_team_code = s.team_code THEN g.home_score_calc ELSE g.away_score_calc END)
+              -
+              (CASE WHEN g.home_team_code = s.team_code THEN g.away_score_calc ELSE g.home_score_calc END)
+            ) * s.min_seconds
+            ELSE 0
+          END
+        ) * 1.0) / NULLIF(
+          SUM(
+            CASE
+              WHEN g.home_score_calc IS NOT NULL
+                AND g.away_score_calc IS NOT NULL
+                AND (s.team_code = g.home_team_code OR s.team_code = g.away_team_code)
+              THEN s.min_seconds
+              ELSE 0
+            END
+          ),
+          0
+        ),
+        0
+      ) as margin,
+      COALESCE(AVG(s.reb_tot), 0),
+      COALESCE(AVG(s.ast), 0),
+      COALESCE(AVG(s.stl), 0),
+      COALESCE(AVG(s.blk), 0),
+      COALESCE(AVG(s.tov), 0),
+      COALESCE(AVG(s.game_score), 0)
+    FROM game_stats s
+    JOIN games_calc g ON g.game_id = s.game_id
+    JOIN players p ON s.player_id = p.player_id
+    JOIN teams t ON s.team_code = t.team_code
+    WHERE p.player_name LIKE ?
+      AND g.game_type != '10'
+      AND (? = 'ALL' OR g.season_code = ?)
+      AND (? = 1 OR g.game_id NOT IN (SELECT game_id FROM score_mismatch_games))
+    GROUP BY p.player_id
+    ORDER BY SUM(s.min_seconds) DESC
+    LIMIT ?
+  |}
+  let players_by_team = (tup2 string (tup2 string (tup2 string int)) ->* Types.player_aggregate) {|
+    SELECT
+      p.player_id,
+      p.player_name,
+      t.team_name_kr,
+      COUNT(*) as gp,
+      COALESCE(SUM(s.min_seconds) / 60.0, 0),
+      COALESCE(SUM(s.pts), 0),
+      COALESCE(SUM(s.reb_tot), 0),
+      COALESCE(SUM(s.ast), 0),
+      COALESCE(SUM(s.stl), 0),
+      COALESCE(SUM(s.blk), 0),
+      COALESCE(SUM(s.tov), 0),
+      COALESCE(AVG(s.pts), 0),
+      COALESCE(
+        (SUM(
+          CASE
+            WHEN g.home_score_calc IS NOT NULL
+              AND g.away_score_calc IS NOT NULL
+              AND (s.team_code = g.home_team_code OR s.team_code = g.away_team_code)
+            THEN (
+              (CASE WHEN g.home_team_code = s.team_code THEN g.home_score_calc ELSE g.away_score_calc END)
+              -
+              (CASE WHEN g.home_team_code = s.team_code THEN g.away_score_calc ELSE g.home_score_calc END)
+            ) * s.min_seconds
+            ELSE 0
+          END
+        ) * 1.0) / NULLIF(
+          SUM(
+            CASE
+              WHEN g.home_score_calc IS NOT NULL
+                AND g.away_score_calc IS NOT NULL
+                AND (s.team_code = g.home_team_code OR s.team_code = g.away_team_code)
+              THEN s.min_seconds
+              ELSE 0
+            END
+          ),
+          0
+        ),
+        0
+      ) as margin,
+      COALESCE(AVG(s.reb_tot), 0),
+      COALESCE(AVG(s.ast), 0),
+      COALESCE(AVG(s.stl), 0),
+      COALESCE(AVG(s.blk), 0),
+      COALESCE(AVG(s.tov), 0),
+      COALESCE(AVG(s.game_score), 0)
+    FROM game_stats s
+    JOIN games_calc g ON g.game_id = s.game_id
+    JOIN players p ON s.player_id = p.player_id
+    JOIN teams t ON s.team_code = t.team_code
+    WHERE t.team_name_kr = ?
+      AND (? = 'ALL' OR g.season_code = ?)
+      AND g.game_type != '10'
+    GROUP BY p.player_id
+    ORDER BY AVG(s.game_score) DESC
+    LIMIT ?
+  |}
   let leaders_pts = (tup2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, AVG(s.pts) FROM game_stats s JOIN players p ON s.player_id = p.player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id HAVING COUNT(*) >= 5 ORDER BY AVG(s.pts) DESC LIMIT 5 |}
   let leaders_pts_per36 = (tup2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, (SUM(s.pts) * 1.0 / SUM(s.min_seconds)) * 36 * 60 FROM game_stats s JOIN players p ON s.player_id = p.player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id HAVING SUM(s.min_seconds) >= 6000 ORDER BY (SUM(s.pts) / SUM(s.min_seconds)) DESC LIMIT 5 |}
   let leaders_reb = (tup2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, AVG(s.reb_tot) FROM game_stats s JOIN players p ON s.player_id = p.player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id HAVING COUNT(*) >= 5 ORDER BY AVG(s.reb_tot) DESC LIMIT 5 |}
@@ -1134,13 +1637,161 @@ module Queries = struct
   let player_info = (string ->? Types.player_info) "SELECT player_id, player_name, position, birth_date, height, weight FROM players WHERE player_id = ?"
   
   (** Queries for Per Game (Average) *)
-  let player_seasons_per_game = (string ->* Types.season_stats) {| SELECT g.season_code, se.season_name, COUNT(*) as gp, COALESCE(SUM(s.min_seconds) / 60.0, 0), COALESCE(AVG(s.pts), 0), COALESCE(AVG(s.reb_tot), 0), COALESCE(AVG(s.ast), 0), COALESCE(AVG(s.stl), 0), COALESCE(AVG(s.blk), 0), COALESCE(AVG(s.tov), 0), COALESCE(AVG(s.game_score), 0), COALESCE((SUM(((COALESCE((CASE WHEN g.home_team_code = s.team_code THEN COALESCE(g.home_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code)) ELSE COALESCE(g.away_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code)) END), 0) - COALESCE((CASE WHEN g.home_team_code = s.team_code THEN COALESCE(g.away_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code)) ELSE COALESCE(g.home_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code)) END), 0))) * s.min_seconds) * 1.0) / NULLIF(SUM(s.min_seconds), 0), 0) as margin, 0.0 as ts_pct, 0.0 as efg_pct FROM game_stats s JOIN games g ON s.game_id = g.game_id JOIN seasons se ON g.season_code = se.season_code WHERE s.player_id = ? AND g.game_type != '10' GROUP BY g.season_code ORDER BY g.season_code DESC |}
+	  let player_seasons_per_game = (string ->* Types.season_stats) {|
+	    SELECT
+	      g.season_code,
+	      se.season_name,
+	      COUNT(*) as gp,
+	      COALESCE(SUM(s.min_seconds) / 60.0, 0),
+	      COALESCE(AVG(s.pts), 0),
+	      COALESCE(AVG(s.reb_tot), 0),
+	      COALESCE(AVG(s.ast), 0),
+	      COALESCE(AVG(s.stl), 0),
+	      COALESCE(AVG(s.blk), 0),
+	      COALESCE(AVG(s.tov), 0),
+		      COALESCE(AVG(s.game_score), 0),
+		      COALESCE(
+		        (SUM(
+		          CASE
+		            WHEN g.home_score_calc IS NOT NULL
+		              AND g.away_score_calc IS NOT NULL
+		              AND (s.team_code = g.home_team_code OR s.team_code = g.away_team_code)
+		            THEN (
+		              (CASE WHEN g.home_team_code = s.team_code THEN g.home_score_calc ELSE g.away_score_calc END)
+		              -
+		              (CASE WHEN g.home_team_code = s.team_code THEN g.away_score_calc ELSE g.home_score_calc END)
+		            ) * s.min_seconds
+		            ELSE 0
+		          END
+		        ) * 1.0) / NULLIF(
+		          SUM(
+		            CASE
+		              WHEN g.home_score_calc IS NOT NULL
+		                AND g.away_score_calc IS NOT NULL
+		                AND (s.team_code = g.home_team_code OR s.team_code = g.away_team_code)
+		              THEN s.min_seconds
+		              ELSE 0
+		            END
+		          ),
+		          0
+		        ),
+		        0
+		      ) as margin,
+	      0.0 as ts_pct,
+	      0.0 as efg_pct
+	    FROM game_stats s
+		    JOIN games_calc g ON s.game_id = g.game_id
+		    JOIN seasons se ON g.season_code = se.season_code
+		    WHERE s.player_id = ?
+		      AND g.game_type != '10'
+		    GROUP BY g.season_code
+		    ORDER BY g.season_code DESC
+		  |}
 
   (** Queries for Totals (Sum) *)
-  let player_seasons_totals = (string ->* Types.season_stats) {| SELECT g.season_code, se.season_name, COUNT(*) as gp, COALESCE(SUM(s.min_seconds) / 60.0, 0), COALESCE(SUM(s.pts), 0), COALESCE(SUM(s.reb_tot), 0), COALESCE(SUM(s.ast), 0), COALESCE(SUM(s.stl), 0), COALESCE(SUM(s.blk), 0), COALESCE(SUM(s.tov), 0), COALESCE(SUM(s.game_score), 0), COALESCE((SUM(((COALESCE((CASE WHEN g.home_team_code = s.team_code THEN COALESCE(g.home_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code)) ELSE COALESCE(g.away_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code)) END), 0) - COALESCE((CASE WHEN g.home_team_code = s.team_code THEN COALESCE(g.away_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code)) ELSE COALESCE(g.home_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code)) END), 0))) * s.min_seconds) * 1.0) / NULLIF(SUM(s.min_seconds), 0), 0) as margin, 0.0 as ts_pct, 0.0 as efg_pct FROM game_stats s JOIN games g ON s.game_id = g.game_id JOIN seasons se ON g.season_code = se.season_code WHERE s.player_id = ? AND g.game_type != '10' GROUP BY g.season_code ORDER BY g.season_code DESC |}
+	  let player_seasons_totals = (string ->* Types.season_stats) {|
+	    SELECT
+	      g.season_code,
+	      se.season_name,
+	      COUNT(*) as gp,
+	      COALESCE(SUM(s.min_seconds) / 60.0, 0),
+	      COALESCE(SUM(s.pts), 0),
+	      COALESCE(SUM(s.reb_tot), 0),
+	      COALESCE(SUM(s.ast), 0),
+	      COALESCE(SUM(s.stl), 0),
+	      COALESCE(SUM(s.blk), 0),
+	      COALESCE(SUM(s.tov), 0),
+		      COALESCE(SUM(s.game_score), 0),
+		      COALESCE(
+		        (SUM(
+		          CASE
+		            WHEN g.home_score_calc IS NOT NULL
+		              AND g.away_score_calc IS NOT NULL
+		              AND (s.team_code = g.home_team_code OR s.team_code = g.away_team_code)
+		            THEN (
+		              (CASE WHEN g.home_team_code = s.team_code THEN g.home_score_calc ELSE g.away_score_calc END)
+		              -
+		              (CASE WHEN g.home_team_code = s.team_code THEN g.away_score_calc ELSE g.home_score_calc END)
+		            ) * s.min_seconds
+		            ELSE 0
+		          END
+		        ) * 1.0) / NULLIF(
+		          SUM(
+		            CASE
+		              WHEN g.home_score_calc IS NOT NULL
+		                AND g.away_score_calc IS NOT NULL
+		                AND (s.team_code = g.home_team_code OR s.team_code = g.away_team_code)
+		              THEN s.min_seconds
+		              ELSE 0
+		            END
+		          ),
+		          0
+		        ),
+		        0
+		      ) as margin,
+	      0.0 as ts_pct,
+	      0.0 as efg_pct
+	    FROM game_stats s
+		    JOIN games_calc g ON s.game_id = g.game_id
+		    JOIN seasons se ON g.season_code = se.season_code
+		    WHERE s.player_id = ?
+		      AND g.game_type != '10'
+		    GROUP BY g.season_code
+		    ORDER BY g.season_code DESC
+		  |}
 
   (** Queries for Per 36 Minutes (Normalized) *)
-  let player_seasons_per36 = (string ->* Types.season_stats) {| SELECT g.season_code, se.season_name, COUNT(*) as gp, COALESCE(SUM(s.min_seconds) / 60.0, 0), (SUM(s.pts) * 2160.0 / SUM(s.min_seconds)), (SUM(s.reb_tot) * 2160.0 / SUM(s.min_seconds)), (SUM(s.ast) * 2160.0 / SUM(s.min_seconds)), (SUM(s.stl) * 2160.0 / SUM(s.min_seconds)), (SUM(s.blk) * 2160.0 / SUM(s.min_seconds)), (SUM(s.tov) * 2160.0 / SUM(s.min_seconds)), (SUM(s.game_score) * 2160.0 / SUM(s.min_seconds)), COALESCE((SUM(((COALESCE((CASE WHEN g.home_team_code = s.team_code THEN COALESCE(g.home_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code)) ELSE COALESCE(g.away_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code)) END), 0) - COALESCE((CASE WHEN g.home_team_code = s.team_code THEN COALESCE(g.away_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code)) ELSE COALESCE(g.home_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code)) END), 0))) * s.min_seconds) * 1.0) / NULLIF(SUM(s.min_seconds), 0), 0) as margin, 0.0 as ts_pct, 0.0 as efg_pct FROM game_stats s JOIN games g ON s.game_id = g.game_id JOIN seasons se ON g.season_code = se.season_code WHERE s.player_id = ? AND g.game_type != '10' GROUP BY g.season_code HAVING SUM(s.min_seconds) > 0 ORDER BY g.season_code DESC |}
+	  let player_seasons_per36 = (string ->* Types.season_stats) {|
+	    SELECT
+	      g.season_code,
+	      se.season_name,
+	      COUNT(*) as gp,
+	      COALESCE(SUM(s.min_seconds) / 60.0, 0),
+	      (SUM(s.pts) * 2160.0 / SUM(s.min_seconds)),
+	      (SUM(s.reb_tot) * 2160.0 / SUM(s.min_seconds)),
+	      (SUM(s.ast) * 2160.0 / SUM(s.min_seconds)),
+	      (SUM(s.stl) * 2160.0 / SUM(s.min_seconds)),
+	      (SUM(s.blk) * 2160.0 / SUM(s.min_seconds)),
+		      (SUM(s.tov) * 2160.0 / SUM(s.min_seconds)),
+		      (SUM(s.game_score) * 2160.0 / SUM(s.min_seconds)),
+		      COALESCE(
+		        (SUM(
+		          CASE
+		            WHEN g.home_score_calc IS NOT NULL
+		              AND g.away_score_calc IS NOT NULL
+		              AND (s.team_code = g.home_team_code OR s.team_code = g.away_team_code)
+		            THEN (
+		              (CASE WHEN g.home_team_code = s.team_code THEN g.home_score_calc ELSE g.away_score_calc END)
+		              -
+		              (CASE WHEN g.home_team_code = s.team_code THEN g.away_score_calc ELSE g.home_score_calc END)
+		            ) * s.min_seconds
+		            ELSE 0
+		          END
+		        ) * 1.0) / NULLIF(
+		          SUM(
+		            CASE
+		              WHEN g.home_score_calc IS NOT NULL
+		                AND g.away_score_calc IS NOT NULL
+		                AND (s.team_code = g.home_team_code OR s.team_code = g.away_team_code)
+		              THEN s.min_seconds
+		              ELSE 0
+		            END
+		          ),
+		          0
+		        ),
+		        0
+		      ) as margin,
+	      0.0 as ts_pct,
+	      0.0 as efg_pct
+	    FROM game_stats s
+		    JOIN games_calc g ON s.game_id = g.game_id
+		    JOIN seasons se ON g.season_code = se.season_code
+		    WHERE s.player_id = ?
+		      AND g.game_type != '10'
+		    GROUP BY g.season_code
+		    HAVING SUM(s.min_seconds) > 0
+		    ORDER BY g.season_code DESC
+		  |}
 
 		  let player_recent_games = (string ->* Types.player_game_stat) {|
 		    WITH sums AS (
@@ -1296,45 +1947,87 @@ module Queries = struct
 	  let career_high_steals_game = (string ->? Types.player_game_stat) {| SELECT g.game_id, COALESCE(g.game_date, 'Unknown'), CASE WHEN g.home_team_code = s.team_code THEN t2.team_name_kr ELSE t1.team_name_kr END as opponent, CASE WHEN g.home_team_code = s.team_code THEN 1 ELSE 0 END as is_home, NULL as team_score, NULL as opponent_score, 1 as score_quality, COALESCE(s.min_seconds, 0) / 60.0, s.pts, s.reb_tot, s.ast, s.stl, s.blk, s.tov, NULL as plus_minus FROM game_stats s JOIN games g ON g.game_id = s.game_id JOIN teams t1 ON t1.team_code = g.home_team_code JOIN teams t2 ON t2.team_code = g.away_team_code WHERE s.player_id = ? AND g.game_type != '10' ORDER BY s.stl DESC, g.game_date DESC, g.game_id DESC LIMIT 1 |}
 	  let career_high_blocks_game = (string ->? Types.player_game_stat) {| SELECT g.game_id, COALESCE(g.game_date, 'Unknown'), CASE WHEN g.home_team_code = s.team_code THEN t2.team_name_kr ELSE t1.team_name_kr END as opponent, CASE WHEN g.home_team_code = s.team_code THEN 1 ELSE 0 END as is_home, NULL as team_score, NULL as opponent_score, 1 as score_quality, COALESCE(s.min_seconds, 0) / 60.0, s.pts, s.reb_tot, s.ast, s.stl, s.blk, s.tov, NULL as plus_minus FROM game_stats s JOIN games g ON g.game_id = s.game_id JOIN teams t1 ON t1.team_code = g.home_team_code JOIN teams t2 ON t2.team_code = g.away_team_code WHERE s.player_id = ? AND g.game_type != '10' ORDER BY s.blk DESC, g.game_date DESC, g.game_id DESC LIMIT 1 |}
 
-  let team_recent_games = (let t = tup2 string (tup2 string (tup2 string (tup2 string (tup2 string (tup2 string (tup2 string (tup2 string (tup2 string string)))))))) in t ->* Types.team_game_result) {|
-    WITH scored_games AS (
-      SELECT
-        g.*,
-        COALESCE(
-          g.home_score,
-          (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code)
-        ) AS home_score_calc,
-        COALESCE(
-          g.away_score,
-          (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code)
-        ) AS away_score_calc
-      FROM games g
-    )
-    SELECT
-      g.game_id,
-      g.game_date,
-      CASE WHEN t1.team_name_kr = ? THEN t2.team_name_kr ELSE t1.team_name_kr END as opponent,
-      CASE WHEN t1.team_name_kr = ? THEN 1 ELSE 0 END as is_home,
-      CASE WHEN t1.team_name_kr = ? THEN g.home_score_calc ELSE g.away_score_calc END as team_score,
-      CASE WHEN t1.team_name_kr = ? THEN g.away_score_calc ELSE g.home_score_calc END as opp_score,
-      CASE
-        WHEN (t1.team_name_kr = ? AND g.home_score_calc > g.away_score_calc)
-          OR (t2.team_name_kr = ? AND g.away_score_calc > g.home_score_calc)
-        THEN 1
-        ELSE 0
-      END as is_win
-    FROM scored_games g
-    JOIN teams t1 ON t1.team_code = g.home_team_code
-    JOIN teams t2 ON t2.team_code = g.away_team_code
-    WHERE (t1.team_name_kr = ? OR t2.team_name_kr = ?)
-      AND g.game_type != '10'
-      AND (? = 'ALL' OR g.season_code = ?)
-      AND g.home_score_calc IS NOT NULL
-      AND g.away_score_calc IS NOT NULL
-    ORDER BY g.game_date DESC
-    LIMIT 10
-  |}
-  let player_by_name = (tup2 string (tup2 string string) ->? Types.player_aggregate) {| SELECT p.player_id, p.player_name, t.team_name_kr, COUNT(*) as gp, COALESCE(SUM(s.min_seconds) / 60.0, 0), COALESCE(SUM(s.pts), 0), COALESCE(SUM(s.reb_tot), 0), COALESCE(SUM(s.ast), 0), COALESCE(SUM(s.stl), 0), COALESCE(SUM(s.blk), 0), COALESCE(SUM(s.tov), 0), COALESCE(AVG(s.pts), 0), COALESCE((SUM(((COALESCE((CASE WHEN g.home_team_code = s.team_code THEN COALESCE(g.home_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code)) ELSE COALESCE(g.away_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code)) END), 0) - COALESCE((CASE WHEN g.home_team_code = s.team_code THEN COALESCE(g.away_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.away_team_code)) ELSE COALESCE(g.home_score, (SELECT SUM(s2.pts) FROM game_stats s2 WHERE s2.game_id = g.game_id AND s2.team_code = g.home_team_code)) END), 0))) * s.min_seconds) * 1.0) / NULLIF(SUM(s.min_seconds), 0), 0) as margin, COALESCE(AVG(s.reb_tot), 0), COALESCE(AVG(s.ast), 0), COALESCE(AVG(s.stl), 0), COALESCE(AVG(s.blk), 0), COALESCE(AVG(s.tov), 0), COALESCE(AVG(s.game_score), 0) FROM game_stats s JOIN players p ON s.player_id = p.player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE p.player_name = ? AND (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id |}
+	  let team_recent_games = (let t = tup2 string (tup2 string (tup2 string (tup2 string (tup2 string (tup2 string (tup2 string (tup2 string (tup2 string string)))))))) in t ->* Types.team_game_result) {|
+	    SELECT
+	      g.game_id,
+	      g.game_date,
+	      CASE WHEN t1.team_name_kr = ? THEN t2.team_name_kr ELSE t1.team_name_kr END as opponent,
+	      CASE WHEN t1.team_name_kr = ? THEN 1 ELSE 0 END as is_home,
+	      CASE WHEN t1.team_name_kr = ? THEN g.home_score_calc ELSE g.away_score_calc END as team_score,
+	      CASE WHEN t1.team_name_kr = ? THEN g.away_score_calc ELSE g.home_score_calc END as opp_score,
+	      CASE
+	        WHEN (t1.team_name_kr = ? AND g.home_score_calc > g.away_score_calc)
+	          OR (t2.team_name_kr = ? AND g.away_score_calc > g.home_score_calc)
+	        THEN 1
+	        ELSE 0
+	      END as is_win
+	    FROM games_calc g
+	    JOIN teams t1 ON t1.team_code = g.home_team_code
+	    JOIN teams t2 ON t2.team_code = g.away_team_code
+	    WHERE (t1.team_name_kr = ? OR t2.team_name_kr = ?)
+	      AND g.game_type != '10'
+	      AND (? = 'ALL' OR g.season_code = ?)
+	      AND g.home_score_calc IS NOT NULL
+	      AND g.away_score_calc IS NOT NULL
+	    ORDER BY g.game_date DESC
+	    LIMIT 10
+	  |}
+	  let player_by_name = (tup2 string (tup2 string string) ->? Types.player_aggregate) {|
+	    SELECT
+	      p.player_id,
+	      p.player_name,
+	      t.team_name_kr,
+	      COUNT(*) as gp,
+	      COALESCE(SUM(s.min_seconds) / 60.0, 0),
+	      COALESCE(SUM(s.pts), 0),
+	      COALESCE(SUM(s.reb_tot), 0),
+	      COALESCE(SUM(s.ast), 0),
+	      COALESCE(SUM(s.stl), 0),
+	      COALESCE(SUM(s.blk), 0),
+	      COALESCE(SUM(s.tov), 0),
+	      COALESCE(AVG(s.pts), 0),
+	      COALESCE(
+	        (SUM(
+	          CASE
+	            WHEN g.home_score_calc IS NOT NULL
+	              AND g.away_score_calc IS NOT NULL
+	              AND (s.team_code = g.home_team_code OR s.team_code = g.away_team_code)
+	            THEN (
+	              (CASE WHEN g.home_team_code = s.team_code THEN g.home_score_calc ELSE g.away_score_calc END)
+	              -
+	              (CASE WHEN g.home_team_code = s.team_code THEN g.away_score_calc ELSE g.home_score_calc END)
+	            ) * s.min_seconds
+	            ELSE 0
+	          END
+	        ) * 1.0) / NULLIF(
+	          SUM(
+	            CASE
+	              WHEN g.home_score_calc IS NOT NULL
+	                AND g.away_score_calc IS NOT NULL
+	                AND (s.team_code = g.home_team_code OR s.team_code = g.away_team_code)
+	              THEN s.min_seconds
+	              ELSE 0
+	            END
+	          ),
+	          0
+	        ),
+	        0
+	      ) as margin,
+	      COALESCE(AVG(s.reb_tot), 0),
+	      COALESCE(AVG(s.ast), 0),
+	      COALESCE(AVG(s.stl), 0),
+	      COALESCE(AVG(s.blk), 0),
+	      COALESCE(AVG(s.tov), 0),
+	      COALESCE(AVG(s.game_score), 0)
+	    FROM game_stats s
+	    JOIN players p ON s.player_id = p.player_id
+	    JOIN teams t ON s.team_code = t.team_code
+	    JOIN games_calc g ON g.game_id = s.game_id
+	    WHERE p.player_name = ?
+	      AND (? = 'ALL' OR g.season_code = ?)
+	      AND g.game_type != '10'
+	    GROUP BY p.player_id
+	  |}
   let player_h2h_games = (tup2 (tup2 string string) (tup2 string string) ->* Types.h2h_game) {|
     WITH scored_games AS (
       SELECT
@@ -1378,12 +2071,13 @@ module Queries = struct
 end
 
 (** Database operations *)
-module Repo = struct
-  let ensure_schema (module Db : Caqti_lwt.CONNECTION) =
-    let open Lwt_result.Syntax in
-    let* () = Db.exec Queries.ensure_player_plus_minus_table () in
-    let* () = Db.exec Queries.ensure_player_plus_minus_index () in
-    Db.exec Queries.ensure_score_mismatch_view ()
+  module Repo = struct
+    let ensure_schema (module Db : Caqti_lwt.CONNECTION) =
+      let open Lwt_result.Syntax in
+      let* () = Db.exec Queries.ensure_player_plus_minus_table () in
+      let* () = Db.exec Queries.ensure_player_plus_minus_index () in
+      let* () = Db.exec Queries.ensure_score_mismatch_view () in
+      Db.exec Queries.ensure_games_calc_view ()
   let get_teams (module Db : Caqti_lwt.CONNECTION) = Db.collect_list Queries.all_teams ()
   let get_seasons (module Db : Caqti_lwt.CONNECTION) = Db.collect_list Queries.all_seasons ()
   let get_player_by_name ~name ~season (module Db : Caqti_lwt.CONNECTION) = let s = if season = "" then "ALL" else season in Db.find_opt Queries.player_by_name (name, (s, s))
