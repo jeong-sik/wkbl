@@ -1,0 +1,4 @@
+{
+  "_comment": "Map player_id -> { instagram: { url, source_url }, youtube: { url, source_url } }. Keys starting with '_' are ignored."
+}
+
