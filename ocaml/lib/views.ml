@@ -1884,7 +1884,7 @@ let player_profile_page (profile: player_profile) ~scope ~(seasons_catalog: seas
 	                      (team_badge ~max_width:badge_max_width team_name)
 	              in
 	              Printf.sprintf
-	                {html|<div class="text-slate-300 font-mono text-[11px] break-words">%s</div>%s<div class="mt-2 text-[11px]"><a class="text-slate-500 hover:text-slate-300 underline" href="%s" target="_blank" rel="noreferrer">Source</a></div>|html}
+	                {html|<div class="text-slate-300 font-mono text-[11px] whitespace-pre-line break-words">%s</div>%s<div class="mt-2 text-[11px]"><a class="text-slate-500 hover:text-slate-300 underline" href="%s" target="_blank" rel="noreferrer">Source</a></div>|html}
 	                (escape_html d.pd_raw_text)
 	                team_html
 	                (escape_html d.pd_source_url)
@@ -2033,7 +2033,7 @@ let player_profile_page (profile: player_profile) ~scope ~(seasons_catalog: seas
 	        | None -> {html|<span class="text-slate-500">-</span>|html}
 	        | Some (d: player_draft) ->
 	            Printf.sprintf
-	              {html|<div class="text-slate-200 font-mono text-[11px] break-words">%s</div><a class="mt-2 inline-block text-[11px] text-slate-500 hover:text-slate-300 underline font-mono" href="%s" target="_blank" rel="noreferrer">Source</a>|html}
+	              {html|<div class="text-slate-200 font-mono text-[11px] whitespace-pre-line break-words">%s</div><a class="mt-2 inline-block text-[11px] text-slate-500 hover:text-slate-300 underline font-mono" href="%s" target="_blank" rel="noreferrer">Source</a>|html}
 	              (escape_html d.pd_raw_text)
 	              (escape_html d.pd_source_url)
 	      in
