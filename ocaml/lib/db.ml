@@ -2195,10 +2195,10 @@ module Queries = struct
 	  let career_high_steals_game = (string ->? Types.player_game_stat) {| SELECT g.game_id, COALESCE(g.game_date, 'Unknown'), CASE WHEN g.home_team_code = s.team_code THEN t2.team_name_kr ELSE t1.team_name_kr END as opponent, CASE WHEN g.home_team_code = s.team_code THEN 1 ELSE 0 END as is_home, NULL as team_score, NULL as opponent_score, 1 as score_quality, COALESCE(s.min_seconds, 0) / 60.0, s.pts, s.reb_tot, s.ast, s.stl, s.blk, s.tov, NULL as plus_minus FROM game_stats s JOIN games g ON g.game_id = s.game_id JOIN teams t1 ON t1.team_code = g.home_team_code JOIN teams t2 ON t2.team_code = g.away_team_code WHERE s.player_id = ? AND g.game_type != '10' ORDER BY s.stl DESC, g.game_date DESC, g.game_id DESC LIMIT 1 |}
 	  let career_high_blocks_game = (string ->? Types.player_game_stat) {| SELECT g.game_id, COALESCE(g.game_date, 'Unknown'), CASE WHEN g.home_team_code = s.team_code THEN t2.team_name_kr ELSE t1.team_name_kr END as opponent, CASE WHEN g.home_team_code = s.team_code THEN 1 ELSE 0 END as is_home, NULL as team_score, NULL as opponent_score, 1 as score_quality, COALESCE(s.min_seconds, 0) / 60.0, s.pts, s.reb_tot, s.ast, s.stl, s.blk, s.tov, NULL as plus_minus FROM game_stats s JOIN games g ON g.game_id = s.game_id JOIN teams t1 ON t1.team_code = g.home_team_code JOIN teams t2 ON t2.team_code = g.away_team_code WHERE s.player_id = ? AND g.game_type != '10' ORDER BY s.blk DESC, g.game_date DESC, g.game_id DESC LIMIT 1 |}
 
-	  let team_recent_games = (let t = tup2 string (tup2 string (tup2 string (tup2 string (tup2 string (tup2 string (tup2 string (tup2 string (tup2 string string)))))))) in t ->* Types.team_game_result) {|
-	    SELECT
-	      g.game_id,
-	      g.game_date,
+		  let team_recent_games = (let t = tup2 string (tup2 string (tup2 string (tup2 string (tup2 string (tup2 string (tup2 string (tup2 string (tup2 string string)))))))) in t ->* Types.team_game_result) {|
+		    SELECT
+		      g.game_id,
+		      g.game_date,
 	      CASE WHEN t1.team_name_kr = ? THEN t2.team_name_kr ELSE t1.team_name_kr END as opponent,
 	      CASE WHEN t1.team_name_kr = ? THEN 1 ELSE 0 END as is_home,
 	      CASE WHEN t1.team_name_kr = ? THEN g.home_score_calc ELSE g.away_score_calc END as team_score,
@@ -2217,13 +2217,37 @@ module Queries = struct
 	      AND (? = 'ALL' OR g.season_code = ?)
 	      AND g.home_score_calc IS NOT NULL
 	      AND g.away_score_calc IS NOT NULL
-	    ORDER BY g.game_date DESC
-	    LIMIT 10
-	  |}
-	  let player_by_name = (tup2 string (tup2 string string) ->? Types.player_aggregate) {|
-	    SELECT
-	      p.player_id,
-	      p.player_name,
+		    ORDER BY g.game_date DESC
+		    LIMIT 10
+		  |}
+		  let team_games = (let t = tup2 string (tup2 string (tup2 string (tup2 string (tup2 string (tup2 string (tup2 string (tup2 string (tup2 string string)))))))) in t ->* Types.team_game_result) {|
+		    SELECT
+		      g.game_id,
+		      g.game_date,
+		      CASE WHEN t1.team_name_kr = ? THEN t2.team_name_kr ELSE t1.team_name_kr END as opponent,
+		      CASE WHEN t1.team_name_kr = ? THEN 1 ELSE 0 END as is_home,
+		      CASE WHEN t1.team_name_kr = ? THEN g.home_score_calc ELSE g.away_score_calc END as team_score,
+		      CASE WHEN t1.team_name_kr = ? THEN g.away_score_calc ELSE g.home_score_calc END as opp_score,
+		      CASE
+		        WHEN (t1.team_name_kr = ? AND g.home_score_calc > g.away_score_calc)
+		          OR (t2.team_name_kr = ? AND g.away_score_calc > g.home_score_calc)
+		        THEN 1
+		        ELSE 0
+		      END as is_win
+		    FROM games_calc g
+		    JOIN teams t1 ON t1.team_code = g.home_team_code
+		    JOIN teams t2 ON t2.team_code = g.away_team_code
+		    WHERE (t1.team_name_kr = ? OR t2.team_name_kr = ?)
+		      AND g.game_type != '10'
+		      AND (? = 'ALL' OR g.season_code = ?)
+		      AND g.home_score_calc IS NOT NULL
+		      AND g.away_score_calc IS NOT NULL
+		    ORDER BY g.game_date ASC, g.game_id ASC
+		  |}
+		  let player_by_name = (tup2 string (tup2 string string) ->? Types.player_aggregate) {|
+		    SELECT
+		      p.player_id,
+		      p.player_name,
 	      t.team_name_kr,
 	      COUNT(*) as gp,
 	      COALESCE(SUM(s.min_seconds) / 60.0, 0),
@@ -2540,22 +2564,36 @@ end
     let include_int = if include_mismatch then 1 else 0 in
     let s = if String.trim season = "" then "ALL" else season in
     Db.collect_list Queries.player_game_logs (player_id, (s, (s, include_int)))
-  let get_team_recent_games ~team_name ~season (module Db : Caqti_lwt.CONNECTION) =
-    let s = if String.trim season = "" then "ALL" else season in
-    let t =
-      (team_name,
-       (team_name,
-        (team_name,
-         (team_name,
-          (team_name,
-           (team_name,
-            (team_name,
-             (team_name,
-              (s, s)))))))))
-    in
-    Db.collect_list Queries.team_recent_games t
-  let get_player_h2h ~p1_id ~p2_id ~season (module Db : Caqti_lwt.CONNECTION) = let s = if season = "" then "ALL" else season in Db.collect_list Queries.player_h2h_games ((p1_id, p2_id), (s, s))
-end
+	  let get_team_recent_games ~team_name ~season (module Db : Caqti_lwt.CONNECTION) =
+	    let s = if String.trim season = "" then "ALL" else season in
+	    let t =
+	      (team_name,
+	       (team_name,
+	        (team_name,
+	         (team_name,
+	          (team_name,
+	           (team_name,
+	            (team_name,
+	             (team_name,
+	              (s, s)))))))))
+	    in
+	    Db.collect_list Queries.team_recent_games t
+	  let get_team_games ~team_name ~season (module Db : Caqti_lwt.CONNECTION) =
+	    let s = if String.trim season = "" then "ALL" else season in
+	    let t =
+	      (team_name,
+	       (team_name,
+	        (team_name,
+	         (team_name,
+	          (team_name,
+	           (team_name,
+	            (team_name,
+	             (team_name,
+	              (s, s)))))))))
+	    in
+	    Db.collect_list Queries.team_games t
+	  let get_player_h2h ~p1_id ~p2_id ~season (module Db : Caqti_lwt.CONNECTION) = let s = if season = "" then "ALL" else season in Db.collect_list Queries.player_h2h_games ((p1_id, p2_id), (s, s))
+	end
 
 (** Connection pool *)
 let pool_ref : (Caqti_lwt.connection, Caqti_error.t) Caqti_lwt.Pool.t option ref = ref None
@@ -2676,22 +2714,23 @@ let get_stat_mip_eff_delta ~season ~prev_season ?(include_mismatch=false) () =
 
 let get_player_profile ~player_id () = with_db (fun db -> Repo.get_player_profile ~player_id db)
 let get_player_season_stats ~player_id ~scope () = with_db (fun db -> Repo.get_player_season_stats ~player_id ~scope db)
-let get_player_game_logs ~player_id ?(season="ALL") ?(include_mismatch=false) () =
-  with_db (fun db -> Repo.get_player_game_logs ~player_id ~season ~include_mismatch db)
-let get_team_full_detail ~team_name ?(season="ALL") () =
-  let open Lwt.Syntax in
-  let* standing_res = get_standings ~season () in
-  let* roster_res = get_players_by_team ~team_name ~season () in
-  let* games_res = with_db (fun db -> Repo.get_team_recent_games ~team_name ~season db) in
-  match standing_res, roster_res, games_res with
-  | Ok standings, Ok roster, Ok games ->
-      let standing = List.find_opt (fun (s: team_standing) -> s.team_name = team_name) standings in
-      Lwt.return (Ok { tfd_team_name = team_name; tfd_standing = standing; tfd_roster = roster; tfd_recent_games = games })
-  | Error e, _, _ | _, Error e, _ | _, _, Error e -> Lwt.return (Error e)
-let get_player_h2h_data ~p1_id ~p2_id ?(season="ALL") () = with_db (fun db -> Repo.get_player_h2h ~p1_id ~p2_id ~season db)
-
-let get_db_quality_report () : qa_db_report db_result =
-  let open Lwt_result.Syntax in
+	let get_player_game_logs ~player_id ?(season="ALL") ?(include_mismatch=false) () =
+	  with_db (fun db -> Repo.get_player_game_logs ~player_id ~season ~include_mismatch db)
+	let get_team_full_detail ~team_name ?(season="ALL") () =
+	  let open Lwt.Syntax in
+	  let* standing_res = get_standings ~season () in
+	  let* roster_res = get_players_by_team ~team_name ~season () in
+	  let* games_res = with_db (fun db -> Repo.get_team_recent_games ~team_name ~season db) in
+	  let* game_results_res = with_db (fun db -> Repo.get_team_games ~team_name ~season db) in
+	  match standing_res, roster_res, games_res, game_results_res with
+	  | Ok standings, Ok roster, Ok games, Ok game_results ->
+	      let standing = List.find_opt (fun (s: team_standing) -> s.team_name = team_name) standings in
+	      Lwt.return (Ok { tfd_team_name = team_name; tfd_standing = standing; tfd_roster = roster; tfd_game_results = game_results; tfd_recent_games = games })
+	  | Error e, _, _, _ | _, Error e, _, _ | _, _, Error e, _ | _, _, _, Error e -> Lwt.return (Error e)
+	let get_player_h2h_data ~p1_id ~p2_id ?(season="ALL") () = with_db (fun db -> Repo.get_player_h2h ~p1_id ~p2_id ~season db)
+	
+	let get_db_quality_report () : qa_db_report db_result =
+	  let open Lwt_result.Syntax in
   let int_or_zero = function | None -> 0 | Some v -> v in
   let round1 v = Float.round (v *. 10.0) /. 10.0 in
   let* games_total_opt = with_db (fun db -> Repo.qa_games_total db) in
