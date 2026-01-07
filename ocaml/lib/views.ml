@@ -95,7 +95,7 @@ let team_logo_tag ?(class_name="w-8 h-8") team_name =
         class_name
 
 (** Team badge component *)
-let team_badge ?(max_width="max-w-[80px]") team_name =
+let team_badge ?(max_width="max-w-[96px] sm:max-w-[140px]") team_name =
   let color =
     team_code_of_string team_name
     |> Option.map team_code_to_color
@@ -110,6 +110,7 @@ let team_badge ?(max_width="max-w-[80px]") team_name =
     (team_logo_tag ~class_name:"w-4 h-4" team_name)
     max_width
     (escape_html team_name)
+
 
 (** Stat cell with formatting *)
 let stat_cell ?(highlight=false) value =
@@ -498,9 +499,9 @@ let players_page ~season ~seasons ~search ~sort ~include_mismatch players =
         <div class="mt-2 space-y-1 leading-relaxed">
           <div><span class="font-mono text-slate-200">MG</span> = (팀 득점 - 상대 득점)의 출전시간 가중 평균입니다.</div>
           <div>개인 <span class="font-mono text-slate-200">+/-</span>는 문자중계(PBP) 기반이며, 데이터가 없거나 PBP/박스스코어 최종 스코어 불일치 등 품질 이슈가 있으면 <span class="font-mono text-slate-200">-</span>로 표시합니다.</div>
-          <div>표본 안정성을 위해 <span class="font-mono text-slate-200">MG</span> 정렬 시 총 출전 <span class="font-mono text-slate-200">100분 이상</span> 선수만 표시합니다.</div>
-        </div>
-      </details>|html}
+	          <div>표본 안정성을 위해 <span class="font-mono text-slate-200">MG</span> 정렬 시 <span class="font-mono text-slate-200">스코어가 있는 경기</span> 기준 총 출전 <span class="font-mono text-slate-200">100분 이상</span> 선수만 표시합니다.</div>
+	        </div>
+	      </details>|html}
     else
       ""
   in
@@ -646,6 +647,59 @@ let boxscores_page ~season ~seasons games =
       season_options table)
 
 let boxscore_player_table (title: string) (players: boxscore_player_stat list) =
+  (* Dedupe: if the same stat line is duplicated due to name matching, keep 1 row. *)
+  let players =
+    let key_of (p: boxscore_player_stat) =
+      let minutes_key = int_of_float (floor (p.bs_minutes *. 10.0 +. 0.5)) in
+      Printf.sprintf
+        "%s|%s|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d"
+        (normalize_name p.bs_player_name)
+        (String.trim p.bs_team_code)
+        minutes_key
+        p.bs_pts
+        p.bs_reb
+        p.bs_ast
+        p.bs_stl
+        p.bs_blk
+        p.bs_tov
+        p.bs_fg_made
+        p.bs_fg_att
+        p.bs_fg3_made
+        p.bs_fg3_att
+        p.bs_ft_made
+        p.bs_ft_att
+    in
+    let quality_score (p: boxscore_player_stat) =
+      let pm_score = if Option.is_some p.bs_plus_minus then 2 else 0 in
+      let pos_score =
+        match p.bs_position with
+        | Some pos when String.trim pos <> "" -> 1
+        | _ -> 0
+      in
+      pm_score + pos_score
+    in
+    let best_by_key : (string, int * boxscore_player_stat) Hashtbl.t = Hashtbl.create 64 in
+    players
+    |> List.iteri (fun idx p ->
+        let key = key_of p in
+        match Hashtbl.find_opt best_by_key key with
+        | None -> Hashtbl.add best_by_key key (idx, p)
+        | Some (best_idx, best_p) ->
+            let s_new = quality_score p in
+            let s_best = quality_score best_p in
+            if s_new > s_best then
+              Hashtbl.replace best_by_key key (idx, p)
+            else if s_new = s_best && idx < best_idx then
+              Hashtbl.replace best_by_key key (idx, p)
+            else
+              ())
+    ;
+    best_by_key
+    |> Hashtbl.to_seq_values
+    |> List.of_seq
+    |> List.sort (fun (a, _) (b, _) -> compare a b)
+    |> List.map snd
+  in
   let name_counts : (string, int) Hashtbl.t = Hashtbl.create 32 in
   players
   |> List.iter (fun (p: boxscore_player_stat) ->
@@ -1661,7 +1715,7 @@ let player_profile_page (profile: player_profile) ~scope ~(seasons_catalog: seas
           |> String.concat "\n"
         in
         Printf.sprintf
-          {html|<div class="bg-slate-900 rounded-xl border border-slate-800 p-6 shadow-lg"><div class="flex items-start justify-between gap-4 mb-4"><div class="min-w-0"><h3 class="text-slate-300 font-bold uppercase tracking-wider text-xs flex items-center gap-2"><span class="text-lg">🔁</span> Team Movement</h3><div class="mt-1 text-[11px] text-slate-500 leading-relaxed break-words">박스스코어 출전팀 변화로 추정한 연보입니다. (기간=첫/마지막 출전일)</div></div><span class="text-[11px] text-slate-500 font-mono shrink-0">박스스코어</span></div><div class="grid grid-cols-1 gap-3 text-xs"><div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-3 min-w-0"><div class="text-slate-500 font-mono uppercase tracking-widest text-[11px]">Current</div><div class="mt-2 text-slate-300 min-w-0">%s</div></div><div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-3"><div class="text-slate-500 font-mono uppercase tracking-widest text-[11px]">Transfers</div><div class="mt-2 font-mono text-slate-200 text-lg font-black">%d</div></div><div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-3 min-w-0"><div class="text-slate-500 font-mono uppercase tracking-widest text-[11px]">Latest</div><div class="mt-2 text-slate-300 min-w-0">%s</div></div></div><div class="mt-4 rounded-lg border border-slate-800/60 bg-slate-950/30 p-4"><ol class="relative border-l border-slate-800/60 ml-2 space-y-4">%s</ol></div><div class="mt-4 pt-3 border-t border-slate-800/60 text-[11px] text-slate-500 leading-relaxed break-words">공식 이적/드래프트 연보는 추가 수집 중입니다. (공식 페이지 기반)</div></div>|html}
+          {html|<div class="bg-slate-900 rounded-xl border border-slate-800 p-6 shadow-lg"><div class="flex items-start justify-between gap-4 mb-4"><div class="min-w-0"><h3 class="text-slate-300 font-bold uppercase tracking-wider text-xs flex items-center gap-2"><span class="text-lg">🔁</span> Team Movement</h3><div class="mt-1 text-[11px] text-slate-500 leading-relaxed break-words">박스스코어 출전팀 변화로 추정한 연보입니다. (기간=첫/마지막 출전일)</div></div><span class="text-[11px] text-slate-500 font-mono shrink-0">박스스코어</span></div><div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs"><div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-3 min-w-0"><div class="text-slate-500 font-mono uppercase tracking-widest text-[11px]">Current</div><div class="mt-2 text-slate-300 min-w-0">%s</div></div><div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-3"><div class="text-slate-500 font-mono uppercase tracking-widest text-[11px]">Transfers</div><div class="mt-2 font-mono text-slate-200 text-lg font-black">%d</div></div><div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-3 min-w-0"><div class="text-slate-500 font-mono uppercase tracking-widest text-[11px]">Latest</div><div class="mt-2 text-slate-300 min-w-0">%s</div></div></div><div class="mt-4 rounded-lg border border-slate-800/60 bg-slate-950/30 p-4"><ol class="relative border-l border-slate-800/60 ml-2 space-y-4">%s</ol></div><div class="mt-4 pt-3 border-t border-slate-800/60 text-[11px] text-slate-500 leading-relaxed break-words">공식 이적/드래프트 연보는 추가 수집 중입니다. (공식 페이지 기반)</div></div>|html}
           current_team_html transfers last_move_value_html stint_rows
   in
 
@@ -1756,7 +1810,7 @@ let player_profile_page (profile: player_profile) ~scope ~(seasons_catalog: seas
       {html|<div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-5 min-w-0"><div class="flex flex-wrap items-start justify-between gap-3 min-w-0"><div class="text-slate-400 font-bold uppercase tracking-widest text-[11px] flex items-center gap-2"><span class="text-base">🧩</span> Draft / Trade</div><span class="px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700/60 text-[10px] font-mono text-slate-300 whitespace-nowrap">예정</span></div><div class="mt-3 text-slate-400 text-xs leading-relaxed space-y-1"><div><span class="font-mono text-slate-300">Official</span>: 공식 드래프트/이적 기록은 아직 수집 중입니다.</div><div><span class="font-mono text-slate-300">Fallback</span>: 현재는 <span class="font-mono text-slate-300">박스스코어 출전팀</span> 변화로 팀 이동을 추정합니다. (공식 페이지 기반 추가 수집 필요)</div></div></div>|html}
     in
     Printf.sprintf
-      {html|<div class="bg-slate-900 rounded-xl border border-slate-800 p-6 shadow-lg"><div class="flex items-start justify-between gap-4 mb-4"><h3 class="text-slate-300 font-bold uppercase tracking-wider text-xs flex items-center gap-2"><span class="text-lg">🧾</span> Data Notes</h3><span class="px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700/60 text-[10px] font-mono text-slate-300 whitespace-nowrap">Coverage</span></div><div class="grid grid-cols-1 gap-4">%s%s</div><div class="mt-4">%s</div></div>|html}
+      {html|<div class="bg-slate-900 rounded-xl border border-slate-800 p-6 shadow-lg"><div class="flex items-start justify-between gap-4 mb-4"><h3 class="text-slate-300 font-bold uppercase tracking-wider text-xs flex items-center gap-2"><span class="text-lg">🧾</span> Data Notes</h3><span class="px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700/60 text-[10px] font-mono text-slate-300 whitespace-nowrap">Coverage</span></div><div class="grid grid-cols-1 md:grid-cols-2 gap-4">%s%s<div class="md:col-span-2">%s</div></div></div>|html}
       seasons_card_html
       pbp_card_html
       draft_card_html
