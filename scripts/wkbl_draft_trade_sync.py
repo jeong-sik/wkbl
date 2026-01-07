@@ -37,6 +37,8 @@ TRADE_RANGES = (
     (1999, 2000),
 )
 
+DRAFT_ENTRY_START_RE = re.compile(r"\d{4}(?:[~-]\d{4})?\s*WKBL")
+
 
 @dataclass(frozen=True)
 class PlayerDraft:
@@ -164,23 +166,38 @@ def parse_player_draft(player_id: str, html_text: str, *, source_url: str) -> Pl
     if not draft_lis:
         return None
 
+    def split_draft_entries(raw: str) -> list[str]:
+        text = normalize_text(raw)
+        if not text or text in {"-", "없음"}:
+            return []
+
+        matches = list(DRAFT_ENTRY_START_RE.finditer(text))
+        if len(matches) <= 1:
+            return [text]
+
+        out: list[str] = []
+        for idx, m in enumerate(matches):
+            start = m.start()
+            end = matches[idx + 1].start() if idx + 1 < len(matches) else len(text)
+            seg = text[start:end].strip()
+            if seg and seg not in {"-", "없음"}:
+                out.append(seg)
+        return out
+
     entries: list[str] = []
     seen: set[str] = set()
     for li in draft_lis:
         raw = li.get_text(" ", strip=True)
-        raw = normalize_text(raw)
-        if not raw or raw in {"-", "없음"}:
+        if not raw:
             continue
 
         if raw.startswith("드래프트"):
             raw = normalize_text(raw[len("드래프트") :])
 
-        if not raw:
-            continue
-
-        if raw not in seen:
-            entries.append(raw)
-            seen.add(raw)
+        for entry in split_draft_entries(raw):
+            if entry not in seen:
+                entries.append(entry)
+                seen.add(entry)
 
     if not entries:
         return None
