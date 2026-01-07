@@ -68,6 +68,11 @@ python3 scripts/wkbl_refresh_all.py --sync-draft-trade
 # 또는 (DB 백업 포함)
 python3 scripts/wkbl_draft_trade_sync.py --only-missing --backup
 
+# 선수 외부 링크(인스타/영상) 동기화 (로컬 JSON, 출처 포함)
+python3 scripts/wkbl_refresh_all.py --sync-player-links --skip-collect --skip-aggregate --skip-qa
+# 또는 (DB 백업 포함)
+python3 scripts/wkbl_player_links_sync.py --backup
+
 # 로스터 및 사진 검증 포함
 python3 scripts/wkbl_refresh_all.py --update-roster --audit-photos
 ```
@@ -75,6 +80,7 @@ python3 scripts/wkbl_refresh_all.py --update-roster --audit-photos
 ### 개별 스크립트
 - `scripts/wkbl_ajax_collector.py`: 공식 사이트 AJAX 데이터 수집
 - `scripts/wkbl_draft_trade_sync.py`: 공식 Draft/Trade(드래프트/이적현황) 동기화
+- `scripts/wkbl_player_links_sync.py`: 선수 외부 링크(인스타/영상) 동기화 (수동 JSON 기반)
 - `scripts/wkbl_aggregate_stats.py`: 수집된 CSV 집계
 - `scripts/build_wkbl_db.py`: 집계된 CSV를 SQLite(`wkbl.db`)로 변환
 - `scripts/wkbl_db_dedupe_game_stats.py`: 동명이인 등으로 생긴 중복 game_stats 정리
@@ -83,6 +89,10 @@ python3 scripts/wkbl_refresh_all.py --update-roster --audit-photos
 ### Draft/Trade 데이터 신뢰도
 - Draft는 `player_id`(pno) 기반으로 공식 선수 상세 페이지에서 가져와 신뢰도가 높습니다.
 - Trade(이적 이벤트)는 공식 이적현황 원문을 저장하고, **선수 프로필에서는 "이름 포함"으로만 매칭**하므로 동명이인/표기 차이로 오매칭/누락 가능성이 있습니다.
+
+### 선수 외부 링크(인스타/영상) 데이터
+- `data/player_external_links.json`에 `player_id`별 링크를 수동으로 관리합니다. (URL + 출처 URL)
+- UI에는 실링크가 있으면 버튼으로 노출하고, 없으면 검색 링크로 대체합니다.
 
 ## 사진 및 로스터 매핑
 - `data/wkbl/roster_db.json`: 선수명-pno 매핑
