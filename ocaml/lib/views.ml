@@ -2259,16 +2259,17 @@ let player_profile_page ?(leaderboards=None) (profile: player_profile) ~scope ~(
           | _ ->
               Printf.sprintf {html|<div class="space-y-2">%s</div>|html} (String.concat "\n" rows)
         in
-        Printf.sprintf
-          {html|<div class="bg-slate-900 rounded-xl border border-slate-800 p-4 sm:p-6 shadow-lg"><div class="flex items-start justify-between gap-4 mb-4"><div class="min-w-0"><h3 class="text-slate-300 font-bold uppercase tracking-wider text-xs flex items-center gap-2"><span class="text-lg">🏅</span> Leaderboards</h3><div class="mt-1 text-[11px] text-slate-500 leading-relaxed"><span class="font-mono text-slate-300">%s</span> · <span class="font-mono text-slate-300">%s</span> · Top 5</div></div><a href="%s" class="text-[11px] text-slate-500 hover:text-slate-300 underline font-mono shrink-0 whitespace-nowrap">Leaders</a></div>%s</div>|html}
-          (escape_html lb_season_name)
-          (escape_html scope_label)
-          (escape_html leaders_href)
-          rows_html
-  let data_notes_html =
-    let season_range_html ~count ~oldest ~latest =
-      if count <= 0 then
-        {html|<span class="text-slate-500">-</span>|html}
+	        Printf.sprintf
+	          {html|<div class="bg-slate-900 rounded-xl border border-slate-800 p-4 sm:p-6 shadow-lg"><div class="flex items-start justify-between gap-4 mb-4"><div class="min-w-0"><h3 class="text-slate-300 font-bold uppercase tracking-wider text-xs flex items-center gap-2"><span class="text-lg">🏅</span> Leaderboards</h3><div class="mt-1 text-[11px] text-slate-500 leading-relaxed"><span class="font-mono text-slate-300">%s</span> · <span class="font-mono text-slate-300">%s</span> · Top 5</div></div><a href="%s" class="text-[11px] text-slate-500 hover:text-slate-300 underline font-mono shrink-0 whitespace-nowrap">Leaders</a></div>%s</div>|html}
+	          (escape_html lb_season_name)
+	          (escape_html scope_label)
+	          (escape_html leaders_href)
+	          rows_html
+	  in
+	  let data_notes_html =
+	    let season_range_html ~count ~oldest ~latest =
+	      if count <= 0 then
+	        {html|<span class="text-slate-500">-</span>|html}
       else if count = 1 then
         Printf.sprintf {html|<span class="text-slate-300 whitespace-nowrap">%s</span>|html} (escape_html oldest)
       else
@@ -2632,15 +2633,108 @@ let team_profile_page (detail: team_full_detail) ~season ~seasons =
           p.avg_assists)
     |> String.concat "\n"
   in
-  let roster_table_inner =
-    Printf.sprintf
-      {html|<table class="roster-table min-w-[820px] w-full text-xs sm:text-sm font-mono table-fixed tabular-nums"><thead class="bg-slate-800/80 text-slate-400 uppercase tracking-wider text-[10px] sm:text-xs whitespace-nowrap"><tr><th class="px-3 py-3 text-left font-sans w-12 whitespace-nowrap">#</th><th class="px-3 py-3 text-left font-sans w-[260px] whitespace-nowrap">Player</th><th class="px-3 py-3 text-right w-[60px] whitespace-nowrap">GP</th><th class="px-3 py-3 text-right text-orange-400 w-[72px] whitespace-nowrap">PTS</th><th class="px-3 py-3 text-right w-[72px] whitespace-nowrap" title="MG: 팀 득실마진(출전시간 가중 평균)">MG</th><th class="px-3 py-3 text-right w-[72px] whitespace-nowrap">REB</th><th class="px-3 py-3 text-right w-[72px] whitespace-nowrap">AST</th><th class="px-3 py-3 text-right w-[72px] whitespace-nowrap">STL</th><th class="px-3 py-3 text-right w-[72px] whitespace-nowrap">BLK</th><th class="px-3 py-2 text-right w-[72px] whitespace-nowrap">TO</th><th class="px-3 py-2 text-right text-orange-400 w-[72px] whitespace-nowrap">EFF</th></tr></thead><tbody>%s</tbody></table>|html}
-      roster_rows
-  in
-  let game_rows =
-    detail.tfd_recent_games
-    |> List.map (fun (g: team_game_result) ->
-        let res_class = if g.tgr_is_win then "text-sky-400" else "text-rose-400" in
+	  let roster_table_inner =
+	    Printf.sprintf
+	      {html|<table class="roster-table min-w-[820px] w-full text-xs sm:text-sm font-mono table-fixed tabular-nums"><thead class="bg-slate-800/80 text-slate-400 uppercase tracking-wider text-[10px] sm:text-xs whitespace-nowrap"><tr><th class="px-3 py-3 text-left font-sans w-12 whitespace-nowrap">#</th><th class="px-3 py-3 text-left font-sans w-[260px] whitespace-nowrap">Player</th><th class="px-3 py-3 text-right w-[60px] whitespace-nowrap">GP</th><th class="px-3 py-3 text-right text-orange-400 w-[72px] whitespace-nowrap">PTS</th><th class="px-3 py-3 text-right w-[72px] whitespace-nowrap" title="MG: 팀 득실마진(출전시간 가중 평균)">MG</th><th class="px-3 py-3 text-right w-[72px] whitespace-nowrap">REB</th><th class="px-3 py-3 text-right w-[72px] whitespace-nowrap">AST</th><th class="px-3 py-3 text-right w-[72px] whitespace-nowrap">STL</th><th class="px-3 py-3 text-right w-[72px] whitespace-nowrap">BLK</th><th class="px-3 py-2 text-right w-[72px] whitespace-nowrap">TO</th><th class="px-3 py-2 text-right text-orange-400 w-[72px] whitespace-nowrap">EFF</th></tr></thead><tbody>%s</tbody></table>|html}
+	      roster_rows
+	  in
+	  let season_label =
+	    if season = "ALL" then
+	      "All Seasons"
+	    else
+	      seasons
+	      |> List.find_opt (fun (s: season_info) -> s.code = season)
+	      |> Option.map (fun (s: season_info) -> s.name)
+	      |> Option.value ~default:season
+	  in
+	  let game_results_chart =
+	    let games = detail.tfd_game_results in
+	    match games with
+	    | [] ->
+	        {html|<div class="bg-slate-900 rounded-xl border border-slate-800 p-4 text-sm text-slate-400 shadow-lg">No game results</div>|html}
+	    | _ ->
+	        let max_abs_margin =
+	          games
+	          |> List.fold_left
+	               (fun acc (g: team_game_result) ->
+	                 let margin = g.tgr_team_score - g.tgr_opponent_score in
+	                 Stdlib.max acc (Stdlib.abs margin))
+	               1
+	        in
+	        let wins =
+	          games
+	          |> List.fold_left (fun acc (g: team_game_result) -> if g.tgr_is_win then acc + 1 else acc) 0
+	        in
+	        let losses = List.length games - wins in
+	        let avg_margin =
+	          let sum =
+	            games
+	            |> List.fold_left
+	                 (fun acc (g: team_game_result) -> acc + (g.tgr_team_score - g.tgr_opponent_score))
+	                 0
+	          in
+	          float_of_int sum /. float_of_int (List.length games)
+	        in
+	        let bars =
+	          games
+	          |> List.map (fun (g: team_game_result) ->
+	               let margin = g.tgr_team_score - g.tgr_opponent_score in
+	               let abs_margin = Stdlib.abs margin in
+	               let height_pct =
+	                 (float_of_int abs_margin /. float_of_int max_abs_margin) *. 100.0
+	               in
+	               let opponent_label =
+	                 if g.tgr_is_home then "vs " ^ g.tgr_opponent else "@ " ^ g.tgr_opponent
+	               in
+	               let margin_str =
+	                 if margin > 0 then Printf.sprintf "+%d" margin else string_of_int margin
+	               in
+	               let title =
+	                 Printf.sprintf "%s • %s • %d-%d (%s)"
+	                   g.tgr_game_date
+	                   opponent_label
+	                   g.tgr_team_score
+	                   g.tgr_opponent_score
+	                   margin_str
+	                 |> escape_html
+	               in
+	               let pos_bar =
+	                 if margin > 0 then
+	                   Printf.sprintf
+	                     {html|<div class="w-full rounded-sm bg-sky-500/80 group-hover:bg-sky-400 transition-colors" style="height: %.0f%%"></div>|html}
+	                     height_pct
+	                 else
+	                   ""
+	               in
+	               let neg_bar =
+	                 if margin < 0 then
+	                   Printf.sprintf
+	                     {html|<div class="w-full rounded-sm bg-rose-500/80 group-hover:bg-rose-400 transition-colors" style="height: %.0f%%"></div>|html}
+	                     height_pct
+	                 else
+	                   ""
+	               in
+	               Printf.sprintf
+	                 {html|<a href="/boxscore/%s" class="group block w-2 sm:w-[6px] h-24" title="%s"><div class="h-1/2 flex items-end">%s</div><div class="h-1/2 flex items-start">%s</div></a>|html}
+	                 (Uri.pct_encode g.tgr_game_id)
+	                 title
+	                 pos_bar
+	                 neg_bar)
+	          |> String.concat "\n"
+	        in
+	        Printf.sprintf
+	          {html|<div class="bg-slate-900 rounded-xl border border-slate-800 p-4 shadow-lg"><div class="flex items-center justify-between gap-3"><div class="text-[11px] text-slate-400 uppercase tracking-widest font-bold">%s</div><div class="text-xs font-mono text-slate-400 tabular-nums">%d-%d</div></div><div class="mt-2 flex items-center justify-between gap-3 text-[11px] text-slate-500 font-mono tabular-nums"><span>AVG MG %+.1f</span><span>±%d</span></div><div class="mt-3 overflow-x-auto pb-1"><div class="relative h-24 w-max"><div class="absolute left-0 right-0 top-1/2 h-px bg-slate-800/80"></div><div class="flex items-stretch gap-[2px] h-24 w-max pr-1">%s</div></div></div><div class="mt-3 text-[11px] text-slate-500 leading-relaxed">막대: 득실마진(MG=팀-상대). 클릭하면 박스스코어.</div></div>|html}
+	          (escape_html season_label)
+	          wins
+	          losses
+	          avg_margin
+	          max_abs_margin
+	          bars
+	  in
+	  let game_rows =
+	    detail.tfd_recent_games
+	    |> List.map (fun (g: team_game_result) ->
+	        let res_class = if g.tgr_is_win then "text-sky-400" else "text-rose-400" in
         let res_label = if g.tgr_is_win then "W" else "L" in
         let margin = g.tgr_team_score - g.tgr_opponent_score in
         let margin_class =
@@ -2668,17 +2762,18 @@ let team_profile_page (detail: team_full_detail) ~season ~seasons =
           (escape_html margin_str))
     |> String.concat "\n"
   in
-  layout ~title:(t ^ " | WKBL Team Profile")
-    ~content:(Printf.sprintf {html|<div class="space-y-6 sm:space-y-8 animate-fade-in"><div class="bg-slate-900 rounded-xl border border-slate-800 p-5 sm:p-8 shadow-2xl flex flex-col md:flex-row items-center md:items-start gap-6 sm:gap-8"><div class="w-24 h-24 sm:w-32 sm:h-32 bg-slate-800 rounded-xl flex items-center justify-center p-3 sm:p-4 border-2 border-slate-700 shadow-inner">%s</div><div class="text-center md:text-left space-y-4 w-full"><div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3"><h1 class="text-3xl sm:text-4xl font-black text-white">%s</h1><form action="/team/%s" method="get" class="flex flex-col sm:flex-row items-stretch sm:items-center justify-center sm:justify-end gap-2 w-full sm:w-auto"><span class="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Season</span><select name="season" class="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none w-full sm:w-48" onchange="this.form.submit()">%s</select></form></div>%s</div></div><div class="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8"><div class="space-y-4 lg:col-span-2"><h3 class="text-xl font-bold text-white">Roster</h3><div class="sm:hidden space-y-3">%s</div><details class="sm:hidden bg-slate-900/50 rounded-xl border border-slate-800 p-4"><summary class="cursor-pointer font-bold text-slate-300 select-none">Full table</summary><div class="mt-3 overflow-x-auto">%s</div></details><div class="hidden sm:block bg-slate-900 rounded-xl border border-slate-800 overflow-x-auto shadow-lg">%s</div></div><div class="space-y-4 lg:col-span-1"><h3 class="text-xl font-bold text-white">Recent Results</h3><div class="bg-slate-900 rounded-xl border border-slate-800 overflow-x-auto overflow-y-hidden shadow-lg"><table class="min-w-[480px] w-full text-xs sm:text-sm font-mono tabular-nums table-fixed"><thead class="bg-slate-800/80 text-slate-400 uppercase tracking-wider text-[10px] sm:text-xs whitespace-nowrap"><tr><th class="px-4 py-3 text-left font-sans w-24">Date</th><th class="px-4 py-3 text-left font-sans">Opponent</th><th class="px-4 py-3 text-center font-sans w-14">Result</th><th class="px-4 py-3 text-right font-sans w-36">Score</th></tr></thead><tbody>%s</tbody></table></div></div></div></div>|html}
-          (team_logo_tag ~class_name:"w-16 h-16 sm:w-24 sm:h-24" t)
-          (escape_html t)
-          (Uri.pct_encode t)
-          season_options
-          standing_info
-          roster_cards
-          roster_table_inner
-          roster_table_inner
-          game_rows)
+	  layout ~title:(t ^ " | WKBL Team Profile")
+	    ~content:(Printf.sprintf {html|<div class="space-y-6 sm:space-y-8 animate-fade-in"><div class="bg-slate-900 rounded-xl border border-slate-800 p-5 sm:p-8 shadow-2xl flex flex-col md:flex-row items-center md:items-start gap-6 sm:gap-8"><div class="w-24 h-24 sm:w-32 sm:h-32 bg-slate-800 rounded-xl flex items-center justify-center p-3 sm:p-4 border-2 border-slate-700 shadow-inner">%s</div><div class="text-center md:text-left space-y-4 w-full"><div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3"><h1 class="text-3xl sm:text-4xl font-black text-white">%s</h1><form action="/team/%s" method="get" class="flex flex-col sm:flex-row items-stretch sm:items-center justify-center sm:justify-end gap-2 w-full sm:w-auto"><span class="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Season</span><select name="season" class="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none w-full sm:w-48" onchange="this.form.submit()">%s</select></form></div>%s</div></div><div class="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8"><div class="space-y-4 lg:col-span-2"><h3 class="text-xl font-bold text-white">Roster</h3><div class="sm:hidden space-y-3">%s</div><details class="sm:hidden bg-slate-900/50 rounded-xl border border-slate-800 p-4"><summary class="cursor-pointer font-bold text-slate-300 select-none">Full table</summary><div class="mt-3 overflow-x-auto">%s</div></details><div class="hidden sm:block bg-slate-900 rounded-xl border border-slate-800 overflow-x-auto shadow-lg">%s</div></div><div class="space-y-6 lg:col-span-1"><h3 class="text-xl font-bold text-white">Game Results</h3>%s<h3 class="text-xl font-bold text-white">Recent Results</h3><div class="bg-slate-900 rounded-xl border border-slate-800 overflow-x-auto overflow-y-hidden shadow-lg"><table class="min-w-[480px] w-full text-xs sm:text-sm font-mono tabular-nums table-fixed"><thead class="bg-slate-800/80 text-slate-400 uppercase tracking-wider text-[10px] sm:text-xs whitespace-nowrap"><tr><th class="px-4 py-3 text-left font-sans w-24">Date</th><th class="px-4 py-3 text-left font-sans">Opponent</th><th class="px-4 py-3 text-center font-sans w-14">Result</th><th class="px-4 py-3 text-right font-sans w-36">Score</th></tr></thead><tbody>%s</tbody></table></div></div></div></div>|html}
+	          (team_logo_tag ~class_name:"w-16 h-16 sm:w-24 sm:h-24" t)
+	          (escape_html t)
+	          (Uri.pct_encode t)
+	          season_options
+	          standing_info
+	          roster_cards
+	          roster_table_inner
+	          roster_table_inner
+	          game_results_chart
+	          game_rows)
 
 (** DB QA dashboard page *)
 let qa_dashboard_page (report: Db.qa_db_report) ?(markdown=None) () =
