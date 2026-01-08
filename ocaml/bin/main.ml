@@ -774,6 +774,56 @@ let () =
           | Error e -> Dream.html (Views.error_page (Db.show_db_error e)))
     );
 
+    (* Draft / Trade (official transactions) *)
+    Dream.get "/transactions" (fun request ->
+      let tab =
+        Dream.query request "tab"
+        |> Option.map String.lowercase_ascii
+        |> Option.value ~default:"draft"
+      in
+      let year =
+        Dream.query request "year"
+        |> Option.bind int_of_string_opt
+        |> Option.value ~default:0
+      in
+      let q = Dream.query request "q" |> Option.value ~default:"" in
+      let open Lwt.Syntax in
+      let* draft_years_res = Db.get_draft_years () in
+      let* trade_years_res = Db.get_official_trade_years () in
+      match draft_years_res, trade_years_res with
+      | Error e, _ | _, Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+      | Ok draft_years, Ok trade_years ->
+          if tab = "trade" then (
+            let* events_res = Db.get_official_trade_events ~year ~search:q () in
+            match events_res with
+            | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+            | Ok events ->
+                Dream.html
+                  (Views.transactions_page
+                     ~tab
+                     ~year
+                     ~q
+                     ~draft_years
+                     ~trade_years
+                     ~draft_picks:[]
+                     ~trade_events:events)
+          ) else (
+            let* picks_res = Db.get_draft_picks ~year ~search:q () in
+            match picks_res with
+            | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+            | Ok picks ->
+                Dream.html
+                  (Views.transactions_page
+                     ~tab:"draft"
+                     ~year
+                     ~q
+                     ~draft_years
+                     ~trade_years
+                     ~draft_picks:picks
+                     ~trade_events:[])
+          )
+    );
+
     (* QA & System *)
     Dream.get "/qa" (fun _ ->
       let open Lwt.Syntax in
