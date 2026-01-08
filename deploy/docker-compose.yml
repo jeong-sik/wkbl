@@ -1,0 +1,25 @@
+services:
+  wkbl:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      args:
+        WKBL_YEARS: ${WKBL_YEARS:-5}
+    image: wkbl:latest
+    restart: unless-stopped
+    environment:
+      PORT: "8000"
+      WKBL_DB_PATH: /app/data/wkbl.db
+      WKBL_STATIC_PATH: /app/static
+      WKBL_ASSET_VERSION: ${WKBL_ASSET_VERSION:-}
+      CF_WEB_ANALYTICS_TOKEN: ${CF_WEB_ANALYTICS_TOKEN:-}
+    ports:
+      # Bind locally; access from the outside should go through Cloudflare Tunnel.
+      - "127.0.0.1:8000:8000"
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      - wkbl

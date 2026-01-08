@@ -489,6 +489,14 @@ let players_table (players: player_aggregate list) =
 (** Main layout *)
 let layout ~title ~content =
   let v = escape_html asset_version in
+  let cf_wa_script =
+    match Sys.getenv_opt "CF_WEB_ANALYTICS_TOKEN" |> Option.map String.trim with
+    | Some token when token <> "" ->
+        Printf.sprintf
+          {html|  <script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cfasync="false" data-cf-beacon='{"token":"%s"}'></script>|html}
+          (escape_html token)
+    | _ -> ""
+  in
   Printf.sprintf
     {html|<!DOCTYPE html>
 <html lang="ko" class="dark">
@@ -502,6 +510,7 @@ let layout ~title ~content =
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/css/styles.css?v=%s">
   <script data-cfasync="false">tailwind.config = { darkMode: 'class', theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] } } } }</script>
+%s
 </head>
 <body class="bg-[#0b0e14] text-slate-200 font-sans antialiased min-h-screen">
   <header class="sticky top-0 z-50 bg-slate-900/95 backdrop-blur border-b border-slate-800 px-4 sm:px-6 py-3 sm:py-4">
@@ -530,7 +539,7 @@ let layout ~title ~content =
   <footer class="border-t border-slate-800 py-6 text-center text-slate-500 text-sm">Built with OCaml + Dream + HTMX</footer>
 </body>
 </html>|html}
-    (escape_html title) v v v content
+    (escape_html title) v v v cf_wa_script content
 
 (** Home page *)
 let home_page players =
