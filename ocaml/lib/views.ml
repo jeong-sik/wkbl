@@ -135,7 +135,7 @@ let team_logo_tag ?(class_name="w-8 h-8") team_name =
         class_name
 
 (** Team badge component *)
-let team_badge ?(max_width="max-w-[88px] sm:max-w-[140px]") team_name =
+let team_badge ?(max_width="max-w-[110px] sm:max-w-[180px]") team_name =
   let display = normalize_label team_name in
   let color =
     team_code_of_string display
@@ -221,7 +221,7 @@ let score_quality_badge ?(compact=false) (q: game_score_quality) =
   let text =
     if compact then
       match q with
-      | Verified -> "OK"
+      | Verified -> "✓"
       | Derived -> "Σ"
       | Mismatch -> "!"
     else
@@ -2154,7 +2154,7 @@ let player_profile_page ?(leaderboards=None) (profile: player_profile) ~scope ~(
 	            trade_details_html
 	        in
 	        Printf.sprintf
-	          {html|<div class="bg-slate-900 rounded-xl border border-slate-800 p-4 sm:p-6 shadow-lg"><div class="flex items-start justify-between gap-4 mb-4"><div class="min-w-0"><h3 class="text-slate-300 font-bold uppercase tracking-wider text-xs flex items-center gap-2"><span class="text-lg">🔁</span> Team Movement</h3><div class="mt-1 text-[11px] text-slate-500 leading-relaxed break-words">박스스코어 출전팀 변화로 추정한 연보입니다. (기간=첫/마지막 출전일)</div></div><span class="text-[11px] text-slate-500 font-mono shrink-0">박스스코어</span></div><div class="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3 gap-3 text-xs"><div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-3 min-w-0"><div class="text-slate-500 font-mono uppercase tracking-widest text-[11px]">Current</div><div class="mt-2 text-slate-300 min-w-0">%s</div></div><div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-3"><div class="text-slate-500 font-mono uppercase tracking-widest text-[11px]">Transfers</div><div class="mt-2 font-mono text-slate-200 text-lg font-black">%d</div></div><div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-3 min-w-0"><div class="text-slate-500 font-mono uppercase tracking-widest text-[11px]">Latest</div><div class="mt-2 text-slate-300 min-w-0">%s</div></div></div><div class="mt-4 rounded-lg border border-slate-800/60 bg-slate-950/30 p-4"><ol class="relative border-l border-slate-800/60 ml-2 space-y-4">%s</ol></div>%s</div>|html}
+	          {html|<div class="bg-slate-900 rounded-xl border border-slate-800 p-4 sm:p-6 shadow-lg"><div class="flex items-start justify-between gap-4 mb-4"><div class="min-w-0"><h3 class="text-slate-300 font-bold uppercase tracking-wider text-xs flex items-center gap-2"><span class="text-lg">🔁</span> Team Movement</h3><div class="mt-1 text-[11px] text-slate-500 leading-relaxed break-words">박스스코어 출전팀 변화로 추정한 연보입니다. (기간=첫/마지막 출전일)</div></div><span class="text-[11px] text-slate-500 font-mono shrink-0">박스스코어</span></div><div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3 gap-3 text-xs"><div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-3 min-w-0"><div class="text-slate-500 font-mono uppercase tracking-widest text-[11px]">Current</div><div class="mt-2 text-slate-300 min-w-0">%s</div></div><div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-3"><div class="text-slate-500 font-mono uppercase tracking-widest text-[11px]">Transfers</div><div class="mt-2 font-mono text-slate-200 text-lg font-black">%d</div></div><div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-3 min-w-0"><div class="text-slate-500 font-mono uppercase tracking-widest text-[11px]">Latest</div><div class="mt-2 text-slate-300 min-w-0">%s</div></div></div><div class="mt-4 rounded-lg border border-slate-800/60 bg-slate-950/30 p-4"><ol class="relative border-l border-slate-800/60 ml-2 space-y-4">%s</ol></div>%s</div>|html}
 	          current_team_html transfers last_move_value_html stint_rows official_html
   in
 
@@ -2389,7 +2389,7 @@ let player_profile_page ?(leaderboards=None) (profile: player_profile) ~scope ~(
 	        trade_value_html
 	    in
 	    Printf.sprintf
-	      {html|<div class="bg-slate-900 rounded-xl border border-slate-800 p-4 sm:p-6 shadow-lg"><div class="flex items-start justify-between gap-4 mb-4"><h3 class="text-slate-300 font-bold uppercase tracking-wider text-xs flex items-center gap-2"><span class="text-lg">🧾</span> Data Notes</h3><span class="px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700/60 text-[10px] font-mono text-slate-300 whitespace-nowrap">Coverage</span></div><div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-3 sm:gap-4">%s%s<div class="sm:col-span-2 lg:col-span-1 xl:col-span-2">%s</div></div></div>|html}
+	      {html|<div class="bg-slate-900 rounded-xl border border-slate-800 p-4 sm:p-6 shadow-lg"><div class="flex items-start justify-between gap-4 mb-4"><h3 class="text-slate-300 font-bold uppercase tracking-wider text-xs flex items-center gap-2"><span class="text-lg">🧾</span> Data Notes</h3><span class="px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700/60 text-[10px] font-mono text-slate-300 whitespace-nowrap">Coverage</span></div><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-3 md:gap-4">%s%s<div class="md:col-span-2 lg:col-span-1 xl:col-span-2">%s</div></div></div>|html}
 	      seasons_card_html
 	      pbp_card_html
 	      draft_card_html
@@ -2713,30 +2713,30 @@ let team_profile_page (detail: team_full_detail) ~season ~seasons =
 	                     height_pct
 	                 else
 	                   ""
-	               in
-	               Printf.sprintf
-	                 {html|<a href="/boxscore/%s" class="group block w-2 sm:w-[6px] h-24" title="%s"><div class="h-1/2 flex items-end">%s</div><div class="h-1/2 flex items-start">%s</div></a>|html}
-	                 (Uri.pct_encode g.tgr_game_id)
-	                 title
-	                 pos_bar
-	                 neg_bar)
-	          |> String.concat "\n"
-	        in
-	        Printf.sprintf
-	          {html|<div class="bg-slate-900 rounded-xl border border-slate-800 p-4 shadow-lg"><div class="flex items-center justify-between gap-3"><div class="text-[11px] text-slate-400 uppercase tracking-widest font-bold">%s</div><div class="text-xs font-mono text-slate-400 tabular-nums">%d-%d</div></div><div class="mt-2 flex items-center justify-between gap-3 text-[11px] text-slate-500 font-mono tabular-nums"><span>AVG MG %+.1f</span><span>±%d</span></div><div class="mt-3 overflow-x-auto pb-1"><div class="relative h-24 w-max"><div class="absolute left-0 right-0 top-1/2 h-px bg-slate-800/80"></div><div class="flex items-stretch gap-[2px] h-24 w-max pr-1">%s</div></div></div><div class="mt-3 text-[11px] text-slate-500 leading-relaxed">막대: 득실마진(MG=팀-상대). 클릭하면 박스스코어.</div></div>|html}
-	          (escape_html season_label)
-	          wins
-	          losses
-	          avg_margin
-	          max_abs_margin
-	          bars
-	  in
-	  let game_rows =
-	    detail.tfd_recent_games
-	    |> List.map (fun (g: team_game_result) ->
-	        let res_class = if g.tgr_is_win then "text-sky-400" else "text-rose-400" in
-        let res_label = if g.tgr_is_win then "W" else "L" in
-        let margin = g.tgr_team_score - g.tgr_opponent_score in
+		               in
+		               Printf.sprintf
+		                 {html|<a href="/boxscore/%s" class="group block w-2 sm:w-1.5 h-24" title="%s"><div class="h-1/2 flex items-end">%s</div><div class="h-1/2 flex items-start">%s</div></a>|html}
+		                 (Uri.pct_encode g.tgr_game_id)
+		                 title
+		                 pos_bar
+		                 neg_bar)
+		          |> String.concat "\n"
+		        in
+		        Printf.sprintf
+		          {html|<div class="bg-slate-900 rounded-xl border border-slate-800 p-4 shadow-lg"><div class="flex items-center justify-between gap-3"><div class="text-[11px] text-slate-400 uppercase tracking-widest font-bold">%s</div><div class="text-xs font-mono text-slate-400 tabular-nums">%d-%d</div></div><div class="mt-2 flex items-center justify-between gap-3 text-[11px] text-slate-500 font-mono tabular-nums"><span>AVG MG %+.1f</span><span>±%d</span></div><div class="mt-3 overflow-x-auto pb-1"><div class="relative h-24 w-max"><div class="absolute left-0 right-0 top-1/2 h-px bg-slate-800/80"></div><div class="flex items-stretch gap-0.5 h-24 w-max pr-1">%s</div></div></div><div class="mt-3 text-[11px] text-slate-500 leading-relaxed">막대: 득실마진(MG=팀-상대). 클릭하면 박스스코어.</div></div>|html}
+		          (escape_html season_label)
+		          wins
+		          losses
+		          avg_margin
+		          max_abs_margin
+		          bars
+		  in
+		  let game_rows =
+		    detail.tfd_recent_games
+		    |> List.map (fun (g: team_game_result) ->
+		        let res_class = if g.tgr_is_win then "text-sky-400" else "text-rose-400" in
+	        let res_label = if g.tgr_is_win then "W" else "L" in
+	        let margin = g.tgr_team_score - g.tgr_opponent_score in
         let margin_class =
           if margin > 0 then "text-sky-400"
           else if margin < 0 then "text-rose-400"
@@ -2745,17 +2745,25 @@ let team_profile_page (detail: team_full_detail) ~season ~seasons =
         let margin_str =
           if margin > 0 then Printf.sprintf "+%d" margin else string_of_int margin
         in
-        let opponent_label =
-          if g.tgr_is_home then "vs " ^ g.tgr_opponent else "@ " ^ g.tgr_opponent
-        in
-        Printf.sprintf
-          {html|<tr class="border-b border-slate-800/60 hover:bg-slate-800/30 transition-colors"><td class="px-4 py-3 text-slate-400 text-sm font-mono whitespace-nowrap w-24"><a href="/boxscore/%s" class="hover:text-orange-400 transition-colors">%s</a></td><td class="px-4 py-3 text-white"><span class="block truncate" title="%s">%s</span></td><td class="px-4 py-3 text-center font-bold %s whitespace-nowrap w-14">%s</td><td class="px-4 py-3 text-right font-mono text-white whitespace-nowrap w-36"><div class="flex items-center justify-end gap-2 flex-nowrap"><span class="whitespace-nowrap">%d - %d</span><span class="px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700/60 text-[10px] font-mono %s whitespace-nowrap">%s</span></div></td></tr>|html}
-          (Uri.pct_encode g.tgr_game_id)
-          (escape_html g.tgr_game_date)
-          (escape_html opponent_label)
-          (escape_html opponent_label)
-          res_class
-          res_label
+	        let opponent_label =
+	          if g.tgr_is_home then "vs " ^ g.tgr_opponent else "@ " ^ g.tgr_opponent
+	        in
+	        let date_short =
+	          if String.length g.tgr_game_date >= 10 then
+	            String.sub g.tgr_game_date 5 5
+	          else
+	            g.tgr_game_date
+	        in
+	        Printf.sprintf
+	          {html|<tr class="border-b border-slate-800/60 hover:bg-slate-800/30 transition-colors"><td class="px-4 py-3 text-slate-400 text-sm font-mono whitespace-nowrap w-24"><a href="/boxscore/%s" class="hover:text-orange-400 transition-colors" title="%s"><span class="sm:hidden">%s</span><span class="hidden sm:inline">%s</span></a></td><td class="px-4 py-3 text-white"><span class="block truncate" title="%s">%s</span></td><td class="px-4 py-3 text-center font-bold %s whitespace-nowrap w-14">%s</td><td class="px-4 py-3 text-right font-mono text-white whitespace-nowrap w-36"><div class="flex items-center justify-end gap-2 flex-nowrap"><span class="whitespace-nowrap">%d - %d</span><span class="px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700/60 text-[10px] font-mono %s whitespace-nowrap">%s</span></div></td></tr>|html}
+	          (Uri.pct_encode g.tgr_game_id)
+	          (escape_html g.tgr_game_date)
+	          (escape_html date_short)
+	          (escape_html g.tgr_game_date)
+	          (escape_html opponent_label)
+	          (escape_html opponent_label)
+	          res_class
+	          res_label
           g.tgr_team_score
           g.tgr_opponent_score
           margin_class
