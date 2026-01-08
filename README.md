@@ -43,10 +43,14 @@ docker run --rm -p 8000:8000 wkbl
 2. Health check는 `/health`를 사용합니다.
 3. 데이터는 이미지 빌드 단계에서 생성되므로, 최신 데이터가 필요하면 재배포(redeploy)로 갱신합니다.
 
+### VPS + Cloudflare Tunnel (월 ~$5, 덜 귀찮은 상시 운영)
+- `docs/DEPLOY-VPS.md` 참고
+
 #### 환경변수
 - `PORT`: 플랫폼이 주입 (없으면 8000)
 - `WKBL_DB_PATH`: SQLite 경로 (기본값: `data/wkbl.db`)
 - `WKBL_STATIC_PATH`: 정적 파일 경로 (기본값: 자동 탐색)
+- `CF_WEB_ANALYTICS_TOKEN`: Cloudflare Web Analytics token (설정 시 자동 삽입)
 
 ## 엔드포인트 (OCaml)
 - `/`: 홈 (선수 목록)
