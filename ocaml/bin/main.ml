@@ -420,6 +420,41 @@ let () =
             | Error e -> add_error (Db.show_db_error e); None
           in
 
+          let* p1_candidates_res =
+            if p1_selected = None && String.trim p1_query <> "" then
+              let limit = if p1_id_opt <> None then 30 else 8 in
+              Db.get_players ~season:p1_season ~search:p1_query ~sort:ByMinutes ~limit ()
+            else
+              Lwt.return (Ok [])
+          in
+          let* p2_candidates_res =
+            if p2_selected = None && String.trim p2_query <> "" then
+              let limit = if p2_id_opt <> None then 30 else 8 in
+              Db.get_players ~season:p2_season ~search:p2_query ~sort:ByMinutes ~limit ()
+            else
+              Lwt.return (Ok [])
+          in
+          let p1_candidates = match p1_candidates_res with Ok xs -> xs | Error _ -> [] in
+          let p2_candidates = match p2_candidates_res with Ok xs -> xs | Error _ -> [] in
+
+          (* Fallback: if aggregate-by-id fails but name search returns the id, use it. *)
+          let p1_selected, p1_candidates =
+            match p1_selected, p1_id_opt with
+            | None, Some pid ->
+                (match List.find_opt (fun (c: player_aggregate) -> c.player_id = pid) p1_candidates with
+                | Some c -> (Some c, [])
+                | None -> (None, p1_candidates))
+            | _ -> (p1_selected, p1_candidates)
+          in
+          let p2_selected, p2_candidates =
+            match p2_selected, p2_id_opt with
+            | None, Some pid ->
+                (match List.find_opt (fun (c: player_aggregate) -> c.player_id = pid) p2_candidates with
+                | Some c -> (Some c, [])
+                | None -> (None, p2_candidates))
+            | _ -> (p2_selected, p2_candidates)
+          in
+
           let* p1_available_seasons =
             match p1_id_opt, p1_selected with
             | Some pid, None -> (
@@ -471,21 +506,6 @@ let () =
               in
               add_error (Printf.sprintf "No stats for player_id=%s (season=%s)%s" pid p2_season suffix)
           | _ -> ());
-
-          let* p1_candidates_res =
-            if p1_selected = None && String.trim p1_query <> "" then
-              Db.get_players ~season:p1_season ~search:p1_query ~sort:ByMinutes ~limit:8 ()
-            else
-              Lwt.return (Ok [])
-          in
-          let* p2_candidates_res =
-            if p2_selected = None && String.trim p2_query <> "" then
-              Db.get_players ~season:p2_season ~search:p2_query ~sort:ByMinutes ~limit:8 ()
-            else
-              Lwt.return (Ok [])
-          in
-          let p1_candidates = match p1_candidates_res with Ok xs -> xs | Error _ -> [] in
-          let p2_candidates = match p2_candidates_res with Ok xs -> xs | Error _ -> [] in
 
           let h2h_disabled_reason =
             match p1_selected, p2_selected with
