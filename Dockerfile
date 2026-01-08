@@ -3,6 +3,7 @@
 FROM python:3.11-slim AS data-builder
 
 ARG WKBL_YEARS=5
+ARG WKBL_SYNC_DRAFT_TRADE=0
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_NO_CACHE_DIR=1
 
@@ -16,6 +17,7 @@ COPY scripts/ scripts/
 # Fetch -> aggregate -> build SQLite DB (data/wkbl.db).
 RUN python scripts/wkbl_refresh_all.py --skip-qa -- --years ${WKBL_YEARS}
 RUN python scripts/build_wkbl_db.py --force
+RUN if [ "${WKBL_SYNC_DRAFT_TRADE}" = "1" ]; then python scripts/wkbl_draft_trade_sync.py --only-missing; fi
 
 
 FROM ocaml/opam:debian-12-ocaml-5.1 AS ocaml-builder
@@ -52,4 +54,3 @@ ENV WKBL_DB_PATH=/app/data/wkbl.db \
 EXPOSE 8000
 
 CMD ["/app/wkbl"]
-

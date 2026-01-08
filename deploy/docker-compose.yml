@@ -5,6 +5,7 @@ services:
       dockerfile: Dockerfile
       args:
         WKBL_YEARS: ${WKBL_YEARS:-5}
+        WKBL_SYNC_DRAFT_TRADE: ${WKBL_SYNC_DRAFT_TRADE:-0}
     image: wkbl:latest
     restart: unless-stopped
     environment:

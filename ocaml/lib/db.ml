@@ -362,6 +362,40 @@ module Types = struct
                   (t (option int)
                      (t (option string) (t string (t string string))))))))
 
+  let draft_pick_row =
+    let encode _ = assert false in
+    let decode (player_id, rest) =
+      let (player_name, rest) = rest in
+      let (draft_year, rest) = rest in
+      let (draft_round, rest) = rest in
+      let (pick_in_round, rest) = rest in
+      let (overall_pick, rest) = rest in
+      let (draft_team, rest) = rest in
+      let (raw_text, rest) = rest in
+      let (source_url, scraped_at) = rest in
+      Ok {
+        dpr_player_id = player_id;
+        dpr_player_name = player_name;
+        dpr_draft_year = draft_year;
+        dpr_draft_round = draft_round;
+        dpr_pick_in_round = pick_in_round;
+        dpr_overall_pick = overall_pick;
+        dpr_draft_team = draft_team;
+        dpr_raw_text = raw_text;
+        dpr_source_url = source_url;
+        dpr_scraped_at = scraped_at;
+      }
+    in
+    let t = tup2 in
+    custom ~encode ~decode
+      (t string
+         (t string
+            (t (option int)
+               (t (option int)
+                  (t (option int)
+                     (t (option int)
+                        (t (option string) (t string (t string string)))))))))
+
 	  let official_trade_event =
 	    let encode _ = assert false in
 	    let decode (event_date, rest) =
@@ -1859,6 +1893,36 @@ module Queries = struct
     WHERE player_id = ?
   |}
 
+  let draft_years = (unit ->* int) {|
+    SELECT DISTINCT draft_year
+    FROM player_drafts
+    WHERE draft_year IS NOT NULL
+    ORDER BY draft_year DESC
+  |}
+
+  let draft_picks_filtered = (tup2 (tup2 int int) (tup2 string string) ->* Types.draft_pick_row) {|
+    SELECT
+      d.player_id,
+      p.player_name,
+      d.draft_year,
+      d.draft_round,
+      d.pick_in_round,
+      d.overall_pick,
+      d.draft_team,
+      d.raw_text,
+      d.source_url,
+      d.scraped_at
+    FROM player_drafts d
+    JOIN players p ON p.player_id = d.player_id
+    WHERE (? = 0 OR d.draft_year = ?)
+      AND (p.player_name LIKE ? OR d.raw_text LIKE ?)
+    ORDER BY
+      COALESCE(d.draft_year, 0) DESC,
+      COALESCE(d.overall_pick, 999) ASC,
+      p.player_name ASC
+    LIMIT 300
+  |}
+
   let official_trade_events_by_player_name_norm = (string ->* Types.official_trade_event) {|
     SELECT
       event_date,
@@ -1870,6 +1934,26 @@ module Queries = struct
     WHERE event_text_norm LIKE ?
     ORDER BY event_date DESC, id DESC
     LIMIT 30
+  |}
+
+  let official_trade_years = (unit ->* int) {|
+    SELECT DISTINCT event_year
+    FROM official_trade_events
+    ORDER BY event_year DESC
+  |}
+
+  let official_trade_events_filtered = (tup2 (tup2 int int) string ->* Types.official_trade_event) {|
+    SELECT
+      event_date,
+      event_year,
+      event_text,
+      source_url,
+      scraped_at
+    FROM official_trade_events
+    WHERE (? = 0 OR event_year = ?)
+      AND event_text_norm LIKE ?
+    ORDER BY event_date DESC, id DESC
+    LIMIT 300
   |}
 
   let player_external_links_by_player_id = (string ->* Types.player_external_link) {|
@@ -2366,6 +2450,20 @@ end
   let get_player_aggregate_by_id ~player_id ~season (module Db : Caqti_lwt.CONNECTION) =
     let s = if String.trim season = "" then "ALL" else season in
     Db.find_opt Queries.player_aggregate_by_id (s, (s, (player_id, (s, s))))
+
+  let get_draft_years (module Db : Caqti_lwt.CONNECTION) =
+    Db.collect_list Queries.draft_years ()
+
+  let get_draft_picks ~year ~search (module Db : Caqti_lwt.CONNECTION) =
+    let pattern = normalize_search_pattern (normalize_label search) in
+    Db.collect_list Queries.draft_picks_filtered ((year, year), (pattern, pattern))
+
+  let get_official_trade_years (module Db : Caqti_lwt.CONNECTION) =
+    Db.collect_list Queries.official_trade_years ()
+
+  let get_official_trade_events ~year ~search (module Db : Caqti_lwt.CONNECTION) =
+    let pattern = normalize_search_pattern (normalize_label search) in
+    Db.collect_list Queries.official_trade_events_filtered ((year, year), pattern)
   let query_for_sort = function | ByPoints -> Queries.player_stats_by_points | ByMargin -> Queries.player_stats_by_margin | ByRebounds -> Queries.player_stats_by_rebounds | ByAssists -> Queries.player_stats_by_assists | ByEfficiency -> Queries.player_stats_by_efficiency | ByMinutes -> Queries.player_stats_by_minutes
   let get_players_filtered ~season ~sort ~search ~limit ~include_mismatch (module Db : Caqti_lwt.CONNECTION) =
     let pattern = normalize_search_pattern search in
@@ -2627,6 +2725,18 @@ let get_players ?(season="ALL") ?(limit=50) ?(search="") ?(sort=ByEfficiency) ?(
   with_db (fun db -> Repo.get_players_filtered ~season ~sort ~search ~limit ~include_mismatch db)
 let get_players_by_team ~team_name ?(season="ALL") ?(limit=20) () =
   with_db (fun db -> Repo.get_players_by_team ~team_name ~season ~limit db)
+
+let get_draft_years () =
+  with_db (fun db -> Repo.get_draft_years db)
+
+let get_draft_picks ?(year=0) ?(search="") () =
+  with_db (fun db -> Repo.get_draft_picks ~year ~search db)
+
+let get_official_trade_years () =
+  with_db (fun db -> Repo.get_official_trade_years db)
+
+let get_official_trade_events ?(year=0) ?(search="") () =
+  with_db (fun db -> Repo.get_official_trade_events ~year ~search db)
 let build_margin_map margins : team_margin MarginMap.t =
   List.fold_left
     (fun acc (row: team_margin) ->
