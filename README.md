@@ -38,6 +38,12 @@ docker build -t wkbl .
 docker run --rm -p 8000:8000 wkbl
 ```
 
+공식 `Draft / Trade`(드래프트/이적현황)까지 포함하려면 빌드 인자를 켜세요: (네트워크 필요)
+
+```bash
+docker build -t wkbl --build-arg WKBL_SYNC_DRAFT_TRADE=1 .
+```
+
 ### Railway에 상시 배포 (추천)
 1. Railway에서 GitHub repo를 연결하고, Dockerfile 기반으로 서비스를 생성합니다.
 2. Health check는 `/health`를 사용합니다.
