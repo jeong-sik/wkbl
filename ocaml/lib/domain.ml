@@ -291,6 +291,19 @@ type player_draft = {
   pd_scraped_at: string;
 }
 
+type draft_pick_row = {
+  dpr_player_id: string;
+  dpr_player_name: string;
+  dpr_draft_year: int option;
+  dpr_draft_round: int option;
+  dpr_pick_in_round: int option;
+  dpr_overall_pick: int option;
+  dpr_draft_team: string option;
+  dpr_raw_text: string;
+  dpr_source_url: string;
+  dpr_scraped_at: string;
+}
+
 type official_trade_event = {
   ote_event_date: string;
   ote_event_year: int;

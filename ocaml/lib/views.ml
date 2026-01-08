@@ -531,6 +531,7 @@ let layout ~title ~content =
         <a href="/players" class="shrink-0 text-slate-400 hover:text-white transition">Players</a>
         <a href="/predict" class="shrink-0 text-slate-400 hover:text-white transition">Predict</a>
         <a href="/compare" class="shrink-0 text-slate-400 hover:text-white transition">Compare</a>
+        <a href="/transactions" class="shrink-0 text-slate-400 hover:text-white transition">Draft/Trade</a>
         <a href="/qa" class="shrink-0 text-slate-400 hover:text-white transition">QA</a>
       </nav>
     </div>
@@ -2391,7 +2392,7 @@ let player_profile_page ?(leaderboards=None) (profile: player_profile) ~scope ~(
 	          {html|<span class="text-slate-200 font-mono text-[11px]">Matched events available</span>|html}
 	      in
 	      Printf.sprintf
-	        {html|<div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-4 sm:p-5 min-w-0"><div class="flex flex-wrap items-start justify-between gap-3 min-w-0"><div class="text-slate-400 font-bold uppercase tracking-widest text-[11px] flex items-center gap-2"><span class="text-base">🧩</span> Draft / Trade</div><div class="flex flex-wrap items-center gap-2">%s%s</div></div><div class="mt-3 text-slate-400 text-xs leading-relaxed space-y-3"><div><div class="text-[10px] text-slate-500 font-mono uppercase tracking-widest">Draft</div><div class="mt-1">%s</div></div><div><div class="text-[10px] text-slate-500 font-mono uppercase tracking-widest">Trade</div><div class="mt-1">%s</div><div class="mt-2 text-[11px] text-slate-500 leading-relaxed">공식 이적현황 원문에서 <span class="font-mono text-slate-300">이름 포함</span>으로만 매칭합니다. (동명이인/표기 차이로 오매칭/누락 가능)</div></div><details class="text-[11px] text-slate-500"><summary class="cursor-pointer select-none text-slate-400 font-bold">Sync</summary><div class="mt-2"><div class="leading-relaxed">공식 페이지 기반 추가 수집이 필요하면 아래를 실행하세요: (네트워크 필요)</div><code class="mt-2 block font-mono text-slate-300 bg-slate-900/40 border border-slate-700/60 px-3 py-2 rounded overflow-x-auto whitespace-nowrap">python3 scripts/wkbl_draft_trade_sync.py --only-missing</code></div></details></div></div>|html}
+	        {html|<div class="bg-slate-800/40 border border-slate-700/50 rounded-lg p-4 sm:p-5 min-w-0"><div class="flex flex-wrap items-start justify-between gap-3 min-w-0"><div class="text-slate-400 font-bold uppercase tracking-widest text-[11px] flex items-center gap-2"><span class="text-base">🧩</span> Draft / Trade</div><div class="flex flex-wrap items-center gap-2">%s%s<a class="px-2 py-0.5 rounded bg-slate-900/40 border border-slate-700/60 text-[10px] font-mono text-slate-300 hover:text-white hover:bg-slate-800/60 transition whitespace-nowrap" href="/transactions">Browse</a></div></div><div class="mt-3 text-slate-400 text-xs leading-relaxed space-y-3"><div><div class="text-[10px] text-slate-500 font-mono uppercase tracking-widest">Draft</div><div class="mt-1">%s</div></div><div><div class="text-[10px] text-slate-500 font-mono uppercase tracking-widest">Trade</div><div class="mt-1">%s</div><div class="mt-2 text-[11px] text-slate-500 leading-relaxed">공식 이적현황 원문에서 <span class="font-mono text-slate-300">이름 포함</span>으로만 매칭합니다. (동명이인/표기 차이로 오매칭/누락 가능)</div></div><details class="text-[11px] text-slate-500"><summary class="cursor-pointer select-none text-slate-400 font-bold">Sync</summary><div class="mt-2"><div class="leading-relaxed">공식 페이지 기반 추가 수집이 필요하면 아래를 실행하세요: (네트워크 필요)</div><code class="mt-2 block font-mono text-slate-300 bg-slate-900/40 border border-slate-700/60 px-3 py-2 rounded overflow-x-auto whitespace-nowrap">python3 scripts/wkbl_draft_trade_sync.py --only-missing</code></div></details></div></div>|html}
 	        draft_chip
 	        trade_chip
 	        draft_value_html
@@ -2915,6 +2916,258 @@ let qa_dashboard_page (report: Db.qa_db_report) ?(markdown=None) () =
       report.qdr_duplicate_player_name_count
       dup_name_rows
       markdown_block)
+
+(** Draft / Trade (official) page *)
+let transactions_page
+  ~tab
+  ~year
+  ~q
+  ~draft_years
+  ~trade_years
+  ~(draft_picks: draft_pick_row list)
+  ~(trade_events: official_trade_event list)
+  =
+  let tab_value = tab |> String.trim |> String.lowercase_ascii in
+  let active_tab = if tab_value = "trade" then "trade" else "draft" in
+  let tab_link t label =
+    let cls =
+      if active_tab = t then
+        "bg-slate-800/80 border-slate-700 text-white"
+      else
+        "bg-slate-900/40 border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800/50"
+    in
+    Printf.sprintf
+      {html|<a href="/transactions?tab=%s" class="px-3 py-2 rounded-lg border text-xs font-bold uppercase tracking-widest transition %s">%s</a>|html}
+      (escape_html t)
+      cls
+      (escape_html label)
+  in
+  let year_options years =
+    let all_selected = if year = 0 then "selected" else "" in
+    let base =
+      years
+      |> List.map (fun y ->
+          let selected = if y = year then "selected" else "" in
+          Printf.sprintf {html|<option value="%d" %s>%d</option>|html} y selected y)
+      |> String.concat "\n"
+    in
+    Printf.sprintf {html|<option value="0" %s>All</option>%s|html} all_selected base
+  in
+  let active_years = if active_tab = "trade" then trade_years else draft_years in
+  let filter_form =
+    Printf.sprintf
+      {html|<form method="get" action="/transactions" class="flex flex-col sm:flex-row sm:items-end gap-3">
+  <input type="hidden" name="tab" value="%s">
+  <label class="block text-xs text-slate-400 space-y-1">
+    <div class="font-bold uppercase tracking-widest text-[10px]">Year</div>
+    <select name="year" class="bg-slate-800/60 border border-slate-700/60 rounded-lg px-3 py-2 text-sm text-slate-200 focus:border-orange-500 focus:outline-none">
+      %s
+    </select>
+  </label>
+  <label class="block text-xs text-slate-400 space-y-1 min-w-0 flex-1">
+    <div class="font-bold uppercase tracking-widest text-[10px]">Search</div>
+    <input name="q" value="%s" placeholder="player / team / keyword" class="w-full bg-slate-800/60 border border-slate-700/60 rounded-lg px-3 py-2 text-sm text-slate-200 focus:border-orange-500 focus:outline-none">
+  </label>
+  <button class="shrink-0 bg-orange-600 hover:bg-orange-500 text-white font-bold rounded-lg px-4 py-2 text-sm transition">Apply</button>
+</form>|html}
+      (escape_html active_tab)
+      (year_options active_years)
+      (escape_html q)
+  in
+  let draft_table =
+    let pick_label (row: draft_pick_row) =
+      match row.dpr_draft_round, row.dpr_pick_in_round, row.dpr_overall_pick with
+      | Some r, Some p, Some o -> Printf.sprintf "R%d #%d (O%d)" r p o
+      | Some r, Some p, None -> Printf.sprintf "R%d #%d" r p
+      | Some r, None, Some o -> Printf.sprintf "R%d (O%d)" r o
+      | _, _, _ -> "-"
+    in
+    let rows =
+      match draft_picks with
+      | [] ->
+          {html|<tr><td colspan="6" class="px-4 py-10 text-center text-slate-500 text-sm">No draft rows found. (Build with <span class="font-mono text-slate-300">WKBL_SYNC_DRAFT_TRADE=1</span> or run <span class="font-mono text-slate-300">scripts/wkbl_draft_trade_sync.py</span>)</td></tr>|html}
+      | xs ->
+          xs
+          |> List.map (fun (r: draft_pick_row) ->
+              let y =
+                match r.dpr_draft_year with
+                | Some v -> string_of_int v
+                | None -> "-"
+              in
+              let team_html =
+                match r.dpr_draft_team with
+                | None -> {html|<span class="text-slate-500">-</span>|html}
+                | Some t -> team_badge t
+              in
+              Printf.sprintf
+                {html|<tr class="border-b border-slate-800/60 hover:bg-slate-800/30 transition-colors">
+  <td class="px-4 py-3 text-slate-400 font-mono whitespace-nowrap w-[72px]">%s</td>
+  <td class="px-4 py-3 text-slate-300 font-mono whitespace-nowrap w-[140px]">%s</td>
+  <td class="px-4 py-3 min-w-0"><a class="text-slate-200 hover:text-orange-400 font-bold truncate block" href="/player/%s">%s</a><div class="mt-1 text-[11px] text-slate-500 font-mono">%s</div></td>
+  <td class="px-4 py-3">%s</td>
+  <td class="px-4 py-3 text-[11px] text-slate-300 font-mono whitespace-pre-line break-words">%s</td>
+  <td class="px-4 py-3 text-[11px]"><a class="text-slate-500 hover:text-slate-300 underline font-mono" href="%s" target="_blank" rel="noreferrer">Source</a></td>
+</tr>|html}
+                (escape_html y)
+                (escape_html (pick_label r))
+                (Uri.pct_encode r.dpr_player_id)
+                (escape_html (normalize_name r.dpr_player_name))
+                (escape_html r.dpr_player_id)
+                team_html
+                (escape_html r.dpr_raw_text)
+                (escape_html r.dpr_source_url))
+          |> String.concat "\n"
+    in
+    Printf.sprintf
+      {html|<div class="bg-slate-900 rounded-xl border border-slate-800 overflow-x-auto shadow-lg">
+  <table class="min-w-[980px] w-full text-sm table-fixed tabular-nums">
+    <thead class="bg-slate-800/80 text-slate-400 uppercase tracking-wider text-[10px] whitespace-nowrap">
+      <tr>
+        <th class="px-4 py-3 text-left w-[72px]">Year</th>
+        <th class="px-4 py-3 text-left w-[140px]">Pick</th>
+        <th class="px-4 py-3 text-left">Player</th>
+        <th class="px-4 py-3 text-left w-[220px]">Team</th>
+        <th class="px-4 py-3 text-left">Raw</th>
+        <th class="px-4 py-3 text-left w-[90px]">Link</th>
+      </tr>
+    </thead>
+    <tbody>%s</tbody>
+  </table>
+</div>|html}
+      rows
+  in
+  let trade_list =
+    let extract_salary_krw (text : string) : int option =
+      let key = "연봉" in
+      match find_substring_from ~sub:key text ~from:0 with
+      | None -> None
+      | Some idx ->
+          let start = idx + String.length key in
+          let len = String.length text in
+          let is_digit c = c >= '0' && c <= '9' in
+          let rec scan i seen_digit acc =
+            if i >= len then acc
+            else
+              let c = text.[i] in
+              if is_digit c then scan (i + 1) true (c :: acc)
+              else if c = ',' && seen_digit then scan (i + 1) seen_digit acc
+              else if seen_digit then acc
+              else scan (i + 1) seen_digit acc
+          in
+          let digits_rev = scan start false [] in
+          (match digits_rev with
+          | [] -> None
+          | _ ->
+              let digits = digits_rev |> List.rev |> List.to_seq |> String.of_seq in
+              int_of_string_opt digits)
+    in
+    let salary_chip (text: string) =
+      match extract_salary_krw text with
+      | None -> ""
+      | Some won when won > 0 ->
+          let million = (won + 500_000) / 1_000_000 in
+          Printf.sprintf
+            {html|<span title="연봉 ₩%d" class="shrink-0 px-2 py-0.5 rounded bg-orange-500/10 border border-orange-500/30 text-[10px] font-mono text-orange-300 whitespace-nowrap">₩%dM</span>|html}
+            won
+            million
+      | Some _ -> ""
+    in
+    let contains_team (text: string) (team: string) =
+      match find_substring_from ~sub:team text ~from:0 with
+      | Some _ -> true
+      | None -> false
+    in
+    let trade_team_candidates =
+      [ "BNK 썸"; "BNK"; "우리은행"; "삼성생명"; "신한은행"; "KB스타즈"; "하나원큐"; "하나은행"
+      ; "KB국민은행"; "국민은행"; "신세계"; "금호생명"; "KDB생명"; "KEB하나은행"
+      ]
+    in
+    let team_chips (text: string) =
+      let found =
+        trade_team_candidates
+        |> List.filter (contains_team text)
+        |> List.fold_left
+          (fun acc team_name ->
+            let key =
+              match team_code_of_string team_name with
+              | Some code -> "CODE:" ^ code
+              | None -> "NAME:" ^ (normalize_label team_name |> String.uppercase_ascii)
+            in
+            if List.exists (fun (k, _) -> k = key) acc then acc else (key, team_name) :: acc)
+          []
+        |> List.rev
+      in
+      found
+      |> List.map (fun (_, team_name) -> team_badge team_name)
+      |> String.concat ""
+    in
+    let rows =
+      match trade_events with
+      | [] ->
+          {html|<div class="bg-slate-900/50 rounded-xl border border-slate-800/50 p-5 text-slate-500 text-sm">No trade events found. (Build with <span class="font-mono text-slate-300">WKBL_SYNC_DRAFT_TRADE=1</span> or run <span class="font-mono text-slate-300">scripts/wkbl_draft_trade_sync.py</span>)</div>|html}
+      | xs ->
+          let items =
+            xs
+            |> List.map (fun (e: official_trade_event) ->
+                let contract_chip_html =
+                  match extract_contract_years e.ote_event_text with
+                  | None -> ""
+                  | Some years ->
+                      Printf.sprintf
+                        {html|<span title="계약 %d년" class="shrink-0 px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-[10px] font-mono text-emerald-300 whitespace-nowrap">%dY</span>|html}
+                        years
+                        years
+                in
+                let salary_chip_html = salary_chip e.ote_event_text in
+                let team_chips_html = team_chips e.ote_event_text in
+                Printf.sprintf
+                  {html|<li class="bg-slate-900 rounded-xl border border-slate-800 p-4 sm:p-5 shadow-lg space-y-2">
+  <div class="flex flex-wrap items-center justify-between gap-2">
+    <div class="font-mono text-[11px] text-slate-500 whitespace-nowrap">%s</div>
+    <div class="flex flex-wrap items-center gap-2">%s%s%s</div>
+  </div>
+  <div class="text-slate-200 text-sm leading-relaxed break-words">%s</div>
+  <div class="text-[11px]"><a class="text-slate-500 hover:text-slate-300 underline font-mono" href="%s" target="_blank" rel="noreferrer">Source</a></div>
+</li>|html}
+                  (escape_html e.ote_event_date)
+                  team_chips_html
+                  contract_chip_html
+                  salary_chip_html
+                  (escape_html e.ote_event_text)
+                  (escape_html e.ote_source_url))
+            |> String.concat "\n"
+          in
+          Printf.sprintf {html|<ol class="space-y-3">%s</ol>|html} items
+    in
+    rows
+  in
+  let content =
+    let section =
+      if active_tab = "trade" then trade_list else draft_table
+    in
+    Printf.sprintf
+      {html|<div class="space-y-6 animate-fade-in">
+  <div class="flex flex-col gap-2">
+    <h2 class="text-2xl font-black text-white">Draft / Trade</h2>
+    <div class="text-slate-400 text-sm leading-relaxed">WKBL 공식 페이지 원문 기반입니다. (Draft는 <span class="font-mono text-slate-200">player_id(pno)</span> 기반 / Trade는 <span class="font-mono text-slate-200">원문 저장 + 텍스트 검색</span>)</div>
+  </div>
+  <div class="flex flex-wrap items-center gap-2">%s%s</div>
+  %s
+  <details class="bg-slate-900/50 rounded-xl border border-slate-800 p-5 text-xs text-slate-400">
+    <summary class="cursor-pointer font-bold text-slate-300 select-none">Sync / Build</summary>
+    <div class="mt-2 space-y-2 leading-relaxed">
+      <div>Docker 빌드에서 공식 Draft/Trade를 포함하려면 <span class="font-mono text-slate-200">WKBL_SYNC_DRAFT_TRADE=1</span>을 켜세요.</div>
+      <div class="text-slate-500">로컬 DB를 갱신하려면 아래를 실행하세요: (네트워크 필요)</div>
+      <code class="block font-mono text-slate-300 bg-slate-950/30 border border-slate-700/60 px-3 py-2 rounded overflow-x-auto whitespace-nowrap">python3 scripts/wkbl_draft_trade_sync.py --only-missing --backup</code>
+    </div>
+  </details>
+</div>|html}
+      (tab_link "draft" "Draft")
+      (tab_link "trade" "Trade")
+      filter_form
+      section
+  in
+  layout ~title:"Draft / Trade | WKBL" ~content
 
 (** Error page *)
 let error_page message = layout ~title:"Error" ~content:(Printf.sprintf {html|<div class="flex flex-col items-center justify-center py-20"><span class="text-6xl mb-4">😵</span><h2 class="text-xl font-bold text-white mb-2">Something went wrong</h2><p class="text-slate-400">%s</p><a href="/" class="mt-4 text-orange-500 hover:underline">← Back to home</a></div>|html} (escape_html message))
