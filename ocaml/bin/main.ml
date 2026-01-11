@@ -5,6 +5,9 @@
 open Wkbl
 open Wkbl.Domain
 
+(* Force linking of Postgres driver *)
+let () = ignore (Caqti_driver_postgresql.connect)
+
 let has_prefix ~prefix s =
   let prefix_len = String.length prefix in
   String.length s >= prefix_len && String.sub s 0 prefix_len = prefix
