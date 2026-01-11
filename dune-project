@@ -1,0 +1,28 @@
+(lang dune 3.13)
+(name wkbl)
+(version 0.1.0)
+
+(generate_opam_files true)
+
+(source (github yousleepwhen/wkbl))
+(authors "Vincent")
+(maintainers "Vincent")
+(license MIT)
+
+(package
+ (name wkbl)
+ (synopsis "WKBL Analytics - Korean Women's Basketball Stats")
+ (description "Web application for analyzing WKBL player and team statistics")
+ (depends
+  (ocaml (>= 5.1))
+  (dune (>= 3.13))
+  (dream (>= 1.0.0~alpha5))
+  (caqti (>= 1.9))
+  (caqti-driver-sqlite3 (>= 1.9))
+  (caqti-driver-postgresql (>= 1.9))
+  (caqti-lwt (>= 1.9))
+  (lwt (>= 5.7))
+  (yojson (>= 2.1))
+  (ppx_deriving (>= 5.2))
+  (ppx_deriving_yojson (>= 3.7))
+  (alcotest (>= 1.7.0))))
