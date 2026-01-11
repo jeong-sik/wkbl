@@ -814,10 +814,10 @@ let () =
         |> Option.value ~default:"draft"
       in
       let year =
-        (match Dream.query request "year" with
-         | None -> None
-         | Some s -> int_of_string_opt s)
-        |> Option.value ~default:0
+        let year_str_opt = Dream.query request "year" in
+        match year_str_opt with
+        | None -> 0
+        | Some s -> (match int_of_string_opt s with Some i -> i | None -> 0)
       in
       let q = Dream.query request "q" |> Option.value ~default:"" in
       let open Lwt.Syntax in
