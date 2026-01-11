@@ -1,0 +1,430 @@
+05.01.26 06:41:12.211                       Running on 0.0.0.0:8000 (http://localhost:8000)
+05.01.26 06:41:12.212                       Type Ctrl+C to stop
+05.01.26 06:48:32.562       dream.log  INFO REQ 1 GET / 127.0.0.1:65181 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:32.567       dream.log  INFO REQ 1 200 in 5102 μs
+05.01.26 06:48:32.570       dream.log  INFO REQ 2 GET /static/css/styles.css 127.0.0.1:65181 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:32.571       dream.log  INFO REQ 2 200 in 462 μs
+05.01.26 06:48:32.571       dream.log  INFO REQ 3 GET /%22/static/images/player_095533.png/%22 127.0.0.1:65183 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:32.571       dream.log  WARN REQ 3 404 in 23 μs
+05.01.26 06:48:32.571       dream.log  INFO REQ 4 GET /static/images/team_01.png 127.0.0.1:65185 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:32.571       dream.log  INFO REQ 4 200 in 341 μs
+05.01.26 06:48:32.572       dream.log  INFO REQ 5 GET /%22/static/images/player_095104.png/%22 127.0.0.1:65181 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:32.572       dream.log  WARN REQ 5 404 in 26 μs
+05.01.26 06:48:32.573       dream.log  INFO REQ 6 GET /static/images/team_05.png 127.0.0.1:65185 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:32.573       dream.log  INFO REQ 7 GET /%22/static/images/player_095639.png/%22 127.0.0.1:65181 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:32.573       dream.log  WARN REQ 7 404 in 17 μs
+05.01.26 06:48:32.573       dream.log  INFO REQ 6 200 in 363 μs
+05.01.26 06:48:32.574       dream.log  INFO REQ 8 GET /%22/static/images/player_095248.png/%22 127.0.0.1:65185 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:32.574       dream.log  WARN REQ 8 404 in 35 μs
+05.01.26 06:48:32.574       dream.log  INFO REQ 9 GET /static/images/team_11.png 127.0.0.1:65185 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:32.574       dream.log  INFO REQ 9 200 in 185 μs
+05.01.26 06:48:32.575       dream.log  INFO REQ 10 GET /%22/static/images/player_095499.png/%22 127.0.0.1:65185 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:32.575       dream.log  WARN REQ 10 404 in 17 μs
+05.01.26 06:48:32.575       dream.log  INFO REQ 11 GET /static/images/team_09.png 127.0.0.1:65185 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:32.576       dream.log  INFO REQ 11 200 in 168 μs
+05.01.26 06:48:32.578       dream.log  INFO REQ 12 GET /%22/static/images/player_095115.png/%22 127.0.0.1:65185 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:32.578       dream.log  WARN REQ 12 404 in 30 μs
+05.01.26 06:48:32.578       dream.log  INFO REQ 13 GET /static/images/team_03.png 127.0.0.1:65185 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:32.578       dream.log  INFO REQ 13 200 in 231 μs
+05.01.26 06:48:32.579       dream.log  INFO REQ 14 GET /%22/static/images/player_095778.png/%22 127.0.0.1:65185 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:32.579       dream.log  WARN REQ 14 404 in 15 μs
+05.01.26 06:48:32.579       dream.log  INFO REQ 15 GET /%22/static/images/player_095710.png/%22 127.0.0.1:65185 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:32.579       dream.log  WARN REQ 15 404 in 10 μs
+05.01.26 06:48:32.580       dream.log  INFO REQ 16 GET /%22/static/images/player_095263.png/%22 127.0.0.1:65185 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:32.580       dream.log  WARN REQ 16 404 in 10 μs
+05.01.26 06:48:32.580       dream.log  INFO REQ 17 GET /%22/static/images/player_095912.png/%22 127.0.0.1:65185 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:32.580       dream.log  WARN REQ 17 404 in 12 μs
+05.01.26 06:48:32.581       dream.log  INFO REQ 18 GET /%22/static/images/player_095186.png/%22 127.0.0.1:65185 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:32.581       dream.log  WARN REQ 18 404 in 24 μs
+05.01.26 06:48:32.581       dream.log  INFO REQ 19 GET /%22/static/images/player_095916.png/%22 127.0.0.1:65185 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:32.581       dream.log  WARN REQ 19 404 in 12 μs
+05.01.26 06:48:32.582       dream.log  INFO REQ 20 GET /%22/static/images/player_095911.png/%22 127.0.0.1:65185 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:32.582       dream.log  WARN REQ 20 404 in 11 μs
+05.01.26 06:48:32.582       dream.log  INFO REQ 21 GET /%22/static/images/player_095189.png/%22 127.0.0.1:65185 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:32.582       dream.log  WARN REQ 21 404 in 10 μs
+05.01.26 06:48:32.582       dream.log  INFO REQ 22 GET /%22/static/images/player_095259.png/%22 127.0.0.1:65185 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:32.582       dream.log  WARN REQ 22 404 in 13 μs
+05.01.26 06:48:32.582       dream.log  INFO REQ 23 GET /%22/static/images/player_095972.png/%22 127.0.0.1:65185 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:32.582       dream.log  WARN REQ 23 404 in 10 μs
+05.01.26 06:48:32.583       dream.log  INFO REQ 24 GET /%22/static/images/player_095822.png/%22 127.0.0.1:65185 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:32.583       dream.log  WARN REQ 24 404 in 10 μs
+05.01.26 06:48:32.583       dream.log  INFO REQ 25 GET /%22/static/images/player_095636.png/%22 127.0.0.1:65185 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:32.583       dream.log  WARN REQ 25 404 in 10 μs
+05.01.26 06:48:32.584       dream.log  INFO REQ 26 GET /%22/static/images/player_095484.png/%22 127.0.0.1:65185 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:32.584       dream.log  WARN REQ 26 404 in 16 μs
+05.01.26 06:48:32.584       dream.log  INFO REQ 27 GET /%22/static/images/player_095041.png/%22 127.0.0.1:65185 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:32.584       dream.log  WARN REQ 27 404 in 22 μs
+05.01.26 06:48:32.798       dream.log  INFO REQ 28 GET /favicon.ico 127.0.0.1:65185 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:32.798       dream.log  WARN REQ 28 404 in 68 μs
+05.01.26 06:48:37.520       dream.log  INFO REQ 29 GET /leaders 127.0.0.1:65185 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:37.546       dream.log  INFO REQ 29 200 in 26427 μs
+05.01.26 06:48:37.550       dream.log  INFO REQ 30 GET /static/css/styles.css 127.0.0.1:65185 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:37.550       dream.log  INFO REQ 30 200 in 290 μs
+05.01.26 06:48:37.550       dream.log  INFO REQ 31 GET /%22/static/images/player_095104.png/%22 127.0.0.1:65181 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:37.550       dream.log  WARN REQ 31 404 in 27 μs
+05.01.26 06:48:37.551       dream.log  INFO REQ 32 GET /%22/static/images/player_095533.png/%22 127.0.0.1:65183 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:37.551       dream.log  WARN REQ 32 404 in 37 μs
+05.01.26 06:48:37.551       dream.log  INFO REQ 33 GET /%22/static/images/player_095248.png/%22 127.0.0.1:65185 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:37.551       dream.log  WARN REQ 33 404 in 29 μs
+05.01.26 06:48:37.551       dream.log  INFO REQ 34 GET /%22/static/images/player_095639.png/%22 127.0.0.1:65183 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:37.551       dream.log  WARN REQ 34 404 in 31 μs
+05.01.26 06:48:37.552       dream.log  INFO REQ 35 GET /%22/static/images/player_095263.png/%22 127.0.0.1:65183 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:37.552       dream.log  WARN REQ 35 404 in 35 μs
+05.01.26 06:48:37.553       dream.log  INFO REQ 36 GET /%22/static/images/player_095499.png/%22 127.0.0.1:65183 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:37.553       dream.log  WARN REQ 36 404 in 25 μs
+05.01.26 06:48:37.553       dream.log  INFO REQ 37 GET /%22/static/images/player_095710.png/%22 127.0.0.1:65185 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:37.553       dream.log  WARN REQ 37 404 in 34 μs
+05.01.26 06:48:37.561       dream.log  INFO REQ 38 GET /%22/static/images/player_095115.png/%22 127.0.0.1:65183 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:37.561       dream.log  WARN REQ 38 404 in 47 μs
+05.01.26 06:48:37.561       dream.log  INFO REQ 39 GET /%22/static/images/player_095484.png/%22 127.0.0.1:65185 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:37.561       dream.log  WARN REQ 39 404 in 25 μs
+05.01.26 06:48:37.561       dream.log  INFO REQ 40 GET /%22/static/images/player_096033.png/%22 127.0.0.1:65181 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:37.561       dream.log  WARN REQ 40 404 in 12 μs
+05.01.26 06:48:37.562       dream.log  INFO REQ 41 GET /%22/static/images/player_095912.png/%22 127.0.0.1:65185 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:37.562       dream.log  WARN REQ 41 404 in 25 μs
+05.01.26 06:48:37.562       dream.log  INFO REQ 42 GET /%22/static/images/player_095778.png/%22 127.0.0.1:65183 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:37.562       dream.log  WARN REQ 42 404 in 27 μs
+05.01.26 06:48:37.562       dream.log  INFO REQ 43 GET /%22/static/images/player_095259.png/%22 127.0.0.1:65181 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:37.562       dream.log  WARN REQ 43 404 in 15 μs
+05.01.26 06:48:37.562       dream.log  INFO REQ 44 GET /%22/static/images/player_095999.png/%22 127.0.0.1:65205 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:37.562       dream.log  WARN REQ 44 404 in 30 μs
+05.01.26 06:48:37.562       dream.log  INFO REQ 45 GET /%22/static/images/player_095041.png/%22 127.0.0.1:65185 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:37.562       dream.log  WARN REQ 45 404 in 46 μs
+05.01.26 06:48:37.563       dream.log  INFO REQ 46 GET /%22/static/images/player_095533.png/%22 127.0.0.1:65185 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:37.563       dream.log  WARN REQ 46 404 in 24 μs
+05.01.26 06:48:37.563       dream.log  INFO REQ 47 GET /%22/static/images/player_095639.png/%22 127.0.0.1:65181 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:37.563       dream.log  WARN REQ 47 404 in 13 μs
+05.01.26 06:48:37.563       dream.log  INFO REQ 48 GET /%22/static/images/player_095104.png/%22 127.0.0.1:65205 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:37.563       dream.log  WARN REQ 48 404 in 12 μs
+05.01.26 06:48:37.563       dream.log  INFO REQ 49 GET /%22/static/images/player_095248.png/%22 127.0.0.1:65183 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:37.563       dream.log  WARN REQ 49 404 in 12 μs
+05.01.26 06:48:38.898       dream.log  INFO REQ 50 GET /games 127.0.0.1:65183 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:38.901       dream.log  INFO REQ 50 200 in 2544 μs
+05.01.26 06:48:38.907       dream.log  INFO REQ 51 GET /static/css/styles.css 127.0.0.1:65183 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:38.907       dream.log  INFO REQ 52 GET /static/images/team_09.png 127.0.0.1:65181 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:38.907       dream.log  INFO REQ 53 GET /static/images/team_01.png 127.0.0.1:65205 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:38.908       dream.log  INFO REQ 51 200 in 411 μs
+05.01.26 06:48:38.908       dream.log  INFO REQ 52 200 in 596 μs
+05.01.26 06:48:38.908       dream.log  INFO REQ 53 200 in 721 μs
+05.01.26 06:48:38.909       dream.log  INFO REQ 54 GET /static/images/team_03.png 127.0.0.1:65181 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:38.909       dream.log  INFO REQ 55 GET /static/images/team_11.png 127.0.0.1:65205 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:38.910       dream.log  INFO REQ 55 200 in 339 μs
+05.01.26 06:48:38.910       dream.log  INFO REQ 54 200 in 720 μs
+05.01.26 06:48:38.911       dream.log  INFO REQ 56 GET /static/images/team_05.png 127.0.0.1:65205 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:38.911       dream.log  INFO REQ 56 200 in 405 μs
+05.01.26 06:48:39.843       dream.log  INFO REQ 57 GET /boxscore/046-01-37 127.0.0.1:65205 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:39.845       dream.log  INFO REQ 57 200 in 2038 μs
+05.01.26 06:48:39.852       dream.log  INFO REQ 58 GET /static/css/styles.css 127.0.0.1:65205 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:39.852       dream.log  INFO REQ 59 GET /static/images/team_09.png 127.0.0.1:65181 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:39.852       dream.log  INFO REQ 60 GET /static/images/team_01.png 127.0.0.1:65183 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:39.852       dream.log  INFO REQ 58 200 in 361 μs
+05.01.26 06:48:39.852       dream.log  INFO REQ 59 200 in 378 μs
+05.01.26 06:48:39.853       dream.log  INFO REQ 60 200 in 373 μs
+05.01.26 06:48:39.854       dream.log  INFO REQ 61 GET /%22/static/images/player_096008.png/%22 127.0.0.1:65183 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:39.854       dream.log  WARN REQ 61 404 in 27 μs
+05.01.26 06:48:39.854       dream.log  INFO REQ 62 GET /%22/static/images/player_095788.png/%22 127.0.0.1:65181 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:39.854       dream.log  WARN REQ 62 404 in 13 μs
+05.01.26 06:48:39.854       dream.log  INFO REQ 63 GET /%22/static/images/player_095715.png/%22 127.0.0.1:65181 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:39.854       dream.log  WARN REQ 63 404 in 12 μs
+05.01.26 06:48:39.855       dream.log  INFO REQ 64 GET /%22/static/images/player_095912.png/%22 127.0.0.1:65181 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:39.855       dream.log  WARN REQ 64 404 in 22 μs
+05.01.26 06:48:39.855       dream.log  INFO REQ 65 GET /%22/static/images/player_095499.png/%22 127.0.0.1:65181 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:39.855       dream.log  WARN REQ 65 404 in 23 μs
+05.01.26 06:48:39.855       dream.log  INFO REQ 66 GET /%22/static/images/player_095041.png/%22 127.0.0.1:65181 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:39.855       dream.log  WARN REQ 66 404 in 26 μs
+05.01.26 06:48:39.858       dream.log  INFO REQ 67 GET /%22/static/images/player_095830.png/%22 127.0.0.1:65181 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:39.858       dream.log  WARN REQ 67 404 in 45 μs
+05.01.26 06:48:39.858       dream.log  INFO REQ 68 GET /%22/static/images/player_095259.png/%22 127.0.0.1:65183 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:39.858       dream.log  WARN REQ 68 404 in 13 μs
+05.01.26 06:48:39.858       dream.log  INFO REQ 69 GET /%22/static/images/player_095832.png/%22 127.0.0.1:65205 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:39.858       dream.log  WARN REQ 69 404 in 12 μs
+05.01.26 06:48:39.858       dream.log  INFO REQ 70 GET /%22/static/images/player_095710.png/%22 127.0.0.1:65185 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:39.858       dream.log  WARN REQ 70 404 in 11 μs
+05.01.26 06:48:39.858       dream.log  INFO REQ 71 GET /%22/static/images/player_096033.png/%22 127.0.0.1:65206 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:39.858       dream.log  WARN REQ 71 404 in 37 μs
+05.01.26 06:48:39.859       dream.log  INFO REQ 72 GET /%22/static/images/player_095637.png/%22 127.0.0.1:65181 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:39.859       dream.log  WARN REQ 72 404 in 24 μs
+05.01.26 06:48:39.859       dream.log  INFO REQ 73 GET /%22/static/images/player_095543.png/%22 127.0.0.1:65205 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:39.859       dream.log  WARN REQ 73 404 in 30 μs
+05.01.26 06:48:39.859       dream.log  INFO REQ 74 GET /%22/static/images/player_095999.png/%22 127.0.0.1:65206 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:39.859       dream.log  WARN REQ 74 404 in 16 μs
+05.01.26 06:48:39.859       dream.log  INFO REQ 75 GET /%22/static/images/player_095533.png/%22 127.0.0.1:65205 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:39.859       dream.log  WARN REQ 75 404 in 18 μs
+05.01.26 06:48:39.860       dream.log  INFO REQ 76 GET /%22/static/images/player_095746.png/%22 127.0.0.1:65206 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:39.860       dream.log  WARN REQ 76 404 in 15 μs
+05.01.26 06:48:39.860       dream.log  INFO REQ 77 GET /%22/static/images/player_095902.png/%22 127.0.0.1:65181 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:39.860       dream.log  WARN REQ 77 404 in 10 μs
+05.01.26 06:48:59.494       dream.log  INFO REQ 78 GET /boxscore/046-01-34 127.0.0.1:65181 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:59.497       dream.log  INFO REQ 78 200 in 2554 μs
+05.01.26 06:48:59.503       dream.log  INFO REQ 79 GET /static/css/styles.css 127.0.0.1:65181 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:59.503       dream.log  INFO REQ 80 GET /static/images/team_09.png 127.0.0.1:65206 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:59.503       dream.log  INFO REQ 81 GET /%22/static/images/player_095633.png/%22 127.0.0.1:65205 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:59.503       dream.log  WARN REQ 81 404 in 30 μs
+05.01.26 06:48:59.503       dream.log  INFO REQ 79 200 in 460 μs
+05.01.26 06:48:59.503       dream.log  INFO REQ 80 200 in 486 μs
+05.01.26 06:48:59.504       dream.log  INFO REQ 82 GET /%22/static/images/player_095261.png/%22 127.0.0.1:65205 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:59.504       dream.log  WARN REQ 82 404 in 96 μs
+05.01.26 06:48:59.504       dream.log  INFO REQ 83 GET /%22/static/images/player_095441.png/%22 127.0.0.1:65181 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:59.505       dream.log  WARN REQ 83 404 in 293 μs
+05.01.26 06:48:59.505       dream.log  INFO REQ 84 GET /%22/static/images/player_096029.png/%22 127.0.0.1:65205 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:59.505       dream.log  WARN REQ 84 404 in 25 μs
+05.01.26 06:48:59.505       dream.log  INFO REQ 85 GET /%22/static/images/player_095915.png/%22 127.0.0.1:65205 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:59.505       dream.log  WARN REQ 85 404 in 117 μs
+05.01.26 06:48:59.506       dream.log  INFO REQ 86 GET /%22/static/images/player_095972.png/%22 127.0.0.1:65181 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:59.506       dream.log  WARN REQ 86 404 in 36 μs
+05.01.26 06:48:59.508       dream.log  INFO REQ 87 GET /%22/static/images/player_095503.png/%22 127.0.0.1:65181 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:59.508       dream.log  WARN REQ 87 404 in 76 μs
+05.01.26 06:48:59.508       dream.log  INFO REQ 88 GET /%22/static/images/player_095499.png/%22 127.0.0.1:65185 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:59.508       dream.log  WARN REQ 88 404 in 23 μs
+05.01.26 06:48:59.508       dream.log  INFO REQ 89 GET /%22/static/images/player_095482.png/%22 127.0.0.1:65205 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:59.508       dream.log  WARN REQ 89 404 in 24 μs
+05.01.26 06:48:59.508       dream.log  INFO REQ 90 GET /%22/static/images/player_096143.png/%22 127.0.0.1:65206 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:59.508       dream.log  WARN REQ 90 404 in 20 μs
+05.01.26 06:48:59.509       dream.log  INFO REQ 91 GET /%22/static/images/player_095912.png/%22 127.0.0.1:65183 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:59.509       dream.log  WARN REQ 91 404 in 21 μs
+05.01.26 06:48:59.509       dream.log  INFO REQ 92 GET /%22/static/images/player_095788.png/%22 127.0.0.1:65207 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:59.509       dream.log  WARN REQ 92 404 in 24 μs
+05.01.26 06:48:59.509       dream.log  INFO REQ 93 GET /%22/static/images/player_096008.png/%22 127.0.0.1:65181 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:59.509       dream.log  WARN REQ 93 404 in 47 μs
+05.01.26 06:48:59.509       dream.log  INFO REQ 94 GET /%22/static/images/player_095041.png/%22 127.0.0.1:65206 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:59.509       dream.log  WARN REQ 94 404 in 37 μs
+05.01.26 06:48:59.510       dream.log  INFO REQ 95 GET /%22/static/images/player_095715.png/%22 127.0.0.1:65207 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:59.510       dream.log  WARN REQ 95 404 in 54 μs
+05.01.26 06:48:59.510       dream.log  INFO REQ 96 GET /%22/static/images/player_095830.png/%22 127.0.0.1:65206 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:59.510       dream.log  WARN REQ 96 404 in 38 μs
+05.01.26 06:48:59.510       dream.log  INFO REQ 97 GET /%22/static/images/player_095832.png/%22 127.0.0.1:65181 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:59.510       dream.log  WARN REQ 97 404 in 23 μs
+05.01.26 06:48:59.510       dream.log  INFO REQ 98 GET /%22/static/images/player_095259.png/%22 127.0.0.1:65207 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:48:59.510       dream.log  WARN REQ 98 404 in 38 μs
+05.01.26 06:49:09.377       dream.log  INFO REQ 99 GET /boxscore/046-01-20 127.0.0.1:65207 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:09.381       dream.log  INFO REQ 99 200 in 3294 μs
+05.01.26 06:49:09.387       dream.log  INFO REQ 100 GET /static/images/team_09.png 127.0.0.1:65181 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:09.387       dream.log  INFO REQ 101 GET /static/css/styles.css 127.0.0.1:65207 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:09.387       dream.log  INFO REQ 102 GET /%22/static/images/player_095482.png/%22 127.0.0.1:65206 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:09.387       dream.log  WARN REQ 102 404 in 55 μs
+05.01.26 06:49:09.388       dream.log  INFO REQ 101 200 in 1535 μs
+05.01.26 06:49:09.388       dream.log  INFO REQ 100 200 in 1929 μs
+05.01.26 06:49:09.389       dream.log  INFO REQ 103 GET /%22/static/images/player_095972.png/%22 127.0.0.1:65206 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:09.390       dream.log  WARN REQ 103 404 in 68 μs
+05.01.26 06:49:09.391       dream.log  INFO REQ 104 GET /%22/static/images/player_095261.png/%22 127.0.0.1:65206 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:09.391       dream.log  WARN REQ 104 404 in 77 μs
+05.01.26 06:49:09.391       dream.log  INFO REQ 105 GET /%22/static/images/player_095633.png/%22 127.0.0.1:65181 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:09.391       dream.log  WARN REQ 105 404 in 24 μs
+05.01.26 06:49:09.393       dream.log  INFO REQ 106 GET /%22/static/images/player_095915.png/%22 127.0.0.1:65181 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:09.393       dream.log  WARN REQ 106 404 in 84 μs
+05.01.26 06:49:09.393       dream.log  INFO REQ 107 GET /%22/static/images/player_096029.png/%22 127.0.0.1:65183 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:09.393       dream.log  WARN REQ 107 404 in 29 μs
+05.01.26 06:49:09.393       dream.log  INFO REQ 108 GET /%22/static/images/player_096008.png/%22 127.0.0.1:65205 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:09.393       dream.log  WARN REQ 108 404 in 24 μs
+05.01.26 06:49:09.393       dream.log  INFO REQ 109 GET /%22/static/images/player_095441.png/%22 127.0.0.1:65206 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:09.393       dream.log  WARN REQ 109 404 in 21 μs
+05.01.26 06:49:09.394       dream.log  INFO REQ 110 GET /%22/static/images/player_095700.png/%22 127.0.0.1:65207 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:09.394       dream.log  WARN REQ 110 404 in 20 μs
+05.01.26 06:49:09.394       dream.log  INFO REQ 111 GET /%22/static/images/player_095912.png/%22 127.0.0.1:65185 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:09.394       dream.log  WARN REQ 111 404 in 21 μs
+05.01.26 06:49:09.394       dream.log  INFO REQ 112 GET /%22/static/images/player_095788.png/%22 127.0.0.1:65181 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:09.394       dream.log  WARN REQ 112 404 in 65 μs
+05.01.26 06:49:09.394       dream.log  INFO REQ 113 GET /%22/static/images/player_095499.png/%22 127.0.0.1:65205 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:09.394       dream.log  WARN REQ 113 404 in 56 μs
+05.01.26 06:49:09.395       dream.log  INFO REQ 114 GET /%22/static/images/player_095041.png/%22 127.0.0.1:65185 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:09.395       dream.log  WARN REQ 114 404 in 585 μs
+05.01.26 06:49:09.395       dream.log  INFO REQ 115 GET /%22/static/images/player_095832.png/%22 127.0.0.1:65181 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:09.395       dream.log  WARN REQ 115 404 in 24 μs
+05.01.26 06:49:09.395       dream.log  INFO REQ 116 GET /%22/static/images/player_095830.png/%22 127.0.0.1:65205 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:09.395       dream.log  WARN REQ 116 404 in 28 μs
+05.01.26 06:49:09.395       dream.log  INFO REQ 117 GET /%22/static/images/player_095259.png/%22 127.0.0.1:65207 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:09.395       dream.log  WARN REQ 117 404 in 21 μs
+05.01.26 06:49:15.170       dream.log  INFO REQ 118 GET /boxscore/046-01-22 127.0.0.1:65207 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:15.172       dream.log  INFO REQ 118 200 in 1319 μs
+05.01.26 06:49:15.179       dream.log  INFO REQ 119 GET /static/css/styles.css 127.0.0.1:65207 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:15.179       dream.log  INFO REQ 120 GET /static/images/team_01.png 127.0.0.1:65205 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:15.179       dream.log  INFO REQ 121 GET /static/images/team_05.png 127.0.0.1:65181 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:15.179       dream.log  INFO REQ 119 200 in 357 μs
+05.01.26 06:49:15.180       dream.log  INFO REQ 120 200 in 316 μs
+05.01.26 06:49:15.180       dream.log  INFO REQ 121 200 in 341 μs
+05.01.26 06:49:15.181       dream.log  INFO REQ 122 GET /%22/static/images/player_095637.png/%22 127.0.0.1:65181 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:15.181       dream.log  WARN REQ 122 404 in 27 μs
+05.01.26 06:49:15.181       dream.log  INFO REQ 123 GET /%22/static/images/player_095999.png/%22 127.0.0.1:65205 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:15.181       dream.log  WARN REQ 123 404 in 11 μs
+05.01.26 06:49:15.182       dream.log  INFO REQ 124 GET /%22/static/images/player_095710.png/%22 127.0.0.1:65181 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:15.182       dream.log  WARN REQ 124 404 in 26 μs
+05.01.26 06:49:15.182       dream.log  INFO REQ 125 GET /%22/static/images/player_095263.png/%22 127.0.0.1:65205 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:15.182       dream.log  WARN REQ 125 404 in 10 μs
+05.01.26 06:49:15.184       dream.log  INFO REQ 126 GET /%22/static/images/player_096033.png/%22 127.0.0.1:65181 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:15.184       dream.log  WARN REQ 126 404 in 45 μs
+05.01.26 06:49:15.184       dream.log  INFO REQ 127 GET /%22/static/images/player_095543.png/%22 127.0.0.1:65205 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:15.184       dream.log  WARN REQ 127 404 in 23 μs
+05.01.26 06:49:15.184       dream.log  INFO REQ 128 GET /%22/static/images/player_095746.png/%22 127.0.0.1:65185 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:15.184       dream.log  WARN REQ 128 404 in 9 μs
+05.01.26 06:49:15.184       dream.log  INFO REQ 129 GET /%22/static/images/player_095902.png/%22 127.0.0.1:65207 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:15.184       dream.log  WARN REQ 129 404 in 8 μs
+05.01.26 06:49:15.184       dream.log  INFO REQ 130 GET /%22/static/images/player_095908.png/%22 127.0.0.1:65206 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:15.184       dream.log  WARN REQ 130 404 in 7 μs
+05.01.26 06:49:15.185       dream.log  INFO REQ 131 GET /%22/static/images/player_095104.png/%22 127.0.0.1:65183 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:15.185       dream.log  WARN REQ 131 404 in 23 μs
+05.01.26 06:49:15.185       dream.log  INFO REQ 132 GET /%22/static/images/player_095703.png/%22 127.0.0.1:65205 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:15.185       dream.log  WARN REQ 132 404 in 23 μs
+05.01.26 06:49:15.185       dream.log  INFO REQ 133 GET /%22/static/images/player_096030.png/%22 127.0.0.1:65185 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:15.185       dream.log  WARN REQ 133 404 in 27 μs
+05.01.26 06:49:15.186       dream.log  INFO REQ 134 GET /%22/static/images/player_095210.png/%22 127.0.0.1:65183 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:15.186       dream.log  WARN REQ 134 404 in 24 μs
+05.01.26 06:49:15.186       dream.log  INFO REQ 135 GET /%22/static/images/player_096005.png/%22 127.0.0.1:65205 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:15.186       dream.log  WARN REQ 135 404 in 15 μs
+05.01.26 06:49:15.186       dream.log  INFO REQ 136 GET /%22/static/images/player_095254.png/%22 127.0.0.1:65185 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:15.186       dream.log  WARN REQ 136 404 in 14 μs
+05.01.26 06:49:15.186       dream.log  INFO REQ 137 GET /%22/static/images/player_095450.png/%22 127.0.0.1:65183 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:15.186       dream.log  WARN REQ 137 404 in 25 μs
+05.01.26 06:49:15.186       dream.log  INFO REQ 138 GET /%22/static/images/player_095504.png/%22 127.0.0.1:65206 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:15.186       dream.log  WARN REQ 138 404 in 14 μs
+05.01.26 06:49:15.186       dream.log  INFO REQ 139 GET /%22/static/images/player_096031.png/%22 127.0.0.1:65207 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:15.186       dream.log  WARN REQ 139 404 in 13 μs
+05.01.26 06:49:20.793       dream.log  INFO REQ 140 GET /boxscore/046-01-21 127.0.0.1:65206 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:20.797       dream.log  INFO REQ 140 200 in 3280 μs
+05.01.26 06:49:20.801       dream.log  INFO REQ 141 GET /static/css/styles.css 127.0.0.1:65206 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:20.801       dream.log  INFO REQ 142 GET /static/images/team_01.png 127.0.0.1:65207 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:20.801       dream.log  INFO REQ 143 GET /static/images/team_11.png 127.0.0.1:65183 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:20.801       dream.log  INFO REQ 141 200 in 474 μs
+05.01.26 06:49:20.802       dream.log  INFO REQ 143 200 in 450 μs
+05.01.26 06:49:20.802       dream.log  INFO REQ 142 200 in 634 μs
+05.01.26 06:49:20.803       dream.log  INFO REQ 144 GET /%22/static/images/player_095710.png/%22 127.0.0.1:65207 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:20.803       dream.log  WARN REQ 144 404 in 73 μs
+05.01.26 06:49:20.803       dream.log  INFO REQ 145 GET /%22/static/images/player_095263.png/%22 127.0.0.1:65183 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:20.803       dream.log  WARN REQ 145 404 in 42 μs
+05.01.26 06:49:20.803       dream.log  INFO REQ 146 GET /%22/static/images/player_095637.png/%22 127.0.0.1:65207 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:20.803       dream.log  WARN REQ 146 404 in 37 μs
+05.01.26 06:49:20.804       dream.log  INFO REQ 147 GET /%22/static/images/player_095999.png/%22 127.0.0.1:65207 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:20.804       dream.log  WARN REQ 147 404 in 59 μs
+05.01.26 06:49:20.804       dream.log  INFO REQ 148 GET /%22/static/images/player_096033.png/%22 127.0.0.1:65183 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:20.804       dream.log  WARN REQ 148 404 in 65 μs
+05.01.26 06:49:20.807       dream.log  INFO REQ 149 GET /%22/static/images/player_095543.png/%22 127.0.0.1:65183 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:20.807       dream.log  WARN REQ 149 404 in 76 μs
+05.01.26 06:49:20.807       dream.log  INFO REQ 150 GET /%22/static/images/player_095902.png/%22 127.0.0.1:65207 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:20.807       dream.log  WARN REQ 150 404 in 23 μs
+05.01.26 06:49:20.807       dream.log  INFO REQ 151 GET /%22/static/images/player_095186.png/%22 127.0.0.1:65181 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:20.807       dream.log  WARN REQ 151 404 in 19 μs
+05.01.26 06:49:20.807       dream.log  INFO REQ 152 GET /%22/static/images/player_095484.png/%22 127.0.0.1:65185 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:20.807       dream.log  WARN REQ 152 404 in 21 μs
+05.01.26 06:49:20.807       dream.log  INFO REQ 153 GET /%22/static/images/player_095636.png/%22 127.0.0.1:65205 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:20.807       dream.log  WARN REQ 153 404 in 19 μs
+05.01.26 06:49:20.807       dream.log  INFO REQ 154 GET /%22/static/images/player_095746.png/%22 127.0.0.1:65206 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:20.807       dream.log  WARN REQ 154 404 in 28 μs
+05.01.26 06:49:20.807       dream.log  INFO REQ 155 GET /%22/static/images/player_095248.png/%22 127.0.0.1:65183 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:20.807       dream.log  WARN REQ 155 404 in 34 μs
+05.01.26 06:49:20.808       dream.log  INFO REQ 156 GET /%22/static/images/player_095899.png/%22 127.0.0.1:65206 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:20.808       dream.log  WARN REQ 156 404 in 51 μs
+05.01.26 06:49:20.808       dream.log  INFO REQ 157 GET /%22/static/images/player_095780.png/%22 127.0.0.1:65205 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:20.808       dream.log  WARN REQ 157 404 in 39 μs
+05.01.26 06:49:20.808       dream.log  INFO REQ 158 GET /%22/static/images/player_095919.png/%22 127.0.0.1:65183 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:20.808       dream.log  WARN REQ 158 404 in 17 μs
+05.01.26 06:49:20.809       dream.log  INFO REQ 159 GET /%22/static/images/player_096001.png/%22 127.0.0.1:65185 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:20.809       dream.log  WARN REQ 159 404 in 56 μs
+05.01.26 06:49:20.809       dream.log  INFO REQ 160 GET /%22/static/images/player_095834.png/%22 127.0.0.1:65206 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:20.809       dream.log  WARN REQ 160 404 in 45 μs
+05.01.26 06:49:29.707       dream.log  INFO REQ 161 GET / 127.0.0.1:65206 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:29.717       dream.log  INFO REQ 161 200 in 9895 μs
+05.01.26 06:49:29.721       dream.log  INFO REQ 162 GET /static/css/styles.css 127.0.0.1:65206 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:29.721       dream.log  INFO REQ 163 GET /%22/static/images/player_095533.png/%22 127.0.0.1:65185 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:29.721       dream.log  WARN REQ 163 404 in 31 μs
+05.01.26 06:49:29.721       dream.log  INFO REQ 164 GET /static/images/team_01.png 127.0.0.1:65183 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:29.721       dream.log  INFO REQ 162 200 in 419 μs
+05.01.26 06:49:29.721       dream.log  INFO REQ 164 200 in 395 μs
+05.01.26 06:49:29.722       dream.log  INFO REQ 165 GET /%22/static/images/player_095104.png/%22 127.0.0.1:65206 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:29.722       dream.log  WARN REQ 165 404 in 66 μs
+05.01.26 06:49:29.722       dream.log  INFO REQ 166 GET /static/images/team_05.png 127.0.0.1:65183 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:29.723       dream.log  INFO REQ 167 GET /%22/static/images/player_095639.png/%22 127.0.0.1:65206 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:29.723       dream.log  WARN REQ 167 404 in 142 μs
+05.01.26 06:49:29.723       dream.log  INFO REQ 166 200 in 734 μs
+05.01.26 06:49:29.724       dream.log  INFO REQ 168 GET /%22/static/images/player_095248.png/%22 127.0.0.1:65183 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:29.724       dream.log  WARN REQ 168 404 in 100 μs
+05.01.26 06:49:29.724       dream.log  INFO REQ 169 GET /static/images/team_11.png 127.0.0.1:65206 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:29.725       dream.log  INFO REQ 169 200 in 399 μs
+05.01.26 06:49:29.727       dream.log  INFO REQ 170 GET /static/images/team_09.png 127.0.0.1:65183 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:29.727       dream.log  INFO REQ 171 GET /%22/static/images/player_095499.png/%22 127.0.0.1:65206 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:29.727       dream.log  WARN REQ 171 404 in 44 μs
+05.01.26 06:49:29.727       dream.log  INFO REQ 172 GET /%22/static/images/player_095115.png/%22 127.0.0.1:65185 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:29.727       dream.log  WARN REQ 172 404 in 46 μs
+05.01.26 06:49:29.728       dream.log  INFO REQ 173 GET /static/images/team_03.png 127.0.0.1:65205 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:29.728       dream.log  INFO REQ 174 GET /%22/static/images/player_095778.png/%22 127.0.0.1:65181 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:29.728       dream.log  WARN REQ 174 404 in 35 μs
+05.01.26 06:49:29.728       dream.log  INFO REQ 175 GET /%22/static/images/player_095710.png/%22 127.0.0.1:65207 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:29.728       dream.log  WARN REQ 175 404 in 25 μs
+05.01.26 06:49:29.728       dream.log  INFO REQ 176 GET /%22/static/images/player_095263.png/%22 127.0.0.1:65206 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:29.728       dream.log  WARN REQ 176 404 in 29 μs
+05.01.26 06:49:29.728       dream.log  INFO REQ 177 GET /%22/static/images/player_095912.png/%22 127.0.0.1:65185 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:29.728       dream.log  WARN REQ 177 404 in 30 μs
+05.01.26 06:49:29.728       dream.log  INFO REQ 178 GET /%22/static/images/player_095186.png/%22 127.0.0.1:65181 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:29.728       dream.log  WARN REQ 178 404 in 53 μs
+05.01.26 06:49:29.728       dream.log  INFO REQ 179 GET /%22/static/images/player_095916.png/%22 127.0.0.1:65207 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:29.728       dream.log  WARN REQ 179 404 in 27 μs
+05.01.26 06:49:29.729       dream.log  INFO REQ 180 GET /%22/static/images/player_095189.png/%22 127.0.0.1:65185 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:29.729       dream.log  WARN REQ 180 404 in 201 μs
+05.01.26 06:49:29.729       dream.log  INFO REQ 181 GET /%22/static/images/player_095911.png/%22 127.0.0.1:65206 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:29.729       dream.log  WARN REQ 181 404 in 37 μs
+05.01.26 06:49:29.729       dream.log  INFO REQ 182 GET /%22/static/images/player_095259.png/%22 127.0.0.1:65181 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:29.729       dream.log  WARN REQ 182 404 in 25 μs
+05.01.26 06:49:29.729       dream.log  INFO REQ 183 GET /%22/static/images/player_095972.png/%22 127.0.0.1:65207 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:29.729       dream.log  WARN REQ 183 404 in 79 μs
+05.01.26 06:49:29.730       dream.log  INFO REQ 170 200 in 2473 μs
+05.01.26 06:49:29.730       dream.log  INFO REQ 184 GET /%22/static/images/player_095822.png/%22 127.0.0.1:65181 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:29.730       dream.log  WARN REQ 184 404 in 48 μs
+05.01.26 06:49:29.730       dream.log  INFO REQ 185 GET /%22/static/images/player_095484.png/%22 127.0.0.1:65185 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:29.730       dream.log  WARN REQ 185 404 in 44 μs
+05.01.26 06:49:29.730       dream.log  INFO REQ 186 GET /%22/static/images/player_095636.png/%22 127.0.0.1:65206 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:29.730       dream.log  WARN REQ 186 404 in 25 μs
+05.01.26 06:49:29.730       dream.log  INFO REQ 187 GET /%22/static/images/player_095041.png/%22 127.0.0.1:65207 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:49:29.730       dream.log  WARN REQ 187 404 in 27 μs
+05.01.26 06:49:29.730       dream.log  INFO REQ 173 200 in 2821 μs
+05.01.26 06:59:13.381       dream.log  INFO REQ 188 GET / 127.0.0.1:52633 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:59:13.394       dream.log  INFO REQ 188 200 in 13450 μs
+05.01.26 06:59:13.399       dream.log  INFO REQ 189 GET /static/css/styles.css 127.0.0.1:52633 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:59:13.399       dream.log  INFO REQ 190 GET /%22/static/images/player_095533.png/%22 127.0.0.1:52635 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:59:13.399       dream.log  WARN REQ 190 404 in 49 μs
+05.01.26 06:59:13.399       dream.log  INFO REQ 189 200 in 517 μs
+05.01.26 06:59:13.399       dream.log  INFO REQ 191 GET /static/images/team_01.png 127.0.0.1:52635 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:59:13.400       dream.log  INFO REQ 191 200 in 537 μs
+05.01.26 06:59:13.400       dream.log  INFO REQ 192 GET /%22/static/images/player_095104.png/%22 127.0.0.1:52633 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:59:13.400       dream.log  WARN REQ 192 404 in 119 μs
+05.01.26 06:59:13.401       dream.log  INFO REQ 193 GET /static/images/team_05.png 127.0.0.1:52635 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:59:13.401       dream.log  INFO REQ 194 GET /%22/static/images/player_095639.png/%22 127.0.0.1:52633 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:59:13.401       dream.log  WARN REQ 194 404 in 50 μs
+05.01.26 06:59:13.402       dream.log  INFO REQ 193 200 in 582 μs
+05.01.26 06:59:13.404       dream.log  INFO REQ 195 GET /static/images/team_11.png 127.0.0.1:52633 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:59:13.405       dream.log  INFO REQ 196 GET /%22/static/images/player_095248.png/%22 127.0.0.1:52635 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:59:13.405       dream.log  WARN REQ 196 404 in 43 μs
+05.01.26 06:59:13.405       dream.log  INFO REQ 197 GET /%22/static/images/player_095499.png/%22 127.0.0.1:52638 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:59:13.405       dream.log  WARN REQ 197 404 in 36 μs
+05.01.26 06:59:13.406       dream.log  INFO REQ 198 GET /static/images/team_03.png 127.0.0.1:52643 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:59:13.406       dream.log  INFO REQ 199 GET /%22/static/images/player_095710.png/%22 127.0.0.1:52644 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:59:13.406       dream.log  WARN REQ 199 404 in 30 μs
+05.01.26 06:59:13.406       dream.log  INFO REQ 200 GET /static/images/team_09.png 127.0.0.1:52635 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:59:13.406       dream.log  INFO REQ 201 GET /%22/static/images/player_095115.png/%22 127.0.0.1:52641 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:59:13.406       dream.log  WARN REQ 201 404 in 25 μs
+05.01.26 06:59:13.406       dream.log  INFO REQ 202 GET /%22/static/images/player_095778.png/%22 127.0.0.1:52638 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:59:13.406       dream.log  WARN REQ 202 404 in 24 μs
+05.01.26 06:59:13.406       dream.log  INFO REQ 203 GET /%22/static/images/player_095263.png/%22 127.0.0.1:52644 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:59:13.407       dream.log  WARN REQ 203 404 in 25 μs
+05.01.26 06:59:13.407       dream.log  INFO REQ 195 200 in 2246 μs
+05.01.26 06:59:13.407       dream.log  INFO REQ 204 GET /%22/static/images/player_095186.png/%22 127.0.0.1:52641 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:59:13.407       dream.log  WARN REQ 204 404 in 52 μs
+05.01.26 06:59:13.407       dream.log  INFO REQ 205 GET /%22/static/images/player_095912.png/%22 127.0.0.1:52638 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:59:13.407       dream.log  WARN REQ 205 404 in 25 μs
+05.01.26 06:59:13.407       dream.log  INFO REQ 200 200 in 1041 μs
+05.01.26 06:59:13.407       dream.log  INFO REQ 206 GET /%22/static/images/player_095916.png/%22 127.0.0.1:52644 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:59:13.408       dream.log  WARN REQ 206 404 in 46 μs
+05.01.26 06:59:13.408       dream.log  INFO REQ 198 200 in 1779 μs
+05.01.26 06:59:13.408       dream.log  INFO REQ 207 GET /%22/static/images/player_095911.png/%22 127.0.0.1:52633 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:59:13.408       dream.log  WARN REQ 207 404 in 56 μs
+05.01.26 06:59:13.408       dream.log  INFO REQ 208 GET /%22/static/images/player_095259.png/%22 127.0.0.1:52641 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:59:13.408       dream.log  WARN REQ 208 404 in 46 μs
+05.01.26 06:59:13.408       dream.log  INFO REQ 209 GET /%22/static/images/player_095189.png/%22 127.0.0.1:52638 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:59:13.408       dream.log  WARN REQ 209 404 in 27 μs
+05.01.26 06:59:13.408       dream.log  INFO REQ 210 GET /%22/static/images/player_095972.png/%22 127.0.0.1:52644 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:59:13.408       dream.log  WARN REQ 210 404 in 24 μs
+05.01.26 06:59:13.409       dream.log  INFO REQ 211 GET /%22/static/images/player_095822.png/%22 127.0.0.1:52635 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:59:13.409       dream.log  WARN REQ 211 404 in 52 μs
+05.01.26 06:59:13.409       dream.log  INFO REQ 212 GET /%22/static/images/player_095636.png/%22 127.0.0.1:52633 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:59:13.409       dream.log  WARN REQ 212 404 in 24 μs
+05.01.26 06:59:13.409       dream.log  INFO REQ 213 GET /%22/static/images/player_095484.png/%22 127.0.0.1:52643 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:59:13.409       dream.log  WARN REQ 213 404 in 19 μs
+05.01.26 06:59:13.409       dream.log  INFO REQ 214 GET /%22/static/images/player_095041.png/%22 127.0.0.1:52644 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36
+05.01.26 06:59:13.409       dream.log  WARN REQ 214 404 in 34 μs

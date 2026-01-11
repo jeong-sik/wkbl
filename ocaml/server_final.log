@@ -1,0 +1,5 @@
+03.01.26 12:11:39.192                       Database connected: /Users/dancer/me/workspace/yousleepwhen/wkbl/data/wkbl.db
+03.01.26 12:11:39.192                       Running on 0.0.0.0:8082 (http://localhost:8082)
+03.01.26 12:11:39.192                       Type Ctrl+C to stop
+03.01.26 12:11:42.638       dream.log  INFO REQ 1 GET /compare?p1=김단비&p2=박지현 127.0.0.1:50406 curl/8.7.1
+03.01.26 12:11:42.642       dream.log  INFO REQ 1 200 in 3492 μs

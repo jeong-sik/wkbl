@@ -1,0 +1,4 @@
+06.01.26 07:49:08.458                       Running on 0.0.0.0:8900 (http://localhost:8900)
+06.01.26 07:49:08.458                       Type Ctrl+C to stop
+06.01.26 07:49:20.233       dream.log  INFO REQ 1 GET /player/095104 127.0.0.1:52206 curl/8.7.1
+06.01.26 07:49:20.242       dream.log  INFO REQ 1 200 in 8705 μs

@@ -1,0 +1,5 @@
+03.01.26 13:31:14.601                       Database connected: /Users/dancer/me/workspace/yousleepwhen/wkbl/data/wkbl.db
+03.01.26 13:31:14.601                       Running on 0.0.0.0:8000 (http://localhost:8000)
+03.01.26 13:31:14.601                       Type Ctrl+C to stop
+03.01.26 13:31:16.414       dream.log  INFO REQ 1 GET /boxscores 127.0.0.1:54588 curl/8.7.1
+03.01.26 13:31:16.417       dream.log  INFO REQ 1 200 in 2592 μs
