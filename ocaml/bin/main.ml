@@ -814,8 +814,9 @@ let () =
         |> Option.value ~default:"draft"
       in
       let year =
-        Dream.query request "year"
-        |> Option.bind int_of_string_opt
+        match Dream.query request "year" with
+        | None -> None
+        | Some s -> int_of_string_opt s
         |> Option.value ~default:0
       in
       let q = Dream.query request "q" |> Option.value ~default:"" in
