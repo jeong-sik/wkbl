@@ -1,0 +1,26 @@
+{"type":"agent_join","agent":"claude","capabilities":["basketball-analytics","feature-design","product-planning","typescript","react","data-visualization"],"ts":"2026-01-02T08:34:22Z"}
+{"type":"agent_join","agent":"test-agent","capabilities":["testing"],"ts":"2026-01-02T08:42:22Z"}
+{"type":"agent_leave","agent":"test-agent","ts":"2026-01-02T08:42:47Z"}
+{"type":"agent_join","agent":"claude","capabilities":["typescript","react","ocaml","code-review","architecture"],"ts":"2026-01-02T08:50:09Z"}
+{"type":"agent_join","agent":"claude","capabilities":["typescript","code-review","testing","refactoring","architecture"],"ts":"2026-01-02T08:50:51Z"}
+{"type":"agent_leave","agent":"claude","ts":"2026-01-02T08:51:16Z"}
+{"type":"agent_join","agent":"농구에미친PO","capabilities":["typescript","code-review","ocaml","product-owner","wkbl-expert"],"ts":"2026-01-02T08:51:21Z"}
+{"type":"agent_join","agent":"claude","capabilities":["typescript","ocaml","code-review"],"ts":"2026-01-02T08:51:47Z"}
+{"type":"agent_join","agent":"photo-crawler","capabilities":["scraping","images","web-automation"],"ts":"2026-01-02T08:59:27Z"}
+{"type":"agent_join","agent":"pm","capabilities":["coordination","planning","monitoring","code-review"],"ts":"2026-01-02T08:59:27Z"}
+{"type":"agent_join","agent":"logo-designer","capabilities":["design","assets"],"ts":"2026-01-02T08:59:29Z"}
+{"type":"task_claim","agent":"photo-crawler","task":"task-012","ts":"2026-01-02T08:59:31Z"}
+{"type":"task_claim","agent":"logo-designer","task":"task-013","ts":"2026-01-02T08:59:33Z"}
+{"type":"agent_join","agent":"pinger","capabilities":["heartbeat","monitoring"],"ts":"2026-01-02T08:59:50Z"}
+{"type":"agent_join","agent":"qa-bot","capabilities":["testing","pytest","qa"],"ts":"2026-01-02T09:02:14Z"}
+{"type":"task_done","agent":"photo-crawler","task":"task-012","notes":"WKBL 공식 사이트에서 102명 현역 선수 headshot URL 수집 완료. data/players_photos.json에 저장됨. 6개 팀: 삼성생명(16명), 신한은행(14명), 우리은행(18명), 하나은행(14명), BNK 썸(18명), KB스타즈(22명)","ts":"2026-01-02T09:03:11Z"}
+{"type":"agent_join","agent":"미친농구광PO","capabilities":["product-owner","wkbl-stats","user-research","prioritization"],"ts":"2026-01-02T09:06:28Z"}
+{"type":"task_claim","agent":"미친농구광PO","task":"task-018","ts":"2026-01-02T09:07:03Z"}
+{"type":"task_done","agent":"logo-designer","task":"task-013","notes":"6개 WKBL 팀 로고 모두 app/static/images/에 존재 확인. team_01(KB스타즈), team_03(삼성생명), team_05(우리은행), team_07(신한은행), team_09(하나원큐), team_11(BNK썸). 추가 수집 불필요.","ts":"2026-01-02T09:07:41Z"}
+{"type":"task_done","agent":"미친농구광PO","task":"task-018","notes":"🏀 WKBL 6개 팀 메타데이터 정리 완료! (한글명, 영어명, 홈구장, 연고지, 로고파일). logo-designer님과 협업하여 로고 매핑까지 완료. JSON 형식으로 개발자가 바로 사용 가능!","ts":"2026-01-02T09:10:17Z"}
+{"type":"agent_join","agent":"ocaml-dev","capabilities":["ocaml","dream","postgresql","htmx","implementation"],"ts":"2026-01-02T09:12:17Z"}
+{"type":"agent_join","agent":"WKBL-PM","capabilities":["project-management","task-coordination","prioritization"],"ts":"2026-01-02T09:12:18Z"}
+{"type":"task_claim","agent":"ocaml-dev","task":"task-017","ts":"2026-01-02T09:12:32Z"}
+{"type":"task_done","agent":"ocaml-dev","task":"task-017","notes":"game_date 이미 파싱 완료 확인! DB 검증 결과:\n- 044 시즌: 72경기, 72개 고유 날짜\n- 045 시즌: 91경기, 91개 고유 날짜\n- 046 시즌: 37경기, 31개 고유 날짜\n총 200경기 모두 유효한 game_date 보유. scraped_games.json 통해 이미 로드됨.","ts":"2026-01-02T09:15:00Z"}
+{"type":"agent_join","agent":"pinger","capabilities":["heartbeat","monitoring"],"ts":"2026-01-02T09:20:13Z"}
+{"type":"agent_join","agent":"기획자PO","capabilities":["product-planning","ux-design","user-research","prioritization","korean"],"ts":"2026-01-02T09:20:56Z"}
