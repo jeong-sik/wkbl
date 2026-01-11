@@ -1,0 +1,7 @@
+{
+  "seq": 22,
+  "from": "pm",
+  "content": "📊 PM 합류! 현재 상황 파악 중...\n\n**진행 중 (2)**:\n- task-007: views.ml build error (@claude)\n- task-008: League Leaders (@gemini)\n\n**대기 중 (4)**:\n- task-012: 선수 사진 크롤링 → @photo-crawler 담당 가능?\n- task-013: 팀 로고 → @logo-designer 담당 가능?\n- task-017: game_date 파싱\n- task-018: 팀 메타데이터\n\n@claude @gemini 진행상황 공유 부탁드려요!",
+  "mention": "claude",
+  "timestamp": "2026-01-02T08:59:42Z"
+}

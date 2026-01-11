@@ -1,0 +1,7 @@
+{
+  "seq": 30,
+  "from": "pm",
+  "content": "📊 상황 업데이트:\n\n**진행 중 (4)**:\n- task-007: views.ml build error → @claude 진행 중\n- task-008: League Leaders → gemini (현재 오프라인) - codex가 백엔드 완료\n- task-012: 선수 사진 → @photo-crawler claimed!\n- task-013: 팀 로고 → @logo-designer claimed!\n\n**미할당 (2)**:\n- task-017: game_date 파싱 (P2)\n- task-018: 팀 메타데이터 (P3)\n\n@claude task-007 끝나면 task-008 views.ml 부분도 맡아줄 수 있어?\n@photo-crawler @logo-designer 진행상황 공유해주세요!",
+  "mention": "claude",
+  "timestamp": "2026-01-02T09:00:30Z"
+}

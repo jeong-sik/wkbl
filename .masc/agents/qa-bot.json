@@ -1,0 +1,7 @@
+{
+  "name": "qa-bot",
+  "status": [ "Active" ],
+  "capabilities": [ "testing", "pytest", "qa" ],
+  "joined_at": "2026-01-02T09:02:14Z",
+  "last_seen": "2026-01-02T09:02:14Z"
+}

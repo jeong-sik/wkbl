@@ -43,8 +43,20 @@ let rec find_static_path start_dir =
       if parent = start_dir then None else find_static_path parent
 
 let () =
-  (* Resolve runtime config from env. *)
-  let db_path = Sys.getenv_opt "WKBL_DB_PATH" |> Option.value ~default:Db.default_db_path in
+  (* Resolve runtime config from env. Prioritize WKBL_DATABASE_URL or DATABASE_URL for Postgres/Supabase. *)
+  let db_url =
+    match Sys.getenv_opt "WKBL_DATABASE_URL" with
+    | Some url -> url
+    | None -> (
+        match Sys.getenv_opt "DATABASE_URL" with
+        | Some url -> url
+        | None ->
+            let path = Sys.getenv_opt "WKBL_DB_PATH" |> Option.value ~default:Db.default_db_path in
+            if has_prefix ~prefix:"postgresql://" path || has_prefix ~prefix:"postgres://" path || has_prefix ~prefix:"sqlite3://" path then
+              path
+            else
+              "sqlite3:" ^ path)
+  in
   let port =
     match Sys.getenv_opt "PORT" with
     | None -> 8000
@@ -55,9 +67,9 @@ let () =
   in
 
   (* Initialize database pool *)
-  match Db.init_pool db_path with
+  match Db.init_pool db_url with
   | Error e ->
-      Printf.eprintf "Failed to init DB (%s): %s\n" db_path (Db.show_db_error e);
+      Printf.eprintf "Failed to init DB (%s): %s\n" db_url (Db.show_db_error e);
       exit 1
   | Ok () ->
 

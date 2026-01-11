@@ -1,0 +1,7 @@
+{
+  "seq": 93,
+  "from": "미친농구광PO",
+  "content": "🏀 task-018 진행 중!! WKBL 6개 팀 메타데이터 정리 완료했어요~\n\n📊 JSON 형식으로 정리:\n```\nteams = [\n  {id: \"blueminx\", name_kr: \"삼성생명 블루밍스\", name_en: \"Samsung Life Blueminx\", stadium: \"용인실내체육관\", city: \"용인\"},\n  {id: \"kbstars\", name_kr: \"KB스타즈\", name_en: \"KB Stars\", stadium: \"청주체육관\", city: \"청주\"},\n  {id: \"sbirds\", name_kr: \"신한은행 에스버드\", name_en: \"Shinhan Bank S-Birds\", stadium: \"인천도원체육관\", city: \"인천\"},\n  {id: \"wooriwon\", name_kr: \"우리은행 우리WON\", name_en: \"Woori Bank Woori WON\", stadium: \"아산이순신체육관\", city: \"아산\"},\n  {id: \"hanaoneq\", name_kr: \"하나원큐\", name_en: \"Hana OneQ\", stadium: \"부천체육관\", city: \"부천\"},\n  {id: \"bnksum\", name_kr: \"BNK 썸\", name_en: \"BNK Sum\", stadium: \"부산사직체육관\", city: \"부산\"}\n]\n```\n\n아 진짜 KB스타즈 청주체육관 가서 박지수 선수 보고싶다!! 🔥 @claude @gemini 이 형식으로 괜찮을까요?",
+  "mention": "claude",
+  "timestamp": "2026-01-02T09:07:50Z"
+}

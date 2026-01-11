@@ -1,0 +1,1285 @@
+
+	<script type="text/javascript">
+	<!--
+		//alert("경기 결과 데이터가 없습니다.");
+		//history.back();
+	//-->
+	</script>
+
+
+			<div class="compare">
+				<div class="compare_wrap left">
+					<div class="player_block right">
+						<span class="player_compare left">
+							<p class="tit language" data-kr="공헌도" data-en="EFF">공헌도</p>
+							<p class="number">33.7</p>
+						</span>
+						<div class="player_info right">
+						
+							
+							<a href="javascript:" class="link_box js_layer" data-target="layerPlayer1" data-li="h" data-team="03" title="095115">
+								<img src="/static/images/player/pimg/m_095115.jpg?ver=0.3"><div class="hover language" data-kr="다른 선수<br />보기" data-en="View other<br /> players">다른 선수<br />보기</div>
+							</a>
+							<a href="javascript:" class="desc_block" onClick="fnPlayerInfo('', 'h');">
+								<span class="position">C</span>
+								<strong class="name language" data-kr="배혜윤" data-en="BAE HYE YOON">배혜윤</strong>
+							</a>
+						</div>
+					</div>
+				</div>
+				<span class="versus">VS</span>
+				<div class="compare_wrap right">
+					<div class="player_block">
+						<div class="player_info left">
+						
+							<a href="javascript:" class="link_box js_layer" data-target="layerPlayer2" data-li="a" data-team="07">
+								<img src="/static/images/player/pimg/m_095631.jpg?ver=0.3"><div class="hover language" data-kr="다른 선수<br />보기" data-en="View other<br /> players">다른 선수<br />보기</div>
+							</a>
+							<a href="javascript:" class="desc_block" onClick="fnPlayerInfo('', 'a');">
+								<span class="position">C</span>
+								<strong class="name language" data-kr="먼로" data-en="Jacinta Lisette Monroe">먼로</strong>
+							</a>
+						</div>
+						<div class="player_compare right">
+							<p class="tit language" data-kr="공헌도" data-en="EFF">공헌도</p>
+							<p class="number">39.7</p>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!--// player_compare_head -->
+			<div class="graph_horizontal01 js_class_once">
+				<table>
+					<caption>상세 정보</caption>
+					<colgroup>
+						<col style="width:*">
+						<col style="width:160px">
+						<col style="width:*">
+					</colgroup>
+					<thead>
+						<tr class="tr_team">
+							<th scope="col">삼성생명</th>
+							<th scope="col">구분</th>
+							<th scope="col">신한은행</th>
+						</tr>
+					</thead>
+					<tbody>
+					<tr>
+						<td class="home team03">
+							<div class="ratio_area">
+								<div class="bar" style="width:24%;"><em>24</em></div>
+							</div>
+						</td>
+						<th class="language" data-kr="득점" data-en="PTS">득점</th>
+						<td class="away team07">
+							<div class="ratio_area">
+								<div class="bar" style="width:19%;"><em>19</em></div>
+							</div>
+						</td>
+					</tr>
+					<tr>
+						<td class="home team03">
+							<div class="ratio_area">
+								<div class="bar" style="width:3%;"><em>3</em></div>
+							</div>
+						</td>
+						<th class="language" data-kr="리바운드" data-en="Rebound">리바운드</th>
+						<td class="away team07">
+							<div class="ratio_area">
+								<div class="bar" style="width:12%;"><em>12</em></div>
+							</div>
+						</td>
+					</tr>
+					<tr>
+						<td class="home team03">
+							<div class="ratio_area">
+								<div class="bar" style="width:2%;"><em>2</em></div>
+							</div>
+						</td>
+						<th class="language" data-kr="어시스트" data-en="AST">어시스트</th>
+						<td class="away team07">
+							<div class="ratio_area">
+								<div class="bar" style="width:0%;"><em>0</em></div>
+							</div>
+						</td>
+					</tr>
+					<tr>
+						<td class="home team03">
+							<div class="ratio_area">
+								<div class="bar" style="width:0%;"><em>0</em></div>
+							</div>
+						</td>
+						<th class="language" data-kr="블록슛" data-en="BS">블록슛</th>
+						<td class="away team07">
+							<div class="ratio_area">
+								<div class="bar" style="width:3%;"><em>3</em></div>
+							</div>
+						</td>
+					</tr>
+					<tr>
+						<td class="home team03">
+							<div class="ratio_area">
+								<div class="bar" style="width:5%;"><em>5</em></div>
+							</div>
+						</td>
+						<th class="language" data-kr="스틸" data-en="ST">스틸</th>
+						<td class="away team07">
+							<div class="ratio_area">
+								<div class="bar" style="width:1%;"><em>1</em></div>
+							</div>
+						</td>
+					</tr>
+					<tr>
+						<td class="home team03">
+							<div class="ratio_area">
+								<div class="bar" style="width:0%;"><em>0</em></div>
+							</div>
+						</td>
+						<th class="language" data-kr="턴오버" data-en="TO">턴오버</th>
+						<td class="away team07">
+							<div class="ratio_area">
+								<div class="bar" style="width:0%;"><em>0</em></div>
+							</div>
+						</td>
+					</tr>
+					</tbody>
+				</table>
+			</div>
+			<!-- 막대 차트 END -->
+
+			<!-- H -->
+			<div id="layerPlayer1" class="layer_palyer_select">
+				<div class="player_popup_wrap">
+					<div class="ly_head team03">
+						<span class="frame_g"><img src="/static/images/team/teamlogo_03.png" alt="삼성생명"></span>
+						<strong class="team_name language" data-kr="삼성생명" data-en="SAMSUNG LIFE">삼성생명</strong>
+						<button type="button" class="btn_close"><i class="ico_comm ico_close">레이어닫기</i></button>
+					</div>
+					<div class="ly_body">
+						<ul id="list_h" class="list_players">
+						
+							<li>
+								<span class="radio_player">
+									<label for="p_number"><span class="cover_img"><img src="/static/images/player/pimg/m_095450.jpg?ver=0.3" alt="강계리"></span></label>
+									<input type="radio" name="playerBox1" value="095450|강계리|G" class="radio" onClick="checkEvent(this);">
+									<div class="desc_block">
+										<strong class="name language" data-kr="강계리" data-en="KANG KYE LEE">강계리</strong>
+										<span class="position">G</span>
+									</div>
+								</span>
+							</li>
+						
+							<li>
+								<span class="radio_player">
+									<label for="p_number"><span class="cover_img"><img src="/static/images/player/pimg/m_095588.jpg?ver=0.3" alt="김나연"></span></label>
+									<input type="radio" name="playerBox1" value="095588|김나연|F" class="radio" onClick="checkEvent(this);">
+									<div class="desc_block">
+										<strong class="name language" data-kr="김나연" data-en="KIM NA YEON">김나연</strong>
+										<span class="position">F</span>
+									</div>
+								</span>
+							</li>
+						
+							<li>
+								<span class="radio_player">
+									<label for="p_number"><span class="cover_img"><img src="/static/images/player/pimg/m_094915.jpg?ver=0.3" alt="김보미"></span></label>
+									<input type="radio" name="playerBox1" value="094915|김보미|F" class="radio" onClick="checkEvent(this);">
+									<div class="desc_block">
+										<strong class="name language" data-kr="김보미" data-en="KIM BO MI">김보미</strong>
+										<span class="position">F</span>
+									</div>
+								</span>
+							</li>
+						
+							<li>
+								<span class="radio_player">
+									<label for="p_number"><span class="cover_img"><img src="/static/images/player/pimg/m_095189.jpg?ver=0.3" alt="김한별"></span></label>
+									<input type="radio" name="playerBox1" value="095189|김한별|F" class="radio" onClick="checkEvent(this);">
+									<div class="desc_block">
+										<strong class="name language" data-kr="김한별" data-en="KIM  HANBYEOL">김한별</strong>
+										<span class="position">F</span>
+									</div>
+								</span>
+							</li>
+						
+							<li>
+								<span class="radio_player">
+									<label for="p_number"><span class="cover_img"><img src="/static/images/player/pimg/m_095182.jpg?ver=0.3" alt="박하나"></span></label>
+									<input type="radio" name="playerBox1" value="095182|박하나|G" class="radio" onClick="checkEvent(this);">
+									<div class="desc_block">
+										<strong class="name language" data-kr="박하나" data-en="PARK HA NA">박하나</strong>
+										<span class="position">G</span>
+									</div>
+								</span>
+							</li>
+						
+							<li>
+								<span class="radio_player">
+									<label for="p_number"><span class="cover_img"><img src="/static/images/player/pimg/m_095115.jpg?ver=0.3" alt="배혜윤"></span></label>
+									<input type="radio" name="playerBox1" value="095115|배혜윤|C" class="radio" onClick="checkEvent(this);">
+									<div class="desc_block">
+										<strong class="name language" data-kr="배혜윤" data-en="BAE HYE YOON">배혜윤</strong>
+										<span class="position">C</span>
+									</div>
+								</span>
+							</li>
+						
+							<li>
+								<span class="radio_player">
+									<label for="p_number"><span class="cover_img"><img src="/static/images/player/pimg/m_095580.jpg?ver=0.3" alt="서덜랜드"></span></label>
+									<input type="radio" name="playerBox1" value="095580|서덜랜드|F" class="radio" onClick="checkEvent(this);">
+									<div class="desc_block">
+										<strong class="name language" data-kr="서덜랜드" data-en="Aishah Sutherland">서덜랜드</strong>
+										<span class="position">F</span>
+									</div>
+								</span>
+							</li>
+						
+							<li>
+								<span class="radio_player">
+									<label for="p_number"><span class="cover_img"><img src="/static/images/player/pimg/m_095633.jpg?ver=0.3" alt="신이슬"></span></label>
+									<input type="radio" name="playerBox1" value="095633|신이슬|G" class="radio" onClick="checkEvent(this);">
+									<div class="desc_block">
+										<strong class="name language" data-kr="신이슬" data-en="SHIN LEE SEUL">신이슬</strong>
+										<span class="position">G</span>
+									</div>
+								</span>
+							</li>
+						
+							<li>
+								<span class="radio_player">
+									<label for="p_number"><span class="cover_img"><img src="/static/images/player/pimg/m_095259.jpg?ver=0.3" alt="양인영"></span></label>
+									<input type="radio" name="playerBox1" value="095259|양인영|C" class="radio" onClick="checkEvent(this);">
+									<div class="desc_block">
+										<strong class="name language" data-kr="양인영" data-en="YANG IN YOUNG">양인영</strong>
+										<span class="position">C</span>
+									</div>
+								</span>
+							</li>
+						
+							<li>
+								<span class="radio_player">
+									<label for="p_number"><span class="cover_img"><img src="/static/images/player/pimg/m_095497.jpg?ver=0.3" alt="윤예빈"></span></label>
+									<input type="radio" name="playerBox1" value="095497|윤예빈|G" class="radio" onClick="checkEvent(this);">
+									<div class="desc_block">
+										<strong class="name language" data-kr="윤예빈" data-en="YOON YE BIN">윤예빈</strong>
+										<span class="position">G</span>
+									</div>
+								</span>
+							</li>
+						
+							<li>
+								<span class="radio_player">
+									<label for="p_number"><span class="cover_img"><img src="/static/images/player/pimg/m_095524.jpg?ver=0.3" alt="이주연"></span></label>
+									<input type="radio" name="playerBox1" value="095524|이주연|G" class="radio" onClick="checkEvent(this);">
+									<div class="desc_block">
+										<strong class="name language" data-kr="이주연" data-en="LEE JU YEON">이주연</strong>
+										<span class="position">G</span>
+									</div>
+								</span>
+							</li>
+						
+							<li>
+								<span class="radio_player">
+									<label for="p_number"><span class="cover_img"><img src="/static/images/player/pimg/m_095587.jpg?ver=0.3" alt="최정민"></span></label>
+									<input type="radio" name="playerBox1" value="095587|최정민|F" class="radio" onClick="checkEvent(this);">
+									<div class="desc_block">
+										<strong class="name language" data-kr="최정민" data-en="CHOI JUNG MIN">최정민</strong>
+										<span class="position">F</span>
+									</div>
+								</span>
+							</li>
+						
+							<li>
+								<span class="radio_player">
+									<label for="p_number"><span class="cover_img"><img src="/static/images/player/pimg/m_095022.jpg?ver=0.3" alt="최희진"></span></label>
+									<input type="radio" name="playerBox1" value="095022|최희진|F" class="radio" onClick="checkEvent(this);">
+									<div class="desc_block">
+										<strong class="name language" data-kr="최희진" data-en="CHOI HEE JIN">최희진</strong>
+										<span class="position">F</span>
+									</div>
+								</span>
+							</li>
+						
+							<li>
+								<span class="radio_player">
+									<label for="p_number"><span class="cover_img"><img src="/static/images/player/pimg/m_095632.jpg?ver=0.3" alt="펜"></span></label>
+									<input type="radio" name="playerBox1" value="095632|펜|C" class="radio" onClick="checkEvent(this);">
+									<div class="desc_block">
+										<strong class="name language" data-kr="펜" data-en="Karisma Penn">펜</strong>
+										<span class="position">C</span>
+									</div>
+								</span>
+							</li>
+						
+							<li>
+								<span class="radio_player">
+									<label for="p_number"><span class="cover_img"><img src="/static/images/player/pimg/m_095532.jpg?ver=0.3" alt="하킨스"></span></label>
+									<input type="radio" name="playerBox1" value="095532|하킨스|C" class="radio" onClick="checkEvent(this);">
+									<div class="desc_block">
+										<strong class="name language" data-kr="하킨스" data-en="Tianna Hawkins">하킨스</strong>
+										<span class="position">C</span>
+									</div>
+								</span>
+							</li>
+						
+							<li>
+								<span class="radio_player">
+									<label for="p_number"><span class="cover_img"><img src="/static/images/player/pimg/m_095513.jpg?ver=0.3" alt="한여름"></span></label>
+									<input type="radio" name="playerBox1" value="095513|한여름|C" class="radio" onClick="checkEvent(this);">
+									<div class="desc_block">
+										<strong class="name language" data-kr="한여름" data-en="Han Yeo Reum">한여름</strong>
+										<span class="position">C</span>
+									</div>
+								</span>
+							</li>
+						
+							<li>
+								<span class="radio_player">
+									<label for="p_number"><span class="cover_img"><img src="/static/images/player/pimg/m_095586.jpg?ver=0.3" alt="황미우"></span></label>
+									<input type="radio" name="playerBox1" value="095586|황미우|G" class="radio" onClick="checkEvent(this);">
+									<div class="desc_block">
+										<strong class="name language" data-kr="황미우" data-en="HWANG MI WOO">황미우</strong>
+										<span class="position">G</span>
+									</div>
+								</span>
+							</li>
+						
+						</ul>
+					</div>
+				</div>
+			</div>
+
+			<!-- A -->
+			<div id="layerPlayer2" class="layer_palyer_select">
+				<div class="player_popup_wrap">
+					<div class="ly_head team07">
+						<span class="frame_g"><img src="/static/images/team/teamlogo_07.png" alt="신한은행"></span>
+						<strong class="team_name language" data-kr="신한은행" data-en="SHINHAN BANK">신한은행</strong>
+						<button type="button" class="btn_close"><i class="ico_comm ico_close">레이어닫기</i></button>
+					</div>
+					<div class="ly_body">
+						<ul id="list_a" class="list_players">
+						
+							<li>
+								<span class="radio_player">
+									<label for="p_number" ><span class="cover_img"><img src="/static/images/player/pimg/m_095450.jpg?ver=0.3" alt="강계리"></span></label>
+									<input type="radio" name="playerBox2" value="095450|강계리|G" class="radio">
+									<div class="desc_block">
+										<strong class="name language" data-kr="강계리" data-en="KANG KYE LEE">강계리</strong>
+										<span class="position">G</span>
+									</div>
+								</span>
+							</li>
+						
+							<li>
+								<span class="radio_player">
+									<label for="p_number" ><span class="cover_img"><img src="/static/images/player/pimg/m_002017.jpg?ver=0.3" alt="곽주영"></span></label>
+									<input type="radio" name="playerBox2" value="002017|곽주영|F" class="radio">
+									<div class="desc_block">
+										<strong class="name language" data-kr="곽주영" data-en="KWAK JU YOUNG">곽주영</strong>
+										<span class="position">F</span>
+									</div>
+								</span>
+							</li>
+						
+							<li>
+								<span class="radio_player">
+									<label for="p_number" ><span class="cover_img"><img src="/static/images/player/pimg/m_095220.jpg?ver=0.3" alt="김규희"></span></label>
+									<input type="radio" name="playerBox2" value="095220|김규희|G" class="radio">
+									<div class="desc_block">
+										<strong class="name language" data-kr="김규희" data-en="Kim Gyu Hee">김규희</strong>
+										<span class="position">G</span>
+									</div>
+								</span>
+							</li>
+						
+							<li>
+								<span class="radio_player">
+									<label for="p_number" ><span class="cover_img"><img src="/static/images/player/pimg/m_095104.jpg?ver=0.3" alt="김단비"></span></label>
+									<input type="radio" name="playerBox2" value="095104|김단비|F" class="radio">
+									<div class="desc_block">
+										<strong class="name language" data-kr="김단비" data-en="KIM DAN BI">김단비</strong>
+										<span class="position">F</span>
+									</div>
+								</span>
+							</li>
+						
+							<li>
+								<span class="radio_player">
+									<label for="p_number" ><span class="cover_img"><img src="/static/images/player/pimg/m_095477.jpg?ver=0.3" alt="김아름"></span></label>
+									<input type="radio" name="playerBox2" value="095477|김아름|F" class="radio">
+									<div class="desc_block">
+										<strong class="name language" data-kr="김아름" data-en="KIM AH REUM">김아름</strong>
+										<span class="position">F</span>
+									</div>
+								</span>
+							</li>
+						
+							<li>
+								<span class="radio_player">
+									<label for="p_number" ><span class="cover_img"><img src="/static/images/player/pimg/m_095476.jpg?ver=0.3" alt="김태연"></span></label>
+									<input type="radio" name="playerBox2" value="095476|김태연|C" class="radio">
+									<div class="desc_block">
+										<strong class="name language" data-kr="김태연" data-en="KIM TAE YEON">김태연</strong>
+										<span class="position">C</span>
+									</div>
+								</span>
+							</li>
+						
+							<li>
+								<span class="radio_player">
+									<label for="p_number" ><span class="cover_img"><img src="/static/images/player/pimg/m_095631.jpg?ver=0.3" alt="먼로"></span></label>
+									<input type="radio" name="playerBox2" value="095631|먼로|C" class="radio">
+									<div class="desc_block">
+										<strong class="name language" data-kr="먼로" data-en="Jacinta Lisette Monroe">먼로</strong>
+										<span class="position">C</span>
+									</div>
+								</span>
+							</li>
+						
+							<li>
+								<span class="radio_player">
+									<label for="p_number" ><span class="cover_img"><img src="/static/images/player/pimg/m_095444.jpg?ver=0.3" alt="박혜미"></span></label>
+									<input type="radio" name="playerBox2" value="095444|박혜미|F" class="radio">
+									<div class="desc_block">
+										<strong class="name language" data-kr="박혜미" data-en="PARK HYE MI">박혜미</strong>
+										<span class="position">F</span>
+									</div>
+								</span>
+							</li>
+						
+							<li>
+								<span class="radio_player">
+									<label for="p_number" ><span class="cover_img"><img src="/static/images/player/pimg/m_095433.jpg?ver=0.3" alt="스트릭렌"></span></label>
+									<input type="radio" name="playerBox2" value="095433|스트릭렌|F" class="radio">
+									<div class="desc_block">
+										<strong class="name language" data-kr="스트릭렌" data-en="Shekinna Stricklen">스트릭렌</strong>
+										<span class="position">F</span>
+									</div>
+								</span>
+							</li>
+						
+							<li>
+								<span class="radio_player">
+									<label for="p_number" ><span class="cover_img"><img src="/static/images/player/pimg/m_095230.jpg?ver=0.3" alt="양지영"></span></label>
+									<input type="radio" name="playerBox2" value="095230|양지영|F" class="radio">
+									<div class="desc_block">
+										<strong class="name language" data-kr="양지영" data-en="Yang Ji Young">양지영</strong>
+										<span class="position">F</span>
+									</div>
+								</span>
+							</li>
+						
+							<li>
+								<span class="radio_player">
+									<label for="p_number" ><span class="cover_img"><img src="/static/images/player/pimg/m_095209.jpg?ver=0.3" alt="윤미지"></span></label>
+									<input type="radio" name="playerBox2" value="095209|윤미지|G" class="radio">
+									<div class="desc_block">
+										<strong class="name language" data-kr="윤미지" data-en="Yoon Mi Ji">윤미지</strong>
+										<span class="position">G</span>
+									</div>
+								</span>
+							</li>
+						
+							<li>
+								<span class="radio_player">
+									<label for="p_number" ><span class="cover_img"><img src="/static/images/player/pimg/m_095035.jpg?ver=0.3" alt="이경은"></span></label>
+									<input type="radio" name="playerBox2" value="095035|이경은|G" class="radio">
+									<div class="desc_block">
+										<strong class="name language" data-kr="이경은" data-en="LEE KYUNG EUN">이경은</strong>
+										<span class="position">G</span>
+									</div>
+								</span>
+							</li>
+						
+							<li>
+								<span class="radio_player">
+									<label for="p_number" ><span class="cover_img"><img src="/static/images/player/pimg/m_095527.jpg?ver=0.3" alt="이혜미"></span></label>
+									<input type="radio" name="playerBox2" value="095527|이혜미|G" class="radio">
+									<div class="desc_block">
+										<strong class="name language" data-kr="이혜미" data-en="LEE HYE MI">이혜미</strong>
+										<span class="position">G</span>
+									</div>
+								</span>
+							</li>
+						
+							<li>
+								<span class="radio_player">
+									<label for="p_number" ><span class="cover_img"><img src="/static/images/player/pimg/m_095644.jpg?ver=0.3" alt="최지선"></span></label>
+									<input type="radio" name="playerBox2" value="095644|최지선|F" class="radio">
+									<div class="desc_block">
+										<strong class="name language" data-kr="최지선" data-en="CHOE JI SEON">최지선</strong>
+										<span class="position">F</span>
+									</div>
+								</span>
+							</li>
+						
+							<li>
+								<span class="radio_player">
+									<label for="p_number" ><span class="cover_img"><img src="/static/images/player/pimg/m_095590.jpg?ver=0.3" alt="편예빈"></span></label>
+									<input type="radio" name="playerBox2" value="095590|편예빈|F" class="radio">
+									<div class="desc_block">
+										<strong class="name language" data-kr="편예빈" data-en="PYEON YE BIN">편예빈</strong>
+										<span class="position">F</span>
+									</div>
+								</span>
+							</li>
+						
+							<li>
+								<span class="radio_player">
+									<label for="p_number" ><span class="cover_img"><img src="/static/images/player/pimg/m_095528.jpg?ver=0.3" alt="한엄지"></span></label>
+									<input type="radio" name="playerBox2" value="095528|한엄지|F" class="radio">
+									<div class="desc_block">
+										<strong class="name language" data-kr="한엄지" data-en="HAN EOM JI">한엄지</strong>
+										<span class="position">F</span>
+									</div>
+								</span>
+							</li>
+						
+						</ul>
+					</div>
+				</div>
+			</div>
+		
+
+			<h4 class="tit_area language" data-kr="삼성생명" data-en="SAMSUNG LIFE">삼성생명</h4>
+				<div class="info_table01 type_record">
+                    <table>
+                        <caption>상세 정보</caption>
+                        <colgroup>
+                            <col style="width:10.5%">
+                            <col style="width:5.5%">
+                            <col style="width:8.5%">
+                            <col style="width:7.9%">
+                            <col style="width:7.5%">
+                            <col style="width:7.5%">
+                            <col style="width:6%">
+                            <col style="width:6%">
+                            <col style="width:6%">
+                            <col style="width:5.8%">
+                            <col style="width:5.8%">
+                            <col style="width:5.8%">
+                            <col style="width:5.8%">
+                            <col style="width:5.8%">
+                            <col>
+                        </colgroup>
+                        <thead>
+                            <tr>
+                                <th scope="col" rowspan="2" class="language" data-kr="선수" data-en="Player">선수</th>
+                                <th scope="col" rowspan="2" class="th_help" title="포지션">POS</th>
+                                <th scope="col" rowspan="2" class="th_help" title="출전시간">MIN</th>
+                                <th scope="col" rowspan="2" class="th_help" title="2점슛 성공-시도">2PM-A</th>
+                                <th scope="col" rowspan="2" class="th_help" title="3점슛 성공-시도">3PM-A</th>
+                                <th scope="col" rowspan="2" class="th_help" title="자유투 성공-시도">FTM-A</th>
+                                <th scope="col" colspan="3" class="th_help" title="리바운드">REBOUNDS</th>
+                                <th scope="col" rowspan="2" class="th_help" title="어시스트">AST</th>
+                                <th scope="col" rowspan="2" class="th_help" title="경기당 파울">PF</th>
+                                <th scope="col" rowspan="2" class="th_help" title="스틸">ST</th>
+                                <th scope="col" rowspan="2" class="th_help" title="턴오버">TO</th>
+                                <th scope="col" rowspan="2" class="th_help" title="블록슛">BS</th>
+                                <th scope="col" rowspan="2" class="th_help" title="총 득점">PTS</th>
+                            </tr>
+                            <tr>
+                                <th scope="col" class="th_help" title="경기당 공격리바운드">OFF</th>
+                                <th scope="col" class="th_help" title="경기당 수비리바운드">DEF</th>
+                                <th scope="col" class="th_help" title="경기당 리바운드">TOT</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        
+                            <tr>
+                                <td>
+                                
+                                    <a href="/player/detail.asp?pno=095115" class="link_detail language" data-kr="배혜윤" data-en="BAE HYE YOON">배혜윤</a>
+                                
+                                </td>
+                                <td>C</td>
+                                <td>32:35</td>
+                                <td>8-18</td>
+                                <td>0-0</td>
+                                <td>8-9</td>
+                                <td>3</td>
+                                <td>0</td>
+                                <td>3</td>
+                                <td>2</td>
+                                <td>1</td>
+                                <td>5</td>
+                                <td>0</td>
+                                <td>0</td>
+                                <td>24</td>
+                            </tr>
+                        
+                            <tr>
+                                <td>
+                                
+                                    <a href="/player/detail.asp?pno=095182" class="link_detail language" data-kr="박하나" data-en="PARK HA NA">박하나</a>
+                                
+                                </td>
+                                <td>G</td>
+                                <td>30:56</td>
+                                <td>6-10</td>
+                                <td>0-4</td>
+                                <td>6-6</td>
+                                <td>1</td>
+                                <td>4</td>
+                                <td>5</td>
+                                <td>2</td>
+                                <td>3</td>
+                                <td>3</td>
+                                <td>1</td>
+                                <td>0</td>
+                                <td>18</td>
+                            </tr>
+                        
+                            <tr>
+                                <td>
+                                
+                                    <a href="/player/detail.asp?pno=095580" class="link_detail language" data-kr="서덜랜드" data-en="Aishah Sutherland">서덜랜드</a>
+                                
+                                </td>
+                                <td>F</td>
+                                <td>24:31</td>
+                                <td>6-8</td>
+                                <td>0-0</td>
+                                <td>0-0</td>
+                                <td>3</td>
+                                <td>7</td>
+                                <td>10</td>
+                                <td>0</td>
+                                <td>5</td>
+                                <td>4</td>
+                                <td>0</td>
+                                <td>0</td>
+                                <td>12</td>
+                            </tr>
+                        
+                            <tr>
+                                <td>
+                                
+                                    <a href="/player/detail.asp?pno=095189" class="link_detail language" data-kr="김한별" data-en="KIM  HANBYEOL">김한별</a>
+                                
+                                </td>
+                                <td>F</td>
+                                <td>22:59</td>
+                                <td>2-3</td>
+                                <td>0-1</td>
+                                <td>3-4</td>
+                                <td>2</td>
+                                <td>5</td>
+                                <td>7</td>
+                                <td>4</td>
+                                <td>2</td>
+                                <td>1</td>
+                                <td>4</td>
+                                <td>1</td>
+                                <td>7</td>
+                            </tr>
+                        
+                            <tr>
+                                <td>
+                                
+                                    <a href="/player/detail.asp?pno=095497" class="link_detail language" data-kr="윤예빈" data-en="YOON YE BIN">윤예빈</a>
+                                
+                                </td>
+                                <td>G</td>
+                                <td>21:54</td>
+                                <td>2-8</td>
+                                <td>0-0</td>
+                                <td>0-0</td>
+                                <td>1</td>
+                                <td>0</td>
+                                <td>1</td>
+                                <td>2</td>
+                                <td>4</td>
+                                <td>4</td>
+                                <td>1</td>
+                                <td>0</td>
+                                <td>4</td>
+                            </tr>
+                        
+                            <tr>
+                                <td>
+                                
+                                    <a href="/player/detail.asp?pno=095450" class="link_detail language" data-kr="강계리" data-en="KANG KYE LEE">강계리</a>
+                                
+                                </td>
+                                <td>G</td>
+                                <td>21:13</td>
+                                <td>2-3</td>
+                                <td>0-1</td>
+                                <td>0-0</td>
+                                <td>0</td>
+                                <td>1</td>
+                                <td>1</td>
+                                <td>1</td>
+                                <td>1</td>
+                                <td>2</td>
+                                <td>0</td>
+                                <td>0</td>
+                                <td>4</td>
+                            </tr>
+                        
+                            <tr>
+                                <td>
+                                
+                                    <a href="/player/detail.asp?pno=094915" class="link_detail language" data-kr="김보미" data-en="KIM BO MI">김보미</a>
+                                
+                                </td>
+                                <td>F</td>
+                                <td>17:20</td>
+                                <td>2-3</td>
+                                <td>1-3</td>
+                                <td>2-2</td>
+                                <td>2</td>
+                                <td>0</td>
+                                <td>2</td>
+                                <td>2</td>
+                                <td>3</td>
+                                <td>1</td>
+                                <td>0</td>
+                                <td>0</td>
+                                <td>9</td>
+                            </tr>
+                        
+                            <tr>
+                                <td>
+                                
+                                    <a href="/player/detail.asp?pno=095259" class="link_detail language" data-kr="양인영" data-en="YANG IN YOUNG">양인영</a>
+                                
+                                </td>
+                                <td>F</td>
+                                <td>14:30</td>
+                                <td>3-7</td>
+                                <td>0-0</td>
+                                <td>1-3</td>
+                                <td>1</td>
+                                <td>0</td>
+                                <td>1</td>
+                                <td>1</td>
+                                <td>3</td>
+                                <td>2</td>
+                                <td>1</td>
+                                <td>1</td>
+                                <td>7</td>
+                            </tr>
+                        
+                            <tr>
+                                <td>
+                                
+                                    <a href="/player/detail.asp?pno=095588" class="link_detail language" data-kr="김나연" data-en="KIM NA YEON">김나연</a>
+                                
+                                </td>
+                                <td>F</td>
+                                <td>03:46</td>
+                                <td>0-1</td>
+                                <td>0-0</td>
+                                <td>0-0</td>
+                                <td>0</td>
+                                <td>0</td>
+                                <td>0</td>
+                                <td>0</td>
+                                <td>1</td>
+                                <td>0</td>
+                                <td>0</td>
+                                <td>0</td>
+                                <td>0</td>
+                            </tr>
+                        
+                            <tr>
+                                <td>
+                                
+                                    <a href="/player/detail.asp?pno=095524" class="link_detail language" data-kr="이주연" data-en="LEE JU YEON">이주연</a>
+                                
+                                </td>
+                                <td>F</td>
+                                <td>03:46</td>
+                                <td>0-3</td>
+                                <td>0-0</td>
+                                <td>0-0</td>
+                                <td>0</td>
+                                <td>0</td>
+                                <td>0</td>
+                                <td>0</td>
+                                <td>0</td>
+                                <td>0</td>
+                                <td>1</td>
+                                <td>0</td>
+                                <td>0</td>
+                            </tr>
+                        
+                            <tr>
+                                <td>
+                                
+                                    <a href="/player/detail.asp?pno=095513" class="link_detail language" data-kr="한여름" data-en="Han Yeo Reum">한여름</a>
+                                
+                                </td>
+                                <td>C</td>
+                                <td>03:18</td>
+                                <td>0-0</td>
+                                <td>0-0</td>
+                                <td>0-0</td>
+                                <td>0</td>
+                                <td>0</td>
+                                <td>0</td>
+                                <td>0</td>
+                                <td>2</td>
+                                <td>0</td>
+                                <td>0</td>
+                                <td>0</td>
+                                <td>0</td>
+                            </tr>
+                        
+                            <tr>
+                                <td>
+                                
+                                    <a href="/player/detail.asp?pno=095587" class="link_detail language" data-kr="최정민" data-en="CHOI JUNG MIN">최정민</a>
+                                
+                                </td>
+                                <td>F</td>
+                                <td>01:36</td>
+                                <td>0-0</td>
+                                <td>0-0</td>
+                                <td>0-0</td>
+                                <td>0</td>
+                                <td>1</td>
+                                <td>1</td>
+                                <td>0</td>
+                                <td>0</td>
+                                <td>0</td>
+                                <td>0</td>
+                                <td>0</td>
+                                <td>0</td>
+                            </tr>
+                        
+                            <tr>
+                                <td>
+                                
+                                    <a href="/player/detail.asp?pno=095586" class="link_detail language" data-kr="황미우" data-en="HWANG MI WOO">황미우</a>
+                                
+                                </td>
+                                <td>G</td>
+                                <td>01:36</td>
+                                <td>0-0</td>
+                                <td>0-2</td>
+                                <td>0-0</td>
+                                <td>0</td>
+                                <td>1</td>
+                                <td>1</td>
+                                <td>0</td>
+                                <td>1</td>
+                                <td>0</td>
+                                <td>0</td>
+                                <td>0</td>
+                                <td>0</td>
+                            </tr>
+                        
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="2" class="language" data-kr="팀합계" data-en="Team Total">팀합계</td>
+                                <td>200:00</td>
+                                <td>31-64</td>
+                                <td>1-11</td>
+                                <td>20-24</td>
+                                <td>13</td>
+                                <td>19</td>
+                                <td>32</td>
+                                <td>14</td>
+                                <td>26</td>
+                                <td>22</td>
+                                <td>8</td>
+                                <td>2</td>
+                                <td>85</td>
+                            </tr>
+                        
+                        </tfoot>
+                    </table>
+                </div>
+
+                <h4 class="tit_area language" data-kr="신한은행" data-en="SHINHAN BANK">신한은행</h4>
+                <div class="info_table01 type_record">
+                    <table>
+                        <caption>상세 정보</caption>
+                        <colgroup>
+                            <col style="width:10.5%">
+                            <col style="width:5.5%">
+                            <col style="width:8.5%">
+                            <col style="width:7.9%">
+                            <col style="width:7.5%">
+                            <col style="width:7.5%">
+                            <col style="width:6%">
+                            <col style="width:6%">
+                            <col style="width:6%">
+                            <col style="width:5.8%">
+                            <col style="width:5.8%">
+                            <col style="width:5.8%">
+                            <col style="width:5.8%">
+                            <col style="width:5.8%">
+                            <col>
+                        </colgroup>
+                        <thead>
+                            <tr>
+                                <th scope="col" rowspan="2" class="language" data-kr="선수" data-en="Player">선수</th>
+                                <th scope="col" rowspan="2" class="th_help" title="포지션">POS</th>
+                                <th scope="col" rowspan="2" class="th_help" title="출전시간">MIN</th>
+                                <th scope="col" rowspan="2" class="th_help" title="2점슛 성공-시도">2PM-A</th>
+                                <th scope="col" rowspan="2" class="th_help" title="3점슛 성공-시도">3PM-A</th>
+                                <th scope="col" rowspan="2" class="th_help" title="자유투 성공-시도">FTM-A</th>
+                                <th scope="col" colspan="3" class="th_help" title="리바운드">REBOUNDS</th>
+                                <th scope="col" rowspan="2" class="th_help" title="어시스트">AST</th>
+                                <th scope="col" rowspan="2" class="th_help" title="경기당 파울">PF</th>
+                                <th scope="col" rowspan="2" class="th_help" title="스틸">ST</th>
+                                <th scope="col" rowspan="2" class="th_help" title="턴오버">TO</th>
+                                <th scope="col" rowspan="2" class="th_help" title="블록슛">BS</th>
+                                <th scope="col" rowspan="2" class="th_help" title="총 득점">PTS</th>
+                            </tr>
+                            <tr>
+                                <th scope="col" class="th_help" title="경기당 공격리바운드">OFF</th>
+                                <th scope="col" class="th_help" title="경기당 수비리바운드">DEF</th>
+                                <th scope="col" class="th_help" title="경기당 리바운드">TOT</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        
+                            <tr>
+                                <td>
+                                    
+                                        <a href="/player/detail.asp?pno=002017" class="link_detail language" data-kr="곽주영" data-en="KWAK JU YOUNG">곽주영</a>
+                                    
+                                </td>
+                                <td>F</td>
+                                <td>33:54</td>
+                                <td>5-9</td>
+                                <td>0-0</td>
+                                <td>2-2</td>
+                                <td>1</td>
+                                <td>3</td>
+                                <td>4</td>
+                                <td>4</td>
+                                <td>2</td>
+                                <td>1</td>
+                                <td>5</td>
+                                <td>0</td>
+                                <td>12</td>
+                            </tr>
+                        
+                            <tr>
+                                <td>
+                                    
+                                        <a href="/player/detail.asp?pno=095477" class="link_detail language" data-kr="김아름" data-en="KIM AH REUM">김아름</a>
+                                    
+                                </td>
+                                <td>F</td>
+                                <td>30:52</td>
+                                <td>3-4</td>
+                                <td>1-3</td>
+                                <td>2-4</td>
+                                <td>0</td>
+                                <td>2</td>
+                                <td>2</td>
+                                <td>1</td>
+                                <td>3</td>
+                                <td>1</td>
+                                <td>7</td>
+                                <td>1</td>
+                                <td>11</td>
+                            </tr>
+                        
+                            <tr>
+                                <td>
+                                    
+                                        <a href="/player/detail.asp?pno=095631" class="link_detail language" data-kr="먼로" data-en="Jacinta Lisette Monroe">먼로</a>
+                                    
+                                </td>
+                                <td>C</td>
+                                <td>30:00</td>
+                                <td>5-8</td>
+                                <td>0-0</td>
+                                <td>9-10</td>
+                                <td>2</td>
+                                <td>10</td>
+                                <td>12</td>
+                                <td>0</td>
+                                <td>2</td>
+                                <td>1</td>
+                                <td>0</td>
+                                <td>3</td>
+                                <td>19</td>
+                            </tr>
+                        
+                            <tr>
+                                <td>
+                                    
+                                        <a href="/player/detail.asp?pno=095209" class="link_detail language" data-kr="윤미지" data-en="Yoon Mi Ji">윤미지</a>
+                                    
+                                </td>
+                                <td>G</td>
+                                <td>28:53</td>
+                                <td>1-4</td>
+                                <td>2-2</td>
+                                <td>0-2</td>
+                                <td>0</td>
+                                <td>0</td>
+                                <td>0</td>
+                                <td>1</td>
+                                <td>4</td>
+                                <td>0</td>
+                                <td>3</td>
+                                <td>0</td>
+                                <td>8</td>
+                            </tr>
+                        
+                            <tr>
+                                <td>
+                                    
+                                        <a href="/player/detail.asp?pno=095528" class="link_detail language" data-kr="한엄지" data-en="HAN EOM JI">한엄지</a>
+                                    
+                                </td>
+                                <td>F</td>
+                                <td>19:28</td>
+                                <td>2-5</td>
+                                <td>0-1</td>
+                                <td>0-0</td>
+                                <td>0</td>
+                                <td>0</td>
+                                <td>0</td>
+                                <td>1</td>
+                                <td>4</td>
+                                <td>0</td>
+                                <td>2</td>
+                                <td>0</td>
+                                <td>4</td>
+                            </tr>
+                        
+                            <tr>
+                                <td>
+                                    
+                                        <a href="/player/detail.asp?pno=095220" class="link_detail language" data-kr="김규희" data-en="Kim Gyu Hee">김규희</a>
+                                    
+                                </td>
+                                <td>G</td>
+                                <td>12:29</td>
+                                <td>1-2</td>
+                                <td>0-1</td>
+                                <td>0-0</td>
+                                <td>1</td>
+                                <td>1</td>
+                                <td>2</td>
+                                <td>2</td>
+                                <td>1</td>
+                                <td>1</td>
+                                <td>3</td>
+                                <td>0</td>
+                                <td>2</td>
+                            </tr>
+                        
+                            <tr>
+                                <td>
+                                    
+                                        <a href="/player/detail.asp?pno=095035" class="link_detail language" data-kr="이경은" data-en="LEE KYUNG EUN">이경은</a>
+                                    
+                                </td>
+                                <td>G</td>
+                                <td>11:16</td>
+                                <td>0-0</td>
+                                <td>0-0</td>
+                                <td>0-0</td>
+                                <td>0</td>
+                                <td>2</td>
+                                <td>2</td>
+                                <td>1</td>
+                                <td>2</td>
+                                <td>0</td>
+                                <td>3</td>
+                                <td>0</td>
+                                <td>0</td>
+                            </tr>
+                        
+                            <tr>
+                                <td>
+                                    
+                                        <a href="/player/detail.asp?pno=095230" class="link_detail language" data-kr="양지영" data-en="Yang Ji Young">양지영</a>
+                                    
+                                </td>
+                                <td>F</td>
+                                <td>10:57</td>
+                                <td>0-3</td>
+                                <td>0-1</td>
+                                <td>0-0</td>
+                                <td>1</td>
+                                <td>2</td>
+                                <td>3</td>
+                                <td>1</td>
+                                <td>0</td>
+                                <td>0</td>
+                                <td>2</td>
+                                <td>0</td>
+                                <td>0</td>
+                            </tr>
+                        
+                            <tr>
+                                <td>
+                                    
+                                        <a href="/player/detail.asp?pno=095476" class="link_detail language" data-kr="김태연" data-en="KIM TAE YEON">김태연</a>
+                                    
+                                </td>
+                                <td>C</td>
+                                <td>10:32</td>
+                                <td>0-0</td>
+                                <td>0-0</td>
+                                <td>4-4</td>
+                                <td>2</td>
+                                <td>4</td>
+                                <td>6</td>
+                                <td>0</td>
+                                <td>3</td>
+                                <td>0</td>
+                                <td>1</td>
+                                <td>0</td>
+                                <td>4</td>
+                            </tr>
+                        
+                            <tr>
+                                <td>
+                                    
+                                        <a href="/player/detail.asp?pno=095444" class="link_detail language" data-kr="박혜미" data-en="PARK HYE MI">박혜미</a>
+                                    
+                                </td>
+                                <td>F</td>
+                                <td>07:07</td>
+                                <td>0-0</td>
+                                <td>0-0</td>
+                                <td>0-0</td>
+                                <td>0</td>
+                                <td>0</td>
+                                <td>0</td>
+                                <td>0</td>
+                                <td>2</td>
+                                <td>0</td>
+                                <td>1</td>
+                                <td>1</td>
+                                <td>0</td>
+                            </tr>
+                        
+                            <tr>
+                                <td>
+                                    
+                                        <a href="/player/detail.asp?pno=095527" class="link_detail language" data-kr="이혜미" data-en="LEE HYE MI">이혜미</a>
+                                    
+                                </td>
+                                <td>G</td>
+                                <td>02:39</td>
+                                <td>0-1</td>
+                                <td>0-0</td>
+                                <td>2-2</td>
+                                <td>0</td>
+                                <td>1</td>
+                                <td>1</td>
+                                <td>0</td>
+                                <td>0</td>
+                                <td>0</td>
+                                <td>0</td>
+                                <td>1</td>
+                                <td>2</td>
+                            </tr>
+                        
+                            <tr>
+                                <td>
+                                    
+                                        <a href="/player/detail.asp?pno=095104" class="link_detail language" data-kr="김단비" data-en="KIM DAN BI">김단비</a>
+                                    
+                                </td>
+                                <td>F</td>
+                                <td>01:53</td>
+                                <td>0-0</td>
+                                <td>0-0</td>
+                                <td>0-0</td>
+                                <td>0</td>
+                                <td>1</td>
+                                <td>1</td>
+                                <td>0</td>
+                                <td>0</td>
+                                <td>0</td>
+                                <td>0</td>
+                                <td>0</td>
+                                <td>0</td>
+                            </tr>
+                        
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="2" class="language" data-kr="팀합계" data-en="Team Total">팀합계</td>
+                                <td>200:00</td>
+                                <td>17-36</td>
+                                <td>3-8</td>
+                                <td>19-24</td>
+                                <td>7</td>
+                                <td>26</td>
+                                <td>33</td>
+                                <td>11</td>
+                                <td>23</td>
+                                <td>4</td>
+                                <td>27</td>
+                                <td>6</td>
+                                <td>62</td>
+                            </tr>
+                        
+                        </tfoot>
+                    </table>
+                </div>
+
+
+
+<script type="text/javascript">
+<!--
+layerOpen();
+layerClose();
+labelCheckClose();
+//-->
+</script>
+
+<script>
+    $(function() {
+        /////////////////////////////////////////////language change start///////////////////////////////////////////
+        let now_lang = localStorage.getItem("lang");
+        if(!now_lang) now_lang = "kr";
+    
+        $('.lang_change').on('click', function(e){
+            now_lang = (now_lang == "kr") ? "en" : "kr";
+            localStorage.setItem("lang", now_lang);
+    
+            language_icon_change(now_lang);
+            
+            // 차트 reload
+            donutChart();
+            datatableChart();
+        });
+    
+        function language_icon_change(now_lang){
+            // if( now_lang == 'en' ){
+            //     $('.lang_change').addClass('active');
+            //     $('.lang_change_text').html("English");
+            // }else{
+            //     $('.lang_change').removeClass('active');
+            //     $('.lang_change_text').html("Korea");
+            // }
+    
+            language_change(now_lang);
+        }
+    
+        function language_change(now_lang){
+            for(i=0;i < $(".language").length; i++){
+                if($($('.language')[i]).attr('placeholder') !== undefined){ //placeholder change
+                   $($('.language')[i]).attr('placeholder', $($('.language')[i]).attr("data-"+now_lang));
+                }else{ //text change
+                    $($('.language')[i]).html($($('.language')[i]).attr("data-"+now_lang));
+                }
+            }
+        }
+    
+        language_icon_change(now_lang);
+        /////////////////////////////////////////////language change end ///////////////////////////////////////////
+    });
+</script>

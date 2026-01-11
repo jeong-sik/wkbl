@@ -1,0 +1,633 @@
+
+	<script type="text/javascript">
+	<!--
+		//alert("경기 결과 데이터가 없습니다.");
+		//history.back();
+	//-->
+	</script>
+
+
+                <h3 id="gameDetail" class="screen_out2">양팀비교</h3>
+                <div class="info_table02 team_compare">
+                    <table>
+                        <caption>상세 정보</caption>
+                        <colgroup>
+                            <col style="width:35.8333%">
+                            <col>
+                            <col style="width:35.8333%">
+                        </colgroup>
+                        <thead>
+                            <tr class="tr_team">
+                                <th scope="col">
+                                    <span class="outcome_wrap away">
+                                        <p class="language" data-kr="우리은행" data-en="WOORI BANK">우리은행</p>
+										<span class='outcome lose language' data-kr='패' data-en='L'>패</span><span class='outcome win language' data-kr='승' data-en='W'>승</span><span class='outcome win language' data-kr='승' data-en='W'>승</span><span class='outcome win language' data-kr='승' data-en='W'>승</span><span class='outcome win language' data-kr='승' data-en='W'>승</span>
+                                    </span>
+                                    
+                                    <span class="frame_g"><img src="/static/images/team/teamlogo_05.png"></span>
+                                </th>
+                                <th scope="col" class="td_vs"><img src="/static/images/game/vs.png"></th>
+                                <th scope="col">
+                                    
+                                    <span class="frame_g"><img src="/static/images/team/teamlogo_03.png"></span>
+                                    <span class="outcome_wrap home">
+                                        <p class="language" data-kr="삼성생명" data-en="SAMSUNG LIFE">삼성생명</p>
+                                        <span class='outcome win language' data-kr='승' data-en='W'>승</span><span class='outcome lose language' data-kr='패' data-en='L'>패</span><span class='outcome lose language' data-kr='패' data-en='L'>패</span><span class='outcome lose language' data-kr='패' data-en='L'>패</span><span class='outcome lose language' data-kr='패' data-en='L'>패</span>
+                                    </span>
+                                </th>
+                            </tr>
+                        </thead>
+
+                        
+                        <tbody>
+                            <tr>
+                                <td class="language"
+                                    data-kr="21승 9패, 2위"
+                                    data-en="21W 9L, #2">
+                                    21승 9패, 2위
+                                </td>
+                                <th class="language" data-kr="올시즌성적" data-en="Season Record">올시즌성적</th>
+                                <td class="language"
+                                    data-kr="11승 19패, 5위"
+                                    data-en="11W 19L, #5">
+                                    11승 19패, 5위
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>5승 1패</td>
+                                <th class="language" data-kr="올시즌 상대전적" data-en="Season Head-to-Head record">올시즌 상대전적</th>
+                                <td class="language"
+                                    data-kr="1승 5패"
+                                    data-en="1W 5L">
+                                    1승 5패
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>3승 1패</td>
+                                <th class="language" data-kr="최근 5경기" data-en="Last 5 Games">최근 5경기</th>
+                                <td class="language"
+                                    data-kr="2승 3패"
+                                    data-en="2W 3L">
+                                    2승 3패
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>102승 82패</td>
+                                <th class="language" data-kr="통산상대전적" data-en="All-time Head-to-Head record">통산상대전적</th>
+                                <td class="language"
+                                    data-kr="82승 102패"
+                                    data-en="82W 102L">82승 102패</td>
+                            </tr>
+                        </tbody>
+                        
+                    </table>
+                </div>
+
+                <!-- http://www.kbl.or.kr/schedule/today/todaygame_detail.asp?scode=31&gcode=11&gno=1&tdate=20170804 -->
+                <!-- 속공,페인트존 점수,2점슛 득점,3점슛 득점,2점슛 성공률,3점슛 성공률,자유투 성공률,리바운드,어시스트,스틸,블록슛,파울,굿디펜스,턴오버 -->
+
+
+				<!-- 스크립트랑 차트삽입 -->
+				<!-- <script src="https://code.highcharts.com/highcharts.src.js"></script>
+				<script src="https://code.highcharts.com/highcharts.js"></script>
+                <script src="https://code.highcharts.com/highcharts-more.js"></script>
+                <script src="https://code.highcharts.com/modules/solid-gauge.js"></script>
+
+                <div id="container"></div>
+                <div id="container" style="width:300px;height:300px;border:1px solid red"></div> -->
+
+                
+
+				<!-- 시작 -->
+				<!-- <script src="/static/js/chart_handle.js"></script>
+				<script src="/static/js/ui_game.js"></script>
+				<script src="/static/js/lib/highcharts.js"></script>
+				<script src="/static/js/lib/highcharts-more.js"></script>
+				<script src="/static/js/lib/modules/solid-gauge.js"></script>
+				<script src="/static/js/lib/modules/data.js"></script>	-->
+
+				<div class="result_donutChart row_group">
+					<div class="col">
+						<div id="container2point" class="donut_chart"></div>
+					</div>
+					<div class="col">
+						<div id="container3point" class="donut_chart"></div>
+					</div>
+					<div class="col">
+						<div id="containerFreethrow" class="donut_chart"></div>
+					</div>
+				</div>
+
+				<script type="text/javascript">
+				function donutChart() {				
+					var hteam_color = "#22A5E6";
+					var ateam_color = "#1458F0";					
+
+					if (!Highcharts.theme) {
+						Highcharts.setOptions({
+							colors: [hteam_color, ateam_color]
+						});
+					}
+
+					var hteam_chart = Highcharts.Color(hteam_color);
+					var ateam_chart = Highcharts.Color(ateam_color);
+
+					//2점슛 성공률
+					var h_two_rate_val = Number("41.2");
+					var a_two_rate_val = Number("43.2");
+
+					// 3점슛 성공률
+					var h_threep_rate_val = Number("31.8");
+					var a_threep_rate_val = Number("27.8");
+
+					// 자유투 성공률
+					var h_ft_rate_val = Number("68.0");
+					var a_ft_rate_val = Number("62.5");
+                    
+                    // 차트 타이틀 한/영
+                    function langTitle(kr, en){
+                        let title = localStorage.getItem("lang") == 'kr' ? kr : en
+                        return title;
+                    }
+
+					$('#container2point').highcharts({
+						credits: {
+							enabled: false
+						},
+						chart: {
+							type: 'solidgauge',
+							height: '120%'
+						},
+
+						title: {
+							text: langTitle('2점슛 성공률', '2P%'),
+							floating: true,
+							style: {
+								fontSize: '16px',
+								fontWeight: 'bold',
+								fontFamily: 'Nanum Gothic'
+							}
+						},
+						subtitle: {
+							text: langTitle('우리은행', 'WOORI BANK') + ' : 41.2% <br />' + langTitle('삼성생명', 'SAMSUNG LIFE') + ' : 43.2%',
+							align: 'center',
+							verticalAlign: 'bottom',
+							useHTML:true,
+							y: -20,
+							style: {
+								color: '#555',
+								fontWeight: 'bold',
+								fontSize: '14px',
+								fontFamily: 'Nanum Gothic'
+							}
+						},
+						tooltip: {
+							borderWidth: 0,
+							backgroundColor: 'none',
+							shadow: false,
+							useHTML:true,
+							visible: true,
+							style: {
+								fontSize: '16px'
+							},
+							pointFormat: '{series.name}<br /><span style="font-size:2em; color: {point.color}; font-weight: bold">{point.y}%</span>',
+							positioner: function (labelWidth) {
+								return {
+									x: (this.chart.chartWidth - labelWidth) / 2,
+									y: (this.chart.plotHeight / 2) - 64
+								};
+							}
+						},
+						pane: {
+							startAngle: 0,
+							endAngle: 360,
+							background: [{ // Track for Move
+								outerRadius: '112%',
+								innerRadius: '88%',
+								backgroundColor: hteam_chart.setOpacity(0.15).get(),
+								borderWidth: 0
+							}, { // Track for Exercise
+								outerRadius: '87%',
+								innerRadius: '63%',
+								backgroundColor: ateam_chart.setOpacity(0.15).get(),
+								borderWidth: 0
+							}]
+						},
+						yAxis: {
+							min: 0,
+							max: 100,
+							lineWidth: 0,
+							tickPositions: []
+						},
+						plotOptions: {
+							series: {
+								colorByPoint: true
+							},
+							solidgauge: {
+								dataLabels: {
+									enabled: false
+								},
+								linecap: 'round',
+								stickyTracking: false,
+								rounded: true
+							}
+						},
+						series: [{
+							name: langTitle('우리은행', 'WOORI BANK'),
+							data: [{
+								color: hteam_chart.setOpacity(1).get(),
+								radius: '112%',
+								innerRadius: '88%',
+								y: h_two_rate_val
+							}]
+						}, {
+							name: langTitle('삼성생명', 'SAMSUNG LIFE'),
+							data: [{
+								color: ateam_chart.setOpacity(1).get(),
+								radius: '87%',
+								innerRadius: '63%',
+								y: a_two_rate_val
+							}]
+						}]
+					});
+
+					// 3점슛 성공률
+					$('#container3point').highcharts({
+						credits: {
+							enabled: false
+						},
+						button:{
+								enabled: true
+						},
+						chart: {
+							type: 'solidgauge',
+							height: '120%'
+						},
+						title: {
+							text: langTitle('3점슛 성공률','3P%'),
+							floating: true,
+							style: {
+								fontSize: '16px',
+								fontWeight: 'bold',
+								fontFamily: 'Nanum Gothic'
+							}
+						},
+						subtitle: {
+							text: langTitle('우리은행', 'WOORI BANK') + ' : 31.8% <br>' + langTitle('삼성생명', 'SAMSUNG LIFE') + ' : 27.8%',
+							align: 'center',
+							verticalAlign: 'bottom',
+							useHTML:true,
+							y: -20,
+							style: {
+								color: '#555',
+								fontWeight: 'bold',
+								fontSize: '14px',
+								fontFamily: 'Nanum Gothic'
+							}
+						},
+						tooltip: {
+							borderWidth: 0,
+							backgroundColor: 'none',
+							shadow: false,
+							useHTML:true,
+							visible: true,
+							style: {
+								fontSize: '16px'
+							},
+							pointFormat: '{series.name}<br /><span style="font-size:2em; color: {point.color}; font-weight: bold">{point.y}%</span>',
+							positioner: function (labelWidth) {
+								return {
+									x: (this.chart.chartWidth - labelWidth) / 2,
+									y: (this.chart.plotHeight / 2) - 64
+								};
+							}
+						},
+						pane: {
+							startAngle: 0,
+							endAngle: 360,
+							background: [{ // Track for Move
+								outerRadius: '112%',
+								innerRadius: '88%',
+								backgroundColor: hteam_chart.setOpacity(0.15).get(),
+								borderWidth: 0
+							}, { // Track for Exercise
+								outerRadius: '87%',
+								innerRadius: '63%',
+								backgroundColor: ateam_chart.setOpacity(0.15).get(),
+								borderWidth: 0
+							}]
+						},
+						yAxis: {
+							min: 0,
+							max: 100,
+							lineWidth: 0,
+							tickPositions: []
+						},
+						plotOptions: {
+							solidgauge: {
+								dataLabels: {
+									enabled: false
+								},
+								linecap: 'round',
+								stickyTracking: false,
+								rounded: true
+							}
+						},
+						series: [{
+							name: langTitle('우리은행', 'WOORI BANK'),
+							data: [{
+								color: hteam_chart.setOpacity(1).get(),
+								radius: '112%',
+								innerRadius: '88%',
+								y: h_threep_rate_val
+							}]
+						}, {
+							name: langTitle('삼성생명', 'SAMSUNG LIFE'),
+							data: [{
+								color: ateam_chart.setOpacity(1).get(),
+								radius: '87%',
+								innerRadius: '63%',
+								y: a_threep_rate_val
+							}]
+						}]
+					});
+
+					// 자유투 성공률
+					$('#containerFreethrow').highcharts({
+						credits: {
+							enabled: false
+						},
+						chart: {
+							type: 'solidgauge',
+							height: '120%'
+						},
+						title: {
+							text: langTitle('자유투 성공률','FT%'),
+							floating: true,
+							style: {
+								fontSize: '16px',
+								fontWeight: 'bold',
+								fontFamily: 'Nanum Gothic',
+							}
+						},
+						subtitle: {
+							text: langTitle('우리은행', 'WOORI BANK') + ' : 68.0% <br /> ' + langTitle('삼성생명', 'SAMSUNG LIFE') + ' : 62.5%',
+							align: 'center',
+							verticalAlign: 'bottom',
+							useHTML:true,
+							y: -20,
+							style: {
+								color: '#555',
+								fontWeight: 'bold',
+								fontSize: '14px',
+								fontFamily: 'Nanum Gothic'
+							}
+						},
+						tooltip: {
+							borderWidth: 0,
+							backgroundColor: 'none',
+							shadow: false,
+							useHTML:true,
+							visible: true,
+							style: {
+								fontSize: '16px'
+							},
+							pointFormat: '{series.name}<br /><span style="font-size:2em; color: {point.color}; font-weight: bold">{point.y}%</span>',
+							positioner: function (labelWidth) {
+								return {
+									x: (this.chart.chartWidth - labelWidth) / 2,
+									y: (this.chart.plotHeight / 2) - 64
+								};
+							}
+						},
+						pane: {
+							startAngle: 0,
+							endAngle: 360,
+							background: [{ // Track for Move
+								outerRadius: '112%',
+								innerRadius: '88%',
+								backgroundColor: hteam_chart.setOpacity(0.15).get(),
+								borderWidth: 0
+							}, { // Track for Exercise
+								outerRadius: '87%',
+								innerRadius: '63%',
+								backgroundColor: ateam_chart.setOpacity(0.15).get(),
+								borderWidth: 0
+							}]
+						},
+						yAxis: {
+							min: 0,
+							max: 100,
+							lineWidth: 0,
+							tickPositions: []
+						},
+						plotOptions: {
+							solidgauge: {
+								dataLabels: {
+									enabled: false
+								},
+								linecap: 'round',
+								stickyTracking: false,
+								rounded: true
+							}
+						},
+						series: [{
+							name: langTitle('우리은행', 'WOORI BANK'),
+							data: [{
+								color: hteam_chart.setOpacity(1).get(),
+								radius: '112%',
+								innerRadius: '88%',
+								y: h_ft_rate_val
+							}]
+						}, {
+							name: langTitle('삼성생명', 'SAMSUNG LIFE'),
+							data: [{
+								color: ateam_chart.setOpacity(1).get(),
+								radius: '87%',
+								innerRadius: '63%',
+								y: a_ft_rate_val
+							}]
+						}]
+					});
+				}
+				donutChart();
+				</script>
+				<!-- //끝 -->
+
+				<div id="datatableContainer"></div>
+				<table id="datatable" class="datatable_chart">
+					<thead>
+						<tr>
+							<th></th>
+							<th></th>
+							<th></th>
+						</tr>
+					</thead>
+					<tbody>
+					
+						<tr>
+							<th>속공</th>
+							<!-- <td>0</td>
+							<td>4</td> -->
+							<td>0</td>
+							<td>2</td>
+						</tr>
+						<tr>
+							<th>리바운드</th>
+							<td>40</td>
+							<td>32</td>
+						</tr>
+						<tr>
+							<th>어시스트</th>
+							<td>15</td>
+							<td>14</td>
+						</tr>
+						<tr>
+							<th>스틸</th>
+							<td>10</td>
+							<td>4</td>
+						</tr>
+						<tr>
+							<th>턴오버</th>
+							<td>8</td>
+							<td>10</td>
+						</tr>
+					</tbody>
+				</table>
+
+				<script>
+				function datatableChart(){
+
+					Highcharts.chart('datatableContainer', {
+						data: {
+							table: 'datatable'
+						},
+						chart: {
+							type: 'column'
+						},
+						title: {
+							text: null
+						},
+						xAxis: {
+							labels: {
+							  style: {
+								'fontSize': '16px',
+								'color': '#111111',
+								'fontFamily':'Spoqa Han Sans'
+							  }
+							}
+						},
+						yAxis: {
+							min: 0,
+							gridLineWidth: 0,
+							title: {
+								text: '',
+								align: '',
+							},
+							categories: [''],
+							title: {
+								text: null
+							},
+							labels: {
+							 enabled:false,
+							}
+						},
+						tooltip: {
+							 enabled:false
+						},
+						plotOptions: {
+							series:{
+								animation: true,
+									dataLabels: {
+										enabled: true,
+										"style": {
+												  "color": "#555",
+												  "fontSize": "14px",
+												  "fontWeight": "normal",
+												  "textOutline": "none",
+												  "textShadow": "1px 1px 1px #fff"
+												}
+									}
+							}
+						},series: [{
+							name: langTitle('우리은행', 'WOORI BANK')
+						}, {
+							name: langTitle('삼성생명', 'SAMSUNG LIFE')
+						}],
+						legend: {	//차트 하단 팀 분류표시
+							enabled: true,
+							itemStyle : {
+								fontSize:'16px',
+								color: '#111111'
+							}
+						},
+						credits: {
+							enabled: false
+						}
+					});
+
+                    // datatableChart 타이틀 한/영
+                    function langTitle(kr, en){
+                        let title = localStorage.getItem("lang") == 'kr' ? kr : en
+                        return title;
+                    }
+                    
+                    var dataTableChartTitle = [
+                        langTitle('속공', 'Fast break'), 
+                        langTitle('리바운드', 'Rebound'), 
+                        langTitle('어시스트', 'Assist'), 
+                        langTitle('스틸', 'Steals'), 
+                        langTitle('턴오버', 'Turnover')
+                    ]
+                    for ( var i=0; i<dataTableChartTitle.length; i++ ){
+                        $('g.highcharts-xaxis-labels text:nth-child('+(i+1)+')').text(dataTableChartTitle[i])
+                    }
+				}
+
+				datatableChart();
+				</script>
+
+                <script>
+                    $(function() {
+                        /////////////////////////////////////////////language change start///////////////////////////////////////////
+                        let now_lang = localStorage.getItem("lang");
+                        if(!now_lang) now_lang = "kr";
+                    
+                        $('.lang_change').on('click', function(e){
+                            now_lang = (now_lang == "kr") ? "en" : "kr";
+                            localStorage.setItem("lang", now_lang);
+                    
+                            language_icon_change(now_lang);
+                            
+                            // 차트 reload
+                            donutChart();
+                            datatableChart();
+                        });
+                    
+                        function language_icon_change(now_lang){
+                            // if( now_lang == 'en' ){
+                            //     $('.lang_change').addClass('active');
+                            //     $('.lang_change_text').html("English");
+                            // }else{
+                            //     $('.lang_change').removeClass('active');
+                            //     $('.lang_change_text').html("Korea");
+                            // }
+                    
+                            language_change(now_lang);
+                        }
+                    
+                        function language_change(now_lang){
+                            for(i=0;i < $(".language").length; i++){
+                                if($($('.language')[i]).attr('placeholder') !== undefined){ //placeholder change
+                                   $($('.language')[i]).attr('placeholder', $($('.language')[i]).attr("data-"+now_lang));
+                                }else{ //text change
+                                    $($('.language')[i]).html($($('.language')[i]).attr("data-"+now_lang));
+                                }
+                            }
+                        }
+                    
+                        language_icon_change(now_lang);
+                        /////////////////////////////////////////////language change end ///////////////////////////////////////////
+                    });
+                </script>
+
