@@ -605,7 +605,7 @@ module Queries = struct
     CREATE INDEX IF NOT EXISTS idx_player_external_links_player_id ON player_external_links(player_id)
   |}
   let ensure_score_mismatch_view = (unit ->. unit) {|
-    CREATE VIEW IF NOT EXISTS score_mismatch_games AS
+    CREATE OR REPLACE VIEW score_mismatch_games AS
     WITH sums AS (
       SELECT game_id, team_code, SUM(pts) AS pts_sum
       FROM game_stats
@@ -631,7 +631,7 @@ module Queries = struct
       (away_score IS NOT NULL AND away_sum IS NOT NULL AND away_score != away_sum)
   |}
   let ensure_games_calc_view = (unit ->. unit) {|
-    CREATE VIEW IF NOT EXISTS games_calc AS
+    CREATE OR REPLACE VIEW games_calc AS
     WITH sums AS (
       SELECT game_id, team_code, SUM(pts) AS pts_sum
       FROM game_stats
