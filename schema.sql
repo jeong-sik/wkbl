@@ -44,7 +44,7 @@ CREATE TABLE games (
 
 -- 5. Game Stats (경기 기록 - Box Score)
 CREATE TABLE game_stats (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     game_id TEXT REFERENCES games(game_id),
     team_code TEXT REFERENCES teams(team_code),
     player_id TEXT REFERENCES players(player_id),
