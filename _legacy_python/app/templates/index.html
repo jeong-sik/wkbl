@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="hero">
+    <div class="hero-card">
+        <span class="eyebrow">WKBL Data Capsule</span>
+        <h1>Moneyball Pro</h1>
+        <p>한 경기 안에서 선수별 임팩트를 한눈에 보는 WKBL 데이터 렌즈. 실제 박스스코어에서 핵심 지표만 뽑아 빠르게 비교합니다.</p>
+        <div class="hero-actions">
+            <span class="pill accent">Live CSV Feed</span>
+            <span class="pill">{{ total_count }} Players</span>
+        </div>
+    </div>
+    <div class="hero-metrics">
+        <div class="metric">
+            <div class="metric-label">Top Impact</div>
+            {% if stats %}
+            <div class="metric-value">{{ stats[0].name }}</div>
+            <div class="metric-sub">{{ stats[0].team }} · {{ stats[0].eff }} EFF</div>
+            {% else %}
+            <div class="metric-value">No data</div>
+            <div class="metric-sub">Upload stats to begin.</div>
+            {% endif %}
+        </div>
+        <div class="metric">
+            <div class="metric-label">Team Spread</div>
+            <div class="metric-value">6 Teams</div>
+            <div class="metric-sub">우리은행, 삼성생명, 신한은행, KB스타즈, 하나은행, BNK썸</div>
+        </div>
+        <div class="metric">
+            <div class="metric-label">Focus</div>
+            <div class="metric-value">Impact & Efficiency</div>
+            <div class="metric-sub">PTS, REB, AST + FG% 기반 지표</div>
+        </div>
+    </div>
+</section>
+
+<form id="filter-form" hx-get="/refresh" hx-target="#stats-body" hx-trigger="change, search-update">
+    <input type="hidden" name="team" id="input-team" value="ALL">
+    <input type="hidden" name="pos" id="input-pos" value="ALL">
+    <input type="hidden" name="sort" id="input-sort" value="eff">
+    <input type="hidden" name="page" id="input-page" value="{{ pagination.page if pagination else 1 }}">
+    <input type="hidden" name="pager" value="{{ pager_mode }}">
+
+    <section class="filters">
+        <div class="filter-group">
+            <div class="filter-label">Season</div>
+            <select class="filter-input" name="season" onchange="resetPage()">
+                {% for opt in seasons %}
+                <option value="{{ opt.value }}" {% if opt.value == season %}selected{% endif %}>
+                    {{ opt.label }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-group">
+            <div class="filter-label">Min Games</div>
+            <select class="filter-input" name="min_games" onchange="resetPage()">
+                {% for min_opt in [0, 5, 10, 15, 20] %}
+                <option value="{{ min_opt }}" {% if min_opt == min_games %}selected{% endif %}>
+                    {% if min_opt == 0 %}All games{% else %}{{ min_opt }}+ games{% endif %}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-group">
+            <div class="filter-label">Search</div>
+            <input class="filter-input" type="search" name="search" placeholder="Search player..." oninput="resetPage()" onkeyup="htmx.trigger('#filter-form', 'search-update')" aria-label="Search player">
+        </div>
+        <div class="filter-group">
+            <div class="filter-label">Teams</div>
+            <div class="filter-row">
+                <button type="button" class="chip is-active" style="--chip-color: var(--accent-2);" data-filter="team" data-value="ALL" onclick="updateFilter('team', 'ALL')">ALL TEAMS</button>
+                {% for t in [('우리은행','#005BAA'), ('KB스타즈','#FFCC00'), ('삼성생명','#007AFF'), ('하나은행','#009490'), ('신한은행','#2B3990'), ('BNK썸','#D6001C')] %}
+                <button type="button" class="chip" style="--chip-color: {{ t[1] }};" data-filter="team" data-value="{{ t[0] }}" onclick="updateFilter('team', '{{ t[0] }}')">{{ t[0] }}</button>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="filter-group">
+            <div class="filter-label">Positions</div>
+            <div class="filter-row">
+                {% for p in [('ALL','ALL POS'), ('G','Guard'), ('F','Forward'), ('C','Center')] %}
+                <button type="button" class="chip pos {% if p[0] == 'ALL' %}is-active{% endif %}" data-filter="pos" data-value="{{ p[0] }}" onclick="updateFilter('pos', '{{ p[0] }}')">{{ p[1] }}</button>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="filter-group">
+            <div class="filter-label">Sort By</div>
+            <div class="filter-row">
+                <button type="button" class="chip sort is-active" data-filter="sort" data-value="eff" onclick="updateSort('eff')">EFF</button>
+                <button type="button" class="chip sort" data-filter="sort" data-value="pts" onclick="updateSort('pts')">PTS</button>
+                <button type="button" class="chip sort" data-filter="sort" data-value="reb" onclick="updateSort('reb')">REB</button>
+                <button type="button" class="chip sort" data-filter="sort" data-value="ast" onclick="updateSort('ast')">AST</button>
+                <button type="button" class="chip sort" data-filter="sort" data-value="fg_pct" onclick="updateSort('fg_pct')">FG%</button>
+                <button type="button" class="chip sort" data-filter="sort" data-value="min" onclick="updateSort('min')">MIN</button>
+            </div>
+        </div>
+        <div class="filter-group">
+            <div class="filter-label">Rows</div>
+            <select class="filter-input" name="page_size" onchange="resetPage()">
+                {% for size in home_page_sizes %}
+                <option value="{{ size }}" {% if size == page_size %}selected{% endif %}>{{ size }}/page</option>
+                {% endfor %}
+            </select>
+        </div>
+    </section>
+</form>
+
+<section id="stats-body" class="stat-list">
+    {% include 'partials/stats_table.html' %}
+</section>
+
+<script>
+    function setActive(filterType, value) {
+        document.querySelectorAll('[data-filter="' + filterType + '"]').forEach(el => {
+            if (el.dataset.value === value) {
+                el.classList.add('is-active');
+                el.setAttribute('aria-pressed', 'true');
+            } else {
+                el.classList.remove('is-active');
+                el.setAttribute('aria-pressed', 'false');
+            }
+        });
+    }
+
+    function resetPage() {
+        document.getElementById('input-page').value = 1;
+    }
+
+    function updateFilter(type, value) {
+        resetPage();
+        document.getElementById('input-' + type).value = value;
+        setActive(type, value);
+        htmx.trigger('#filter-form', 'change');
+    }
+
+    function updateSort(column) {
+        resetPage();
+        document.getElementById('input-sort').value = column;
+        setActive('sort', column);
+        htmx.trigger('#filter-form', 'change');
+    }
+
+    window.onload = () => {
+        setActive('team', 'ALL');
+        setActive('pos', 'ALL');
+        setActive('sort', 'eff');
+    };
+</script>
+{% endblock %}

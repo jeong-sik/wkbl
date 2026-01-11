@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="hero">
+    <div class="hero-card">
+        <span class="eyebrow">Compare</span>
+        <h1>{{ compare_title }}</h1>
+        <p>{{ compare_desc }}</p>
+        <div class="hero-actions">
+            {% for item in mode_switch %}
+            <a class="pill {% if item.active %}accent{% endif %}" href="{{ item.url }}">{{ item.label }}</a>
+            {% endfor %}
+            <span class="pill">{{ scope_label }}</span>
+            <span class="pill">Season {{ season_label }}</span>
+            <span class="pill">{{ entity_count_label }}</span>
+        </div>
+    </div>
+    <div class="hero-metrics">
+        <div class="metric">
+            <div class="metric-label">Focus</div>
+            <div class="metric-value">Side-by-side</div>
+            <div class="metric-sub">PTS, REB, AST + Shooting</div>
+        </div>
+        <div class="metric">
+            <div class="metric-label">Scope</div>
+            <div class="metric-value">{{ scope_label }}</div>
+            <div class="metric-sub">Totals / Per Game{% if mode == 'players' %} / Per 36{% endif %}</div>
+        </div>
+        <div class="metric">
+            <div class="metric-label">Hint</div>
+            <div class="metric-value">Choose two</div>
+            <div class="metric-sub">이중 선택으로 비교</div>
+        </div>
+    </div>
+</section>
+
+<form id="compare-form" hx-get="/compare/table" hx-target="#compare-table" hx-trigger="change">
+    <input type="hidden" name="mode" value="{{ mode }}">
+    <section class="filters">
+        <div class="filter-group">
+            <div class="filter-label">Season</div>
+            <select class="filter-input" name="season">
+                {% for opt in seasons %}
+                <option value="{{ opt.value }}" {% if opt.value == season %}selected{% endif %}>
+                    {{ opt.label }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-group">
+            <div class="filter-label">Scope</div>
+            <select class="filter-input" name="scope">
+                {% for value, label in scopes %}
+                <option value="{{ value }}" {% if value == scope %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-group">
+            <div class="filter-label">{{ select_label }} A</div>
+            <select class="filter-input" name="{{ select_name_a }}">
+                <option value="">Select {{ select_label | lower }}</option>
+                {% for opt in options %}
+                <option value="{{ opt.value }}" {% if opt.value == selected_a %}selected{% endif %}>{{ opt.label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-group">
+            <div class="filter-label">{{ select_label }} B</div>
+            <select class="filter-input" name="{{ select_name_b }}">
+                <option value="">Select {{ select_label | lower }}</option>
+                {% for opt in options %}
+                <option value="{{ opt.value }}" {% if opt.value == selected_b %}selected{% endif %}>{{ opt.label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </section>
+</form>
+
+<section id="compare-table">
+    {% include 'partials/compare_table.html' %}
+</section>
+{% endblock %}
