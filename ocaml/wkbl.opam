@@ -11,13 +11,13 @@ depends: [
   "dune" {>= "3.0"}
   "ocaml" {>= "5.0"}
   "dream"
-  "caqti"
-  "caqti-driver-postgresql"
-  "caqti-lwt"
-  "lwt"
-  "yojson"
-  "ppx_deriving"
-  "ppx_deriving_yojson"
+  "caqti" {>= "1.9.0" & < "2.0.0"}
+  "caqti-driver-postgresql" {>= "1.9.0" & < "2.0.0"}
+  "caqti-lwt" {>= "1.9.0" & < "2.0.0"}
+  "lwt" {>= "5.7"}
+  "yojson" {>= "2.1"}
+  "ppx_deriving" {>= "5.2"}
+  "ppx_deriving_yojson" {>= "3.7"}
 ]
 build: [
   ["dune" "subst"] {dev}
