@@ -95,7 +95,7 @@ let () =
   (* Keep WKBL_STATIC_PATH consistent for view-layer asset checks. *)
   Unix.putenv "WKBL_STATIC_PATH" static_path;
   Printf.printf "Serving static assets from: %s\n%%!" static_path;
-  Printf.printf "Using DB path: %s\n%%!" db_path;
+  Printf.printf "Using DB path: %s\n%%!" db_url;
   Printf.printf "Listening on: 0.0.0.0:%d\n%%!" port;
 
   Dream.run ~interface:"0.0.0.0" ~port ~error_handler:Dream.debug_error_handler
