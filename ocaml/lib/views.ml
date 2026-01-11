@@ -3161,6 +3161,7 @@ let transactions_page
       <code class="block font-mono text-slate-300 bg-slate-950/30 border border-slate-700/60 px-3 py-2 rounded overflow-x-auto whitespace-nowrap">python3 scripts/wkbl_draft_trade_sync.py --only-missing --backup</code>
     </div>
   </details>
+  %s
 </div>|html}
       (tab_link "draft" "Draft")
       (tab_link "trade" "Trade")
