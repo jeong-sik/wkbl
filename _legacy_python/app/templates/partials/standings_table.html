@@ -1,0 +1,93 @@
+{% if stats %}
+<div class="data-table">
+    {% if pager_top and pagination and pagination.total_pages > 1 %}
+    <div class="pagination top"{% if pager_accent %} style="--pager-accent: {{ pager_accent }};"{% endif %}>
+        <div class="pagination-info">Showing {{ pagination.start }}-{{ pagination.end }} of {{ pagination.total_count }} · Page {{ pagination.page }} / {{ pagination.total_pages }}</div>
+        <div class="pagination-controls">
+            <div class="pagination-pages">
+                {% for item in pagination.pages %}
+                    {% if item.ellipsis %}
+                    <span class="pager is-ellipsis">...</span>
+                    {% elif item.is_current %}
+                    <span class="pager is-current" aria-current="page">{{ item.num }}</span>
+                    {% else %}
+                    <a class="pager" href="{{ item.href }}" hx-get="{{ item.hx }}" hx-target="#standings-table" hx-swap="innerHTML">{{ item.num }}</a>
+                    {% endif %}
+                {% endfor %}
+            </div>
+            <form class="pager-jump" hx-get="/standings/table" hx-target="#standings-table" hx-swap="innerHTML">
+                <input type="hidden" name="season" value="{{ season }}">
+                <input type="hidden" name="page_size" value="{{ page_size }}">
+                <input type="hidden" name="pager" value="{{ pager_mode }}">
+                <input class="pager-input" type="number" name="page" min="1" max="{{ pagination.total_pages }}" value="{{ pagination.page }}" placeholder="Page" aria-label="Jump to page" inputmode="numeric" pattern="[0-9]*">
+                <button class="pager" type="submit">Jump</button>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+    <div class="table-scroll">
+        <table>
+        <thead>
+            <tr>
+                <th>Rank</th>
+                <th>Team</th>
+                <th>GP</th>
+                <th>W</th>
+                <th>L</th>
+                <th>W%</th>
+                <th>GB</th>
+                <th>PF</th>
+                <th>PA</th>
+                <th>Margin/G</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in stats %}
+            <tr>
+                <td>{{ row.rank }}</td>
+                <td><a class="table-link" href="{{ row.team_url }}">{{ row.team }}</a></td>
+                <td>{{ row.gp }}</td>
+                <td>{{ row.wins }}</td>
+                <td>{{ row.losses }}</td>
+                <td>{{ "%.3f"|format(row.win_pct) }}</td>
+                <td>{{ "%.1f"|format(row.gb) }}</td>
+                <td>{{ "%.1f"|format(row.pts_for_per_game) }}</td>
+                <td>{{ "%.1f"|format(row.pts_against_per_game) }}</td>
+                <td>{{ "%.2f"|format(row.margin_per_game) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        </table>
+    </div>
+{% if pager_bottom and pagination and pagination.total_pages > 1 %}
+<div class="pagination"{% if pager_accent %} style="--pager-accent: {{ pager_accent }};"{% endif %}>
+    <div class="pagination-info">Showing {{ pagination.start }}-{{ pagination.end }} of {{ pagination.total_count }} · Page {{ pagination.page }} / {{ pagination.total_pages }}</div>
+    <div class="pagination-controls">
+        <div class="pagination-pages">
+            {% for item in pagination.pages %}
+                {% if item.ellipsis %}
+                <span class="pager is-ellipsis">...</span>
+                {% elif item.is_current %}
+                <span class="pager is-current" aria-current="page">{{ item.num }}</span>
+                {% else %}
+                <a class="pager" href="{{ item.href }}" hx-get="{{ item.hx }}" hx-target="#standings-table" hx-swap="innerHTML">{{ item.num }}</a>
+                {% endif %}
+            {% endfor %}
+        </div>
+        <form class="pager-jump" hx-get="/standings/table" hx-target="#standings-table" hx-swap="innerHTML">
+            <input type="hidden" name="season" value="{{ season }}">
+            <input type="hidden" name="page_size" value="{{ page_size }}">
+            <input type="hidden" name="pager" value="{{ pager_mode }}">
+            <input class="pager-input" type="number" name="page" min="1" max="{{ pagination.total_pages }}" value="{{ pagination.page }}" placeholder="Page" aria-label="Jump to page" inputmode="numeric" pattern="[0-9]*">
+            <button class="pager" type="submit">Jump</button>
+        </form>
+    </div>
+</div>
+{% endif %}
+    </div>
+{% else %}
+<div class="empty-state">
+    <h3>No standings found</h3>
+    <p>해당 시즌 데이터가 없습니다.</p>
+</div>
+{% endif %}

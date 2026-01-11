@@ -1,0 +1,133 @@
+{% if stats %}
+<div class="data-table">
+    {% set rate_suffix = '' %}
+    {% if scope == 'per_game' %}
+        {% set rate_suffix = '/G' %}
+    {% elif scope == 'per_36' %}
+        {% set rate_suffix = '/36' %}
+    {% endif %}
+    {% if pager_top and pagination and pagination.total_pages > 1 %}
+    <div class="pagination top"{% if pager_accent %} style="--pager-accent: {{ pager_accent }};"{% endif %}>
+        <div class="pagination-info">Showing {{ pagination.start }}-{{ pagination.end }} of {{ pagination.total_count }} · Page {{ pagination.page }} / {{ pagination.total_pages }}</div>
+        <div class="pagination-controls">
+            <div class="pagination-pages">
+                {% for item in pagination.pages %}
+                    {% if item.ellipsis %}
+                    <span class="pager is-ellipsis">...</span>
+                    {% elif item.is_current %}
+                    <span class="pager is-current" aria-current="page">{{ item.num }}</span>
+                    {% else %}
+                    <a class="pager" href="{{ item.href }}" hx-get="{{ item.hx }}" hx-target="#players-table" hx-swap="innerHTML">{{ item.num }}</a>
+                    {% endif %}
+                {% endfor %}
+            </div>
+            <form class="pager-jump" hx-get="/players/table" hx-target="#players-table" hx-swap="innerHTML">
+                <input type="hidden" name="season" value="{{ season }}">
+                <input type="hidden" name="scope" value="{{ scope }}">
+                <input type="hidden" name="team" value="{{ team }}">
+                <input type="hidden" name="search" value="{{ search }}">
+                <input type="hidden" name="sort" value="{{ sort }}">
+                <input type="hidden" name="min_minutes" value="{{ min_minutes }}">
+                <input type="hidden" name="page_size" value="{{ page_size }}">
+                <input type="hidden" name="pager" value="{{ pager_mode }}">
+                <input class="pager-input" type="number" name="page" min="1" max="{{ pagination.total_pages }}" value="{{ pagination.page }}" placeholder="Page" aria-label="Jump to page" inputmode="numeric" pattern="[0-9]*">
+                <button class="pager" type="submit">Jump</button>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+    <div class="table-scroll">
+        <table>
+        <thead>
+            <tr>
+                <th>Player</th>
+                <th>Team</th>
+                <th>Pos</th>
+                <th class="sortable {% if sort == 'gp' %}is-active{% endif %}" hx-get="/players/table?season={{ season }}&scope={{ scope }}&team={{ team }}&search={{ search }}&min_minutes={{ min_minutes }}&page_size={{ page_size }}&pager={{ pager_mode }}&sort=gp" hx-target="#players-table" hx-swap="innerHTML" style="cursor: pointer;">GP</th>
+                {% if scope == 'per_game' %}
+                <th class="sortable {% if sort == 'min_total' %}is-active{% endif %}" hx-get="/players/table?season={{ season }}&scope={{ scope }}&team={{ team }}&search={{ search }}&min_minutes={{ min_minutes }}&page_size={{ page_size }}&pager={{ pager_mode }}&sort=min_total" hx-target="#players-table" hx-swap="innerHTML" style="cursor: pointer;">MIN/G</th>
+                {% else %}
+                <th class="sortable {% if sort == 'min_total' %}is-active{% endif %}" hx-get="/players/table?season={{ season }}&scope={{ scope }}&team={{ team }}&search={{ search }}&min_minutes={{ min_minutes }}&page_size={{ page_size }}&pager={{ pager_mode }}&sort=min_total" hx-target="#players-table" hx-swap="innerHTML" style="cursor: pointer;">MIN (Total)</th>
+                {% endif %}
+                {% if scope == 'totals' %}
+                <th>MIN/G</th>
+                {% endif %}
+                <th class="sortable {% if sort == 'pts' %}is-active{% endif %}" hx-get="/players/table?season={{ season }}&scope={{ scope }}&team={{ team }}&search={{ search }}&min_minutes={{ min_minutes }}&page_size={{ page_size }}&pager={{ pager_mode }}&sort=pts" hx-target="#players-table" hx-swap="innerHTML" style="cursor: pointer;">PTS{{ rate_suffix }}</th>
+                <th class="sortable {% if sort == 'reb' %}is-active{% endif %}" hx-get="/players/table?season={{ season }}&scope={{ scope }}&team={{ team }}&search={{ search }}&min_minutes={{ min_minutes }}&page_size={{ page_size }}&pager={{ pager_mode }}&sort=reb" hx-target="#players-table" hx-swap="innerHTML" style="cursor: pointer;">REB{{ rate_suffix }}</th>
+                <th class="sortable {% if sort == 'ast' %}is-active{% endif %}" hx-get="/players/table?season={{ season }}&scope={{ scope }}&team={{ team }}&search={{ search }}&min_minutes={{ min_minutes }}&page_size={{ page_size }}&pager={{ pager_mode }}&sort=ast" hx-target="#players-table" hx-swap="innerHTML" style="cursor: pointer;">AST{{ rate_suffix }}</th>
+                <th class="sortable {% if sort == 'stl' %}is-active{% endif %}" hx-get="/players/table?season={{ season }}&scope={{ scope }}&team={{ team }}&search={{ search }}&min_minutes={{ min_minutes }}&page_size={{ page_size }}&pager={{ pager_mode }}&sort=stl" hx-target="#players-table" hx-swap="innerHTML" style="cursor: pointer;">STL{{ rate_suffix }}</th>
+                <th class="sortable {% if sort == 'blk' %}is-active{% endif %}" hx-get="/players/table?season={{ season }}&scope={{ scope }}&team={{ team }}&search={{ search }}&min_minutes={{ min_minutes }}&page_size={{ page_size }}&pager={{ pager_mode }}&sort=blk" hx-target="#players-table" hx-swap="innerHTML" style="cursor: pointer;">BLK{{ rate_suffix }}</th>
+                <th class="sortable {% if sort == 'to' %}is-active{% endif %}" hx-get="/players/table?season={{ season }}&scope={{ scope }}&team={{ team }}&search={{ search }}&min_minutes={{ min_minutes }}&page_size={{ page_size }}&pager={{ pager_mode }}&sort=to" hx-target="#players-table" hx-swap="innerHTML" style="cursor: pointer;">TO{{ rate_suffix }}</th>
+                <th class="sortable {% if sort == 'fg_pct' %}is-active{% endif %}" hx-get="/players/table?season={{ season }}&scope={{ scope }}&team={{ team }}&search={{ search }}&min_minutes={{ min_minutes }}&page_size={{ page_size }}&pager={{ pager_mode }}&sort=fg_pct" hx-target="#players-table" hx-swap="innerHTML" style="cursor: pointer;">FG%</th>
+                <th class="sortable {% if sort == 'fg3_pct' %}is-active{% endif %}" hx-get="/players/table?season={{ season }}&scope={{ scope }}&team={{ team }}&search={{ search }}&min_minutes={{ min_minutes }}&page_size={{ page_size }}&pager={{ pager_mode }}&sort=fg3_pct" hx-target="#players-table" hx-swap="innerHTML" style="cursor: pointer;">3P%</th>
+                <th class="sortable {% if sort == 'ft_pct' %}is-active{% endif %}" hx-get="/players/table?season={{ season }}&scope={{ scope }}&team={{ team }}&search={{ search }}&min_minutes={{ min_minutes }}&page_size={{ page_size }}&pager={{ pager_mode }}&sort=ft_pct" hx-target="#players-table" hx-swap="innerHTML" style="cursor: pointer;">FT%</th>
+                <th class="sortable {% if sort == 'efg_pct' %}is-active{% endif %}" hx-get="/players/table?season={{ season }}&scope={{ scope }}&team={{ team }}&search={{ search }}&min_minutes={{ min_minutes }}&page_size={{ page_size }}&pager={{ pager_mode }}&sort=efg_pct" hx-target="#players-table" hx-swap="innerHTML" style="cursor: pointer;">eFG%</th>
+                <th class="sortable {% if sort == 'ts_pct' %}is-active{% endif %}" hx-get="/players/table?season={{ season }}&scope={{ scope }}&team={{ team }}&search={{ search }}&min_minutes={{ min_minutes }}&page_size={{ page_size }}&pager={{ pager_mode }}&sort=ts_pct" hx-target="#players-table" hx-swap="innerHTML" style="cursor: pointer;">TS%</th>
+                <th class="sortable {% if sort == 'eff' %}is-active{% endif %}" hx-get="/players/table?season={{ season }}&scope={{ scope }}&team={{ team }}&search={{ search }}&min_minutes={{ min_minutes }}&page_size={{ page_size }}&pager={{ pager_mode }}&sort=eff" hx-target="#players-table" hx-swap="innerHTML" style="cursor: pointer;">EFF</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in stats %}
+            <tr>
+                <td><a class="table-link" href="{{ row.player_url }}">{{ row.name }}</a></td>
+                <td><a class="table-link" href="{{ row.team_url }}">{{ row.team }}</a></td>
+                <td><span class="stat-pill">{{ row.pos }}</span></td>
+                <td>{{ row.gp }}</td>
+                <td>{{ "%.1f"|format(row.min_total) }}</td>
+                {% if scope == 'totals' %}
+                <td>{{ "%.1f"|format(row.min_per_game) }}</td>
+                {% endif %}
+                <td>{{ "%.2f"|format(row.pts) }}</td>
+                <td>{{ "%.2f"|format(row.reb) }}</td>
+                <td>{{ "%.2f"|format(row.ast) }}</td>
+                <td>{{ "%.2f"|format(row.stl) }}</td>
+                <td>{{ "%.2f"|format(row.blk) }}</td>
+                <td>{{ "%.2f"|format(row.to) }}</td>
+                <td>{{ "%.1f"|format(row.fg_pct) }}</td>
+                <td>{{ "%.1f"|format(row.fg3_pct) }}</td>
+                <td>{{ "%.1f"|format(row.ft_pct) }}</td>
+                <td>{{ "%.1f"|format(row.efg_pct) }}</td>
+                <td>{{ "%.1f"|format(row.ts_pct) }}</td>
+                <td>{{ "%.1f"|format(row.eff) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        </table>
+    </div>
+{% if pager_bottom and pagination and pagination.total_pages > 1 %}
+<div class="pagination"{% if pager_accent %} style="--pager-accent: {{ pager_accent }};"{% endif %}>
+    <div class="pagination-info">Showing {{ pagination.start }}-{{ pagination.end }} of {{ pagination.total_count }} · Page {{ pagination.page }} / {{ pagination.total_pages }}</div>
+    <div class="pagination-controls">
+        <div class="pagination-pages">
+            {% for item in pagination.pages %}
+                {% if item.ellipsis %}
+                <span class="pager is-ellipsis">...</span>
+                {% elif item.is_current %}
+                <span class="pager is-current" aria-current="page">{{ item.num }}</span>
+                {% else %}
+                <a class="pager" href="{{ item.href }}" hx-get="{{ item.hx }}" hx-target="#players-table" hx-swap="innerHTML">{{ item.num }}</a>
+                {% endif %}
+            {% endfor %}
+        </div>
+        <form class="pager-jump" hx-get="/players/table" hx-target="#players-table" hx-swap="innerHTML">
+            <input type="hidden" name="season" value="{{ season }}">
+            <input type="hidden" name="scope" value="{{ scope }}">
+            <input type="hidden" name="team" value="{{ team }}">
+            <input type="hidden" name="search" value="{{ search }}">
+            <input type="hidden" name="sort" value="{{ sort }}">
+            <input type="hidden" name="min_minutes" value="{{ min_minutes }}">
+            <input type="hidden" name="page_size" value="{{ page_size }}">
+            <input type="hidden" name="pager" value="{{ pager_mode }}">
+            <input class="pager-input" type="number" name="page" min="1" max="{{ pagination.total_pages }}" value="{{ pagination.page }}" placeholder="Page" aria-label="Jump to page" inputmode="numeric" pattern="[0-9]*">
+            <button class="pager" type="submit">Jump</button>
+        </form>
+    </div>
+</div>
+{% endif %}
+    </div>
+{% else %}
+<div class="empty-state">
+    <h3>No players found</h3>
+    <p>필터를 조정하거나 데이터를 먼저 수집하세요.</p>
+</div>
+{% endif %}
