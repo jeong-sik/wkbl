@@ -8,19 +8,16 @@ license: "MIT"
 homepage: "https://github.com/yousleepwhen/wkbl"
 bug-reports: "https://github.com/yousleepwhen/wkbl/issues"
 depends: [
-  "dune" {>= "3.13"}
-  "ocaml" {>= "5.1"}
-  "dream" {>= "1.0.0~alpha5"}
-  "caqti" {>= "1.9"}
-  "caqti-driver-sqlite3" {>= "1.9"}
-  "caqti-driver-postgresql" {>= "1.9"}
-  "caqti-lwt" {>= "1.9"}
-  "lwt" {>= "5.7"}
-  "yojson" {>= "2.1"}
-  "ppx_deriving" {>= "5.2"}
-  "ppx_deriving_yojson" {>= "3.7"}
-  "alcotest" {>= "1.7.0" :with-test}
-  "odoc" {with-doc}
+  "dune" {>= "3.0"}
+  "ocaml" {>= "5.0"}
+  "dream"
+  "caqti"
+  "caqti-driver-postgresql"
+  "caqti-lwt"
+  "lwt"
+  "yojson"
+  "ppx_deriving"
+  "ppx_deriving_yojson"
 ]
 build: [
   ["dune" "subst"] {dev}
