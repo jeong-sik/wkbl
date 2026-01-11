@@ -2696,7 +2696,6 @@ end
 let pool_ref : (Caqti_lwt.connection, Caqti_error.t) Caqti_lwt.Pool.t option ref = ref None
 let init_pool db_url = 
   let uri = Uri.of_string db_url in
-  let uri = Uri.add_query_param' uri ("prepared", "false") in
   match Caqti_lwt.connect_pool uri with 
   | Ok pool -> pool_ref := Some pool; Ok () 
   | Error e -> Error (ConnectionFailed (Caqti_error.show e))
