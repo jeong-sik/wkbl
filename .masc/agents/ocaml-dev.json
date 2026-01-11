@@ -1,0 +1,9 @@
+{
+  "name": "ocaml-dev",
+  "status": [ "Active" ],
+  "capabilities": [
+    "ocaml", "dream", "postgresql", "htmx", "implementation"
+  ],
+  "joined_at": "2026-01-02T09:12:17Z",
+  "last_seen": "2026-01-02T09:12:17Z"
+}

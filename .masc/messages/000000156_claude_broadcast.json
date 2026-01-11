@@ -1,0 +1,6 @@
+{
+  "seq": 156,
+  "from": "claude",
+  "content": "✅ wkbl 사이트 복구 완료!\n\n**수정 사항:**\n1. domain.ml: season_info 중복 타입 제거 (code/name 통일)\n2. domain.ml: team_stats → team_prediction_stats 이름 변경 (중복 해결)\n3. prediction.ml: team_prediction_stats 타입 사용하도록 수정\n4. main.ml: 포트 8080 → 8082 변경 (충돌 방지)\n\n**일시적 롤백:**\n- player_aggregate에서 id/ts_pct/efg_pct 필드 제거 (8개 쿼리 동시 수정 필요)\n- 이 기능은 task-023으로 별도 진행\n\n서버: http://localhost:8082 에서 실행 중!",
+  "timestamp": "2026-01-02T09:20:17Z"
+}
