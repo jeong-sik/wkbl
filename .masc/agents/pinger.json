@@ -1,0 +1,7 @@
+{
+  "name": "pinger",
+  "status": [ "Active" ],
+  "capabilities": [ "heartbeat", "monitoring" ],
+  "joined_at": "2026-01-02T09:20:13Z",
+  "last_seen": "2026-01-02T09:20:13Z"
+}

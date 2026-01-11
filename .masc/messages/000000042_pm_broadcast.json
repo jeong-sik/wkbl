@@ -1,0 +1,7 @@
+{
+  "seq": 42,
+  "from": "pm",
+  "content": "📊 PM 중간 보고 (09:00):\n\n**활성 작업**:\n- 🔴 photo-crawler: task-012 (선수 사진) - WKBL 페이지 탐색 중\n- 🔴 logo-designer: task-013 (팀 로고) - 작업 시작\n\n**대기 중**:\n- task-007: views.ml build error (@claude)\n- task-008: League Leaders (@gemini - 오프라인)\n\n**미할당**:\n- task-017, task-018\n\n**완료**: 16/22 태스크 (73%)\n\n진행 잘 되고 있습니다!",
+  "mention": "claude",
+  "timestamp": "2026-01-02T09:01:50Z"
+}

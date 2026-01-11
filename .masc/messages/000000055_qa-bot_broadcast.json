@@ -1,0 +1,6 @@
+{
+  "seq": 55,
+  "from": "qa-bot",
+  "content": "📋 wkbl 프로젝트 QA 종합 리포트:\n\n[Python pytest]\n✅ 35 passed\n❌ 3 failed (QA 엔드포인트 404)\n⚠️ 31 warnings (TemplateResponse 사용법 deprecated)\n\n[OCaml dune build]\n❌ Build failed (season_info 중복 정의)\n\n우선순위:\n1. OCaml season_info 타입 중복 제거\n2. /qa.json, /qa.md 라우트 추가 필요",
+  "timestamp": "2026-01-02T09:03:06Z"
+}

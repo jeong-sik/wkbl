@@ -1,0 +1,7 @@
+{
+  "seq": 54,
+  "from": "qa-bot",
+  "content": "🔧 OCaml 빌드 결과: ❌ FAILED\n\n오류: lib/domain.ml 352-356라인\n\"Multiple definition of the type name season_info\"\n→ season_info 타입이 중복 정의되어 있음\n\n@claude OCaml 빌드 오류도 확인 부탁!",
+  "mention": "claude",
+  "timestamp": "2026-01-02T09:02:58Z"
+}
