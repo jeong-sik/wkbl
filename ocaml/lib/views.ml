@@ -228,9 +228,10 @@ let score_quality_badge ?(compact=false) (q: game_score_quality) =
       label
   in
   Printf.sprintf
-    {html|<span class="px-2 py-1 rounded-full border text-[10px] font-mono tracking-wider %s" title="%s">%s</span>|html}
+    {html|<span class="px-2 py-1 rounded-full border text-[10px] font-mono tracking-wider %s" title="%s" aria-label="%s">%s</span>|html}
     cls
     (escape_html title)
+    (escape_html label)
     (escape_html text)
 
 (** Player Season Stats Table Component (Fixed widths for layout stability) *)
@@ -1814,7 +1815,17 @@ let awards_page ~(season: string) ~(seasons: season_info list) ~(include_mismatc
 let player_profile_page ?(leaderboards=None) (profile: player_profile) ~scope ~(seasons_catalog: season_info list) =
   let p = profile.player in
   let pos = match p.position with Some s -> s | None -> "-" in
-  let info_text = Printf.sprintf "%s | %dcm" pos (match p.height with Some h -> h | None -> 0) in
+  let height_text =
+    match p.height with
+    | Some h when h > 0 -> Printf.sprintf "%dcm" h
+    | _ -> "-"
+  in
+  let info_text = Printf.sprintf "%s | %s" pos height_text in
+  let birth_text =
+    match p.birth_date with
+    | Some d when String.trim d <> "" -> d
+    | _ -> "-"
+  in
   let avg = profile.averages in
   let career_chips =
     if avg.games_played <= 0 then ""
@@ -1948,17 +1959,19 @@ let player_profile_page ?(leaderboards=None) (profile: player_profile) ~scope ~(
                 else "T 0"
               in
               Printf.sprintf
-                {html|<span class="inline-flex items-center px-2 py-0.5 rounded border text-[10px] font-mono %s">%s</span>|html}
+                {html|<span class="inline-flex items-center justify-center px-2 py-0.5 rounded border text-[10px] font-mono min-w-[52px] %s">%s</span>|html}
                 cls label
           | _ ->
-              {html|<span class="inline-flex items-center px-2 py-0.5 rounded border border-slate-700/60 text-[10px] font-mono text-slate-500">-</span>|html}
+              {html|<span class="inline-flex items-center justify-center px-2 py-0.5 rounded border border-slate-700/60 text-[10px] font-mono text-slate-500 min-w-[52px]">-</span>|html}
         in
         let quality_badge = score_quality_badge ~compact:true g.score_quality in
         let opponent_label = if g.is_home then "vs " ^ g.opponent else "@ " ^ g.opponent in
+        let opponent_href = "/team/" ^ Uri.pct_encode g.opponent in
         Printf.sprintf
-          {html|<tr class="border-b border-slate-800/60 hover:bg-slate-800/30 transition-colors"><td class="px-4 py-3 text-slate-400 text-sm font-mono whitespace-nowrap"><a href="/boxscore/%s" class="hover:text-orange-400 transition-colors">%s</a></td><td class="px-4 py-3 text-white"><div class="flex items-center justify-between gap-3"><span class="truncate">%s</span><div class="flex items-center gap-2 shrink-0">%s%s</div></div></td><td class="px-4 py-3 text-right font-mono text-slate-400 w-[72px]">%.1f</td><td class="px-4 py-3 text-right font-bold %s w-[72px]">%d</td><td class="px-4 py-3 text-right font-mono w-[72px] %s">%s</td><td class="px-4 py-3 text-right text-slate-300 w-[72px]">%d</td><td class="px-4 py-3 text-right text-slate-300 w-[72px]">%d</td><td class="px-4 py-3 text-right text-slate-300 w-[72px]">%d</td><td class="px-4 py-3 text-right text-slate-300 w-[72px]">%d</td></tr>|html}
+          {html|<tr class="border-b border-slate-800/60 hover:bg-slate-800/30 transition-colors"><td class="px-4 py-3 text-slate-400 text-sm font-mono whitespace-nowrap"><a href="/boxscore/%s" class="hover:text-orange-400 transition-colors">%s</a></td><td class="px-4 py-3 text-white"><div class="flex flex-wrap items-center gap-x-3 gap-y-2"><a href="%s" class="truncate min-w-[140px] flex-1 hover:text-orange-400 transition-colors">%s</a><div class="flex items-center gap-2 shrink-0">%s%s</div></div></td><td class="px-4 py-3 text-right font-mono text-slate-400 w-[72px]">%.1f</td><td class="px-4 py-3 text-right font-bold %s w-[72px]">%d</td><td class="px-4 py-3 text-right font-mono w-[72px] %s">%s</td><td class="px-4 py-3 text-right text-slate-300 w-[72px]">%d</td><td class="px-4 py-3 text-right text-slate-300 w-[72px]">%d</td><td class="px-4 py-3 text-right text-slate-300 w-[72px]">%d</td><td class="px-4 py-3 text-right text-slate-300 w-[72px]">%d</td></tr>|html}
           (Uri.pct_encode g.game_id)
           (escape_html g.game_date)
+          (escape_html opponent_href)
           (escape_html opponent_label)
           margin_badge
           quality_badge
@@ -1972,6 +1985,11 @@ let player_profile_page ?(leaderboards=None) (profile: player_profile) ~scope ~(
           g.stl
           g.blk)
     |> String.concat "\n"
+  in
+  let birth_chip =
+    Printf.sprintf
+      {html|<span class="bg-slate-800 text-slate-300 px-2.5 py-1 rounded text-[11px] sm:text-sm"><span class="text-slate-500">생년</span> %s</span>|html}
+      (escape_html birth_text)
   in
   let recent_rows = game_rows profile.recent_games in
   let all_star_rows = game_rows profile.all_star_games in
@@ -2033,7 +2051,7 @@ let player_profile_page ?(leaderboards=None) (profile: player_profile) ~scope ~(
   in
   let recent_games_header_html =
     Printf.sprintf
-      {html|<div class="flex items-start justify-between gap-3"><h3 class="text-xl font-bold text-white">Recent Games</h3><div class="flex flex-wrap items-center justify-end gap-2 shrink-0">%s<a href="/player/%s/games" class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-2 rounded text-slate-300 hover:text-white transition whitespace-nowrap">전체 경기</a></div></div><p class="text-[11px] text-slate-500 mt-1">개인 <span class="font-mono text-slate-300">+/-</span>는 문자중계(PBP) 기반입니다. PBP가 없으면 <span class="font-mono text-slate-300">M</span>으로 팀 득실마진(경기 최종 점수)을 대신 표시합니다. (데이터가 없거나 PBP/박스스코어 최종 스코어 불일치 등 품질 이슈면 <span class="font-mono text-slate-300">-</span>)</p>|html}
+      {html|<div class="flex items-start justify-between gap-3"><h3 class="text-xl font-bold text-white">Recent Games</h3><div class="flex flex-wrap items-center justify-end gap-2 shrink-0">%s<a href="/player/%s/games" class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-2 rounded text-slate-300 hover:text-white transition whitespace-nowrap">전체 경기</a></div></div><p class="text-[11px] text-slate-500 mt-1">개인 <span class="font-mono text-slate-300">+/-</span>는 문자중계(PBP) 기반입니다. PBP가 없으면 <span class="font-mono text-slate-300">M</span>으로 팀 득실마진(경기 최종 점수)을 대신 표시합니다. <span class="font-mono text-slate-300">Σ</span>는 득점합 기반 보정 결과입니다.</p>|html}
       recent_wl_summary_html
       (Uri.pct_encode p.id)
   in
@@ -2418,7 +2436,7 @@ let player_profile_page ?(leaderboards=None) (profile: player_profile) ~scope ~(
           (escape_html p.id)
           (escape_html display_name)
           info_text
-          (match p.birth_date with Some d -> d | None -> "Unknown")
+          birth_chip
           team_badge_html
           video_links_html
           career_chips
@@ -2758,6 +2776,7 @@ let team_profile_page (detail: team_full_detail) ~season ~seasons =
 	        let opponent_label =
 	          if g.tgr_is_home then "vs " ^ g.tgr_opponent else "@ " ^ g.tgr_opponent
 	        in
+	        let opponent_href = "/team/" ^ Uri.pct_encode g.tgr_opponent in
 	        let date_short =
 	          if String.length g.tgr_game_date >= 10 then
 	            String.sub g.tgr_game_date 5 5
@@ -2765,11 +2784,12 @@ let team_profile_page (detail: team_full_detail) ~season ~seasons =
 	            g.tgr_game_date
 	        in
 	        Printf.sprintf
-	          {html|<tr class="border-b border-slate-800/60 hover:bg-slate-800/30 transition-colors"><td class="px-4 py-3 text-slate-400 text-sm font-mono whitespace-nowrap w-24"><a href="/boxscore/%s" class="hover:text-orange-400 transition-colors" title="%s"><span class="sm:hidden">%s</span><span class="hidden sm:inline">%s</span></a></td><td class="px-4 py-3 text-white"><span class="block truncate" title="%s">%s</span></td><td class="px-4 py-3 text-center font-bold %s whitespace-nowrap w-14">%s</td><td class="px-4 py-3 text-right font-mono text-white whitespace-nowrap w-36"><div class="flex items-center justify-end gap-2 flex-nowrap"><span class="whitespace-nowrap">%d - %d</span><span class="px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700/60 text-[10px] font-mono %s whitespace-nowrap">%s</span></div></td></tr>|html}
+	          {html|<tr class="border-b border-slate-800/60 hover:bg-slate-800/30 transition-colors"><td class="px-4 py-3 text-slate-400 text-sm font-mono whitespace-nowrap w-24"><a href="/boxscore/%s" class="hover:text-orange-400 transition-colors" title="%s"><span class="sm:hidden">%s</span><span class="hidden sm:inline">%s</span></a></td><td class="px-4 py-3 text-white"><a class="block truncate hover:text-orange-400 transition-colors" href="%s" title="%s">%s</a></td><td class="px-4 py-3 text-center font-bold %s whitespace-nowrap w-14"><span class="inline-flex items-center justify-center w-7">%s</span></td><td class="px-4 py-3 text-right font-mono text-white whitespace-nowrap w-36"><div class="flex items-center justify-end gap-2 flex-nowrap tabular-nums"><span class="whitespace-nowrap">%d - %d</span><span class="px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700/60 text-[10px] font-mono %s whitespace-nowrap min-w-[48px] text-center">%s</span></div></td></tr>|html}
 	          (Uri.pct_encode g.tgr_game_id)
 	          (escape_html g.tgr_game_date)
 	          (escape_html date_short)
 	          (escape_html g.tgr_game_date)
+	          (escape_html opponent_href)
 	          (escape_html opponent_label)
 	          (escape_html opponent_label)
 	          res_class
