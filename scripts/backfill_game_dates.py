@@ -203,7 +203,8 @@ def main():
     def connect_postgres():
         if psycopg2 is None:
             raise SystemExit("psycopg2 is required for Postgres. Install it or omit --db-url.")
-        return psycopg2.connect(args.db_url)
+        # Disable statement timeout for long backfill runs.
+        return psycopg2.connect(args.db_url, options="-c statement_timeout=0")
 
     if is_postgres:
         if psycopg2 is None:
