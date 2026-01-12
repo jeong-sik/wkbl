@@ -522,9 +522,23 @@ module Types = struct
       (t string (t int (t int (t string (t (option int) (t (option int) string))))))
 end
 
+(** Use oneshot queries to avoid prepared-statement conflicts with PgBouncer. *)
+module Request_oneshot = struct
+  include Caqti_request.Infix
+
+  let ( ->. ) pt rt ?(oneshot = true) s =
+    Caqti_request.Infix.( ->. ) pt rt ~oneshot s
+
+  let ( ->? ) pt rt ?(oneshot = true) s =
+    Caqti_request.Infix.( ->? ) pt rt ~oneshot s
+
+  let ( ->* ) pt rt ?(oneshot = true) s =
+    Caqti_request.Infix.( ->* ) pt rt ~oneshot s
+end
+
 (** SQL Queries *)
 module Queries = struct
-  open Caqti_request.Infix
+  open Request_oneshot
   open Caqti_type
   let ensure_player_plus_minus_table = (unit ->. unit) {|
     CREATE TABLE IF NOT EXISTS player_plus_minus (
@@ -2697,7 +2711,10 @@ let pool_ref : (Caqti_lwt.connection, Caqti_error.t) Caqti_lwt.Pool.t option ref
 let init_pool db_url = 
   (* Initializing pool without extra parameters for Supabase compatibility *)
   let uri = Uri.of_string db_url in
-  match Caqti_lwt.connect_pool uri with 
+  let config =
+    Caqti_connect_config.(set dynamic_prepare_capacity 0 default)
+  in
+  match Caqti_lwt.connect_pool ~config uri with 
   | Ok pool -> pool_ref := Some pool; Ok () 
   | Error e -> Error (ConnectionFailed (Caqti_error.show e))
 let with_db f = let open Lwt.Syntax in match !pool_ref with | None -> Lwt.return (Error (ConnectionFailed "Pool not initialized")) | Some pool -> let* result = Caqti_lwt.Pool.use f pool in match result with | Ok v -> Lwt.return (Ok v) | Error e -> Lwt.return (Error (QueryFailed (Caqti_error.show e)))
