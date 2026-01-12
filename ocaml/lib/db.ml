@@ -1159,7 +1159,12 @@ module Queries = struct
 	    JOIN teams t ON t.team_code = s.team_code
 	    JOIN players p ON p.player_id = s.player_id
     WHERE g.game_type != '10'
-    GROUP BY s.game_id, s.team_code, s.player_id
+    GROUP BY
+      s.game_id,
+      s.team_code,
+      t.team_name_kr,
+      s.player_id,
+      TRIM(REPLACE(REPLACE(p.player_name, chr(92), ''), '"', ''))
     HAVING COUNT(*) > 1
     ORDER BY row_count DESC, s.game_id DESC
     LIMIT 50
