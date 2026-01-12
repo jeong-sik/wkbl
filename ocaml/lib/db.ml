@@ -2711,10 +2711,7 @@ let pool_ref : (Caqti_lwt.connection, Caqti_error.t) Caqti_lwt.Pool.t option ref
 let init_pool db_url = 
   (* Initializing pool without extra parameters for Supabase compatibility *)
   let uri = Uri.of_string db_url in
-  let config =
-    Caqti_connect_config.(set dynamic_prepare_capacity 0 default)
-  in
-  match Caqti_lwt.connect_pool ~config uri with 
+  match Caqti_lwt.connect_pool uri with 
   | Ok pool -> pool_ref := Some pool; Ok () 
   | Error e -> Error (ConnectionFailed (Caqti_error.show e))
 let with_db f = let open Lwt.Syntax in match !pool_ref with | None -> Lwt.return (Error (ConnectionFailed "Pool not initialized")) | Some pool -> let* result = Caqti_lwt.Pool.use f pool in match result with | Ok v -> Lwt.return (Ok v) | Error e -> Lwt.return (Error (QueryFailed (Caqti_error.show e)))
