@@ -14,6 +14,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import sqlite3
 import time
@@ -23,6 +24,10 @@ from typing import Optional
 
 import requests
 from bs4 import BeautifulSoup
+try:
+    import psycopg2
+except Exception:  # pragma: no cover - optional dependency for Postgres
+    psycopg2 = None
 
 # Paths
 ROOT_DIR = Path(__file__).resolve().parents[1]
@@ -132,15 +137,16 @@ def scrape_game_date(season_code: str, game_type: str, game_no: int) -> GameDate
     return GameDateResult(game_id, None, False, "Date not found in page")
 
 
-def get_games_without_dates(conn: sqlite3.Connection, season_code: Optional[str] = None) -> list[tuple]:
+def get_games_without_dates(conn, season_code: Optional[str] = None, *, is_postgres: bool = False) -> list[tuple]:
     """Get games where game_date is NULL."""
     cursor = conn.cursor()
+    param = "%s" if is_postgres else "?"
 
     if season_code:
-        cursor.execute("""
+        cursor.execute(f"""
             SELECT game_id, season_code, game_type, game_no
             FROM games
-            WHERE game_date IS NULL AND season_code = ?
+            WHERE game_date IS NULL AND season_code = {param}
             ORDER BY season_code DESC, game_no
         """, (season_code,))
     else:
@@ -154,16 +160,20 @@ def get_games_without_dates(conn: sqlite3.Connection, season_code: Optional[str]
     return cursor.fetchall()
 
 
-def update_game_date(conn: sqlite3.Connection, game_id: str, game_date: str) -> bool:
+def update_game_date(conn, game_id: str, game_date: str, *, is_postgres: bool = False) -> bool:
     """Update game_date in the database."""
     cursor = conn.cursor()
+    param = "%s" if is_postgres else "?"
     try:
         cursor.execute(
-            "UPDATE games SET game_date = ? WHERE game_id = ?",
+            f"UPDATE games SET game_date = {param} WHERE game_id = {param}",
             (game_date, game_id)
         )
         return cursor.rowcount > 0
     except sqlite3.Error as e:
+        print(f"  DB error updating {game_id}: {e}")
+        return False
+    except Exception as e:
         print(f"  DB error updating {game_id}: {e}")
         return False
 
@@ -174,6 +184,12 @@ def main():
     parser.add_argument("--dry-run", action="store_true", help="Don't update the database")
     parser.add_argument("--limit", type=int, default=0, help="Limit number of games (0=all)")
     parser.add_argument("--delay", type=float, default=REQUEST_DELAY, help="Delay between requests")
+    parser.add_argument(
+        "--db-url",
+        type=str,
+        default=os.environ.get("DATABASE_URL"),
+        help="Postgres DATABASE_URL (uses SQLite if omitted)",
+    )
     args = parser.parse_args()
 
     print("=" * 60)
@@ -181,10 +197,16 @@ def main():
     print("=" * 60)
 
     # Connect to database
-    conn = sqlite3.connect(DB_PATH)
+    is_postgres = bool(args.db_url)
+    if is_postgres:
+        if psycopg2 is None:
+            raise SystemExit("psycopg2 is required for Postgres. Install it or omit --db-url.")
+        conn = psycopg2.connect(args.db_url)
+    else:
+        conn = sqlite3.connect(DB_PATH)
 
     # Get games without dates
-    games = get_games_without_dates(conn, args.season)
+    games = get_games_without_dates(conn, args.season, is_postgres=is_postgres)
     print(f"Games without dates: {len(games)}")
 
     if args.limit:
@@ -213,7 +235,7 @@ def main():
             print(f"{result.game_date}")
 
             if not args.dry_run:
-                if update_game_date(conn, game_id, result.game_date):
+                if update_game_date(conn, game_id, result.game_date, is_postgres=is_postgres):
                     success_count += 1
                 else:
                     fail_count += 1
