@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import shutil
 import sqlite3
 import time
@@ -11,6 +12,10 @@ from typing import Iterable
 from xml.etree import ElementTree as ET
 
 import requests
+try:
+    import psycopg2
+except Exception:  # pragma: no cover - optional dependency for Postgres
+    psycopg2 = None
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 DEFAULT_DB_PATH = ROOT_DIR / "data" / "wkbl.db"
@@ -45,26 +50,48 @@ class PbpEvent:
     clock: str
 
 
-def ensure_schema(conn: sqlite3.Connection) -> None:
-    conn.executescript(
-        """
-        CREATE TABLE IF NOT EXISTS play_by_play_events (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          game_id TEXT NOT NULL,
-          period_code TEXT NOT NULL,
-          event_index INTEGER NOT NULL,
-          team_side INTEGER NOT NULL,
-          description TEXT NOT NULL,
-          team1_score INTEGER,
-          team2_score INTEGER,
-          clock TEXT NOT NULL,
-          UNIQUE (game_id, period_code, event_index)
-        );
+def ensure_schema(conn, *, is_postgres: bool) -> None:
+    if is_postgres:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS play_by_play_events (
+              id SERIAL PRIMARY KEY,
+              game_id TEXT NOT NULL,
+              period_code TEXT NOT NULL,
+              event_index INTEGER NOT NULL,
+              team_side INTEGER NOT NULL,
+              description TEXT NOT NULL,
+              team1_score INTEGER,
+              team2_score INTEGER,
+              clock TEXT NOT NULL,
+              UNIQUE (game_id, period_code, event_index)
+            );
+            """
+        )
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_pbp_game_id ON play_by_play_events(game_id);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_pbp_game_period ON play_by_play_events(game_id, period_code);")
+        conn.commit()
+    else:
+        conn.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS play_by_play_events (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              game_id TEXT NOT NULL,
+              period_code TEXT NOT NULL,
+              event_index INTEGER NOT NULL,
+              team_side INTEGER NOT NULL,
+              description TEXT NOT NULL,
+              team1_score INTEGER,
+              team2_score INTEGER,
+              clock TEXT NOT NULL,
+              UNIQUE (game_id, period_code, event_index)
+            );
 
-        CREATE INDEX IF NOT EXISTS idx_pbp_game_id ON play_by_play_events(game_id);
-        CREATE INDEX IF NOT EXISTS idx_pbp_game_period ON play_by_play_events(game_id, period_code);
-        """
-    )
+            CREATE INDEX IF NOT EXISTS idx_pbp_game_id ON play_by_play_events(game_id);
+            CREATE INDEX IF NOT EXISTS idx_pbp_game_period ON play_by_play_events(game_id, period_code);
+            """
+        )
 
 
 def parse_playhistory_text(text: str) -> PbpEvent | None:
@@ -113,8 +140,10 @@ def fetch_period_events(game: GameKey, period_code: str) -> list[PbpEvent]:
     return events
 
 
-def count_existing_events(conn: sqlite3.Connection, game_id: str) -> int:
-    cursor = conn.execute("SELECT COUNT(1) FROM play_by_play_events WHERE game_id = ?", (game_id,))
+def count_existing_events(conn, game_id: str, *, is_postgres: bool) -> int:
+    cursor = conn.cursor()
+    param = "%s" if is_postgres else "?"
+    cursor.execute(f"SELECT COUNT(1) FROM play_by_play_events WHERE game_id = {param}", (game_id,))
     row = cursor.fetchone()
     return int(row[0]) if row else 0
 
@@ -162,22 +191,24 @@ def fetch_game_events(g: GameKey, *, delay_sec: float) -> tuple[list[PbpEvent], 
 
 
 def iter_games(
-    conn: sqlite3.Connection,
+    conn,
     *,
     season: str | None,
     game_id: str | None,
     include_special: bool,
+    is_postgres: bool,
 ) -> Iterable[GameKey]:
     cursor = conn.cursor()
+    param = "%s" if is_postgres else "?"
     where = []
     params: list[object] = []
 
     if game_id:
-        where.append("g.game_id = ?")
+        where.append(f"g.game_id = {param}")
         params.append(game_id)
 
     if season:
-        where.append("g.season_code = ?")
+        where.append(f"g.season_code = {param}")
         params.append(season)
 
     if not include_special:
@@ -227,24 +258,45 @@ def main() -> int:
         default=REQUEST_DELAY_SEC,
         help=f"Delay seconds between requests (default: {REQUEST_DELAY_SEC}).",
     )
+    parser.add_argument(
+        "--db-url",
+        type=str,
+        default=os.environ.get("DATABASE_URL"),
+        help="Postgres DATABASE_URL (uses SQLite if omitted)",
+    )
     args = parser.parse_args()
 
-    if not args.db.exists():
+    is_postgres = bool(args.db_url)
+    if not is_postgres and not args.db.exists():
         raise SystemExit(f"DB not found: {args.db}")
 
     if args.backup and not args.dry_run:
-        backup_path = args.db.with_suffix(args.db.suffix + ".bak")
-        shutil.copy2(args.db, backup_path)
-        print(f"Backup created: {backup_path}")
+        if not is_postgres:
+            backup_path = args.db.with_suffix(args.db.suffix + ".bak")
+            shutil.copy2(args.db, backup_path)
+            print(f"Backup created: {backup_path}")
 
     season = args.season.strip() or None
     game_id = args.game_id.strip() or None
 
-    conn = sqlite3.connect(args.db)
+    if is_postgres:
+        if psycopg2 is None:
+            raise SystemExit("psycopg2 is required for Postgres. Install it or omit --db-url.")
+        conn = psycopg2.connect(args.db_url)
+    else:
+        conn = sqlite3.connect(args.db)
     try:
-        ensure_schema(conn)
+        ensure_schema(conn, is_postgres=is_postgres)
 
-        games = list(iter_games(conn, season=season, game_id=game_id, include_special=args.include_special))
+        games = list(
+            iter_games(
+                conn,
+                season=season,
+                game_id=game_id,
+                include_special=args.include_special,
+                is_postgres=is_postgres,
+            )
+        )
         if args.limit and args.limit > 0:
             games = games[: args.limit]
 
@@ -254,7 +306,7 @@ def main() -> int:
 
         for idx, g in enumerate(games, start=1):
             print(f"[{idx}/{len(games)}] {g.game_id} ...", end=" ")
-            existing = count_existing_events(conn, g.game_id)
+            existing = count_existing_events(conn, g.game_id, is_postgres=is_postgres)
 
             if args.only_missing and existing:
                 print(f"skip (existing={existing})")
@@ -267,7 +319,12 @@ def main() -> int:
 
             if not events:
                 if not args.dry_run and args.prune_missing and existing:
-                    conn.execute("DELETE FROM play_by_play_events WHERE game_id = ?", (g.game_id,))
+                    cursor = conn.cursor()
+                    param = "%s" if is_postgres else "?"
+                    cursor.execute(
+                        f"DELETE FROM play_by_play_events WHERE game_id = {param}",
+                        (g.game_id,),
+                    )
                     conn.commit()
                     print(f"events=0 (pruned={existing})")
                 else:
@@ -278,13 +335,32 @@ def main() -> int:
                 print(f"events={len(events)} (existing={existing})")
                 continue
 
-            conn.execute("DELETE FROM play_by_play_events WHERE game_id = ?", (g.game_id,))
-            conn.executemany(
+            cursor = conn.cursor()
+            param = "%s" if is_postgres else "?"
+            cursor.execute(
+                f"DELETE FROM play_by_play_events WHERE game_id = {param}",
+                (g.game_id,),
+            )
+            if is_postgres:
+                insert_sql = """
+                INSERT INTO play_by_play_events(
+                  game_id, period_code, event_index, team_side, description, team1_score, team2_score, clock
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (game_id, period_code, event_index) DO UPDATE SET
+                  team_side = EXCLUDED.team_side,
+                  description = EXCLUDED.description,
+                  team1_score = EXCLUDED.team1_score,
+                  team2_score = EXCLUDED.team2_score,
+                  clock = EXCLUDED.clock
                 """
+            else:
+                insert_sql = """
                 INSERT OR REPLACE INTO play_by_play_events(
                   game_id, period_code, event_index, team_side, description, team1_score, team2_score, clock
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                """,
+                """
+            cursor.executemany(
+                insert_sql,
                 [
                     (
                         g.game_id,
