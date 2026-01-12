@@ -2039,7 +2039,7 @@ module Queries = struct
 		    JOIN seasons se ON g.season_code = se.season_code
 		    WHERE s.player_id = ?
 		      AND g.game_type != '10'
-		    GROUP BY g.season_code
+		    GROUP BY g.season_code, se.season_name
 		    ORDER BY g.season_code DESC
 		  |}
 
@@ -2091,7 +2091,7 @@ module Queries = struct
 		    JOIN seasons se ON g.season_code = se.season_code
 		    WHERE s.player_id = ?
 		      AND g.game_type != '10'
-		    GROUP BY g.season_code
+		    GROUP BY g.season_code, se.season_name
 		    ORDER BY g.season_code DESC
 		  |}
 
@@ -2143,7 +2143,7 @@ module Queries = struct
 		    JOIN seasons se ON g.season_code = se.season_code
 		    WHERE s.player_id = ?
 		      AND g.game_type != '10'
-		    GROUP BY g.season_code
+		    GROUP BY g.season_code, se.season_name
 		    HAVING SUM(s.min_seconds) > 0
 		    ORDER BY g.season_code DESC
 		  |}
