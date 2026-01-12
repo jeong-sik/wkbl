@@ -908,6 +908,7 @@ module Queries = struct
 	    JOIN games_calc g ON g.game_id = s.game_id
 	    JOIN teams t ON t.team_code = s.team_code
 	    WHERE g.game_type != '10'
+	      AND (? = 'ALL' OR g.season_code = ?)
 	      AND (? = 1 OR g.game_id NOT IN (SELECT game_id FROM score_mismatch_games))
 	    GROUP BY season, t.team_code, t.team_name_kr
 	    ORDER BY t.team_name_kr ASC
