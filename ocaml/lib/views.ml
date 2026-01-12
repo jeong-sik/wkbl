@@ -159,22 +159,44 @@ let stat_cell ?(highlight=false) ?(extra_classes="") value =
   let class_name = if highlight then "text-orange-400 font-bold" else "text-slate-300" in
   Printf.sprintf {html|<td class="px-3 py-2 text-right %s font-mono %s">%.1f</td>|html} class_name extra_classes value
 
+let format_int_commas n =
+  let abs_n = abs n in
+  let s = string_of_int abs_n in
+  let len = String.length s in
+  if len <= 3 then
+    if n < 0 then "-" ^ s else s
+  else
+    let buf = Buffer.create (len + (len / 3)) in
+    let first = len mod 3 in
+    let first = if first = 0 then 3 else first in
+    Buffer.add_substring buf s 0 first;
+    let i = ref first in
+    while !i < len do
+      Buffer.add_char buf ',';
+      Buffer.add_substring buf s !i 3;
+      i := !i + 3
+    done;
+    let res = Buffer.contents buf in
+    if n < 0 then "-" ^ res else res
+
 let stat_total_cell ?(highlight=false) ?(extra_classes="") (avg_value: float) (total_value: int) =
   let class_name = if highlight then "text-orange-400 font-bold" else "text-slate-300" in
+  let total_str = format_int_commas total_value in
   Printf.sprintf
-    {html|<td class="px-3 py-2 text-right %s"><div class="flex flex-col items-end leading-tight"><span class="%s font-mono">%.1f</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT %d</span></div></td>|html}
+    {html|<td class="px-3 py-2 text-right %s"><div class="flex flex-col items-end leading-tight"><span class="%s font-mono">%.1f</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT %s</span></div></td>|html}
     extra_classes
     class_name
     avg_value
-    total_value
+    total_str
 
 (** Points cell with career total *)
 let points_total_cell ?(extra_classes="") (avg_points: float) (total_points: int) =
+  let total_str = format_int_commas total_points in
   Printf.sprintf
-    {html|<td class="px-3 py-2 text-right %s"><div class="flex flex-col items-end leading-tight"><span class="text-orange-400 font-bold font-mono">%.1f</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT %d</span></div></td>|html}
+    {html|<td class="px-3 py-2 text-right %s"><div class="flex flex-col items-end leading-tight"><span class="text-orange-400 font-bold font-mono">%.1f</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT %s</span></div></td>|html}
     extra_classes
     avg_points
-    total_points
+    total_str
 
 (** Margin cell (signed, colored) *)
 let margin_cell ?(extra_classes="") value =
@@ -1831,10 +1853,10 @@ let player_profile_page ?(leaderboards=None) (profile: player_profile) ~scope ~(
     if avg.games_played <= 0 then ""
     else
       Printf.sprintf
-        {html|<span class="bg-slate-800/60 text-slate-300 px-3 py-1 rounded text-sm font-mono">GP %d</span><span class="bg-slate-800/60 text-orange-400 px-3 py-1 rounded text-sm font-mono">PTS %.1f</span><span class="bg-slate-800/60 text-slate-300 px-3 py-1 rounded text-sm font-mono">TOT PTS %d</span><span class="bg-slate-800/60 text-slate-300 px-3 py-1 rounded text-sm font-mono">REB %.1f</span><span class="bg-slate-800/60 text-slate-300 px-3 py-1 rounded text-sm font-mono">AST %.1f</span>|html}
+        {html|<span class="bg-slate-800/60 text-slate-300 px-3 py-1 rounded text-sm font-mono">GP %d</span><span class="bg-slate-800/60 text-orange-400 px-3 py-1 rounded text-sm font-mono">PTS %.1f</span><span class="bg-slate-800/60 text-slate-300 px-3 py-1 rounded text-sm font-mono">TOT PTS %s</span><span class="bg-slate-800/60 text-slate-300 px-3 py-1 rounded text-sm font-mono">REB %.1f</span><span class="bg-slate-800/60 text-slate-300 px-3 py-1 rounded text-sm font-mono">AST %.1f</span>|html}
         avg.games_played
         avg.avg_points
-        avg.total_points
+        (format_int_commas avg.total_points)
         avg.avg_rebounds
         avg.avg_assists
   in
