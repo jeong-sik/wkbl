@@ -662,20 +662,24 @@ module Queries = struct
     LEFT JOIN sums sa ON sa.game_id = g.game_id AND sa.team_code = g.away_team_code
   |}
   let pbp_periods_by_game = (string ->* string) {|
-    SELECT DISTINCT period_code
-    FROM play_by_play_events
-    WHERE game_id = ?
-    ORDER BY CASE period_code
-      WHEN 'Q1' THEN 1
-      WHEN 'Q2' THEN 2
-      WHEN 'Q3' THEN 3
-      WHEN 'Q4' THEN 4
-      WHEN 'X1' THEN 5
-      WHEN 'X2' THEN 6
-      WHEN 'X3' THEN 7
-      WHEN 'X4' THEN 8
-      ELSE 99
-    END
+    SELECT period_code
+    FROM (
+      SELECT DISTINCT period_code,
+        CASE period_code
+          WHEN 'Q1' THEN 1
+          WHEN 'Q2' THEN 2
+          WHEN 'Q3' THEN 3
+          WHEN 'Q4' THEN 4
+          WHEN 'X1' THEN 5
+          WHEN 'X2' THEN 6
+          WHEN 'X3' THEN 7
+          WHEN 'X4' THEN 8
+          ELSE 99
+        END AS sort_key
+      FROM play_by_play_events
+      WHERE game_id = ?
+    ) t
+    ORDER BY t.sort_key, t.period_code
   |}
   let pbp_events_by_game_period = (tup2 string string ->* Types.pbp_event) {|
     SELECT
