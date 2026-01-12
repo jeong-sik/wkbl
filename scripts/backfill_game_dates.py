@@ -174,6 +174,8 @@ def update_game_date(conn, game_id: str, game_date: str, *, is_postgres: bool = 
         print(f"  DB error updating {game_id}: {e}")
         return False
     except Exception as e:
+        if is_postgres:
+            raise
         print(f"  DB error updating {game_id}: {e}")
         return False
 
@@ -198,10 +200,15 @@ def main():
 
     # Connect to database
     is_postgres = bool(args.db_url)
+    def connect_postgres():
+        if psycopg2 is None:
+            raise SystemExit("psycopg2 is required for Postgres. Install it or omit --db-url.")
+        return psycopg2.connect(args.db_url)
+
     if is_postgres:
         if psycopg2 is None:
             raise SystemExit("psycopg2 is required for Postgres. Install it or omit --db-url.")
-        conn = psycopg2.connect(args.db_url)
+        conn = connect_postgres()
     else:
         conn = sqlite3.connect(DB_PATH)
 
@@ -235,10 +242,26 @@ def main():
             print(f"{result.game_date}")
 
             if not args.dry_run:
-                if update_game_date(conn, game_id, result.game_date, is_postgres=is_postgres):
-                    success_count += 1
-                else:
-                    fail_count += 1
+                try:
+                    if update_game_date(conn, game_id, result.game_date, is_postgres=is_postgres):
+                        success_count += 1
+                    else:
+                        fail_count += 1
+                except Exception as e:
+                    if not is_postgres:
+                        print(f"  DB error updating {game_id}: {e}")
+                        fail_count += 1
+                    else:
+                        print(f"  DB error updating {game_id}: {e} (retry)")
+                        try:
+                            conn.close()
+                        except Exception:
+                            pass
+                        conn = connect_postgres()
+                        if update_game_date(conn, game_id, result.game_date, is_postgres=True):
+                            success_count += 1
+                        else:
+                            fail_count += 1
             else:
                 success_count += 1
         else:
