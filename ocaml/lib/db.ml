@@ -2742,29 +2742,139 @@ let split_csv_ids (ids : string) =
   |> List.map String.trim
   |> List.filter (fun s -> s <> "")
 
+module Cache = struct
+  type 'a entry = {
+    value: 'a;
+    expires_at: float;
+  }
+
+  type 'a t = {
+    ttl: float;
+    max_entries: int;
+    store: (string, 'a entry) Hashtbl.t;
+  }
+
+  let create ~ttl ~max_entries =
+    { ttl; max_entries; store = Hashtbl.create max_entries }
+
+  let now () = Unix.gettimeofday ()
+
+  let get t key =
+    match Hashtbl.find_opt t.store key with
+    | Some entry when entry.expires_at > now () -> Some entry.value
+    | Some _ ->
+        Hashtbl.remove t.store key;
+        None
+    | None -> None
+
+  let set t key value =
+    Hashtbl.replace t.store key { value; expires_at = now () +. t.ttl };
+    if Hashtbl.length t.store > t.max_entries then
+      Hashtbl.clear t.store
+end
+
+let cached cache key f =
+  match Cache.get cache key with
+  | Some value -> Lwt.return (Ok value)
+  | None ->
+      let open Lwt.Syntax in
+      let* result = f () in
+      (match result with
+       | Ok value -> Cache.set cache key value
+       | Error _ -> ());
+      Lwt.return result
+
 (** Public API *)
+let cache_key_text value =
+  let trimmed = String.trim value in
+  let lowered = String.lowercase_ascii trimmed in
+  if String.length lowered > 64 then String.sub lowered 0 64 else lowered
+
+let player_sort_key = function
+  | ByPoints -> "pts"
+  | ByMargin -> "mg"
+  | ByRebounds -> "reb"
+  | ByAssists -> "ast"
+  | ByEfficiency -> "eff"
+  | ByMinutes -> "min"
+
+let team_sort_key = function
+  | TeamByPoints -> "pts"
+  | TeamByRebounds -> "reb"
+  | TeamByAssists -> "ast"
+  | TeamBySteals -> "stl"
+  | TeamByBlocks -> "blk"
+  | TeamByEfficiency -> "eff"
+  | TeamByTsPct -> "ts"
+  | TeamByFg3Pct -> "fg3"
+  | TeamByMinutes -> "min"
+
+let seasons_cache = Cache.create ~ttl:(60.0 *. 60.0 *. 6.0) ~max_entries:4
+let teams_cache = Cache.create ~ttl:(60.0 *. 60.0 *. 6.0) ~max_entries:4
+let standings_cache = Cache.create ~ttl:120.0 ~max_entries:16
+let games_cache = Cache.create ~ttl:120.0 ~max_entries:16
+let scored_games_cache = Cache.create ~ttl:120.0 ~max_entries:16
+let team_stats_cache = Cache.create ~ttl:120.0 ~max_entries:48
+let players_cache = Cache.create ~ttl:60.0 ~max_entries:128
+let players_by_team_cache = Cache.create ~ttl:120.0 ~max_entries:128
+let team_detail_cache = Cache.create ~ttl:120.0 ~max_entries:64
+let player_profile_cache = Cache.create ~ttl:120.0 ~max_entries:256
+let player_season_stats_cache = Cache.create ~ttl:120.0 ~max_entries:256
+let player_game_logs_cache = Cache.create ~ttl:120.0 ~max_entries:256
+let boxscore_cache = Cache.create ~ttl:120.0 ~max_entries:128
+let leaders_cache = Cache.create ~ttl:120.0 ~max_entries:128
+let awards_cache = Cache.create ~ttl:300.0 ~max_entries:32
+let draft_cache = Cache.create ~ttl:300.0 ~max_entries:32
+let trade_cache = Cache.create ~ttl:300.0 ~max_entries:32
+let qa_report_cache = Cache.create ~ttl:300.0 ~max_entries:4
+
 let ensure_schema () = with_db (fun db -> Repo.ensure_schema db)
-let get_all_teams () = with_db (fun db -> Repo.get_teams db)
-let get_seasons () = with_db (fun db -> Repo.get_seasons db)
+let get_all_teams () =
+  cached teams_cache "all" (fun () -> with_db (fun db -> Repo.get_teams db))
+let get_seasons () =
+  cached seasons_cache "all" (fun () -> with_db (fun db -> Repo.get_seasons db))
 let get_player_by_name ?(season="ALL") name = with_db (fun db -> Repo.get_player_by_name ~name ~season db)
 let get_player_aggregate_by_id ~player_id ?(season="ALL") () =
   with_db (fun db -> Repo.get_player_aggregate_by_id ~player_id ~season db)
 let get_players ?(season="ALL") ?(limit=50) ?(search="") ?(sort=ByEfficiency) ?(include_mismatch=false) () =
-  with_db (fun db -> Repo.get_players_filtered ~season ~sort ~search ~limit ~include_mismatch db)
+  let key =
+    Printf.sprintf "season=%s|limit=%d|search=%s|sort=%s|mismatch=%b"
+      season
+      limit
+      (cache_key_text search)
+      (player_sort_key sort)
+      include_mismatch
+  in
+  cached players_cache key (fun () ->
+    with_db (fun db -> Repo.get_players_filtered ~season ~sort ~search ~limit ~include_mismatch db))
 let get_players_by_team ~team_name ?(season="ALL") ?(limit=20) () =
-  with_db (fun db -> Repo.get_players_by_team ~team_name ~season ~limit db)
+  let key =
+    Printf.sprintf "team=%s|season=%s|limit=%d"
+      (cache_key_text team_name)
+      season
+      limit
+  in
+  cached players_by_team_cache key (fun () ->
+    with_db (fun db -> Repo.get_players_by_team ~team_name ~season ~limit db))
 
 let get_draft_years () =
-  with_db (fun db -> Repo.get_draft_years db)
+  cached draft_cache "years" (fun () -> with_db (fun db -> Repo.get_draft_years db))
 
 let get_draft_picks ?(year=0) ?(search="") () =
-  with_db (fun db -> Repo.get_draft_picks ~year ~search db)
+  let key =
+    Printf.sprintf "picks|year=%d|search=%s" year (cache_key_text search)
+  in
+  cached draft_cache key (fun () -> with_db (fun db -> Repo.get_draft_picks ~year ~search db))
 
 let get_official_trade_years () =
-  with_db (fun db -> Repo.get_official_trade_years db)
+  cached trade_cache "years" (fun () -> with_db (fun db -> Repo.get_official_trade_years db))
 
 let get_official_trade_events ?(year=0) ?(search="") () =
-  with_db (fun db -> Repo.get_official_trade_events ~year ~search db)
+  let key =
+    Printf.sprintf "events|year=%d|search=%s" year (cache_key_text search)
+  in
+  cached trade_cache key (fun () ->
+    with_db (fun db -> Repo.get_official_trade_events ~year ~search db))
 let build_margin_map margins : team_margin MarginMap.t =
   List.fold_left
     (fun acc (row: team_margin) ->
@@ -2810,29 +2920,48 @@ let dedupe_team_stats (items : team_stats list) =
       ))
 
 let get_team_stats ?(season="ALL") ?(scope=PerGame) ?(sort=TeamByPoints) ?(include_mismatch=false) () =
-  let open Lwt.Syntax in
-  let* totals_result = with_db (fun db -> Repo.get_team_totals ~season ~include_mismatch db) in
-  let* margins_result = with_db (fun db -> Repo.get_team_margins ~season ~include_mismatch db) in
-  match totals_result, margins_result with
-  | Ok totals, Ok margins ->
-      let margin_map = build_margin_map margins in
-      let stats =
-        totals
-        |> List.map (fun (row: team_totals) ->
-            let key = (row.season, row.team) in
-            let margin = MarginMap.find_opt key margin_map in
-            Stats.team_stats_of_totals ~scope ~margin row)
-        |> sort_team_stats sort
-        |> dedupe_team_stats
-      in
-      Lwt.return (Ok stats)
-  | Error err, _ -> Lwt.return (Error err)
-  | _, Error err -> Lwt.return (Error err)
+  let key =
+    Printf.sprintf "season=%s|scope=%s|sort=%s|mismatch=%b"
+      season
+      (team_scope_to_string scope)
+      (team_sort_key sort)
+      include_mismatch
+  in
+  cached team_stats_cache key (fun () ->
+    let open Lwt.Syntax in
+    let* totals_result = with_db (fun db -> Repo.get_team_totals ~season ~include_mismatch db) in
+    let* margins_result = with_db (fun db -> Repo.get_team_margins ~season ~include_mismatch db) in
+    match totals_result, margins_result with
+    | Ok totals, Ok margins ->
+        let margin_map = build_margin_map margins in
+        let stats =
+          totals
+          |> List.map (fun (row: team_totals) ->
+              let key = (row.season, row.team) in
+              let margin = MarginMap.find_opt key margin_map in
+              Stats.team_stats_of_totals ~scope ~margin row)
+          |> sort_team_stats sort
+          |> dedupe_team_stats
+        in
+        Lwt.return (Ok stats)
+    | Error err, _ -> Lwt.return (Error err)
+    | _, Error err -> Lwt.return (Error err))
 let calculate_gb (standings : team_standing list) = match standings with | [] -> [] | leader :: others -> let calc s = let wins_diff = Stdlib.float (leader.wins - s.wins) in let losses_diff = Stdlib.float (s.losses - leader.losses) in (wins_diff +. losses_diff) /. 2.0 in leader :: List.map (fun s -> { s with gb = calc s }) others
-let get_standings ?(season = "ALL") () = let open Lwt.Syntax in let* result = with_db (fun db -> Repo.get_standings ~season db) in match result with | Ok standings -> Lwt.return (Ok (calculate_gb standings)) | Error err -> Lwt.return (Error err)
-let get_games ?(season = "ALL") () = with_db (fun db -> Repo.get_games ~season db)
+let get_standings ?(season = "ALL") () =
+  let key = Printf.sprintf "season=%s" season in
+  cached standings_cache key (fun () ->
+    let open Lwt.Syntax in
+    let* result = with_db (fun db -> Repo.get_standings ~season db) in
+    match result with
+    | Ok standings -> Lwt.return (Ok (calculate_gb standings))
+    | Error err -> Lwt.return (Error err))
+let get_games ?(season = "ALL") () =
+  let key = Printf.sprintf "season=%s" season in
+  cached games_cache key (fun () -> with_db (fun db -> Repo.get_games ~season db))
 let get_scored_games ?(season = "ALL") ?(include_mismatch=false) () =
-  with_db (fun db -> Repo.get_scored_games ~season ~include_mismatch db)
+  let key = Printf.sprintf "season=%s|mismatch=%b" season include_mismatch in
+  cached scored_games_cache key (fun () ->
+    with_db (fun db -> Repo.get_scored_games ~season ~include_mismatch db))
 let get_game_season_code ~game_id () = with_db (fun db -> Repo.get_game_season_code ~game_id db)
 let get_pbp_periods ~game_id () = with_db (fun db -> Repo.get_pbp_periods ~game_id db)
 let get_pbp_events ~game_id ~period_code () =
@@ -2841,74 +2970,104 @@ let get_team_core_player_ids ~season ~team_name ?(limit=7) () =
   with_db (fun db -> Repo.get_team_core_player_ids ~season ~team_name ~limit db)
 let get_team_active_player_ids ~team_name ~game_id () =
   with_db (fun db -> Repo.get_team_active_player_ids ~team_name ~game_id db)
-let get_boxscore ~game_id () = let open Lwt.Syntax in let* game_info_result = with_db (fun db -> Repo.get_game_info ~game_id db) in let* stats_result = with_db (fun db -> Repo.get_boxscore_stats ~game_id db) in match game_info_result, stats_result with | Ok (Some game_info), Ok stats -> let home_players = List.filter (fun s -> s.bs_team_code = game_info.gi_home_team_code) stats in let away_players = List.filter (fun s -> s.bs_team_code = game_info.gi_away_team_code) stats in Lwt.return (Ok { boxscore_game = game_info; boxscore_home_players = home_players; boxscore_away_players = away_players }) | Ok None, _ -> Lwt.return (Error (QueryFailed "Game not found")) | Error err, _ -> Lwt.return (Error err) | _, Error err -> Lwt.return (Error err)
-let get_leaders ?(season="ALL") ?(scope="per_game") category = with_db (fun db -> Repo.get_leaders ~category ~scope ~season db)
+let get_boxscore ~game_id () =
+  let key = Printf.sprintf "game_id=%s" game_id in
+  cached boxscore_cache key (fun () ->
+    let open Lwt.Syntax in
+    let* game_info_result = with_db (fun db -> Repo.get_game_info ~game_id db) in
+    let* stats_result = with_db (fun db -> Repo.get_boxscore_stats ~game_id db) in
+    match game_info_result, stats_result with
+    | Ok (Some game_info), Ok stats ->
+        let home_players = List.filter (fun s -> s.bs_team_code = game_info.gi_home_team_code) stats in
+        let away_players = List.filter (fun s -> s.bs_team_code = game_info.gi_away_team_code) stats in
+        Lwt.return (Ok { boxscore_game = game_info; boxscore_home_players = home_players; boxscore_away_players = away_players })
+    | Ok None, _ -> Lwt.return (Error (QueryFailed "Game not found"))
+    | Error err, _ -> Lwt.return (Error err)
+    | _, Error err -> Lwt.return (Error err))
+let get_leaders ?(season="ALL") ?(scope="per_game") category =
+  let key = Printf.sprintf "season=%s|scope=%s|category=%s" season scope category in
+  cached leaders_cache key (fun () -> with_db (fun db -> Repo.get_leaders ~category ~scope ~season db))
 
 let get_stat_mvp_eff ?(season="ALL") ?(include_mismatch=false) () =
-  with_db (fun db -> Repo.get_stat_mvp_eff ~season ~include_mismatch db)
+  let key = Printf.sprintf "mvp|season=%s|mismatch=%b" season include_mismatch in
+  cached awards_cache key (fun () ->
+    with_db (fun db -> Repo.get_stat_mvp_eff ~season ~include_mismatch db))
 
 let get_stat_mip_eff_delta ~season ~prev_season ?(include_mismatch=false) () =
-  with_db (fun db -> Repo.get_stat_mip_eff_delta ~season ~prev_season ~include_mismatch db)
+  let key = Printf.sprintf "mip|season=%s|prev=%s|mismatch=%b" season prev_season include_mismatch in
+  cached awards_cache key (fun () ->
+    with_db (fun db -> Repo.get_stat_mip_eff_delta ~season ~prev_season ~include_mismatch db))
 
-let get_player_profile ~player_id () = with_db (fun db -> Repo.get_player_profile ~player_id db)
-let get_player_season_stats ~player_id ~scope () = with_db (fun db -> Repo.get_player_season_stats ~player_id ~scope db)
-	let get_player_game_logs ~player_id ?(season="ALL") ?(include_mismatch=false) () =
-	  with_db (fun db -> Repo.get_player_game_logs ~player_id ~season ~include_mismatch db)
-	let get_team_full_detail ~team_name ?(season="ALL") () =
-	  let open Lwt.Syntax in
-	  let* standing_res = get_standings ~season () in
-	  let* roster_res = get_players_by_team ~team_name ~season () in
-	  let* games_res = with_db (fun db -> Repo.get_team_recent_games ~team_name ~season db) in
-	  let* game_results_res = with_db (fun db -> Repo.get_team_games ~team_name ~season db) in
-	  match standing_res, roster_res, games_res, game_results_res with
-	  | Ok standings, Ok roster, Ok games, Ok game_results ->
-	      let standing = List.find_opt (fun (s: team_standing) -> s.team_name = team_name) standings in
-	      Lwt.return (Ok { tfd_team_name = team_name; tfd_standing = standing; tfd_roster = roster; tfd_game_results = game_results; tfd_recent_games = games })
-	  | Error e, _, _, _ | _, Error e, _, _ | _, _, Error e, _ | _, _, _, Error e -> Lwt.return (Error e)
-	let get_player_h2h_data ~p1_id ~p2_id ?(season="ALL") () = with_db (fun db -> Repo.get_player_h2h ~p1_id ~p2_id ~season db)
-	
-	let get_db_quality_report () : qa_db_report db_result =
-	  let open Lwt_result.Syntax in
-  let int_or_zero = function | None -> 0 | Some v -> v in
-  let round1 v = Float.round (v *. 10.0) /. 10.0 in
-  let* games_total_opt = with_db (fun db -> Repo.qa_games_total db) in
-  let* games_with_stats_opt = with_db (fun db -> Repo.qa_games_with_stats db) in
-  let* plus_minus_games_opt = with_db (fun db -> Repo.qa_plus_minus_games db) in
-  let* mismatch_count_opt = with_db (fun db -> Repo.qa_score_mismatch_count db) in
-  let* mismatch_sample = with_db (fun db -> Repo.qa_score_mismatch_sample db) in
-  let* team_count_anomaly_count_opt = with_db (fun db -> Repo.qa_team_count_anomaly_count db) in
-  let* team_count_anomaly_sample = with_db (fun db -> Repo.qa_team_count_anomaly_sample db) in
-  let* dup_row_count_opt = with_db (fun db -> Repo.qa_duplicate_player_row_count db) in
-  let* dup_row_sample = with_db (fun db -> Repo.qa_duplicate_player_row_sample db) in
-  let* dup_name_count_opt = with_db (fun db -> Repo.qa_duplicate_player_name_count db) in
-  let* dup_name_rows = with_db (fun db -> Repo.qa_duplicate_player_name_sample db) in
-  let games_total = int_or_zero games_total_opt in
-  let games_with_stats = int_or_zero games_with_stats_opt in
-  let plus_minus_games = int_or_zero plus_minus_games_opt in
-  let plus_minus_coverage_pct =
-    if games_total <= 0 then 0.0
-    else round1 ((float_of_int plus_minus_games /. float_of_int games_total) *. 100.0)
-  in
-  let dup_name_sample =
-    dup_name_rows
-    |> List.map (fun (name, id_count, ids_csv) ->
-        { qdpn_player_name = name;
-          qdpn_id_count = id_count;
-          qdpn_player_ids = split_csv_ids ids_csv;
-        })
-  in
-  Lwt_result.return
-    { qdr_generated_at = iso8601_utc ();
-      qdr_games_total = games_total;
-      qdr_games_with_stats = games_with_stats;
-      qdr_plus_minus_games = plus_minus_games;
-      qdr_plus_minus_coverage_pct = plus_minus_coverage_pct;
-      qdr_score_mismatch_count = int_or_zero mismatch_count_opt;
-      qdr_score_mismatch_sample = mismatch_sample;
-      qdr_team_count_anomaly_count = int_or_zero team_count_anomaly_count_opt;
-      qdr_team_count_anomaly_sample = team_count_anomaly_sample;
-      qdr_duplicate_player_row_count = int_or_zero dup_row_count_opt;
-      qdr_duplicate_player_row_sample = dup_row_sample;
-      qdr_duplicate_player_name_count = int_or_zero dup_name_count_opt;
-      qdr_duplicate_player_name_sample = dup_name_sample;
-    }
+let get_player_profile ~player_id () =
+  let key = Printf.sprintf "player_id=%s" player_id in
+  cached player_profile_cache key (fun () -> with_db (fun db -> Repo.get_player_profile ~player_id db))
+let get_player_season_stats ~player_id ~scope () =
+  let key = Printf.sprintf "player_id=%s|scope=%s" player_id scope in
+  cached player_season_stats_cache key (fun () ->
+    with_db (fun db -> Repo.get_player_season_stats ~player_id ~scope db))
+let get_player_game_logs ~player_id ?(season="ALL") ?(include_mismatch=false) () =
+  let key = Printf.sprintf "player_id=%s|season=%s|mismatch=%b" player_id season include_mismatch in
+  cached player_game_logs_cache key (fun () ->
+    with_db (fun db -> Repo.get_player_game_logs ~player_id ~season ~include_mismatch db))
+let get_team_full_detail ~team_name ?(season="ALL") () =
+  let key = Printf.sprintf "team=%s|season=%s" (cache_key_text team_name) season in
+  cached team_detail_cache key (fun () ->
+    let open Lwt.Syntax in
+    let* standing_res = get_standings ~season () in
+    let* roster_res = get_players_by_team ~team_name ~season () in
+    let* games_res = with_db (fun db -> Repo.get_team_recent_games ~team_name ~season db) in
+    let* game_results_res = with_db (fun db -> Repo.get_team_games ~team_name ~season db) in
+    match standing_res, roster_res, games_res, game_results_res with
+    | Ok standings, Ok roster, Ok games, Ok game_results ->
+        let standing = List.find_opt (fun (s: team_standing) -> s.team_name = team_name) standings in
+        Lwt.return (Ok { tfd_team_name = team_name; tfd_standing = standing; tfd_roster = roster; tfd_game_results = game_results; tfd_recent_games = games })
+    | Error e, _, _, _ | _, Error e, _, _ | _, _, Error e, _ | _, _, _, Error e -> Lwt.return (Error e))
+let get_player_h2h_data ~p1_id ~p2_id ?(season="ALL") () =
+  with_db (fun db -> Repo.get_player_h2h ~p1_id ~p2_id ~season db)
+
+let get_db_quality_report () : qa_db_report db_result =
+  cached qa_report_cache "qa_report" (fun () ->
+    let open Lwt_result.Syntax in
+    let int_or_zero = function | None -> 0 | Some v -> v in
+    let round1 v = Float.round (v *. 10.0) /. 10.0 in
+    let* games_total_opt = with_db (fun db -> Repo.qa_games_total db) in
+    let* games_with_stats_opt = with_db (fun db -> Repo.qa_games_with_stats db) in
+    let* plus_minus_games_opt = with_db (fun db -> Repo.qa_plus_minus_games db) in
+    let* mismatch_count_opt = with_db (fun db -> Repo.qa_score_mismatch_count db) in
+    let* mismatch_sample = with_db (fun db -> Repo.qa_score_mismatch_sample db) in
+    let* team_count_anomaly_count_opt = with_db (fun db -> Repo.qa_team_count_anomaly_count db) in
+    let* team_count_anomaly_sample = with_db (fun db -> Repo.qa_team_count_anomaly_sample db) in
+    let* dup_row_count_opt = with_db (fun db -> Repo.qa_duplicate_player_row_count db) in
+    let* dup_row_sample = with_db (fun db -> Repo.qa_duplicate_player_row_sample db) in
+    let* dup_name_count_opt = with_db (fun db -> Repo.qa_duplicate_player_name_count db) in
+    let* dup_name_rows = with_db (fun db -> Repo.qa_duplicate_player_name_sample db) in
+    let games_total = int_or_zero games_total_opt in
+    let games_with_stats = int_or_zero games_with_stats_opt in
+    let plus_minus_games = int_or_zero plus_minus_games_opt in
+    let plus_minus_coverage_pct =
+      if games_total <= 0 then 0.0
+      else round1 ((float_of_int plus_minus_games /. float_of_int games_total) *. 100.0)
+    in
+    let dup_name_sample =
+      dup_name_rows
+      |> List.map (fun (name, id_count, ids_csv) ->
+          { qdpn_player_name = name;
+            qdpn_id_count = id_count;
+            qdpn_player_ids = split_csv_ids ids_csv;
+          })
+    in
+    Lwt_result.return
+      { qdr_generated_at = iso8601_utc ();
+        qdr_games_total = games_total;
+        qdr_games_with_stats = games_with_stats;
+        qdr_plus_minus_games = plus_minus_games;
+        qdr_plus_minus_coverage_pct = plus_minus_coverage_pct;
+        qdr_score_mismatch_count = int_or_zero mismatch_count_opt;
+        qdr_score_mismatch_sample = mismatch_sample;
+        qdr_team_count_anomaly_count = int_or_zero team_count_anomaly_count_opt;
+        qdr_team_count_anomaly_sample = team_count_anomaly_sample;
+        qdr_duplicate_player_row_count = int_or_zero dup_row_count_opt;
+        qdr_duplicate_player_row_sample = dup_row_sample;
+        qdr_duplicate_player_name_count = int_or_zero dup_name_count_opt;
+        qdr_duplicate_player_name_sample = dup_name_sample;
+      })
