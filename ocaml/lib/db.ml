@@ -9,32 +9,6 @@
 
 open Domain
 
-(** Simple TTL-based memory cache for frequently accessed data *)
-module Cache = struct
-  type 'a entry = {
-    value: 'a;
-    expires_at: float;
-  }
-
-  let players_cache : (string, player_aggregate list entry) Hashtbl.t = Hashtbl.create 16
-  let cache_ttl = 30.0  (* 30 seconds TTL *)
-
-  let make_key ~season ~sort ~search ~limit ~include_mismatch =
-    Printf.sprintf "%s|%s|%s|%d|%b" season sort search limit include_mismatch
-
-  let get key cache =
-    match Hashtbl.find_opt cache key with
-    | Some entry when Unix.gettimeofday () < entry.expires_at -> Some entry.value
-    | Some _ -> Hashtbl.remove cache key; None  (* expired, clean up *)
-    | None -> None
-
-  let set key value cache =
-    let entry = { value; expires_at = Unix.gettimeofday () +. cache_ttl } in
-    Hashtbl.replace cache key entry
-
-  let invalidate_all cache = Hashtbl.clear cache
-end
-
 (** Database error type - explicit, not string *)
 type db_error =
   | ConnectionFailed of string
