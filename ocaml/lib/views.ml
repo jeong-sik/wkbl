@@ -534,6 +534,7 @@ let layout ~title ~content =
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/css/styles.css?v=%s">
   <script data-cfasync="false">tailwind.config = { darkMode: 'class', theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] } } } }</script>
+  <script data-cfasync="false">console.log('%%c🏀 WKBL Analytics %%cv%s %%c| OCaml/Dream Engine', 'color:#f97316;font-weight:bold', 'color:#94a3b8', 'color:#64748b')</script>
 %s
 </head>
 <body class="bg-[#0b0e14] text-slate-200 font-sans antialiased min-h-screen is-loading">
@@ -565,7 +566,7 @@ let layout ~title ~content =
   <footer class="border-t border-slate-800 py-6 text-center text-slate-500 text-sm">Built with OCaml + Dream + HTMX</footer>
 </body>
 </html>|html}
-    (escape_html title) v v v v cf_wa_script content
+    (escape_html title) v v v v v cf_wa_script content
 
 (** Home page *)
 let home_page players =
