@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="ko" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WKBL Players</title>
+  <script src="/static/js/htmx-1.9.10.min.js?v=1768102319" defer data-cfasync="false"></script>
+  <script src="/static/js/player-photo-fallback.js?v=1768102319" data-cfasync="false"></script>
+  <script src="https://cdn.tailwindcss.com" data-cfasync="false"></script>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/styles.css?v=1768102319">
+  <script data-cfasync="false">tailwind.config = { darkMode: 'class', theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] } } } }</script>
+</head>
+<body class="bg-[#0b0e14] text-slate-200 font-sans antialiased min-h-screen">
+  <header class="sticky top-0 z-50 bg-slate-900/95 backdrop-blur border-b border-slate-800 px-4 sm:px-6 py-4">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div class="flex items-center gap-3 shrink-0">
+        <span class="text-2xl">🏀</span>
+        <h1 class="text-lg font-bold text-white">WKBL <span class="text-orange-500">Analytics</span></h1>
+        <span class="hidden sm:inline text-xs text-slate-500 font-mono">OCaml Edition</span>
+      </div>
+      <nav class="flex flex-wrap justify-end gap-x-4 gap-y-2 text-xs sm:text-sm">
+        <a href="/" class="text-slate-400 hover:text-white transition">Home</a>
+        <a href="/awards" class="text-slate-400 hover:text-white transition">Awards</a>
+        <a href="/leaders" class="text-slate-400 hover:text-white transition">Leaders</a>
+        <a href="/boxscores" class="text-slate-400 hover:text-white transition">Boxscores</a>
+        <a href="/games" class="text-slate-400 hover:text-white transition">Games</a>
+        <a href="/standings" class="text-slate-400 hover:text-white transition">Standings</a>
+        <a href="/teams" class="text-slate-400 hover:text-white transition">Teams</a>
+        <a href="/players" class="text-slate-400 hover:text-white transition">Players</a>
+        <a href="/predict" class="text-slate-400 hover:text-white transition">Predict</a>
+        <a href="/compare" class="text-slate-400 hover:text-white transition">Compare</a>
+        <a href="/qa" class="text-slate-400 hover:text-white transition">QA</a>
+      </nav>
+    </div>
+  </header>
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 py-8"><div class="space-y-6"><div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3"><div><h2 class="text-2xl font-bold text-white">Players</h2><p class="text-slate-400 text-sm">Season-filtered player aggregates.</p></div><a class="text-orange-400 hover:text-orange-300 text-sm" href="/players">Reset</a></div><form id="players-filter" class="grid grid-cols-1 md:grid-cols-4 gap-3" hx-get="/players/table" hx-target="#players-table" hx-trigger="change, keyup delay:250ms"><select name="season" class="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none"><option value="ALL" >All Seasons</option><option value="036" >2015-2016</option>
+<option value="037" >2016-2017</option>
+<option value="038" >2017-2018</option>
+<option value="039" >2018-2019</option>
+<option value="040" >2019-2020</option>
+<option value="041" >2020-2021</option>
+<option value="042" >2021-2022</option>
+<option value="043" >2022-2023</option>
+<option value="044" >2023-2024</option>
+<option value="045" >2024-2025</option>
+<option value="046" selected>2025-2026</option></select><input type="text" name="search" placeholder="Search player..." value="" class="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none"><select name="sort" class="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none"><option value="eff" selected>EFF</option><option value="pts" >PTS</option><option value="mg" >MG</option><option value="reb" >REB</option><option value="ast" >AST</option><option value="min" >MIN</option></select><div class="flex items-center justify-between gap-3 text-xs"><div class="text-slate-500 flex items-center">Sorted by EFF</div><label class="flex items-center gap-2 text-slate-400 whitespace-nowrap"><input type="checkbox" name="include_mismatch" value="1"  class="h-4 w-4 rounded border-slate-600 bg-slate-800 accent-orange-500" title="Final score != sum(points) 경기 포함"><span>Mismatch 포함</span></label></div></form><div id="players-table" class="bg-slate-900 rounded-lg border border-slate-800 overflow-hidden"><table class="w-full">
+      <thead class="bg-slate-800/80 sticky top-0 text-slate-400 text-xs uppercase tracking-wider">
+        <tr><th class="px-3 py-3 text-left w-12">#</th><th class="px-3 py-3 text-left">Player</th><th class="px-3 py-3 text-left">Team</th><th class="px-3 py-3 text-right">GP</th><th class="px-3 py-3 text-right cursor-pointer hover:text-orange-400" hx-get="/players/table?sort=pts" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter">PTS</th><th class="px-3 py-3 text-right cursor-pointer hover:text-orange-400" hx-get="/players/table?sort=mg" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter">MG</th><th class="px-3 py-3 text-right cursor-pointer hover:text-orange-400" hx-get="/players/table?sort=reb" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter">REB</th><th class="px-3 py-3 text-right cursor-pointer hover:text-orange-400" hx-get="/players/table?sort=ast" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter">AST</th><th class="px-3 py-3 text-right">STL</th><th class="px-3 py-3 text-right">BLK</th><th class="px-3 py-3 text-right">TO</th><th class="px-3 py-3 text-right cursor-pointer hover:text-orange-400" hx-get="/players/table?sort=eff" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter">EFF</th></tr>
+      </thead>
+      <tbody id="players-body"><tr class="group border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors">
+      <td class="px-3 py-2 text-slate-500 text-sm">1</td>
+      <td class="px-3 py-2 font-medium text-white">
+        <div class="flex items-center gap-3 min-w-0">
+          <img src="/static/images/player_095778.png" alt="" aria-hidden="true" class="w-8 h-8 shrink-0 rounded-full object-cover bg-slate-800 border border-slate-700 shadow-sm" loading="lazy" data-placeholder="/static/images/player_placeholder.svg" onerror="if(!this.dataset.placeholderApplied){this.dataset.placeholderApplied='1';this.src=this.dataset.placeholder;}">
+          <div class="flex items-center gap-2 min-w-0">
+            <a href="/player/095778" class="player-name hover:text-orange-400 transition-colors truncate break-keep min-w-0">이해란</a>
+            <span class="hidden"></span>
+          </div>
+        </div>
+      </td>
+      <td class="px-3 py-2"><a href="/team/%EC%82%BC%EC%84%B1%EC%83%9D%EB%AA%85" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium hover:brightness-125 transition" style="background-color: #007AFF20; color: #007AFF; border: 1px solid #007AFF40"><img src="/static/images/team_03.png" alt="" aria-hidden="true" class="w-4 h-4 object-contain"><span class="truncate max-w-[96px] sm:max-w-[140px]">삼성생명</span></a></td>
+      <td class="px-3 py-2 text-right text-slate-400">12</td>
+      <td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-orange-400 font-bold font-mono">20.3</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 244</span></div></td><td class="px-3 py-2 text-right text-rose-400 font-bold font-mono">-1.6</td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">8.5</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 102</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.9</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 11</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">1.4</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 17</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">1.3</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 16</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">2.0</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 24</span></div></td><td class="px-3 py-2 text-right text-orange-400 font-bold font-mono">13.7</td>
+    </tr>
+<tr class="group border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors">
+      <td class="px-3 py-2 text-slate-500 text-sm">2</td>
+      <td class="px-3 py-2 font-medium text-white">
+        <div class="flex items-center gap-3 min-w-0">
+          <img src="/static/images/player_095104.png" alt="" aria-hidden="true" class="w-8 h-8 shrink-0 rounded-full object-cover bg-slate-800 border border-slate-700 shadow-sm" loading="lazy" data-placeholder="/static/images/player_placeholder.svg" onerror="if(!this.dataset.placeholderApplied){this.dataset.placeholderApplied='1';this.src=this.dataset.placeholder;}">
+          <div class="flex items-center gap-2 min-w-0">
+            <a href="/player/095104" class="player-name hover:text-orange-400 transition-colors truncate break-keep min-w-0">김단비</a>
+            <span class="hidden"></span>
+          </div>
+        </div>
+      </td>
+      <td class="px-3 py-2"><a href="/team/%EC%9A%B0%EB%A6%AC%EC%9D%80%ED%96%89" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium hover:brightness-125 transition" style="background-color: #005BAA20; color: #005BAA; border: 1px solid #005BAA40"><img src="/static/images/team_05.png" alt="" aria-hidden="true" class="w-4 h-4 object-contain"><span class="truncate max-w-[96px] sm:max-w-[140px]">우리은행</span></a></td>
+      <td class="px-3 py-2 text-right text-slate-400">13</td>
+      <td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-orange-400 font-bold font-mono">16.8</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 218</span></div></td><td class="px-3 py-2 text-right text-rose-400 font-bold font-mono">-2.5</td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">11.2</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 146</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">3.7</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 48</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">1.1</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 14</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">1.2</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 15</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">2.1</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 27</span></div></td><td class="px-3 py-2 text-right text-orange-400 font-bold font-mono">12.8</td>
+    </tr>
+<tr class="group border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors">
+      <td class="px-3 py-2 text-slate-500 text-sm">3</td>
+      <td class="px-3 py-2 font-medium text-white">
+        <div class="flex items-center gap-3 min-w-0">
+          <img src="/static/images/player_095912.png" alt="" aria-hidden="true" class="w-8 h-8 shrink-0 rounded-full object-cover bg-slate-800 border border-slate-700 shadow-sm" loading="lazy" data-placeholder="/static/images/player_placeholder.svg" onerror="if(!this.dataset.placeholderApplied){this.dataset.placeholderApplied='1';this.src=this.dataset.placeholder;}">
+          <div class="flex items-center gap-2 min-w-0">
+            <a href="/player/095912" class="player-name hover:text-orange-400 transition-colors truncate break-keep min-w-0">이이지마 사키</a>
+            <span class="hidden"></span>
+          </div>
+        </div>
+      </td>
+      <td class="px-3 py-2"><a href="/team/%ED%95%98%EB%82%98%EC%9D%80%ED%96%89" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium hover:brightness-125 transition" style="background-color: #00949020; color: #009490; border: 1px solid #00949040"><img src="/static/images/team_09.png" alt="" aria-hidden="true" class="w-4 h-4 object-contain"><span class="truncate max-w-[96px] sm:max-w-[140px]">하나은행</span></a></td>
+      <td class="px-3 py-2 text-right text-slate-400">13</td>
+      <td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-orange-400 font-bold font-mono">15.8</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 205</span></div></td><td class="px-3 py-2 text-right text-sky-400 font-bold font-mono">+5.2</td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">6.3</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 82</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">1.6</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 21</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">1.4</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 18</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">1.0</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 13</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">2.0</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 26</span></div></td><td class="px-3 py-2 text-right text-orange-400 font-bold font-mono">11.3</td>
+    </tr>
+<tr class="group border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors">
+      <td class="px-3 py-2 text-slate-500 text-sm">4</td>
+      <td class="px-3 py-2 font-medium text-white">
+        <div class="flex items-center gap-3 min-w-0">
+          <img src="https://www.wkbl.or.kr/static/images/player/pimg/m_095499.jpg" alt="" aria-hidden="true" class="w-8 h-8 shrink-0 rounded-full object-cover bg-slate-800 border border-slate-700 shadow-sm" loading="lazy" data-placeholder="/static/images/player_placeholder.svg" onerror="if(!this.dataset.placeholderApplied){this.dataset.placeholderApplied='1';this.src=this.dataset.placeholder;}">
+          <div class="flex items-center gap-2 min-w-0">
+            <a href="/player/095499" class="player-name hover:text-orange-400 transition-colors truncate break-keep min-w-0">진안</a>
+            <span class="hidden"></span>
+          </div>
+        </div>
+      </td>
+      <td class="px-3 py-2"><a href="/team/%ED%95%98%EB%82%98%EC%9D%80%ED%96%89" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium hover:brightness-125 transition" style="background-color: #00949020; color: #009490; border: 1px solid #00949040"><img src="/static/images/team_09.png" alt="" aria-hidden="true" class="w-4 h-4 object-contain"><span class="truncate max-w-[96px] sm:max-w-[140px]">하나은행</span></a></td>
+      <td class="px-3 py-2 text-right text-slate-400">13</td>
+      <td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-orange-400 font-bold font-mono">14.2</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 184</span></div></td><td class="px-3 py-2 text-right text-sky-400 font-bold font-mono">+4.9</td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">7.8</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 102</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">1.6</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 21</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.5</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 6</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.5</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 7</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">1.5</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 20</span></div></td><td class="px-3 py-2 text-right text-orange-400 font-bold font-mono">10.7</td>
+    </tr>
+<tr class="group border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors">
+      <td class="px-3 py-2 text-slate-500 text-sm">5</td>
+      <td class="px-3 py-2 font-medium text-white">
+        <div class="flex items-center gap-3 min-w-0">
+          <img src="https://www.wkbl.or.kr/static/images/player/pimg/m_095533.jpg" alt="" aria-hidden="true" class="w-8 h-8 shrink-0 rounded-full object-cover bg-slate-800 border border-slate-700 shadow-sm" loading="lazy" data-placeholder="/static/images/player_placeholder.svg" onerror="if(!this.dataset.placeholderApplied){this.dataset.placeholderApplied='1';this.src=this.dataset.placeholder;}">
+          <div class="flex items-center gap-2 min-w-0">
+            <a href="/player/095533" class="player-name hover:text-orange-400 transition-colors truncate break-keep min-w-0">박지수</a>
+            <span class="hidden"></span>
+          </div>
+        </div>
+      </td>
+      <td class="px-3 py-2"><a href="/team/KB%EC%8A%A4%ED%83%80%EC%A6%88" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium hover:brightness-125 transition" style="background-color: #FFCC0020; color: #FFCC00; border: 1px solid #FFCC0040"><img src="/static/images/team_01.png" alt="" aria-hidden="true" class="w-4 h-4 object-contain"><span class="truncate max-w-[96px] sm:max-w-[140px]">KB스타즈</span></a></td>
+      <td class="px-3 py-2 text-right text-slate-400">7</td>
+      <td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-orange-400 font-bold font-mono">13.0</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 91</span></div></td><td class="px-3 py-2 text-right text-sky-400 font-bold font-mono">+7.9</td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">6.9</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 48</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">1.6</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 11</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.1</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 1</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">1.0</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 7</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">1.4</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 10</span></div></td><td class="px-3 py-2 text-right text-orange-400 font-bold font-mono">10.5</td>
+    </tr>
+<tr class="group border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors">
+      <td class="px-3 py-2 text-slate-500 text-sm">6</td>
+      <td class="px-3 py-2 font-medium text-white">
+        <div class="flex items-center gap-3 min-w-0">
+          <img src="https://www.wkbl.or.kr/static/images/player/pimg/m_095248.jpg" alt="" aria-hidden="true" class="w-8 h-8 shrink-0 rounded-full object-cover bg-slate-800 border border-slate-700 shadow-sm" loading="lazy" data-placeholder="/static/images/player_placeholder.svg" onerror="if(!this.dataset.placeholderApplied){this.dataset.placeholderApplied='1';this.src=this.dataset.placeholder;}">
+          <div class="flex items-center gap-2 min-w-0">
+            <a href="/player/095248" class="player-name hover:text-orange-400 transition-colors truncate break-keep min-w-0">김소니아</a>
+            <span class="hidden"></span>
+          </div>
+        </div>
+      </td>
+      <td class="px-3 py-2"><a href="/team/BNK%20%EC%8D%B8" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium hover:brightness-125 transition" style="background-color: #D6001C20; color: #D6001C; border: 1px solid #D6001C40"><img src="/static/images/team_11.png" alt="" aria-hidden="true" class="w-4 h-4 object-contain"><span class="truncate max-w-[96px] sm:max-w-[140px]">BNK 썸</span></a></td>
+      <td class="px-3 py-2 text-right text-slate-400">12</td>
+      <td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-orange-400 font-bold font-mono">13.0</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 156</span></div></td><td class="px-3 py-2 text-right text-rose-400 font-bold font-mono">-0.2</td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">9.2</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 110</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">2.8</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 34</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">1.1</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 13</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.2</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 3</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">2.1</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 25</span></div></td><td class="px-3 py-2 text-right text-orange-400 font-bold font-mono">10.4</td>
+    </tr>
+<tr class="group border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors">
+      <td class="px-3 py-2 text-slate-500 text-sm">7</td>
+      <td class="px-3 py-2 font-medium text-white">
+        <div class="flex items-center gap-3 min-w-0">
+          <img src="/static/images/player_095263.png" alt="" aria-hidden="true" class="w-8 h-8 shrink-0 rounded-full object-cover bg-slate-800 border border-slate-700 shadow-sm" loading="lazy" data-placeholder="/static/images/player_placeholder.svg" onerror="if(!this.dataset.placeholderApplied){this.dataset.placeholderApplied='1';this.src=this.dataset.placeholder;}">
+          <div class="flex items-center gap-2 min-w-0">
+            <a href="/player/095263" class="player-name hover:text-orange-400 transition-colors truncate break-keep min-w-0">강이슬</a>
+            <span class="hidden"></span>
+          </div>
+        </div>
+      </td>
+      <td class="px-3 py-2"><a href="/team/KB%EC%8A%A4%ED%83%80%EC%A6%88" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium hover:brightness-125 transition" style="background-color: #FFCC0020; color: #FFCC00; border: 1px solid #FFCC0040"><img src="/static/images/team_01.png" alt="" aria-hidden="true" class="w-4 h-4 object-contain"><span class="truncate max-w-[96px] sm:max-w-[140px]">KB스타즈</span></a></td>
+      <td class="px-3 py-2 text-right text-slate-400">12</td>
+      <td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-orange-400 font-bold font-mono">14.6</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 175</span></div></td><td class="px-3 py-2 text-right text-sky-400 font-bold font-mono">+4.4</td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">8.3</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 100</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">2.2</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 27</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">1.0</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 12</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.5</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 6</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">1.4</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 17</span></div></td><td class="px-3 py-2 text-right text-orange-400 font-bold font-mono">10.2</td>
+    </tr>
+<tr class="group border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors">
+      <td class="px-3 py-2 text-slate-500 text-sm">8</td>
+      <td class="px-3 py-2 font-medium text-white">
+        <div class="flex items-center gap-3 min-w-0">
+          <img src="https://www.wkbl.or.kr/static/images/player/pimg/m_095186.jpg" alt="" aria-hidden="true" class="w-8 h-8 shrink-0 rounded-full object-cover bg-slate-800 border border-slate-700 shadow-sm" loading="lazy" data-placeholder="/static/images/player_placeholder.svg" onerror="if(!this.dataset.placeholderApplied){this.dataset.placeholderApplied='1';this.src=this.dataset.placeholder;}">
+          <div class="flex items-center gap-2 min-w-0">
+            <a href="/player/095186" class="player-name hover:text-orange-400 transition-colors truncate break-keep min-w-0">박혜진</a>
+            <span class="hidden"></span>
+          </div>
+        </div>
+      </td>
+      <td class="px-3 py-2"><a href="/team/BNK%20%EC%8D%B8" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium hover:brightness-125 transition" style="background-color: #D6001C20; color: #D6001C; border: 1px solid #D6001C40"><img src="/static/images/team_11.png" alt="" aria-hidden="true" class="w-4 h-4 object-contain"><span class="truncate max-w-[96px] sm:max-w-[140px]">BNK 썸</span></a></td>
+      <td class="px-3 py-2 text-right text-slate-400">12</td>
+      <td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-orange-400 font-bold font-mono">9.7</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 116</span></div></td><td class="px-3 py-2 text-right text-rose-400 font-bold font-mono">-0.0</td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">7.2</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 86</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">2.8</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 33</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">1.5</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 18</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.4</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 5</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.9</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 11</span></div></td><td class="px-3 py-2 text-right text-orange-400 font-bold font-mono">9.6</td>
+    </tr>
+<tr class="group border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors">
+      <td class="px-3 py-2 text-slate-500 text-sm">9</td>
+      <td class="px-3 py-2 font-medium text-white">
+        <div class="flex items-center gap-3 min-w-0">
+          <img src="https://www.wkbl.or.kr/static/images/player/pimg/m_095710.jpg" alt="" aria-hidden="true" class="w-8 h-8 shrink-0 rounded-full object-cover bg-slate-800 border border-slate-700 shadow-sm" loading="lazy" data-placeholder="/static/images/player_placeholder.svg" onerror="if(!this.dataset.placeholderApplied){this.dataset.placeholderApplied='1';this.src=this.dataset.placeholder;}">
+          <div class="flex items-center gap-2 min-w-0">
+            <a href="/player/095710" class="player-name hover:text-orange-400 transition-colors truncate break-keep min-w-0">허예은</a>
+            <span class="hidden"></span>
+          </div>
+        </div>
+      </td>
+      <td class="px-3 py-2"><a href="/team/KB%EC%8A%A4%ED%83%80%EC%A6%88" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium hover:brightness-125 transition" style="background-color: #FFCC0020; color: #FFCC00; border: 1px solid #FFCC0040"><img src="/static/images/team_01.png" alt="" aria-hidden="true" class="w-4 h-4 object-contain"><span class="truncate max-w-[96px] sm:max-w-[140px]">KB스타즈</span></a></td>
+      <td class="px-3 py-2 text-right text-slate-400">13</td>
+      <td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-orange-400 font-bold font-mono">10.9</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 142</span></div></td><td class="px-3 py-2 text-right text-sky-400 font-bold font-mono">+3.0</td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">4.2</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 55</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">6.7</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 87</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">1.2</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 16</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.2</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 2</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">2.0</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 26</span></div></td><td class="px-3 py-2 text-right text-orange-400 font-bold font-mono">9.2</td>
+    </tr>
+<tr class="group border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors">
+      <td class="px-3 py-2 text-slate-500 text-sm">10</td>
+      <td class="px-3 py-2 font-medium text-white">
+        <div class="flex items-center gap-3 min-w-0">
+          <img src="https://www.wkbl.or.kr/static/images/player/pimg/m_095972.jpg" alt="" aria-hidden="true" class="w-8 h-8 shrink-0 rounded-full object-cover bg-slate-800 border border-slate-700 shadow-sm" loading="lazy" data-placeholder="/static/images/player_placeholder.svg" onerror="if(!this.dataset.placeholderApplied){this.dataset.placeholderApplied='1';this.src=this.dataset.placeholder;}">
+          <div class="flex items-center gap-2 min-w-0">
+            <a href="/player/095972" class="player-name hover:text-orange-400 transition-colors truncate break-keep min-w-0">홍유순</a>
+            <span class="hidden"></span>
+          </div>
+        </div>
+      </td>
+      <td class="px-3 py-2"><a href="/team/%EC%8B%A0%ED%95%9C%EC%9D%80%ED%96%89" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium hover:brightness-125 transition" style="background-color: #2B399020; color: #2B3990; border: 1px solid #2B399040"><img src="/static/images/team_07.png" alt="" aria-hidden="true" class="w-4 h-4 object-contain"><span class="truncate max-w-[96px] sm:max-w-[140px]">신한은행</span></a></td>
+      <td class="px-3 py-2 text-right text-slate-400">11</td>
+      <td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-orange-400 font-bold font-mono">9.6</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 106</span></div></td><td class="px-3 py-2 text-right text-rose-400 font-bold font-mono">-3.9</td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">6.4</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 70</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">1.5</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 16</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">1.0</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 11</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.5</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 6</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">1.2</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 13</span></div></td><td class="px-3 py-2 text-right text-orange-400 font-bold font-mono">8.0</td>
+    </tr>
+<tr class="group border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors">
+      <td class="px-3 py-2 text-slate-500 text-sm">11</td>
+      <td class="px-3 py-2 font-medium text-white">
+        <div class="flex items-center gap-3 min-w-0">
+          <img src="https://www.wkbl.or.kr/static/images/player/pimg/m_095484.jpg" alt="" aria-hidden="true" class="w-8 h-8 shrink-0 rounded-full object-cover bg-slate-800 border border-slate-700 shadow-sm" loading="lazy" data-placeholder="/static/images/player_placeholder.svg" onerror="if(!this.dataset.placeholderApplied){this.dataset.placeholderApplied='1';this.src=this.dataset.placeholder;}">
+          <div class="flex items-center gap-2 min-w-0">
+            <a href="/player/095484" class="player-name hover:text-orange-400 transition-colors truncate break-keep min-w-0">안혜지</a>
+            <span class="hidden"></span>
+          </div>
+        </div>
+      </td>
+      <td class="px-3 py-2"><a href="/team/BNK%20%EC%8D%B8" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium hover:brightness-125 transition" style="background-color: #D6001C20; color: #D6001C; border: 1px solid #D6001C40"><img src="/static/images/team_11.png" alt="" aria-hidden="true" class="w-4 h-4 object-contain"><span class="truncate max-w-[96px] sm:max-w-[140px]">BNK 썸</span></a></td>
+      <td class="px-3 py-2 text-right text-slate-400">12</td>
+      <td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-orange-400 font-bold font-mono">11.7</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 140</span></div></td><td class="px-3 py-2 text-right text-rose-400 font-bold font-mono">-0.1</td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">3.4</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 41</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">5.7</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 68</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.6</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 7</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.0</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 0</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">1.5</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 18</span></div></td><td class="px-3 py-2 text-right text-orange-400 font-bold font-mono">7.8</td>
+    </tr>
+<tr class="group border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors">
+      <td class="px-3 py-2 text-slate-500 text-sm">12</td>
+      <td class="px-3 py-2 font-medium text-white">
+        <div class="flex items-center gap-3 min-w-0">
+          <img src="https://www.wkbl.or.kr/static/images/player/pimg/m_095115.jpg" alt="" aria-hidden="true" class="w-8 h-8 shrink-0 rounded-full object-cover bg-slate-800 border border-slate-700 shadow-sm" loading="lazy" data-placeholder="/static/images/player_placeholder.svg" onerror="if(!this.dataset.placeholderApplied){this.dataset.placeholderApplied='1';this.src=this.dataset.placeholder;}">
+          <div class="flex items-center gap-2 min-w-0">
+            <a href="/player/095115" class="player-name hover:text-orange-400 transition-colors truncate break-keep min-w-0">배혜윤</a>
+            <span class="hidden"></span>
+          </div>
+        </div>
+      </td>
+      <td class="px-3 py-2"><a href="/team/%EC%82%BC%EC%84%B1%EC%83%9D%EB%AA%85" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium hover:brightness-125 transition" style="background-color: #007AFF20; color: #007AFF; border: 1px solid #007AFF40"><img src="/static/images/team_03.png" alt="" aria-hidden="true" class="w-4 h-4 object-contain"><span class="truncate max-w-[96px] sm:max-w-[140px]">삼성생명</span></a></td>
+      <td class="px-3 py-2 text-right text-slate-400">11</td>
+      <td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-orange-400 font-bold font-mono">7.2</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 79</span></div></td><td class="px-3 py-2 text-right text-rose-400 font-bold font-mono">-1.0</td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">4.6</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 51</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">3.7</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 41</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.5</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 5</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.5</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 5</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">1.5</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 17</span></div></td><td class="px-3 py-2 text-right text-orange-400 font-bold font-mono">7.7</td>
+    </tr>
+<tr class="group border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors">
+      <td class="px-3 py-2 text-slate-500 text-sm">13</td>
+      <td class="px-3 py-2 font-medium text-white">
+        <div class="flex items-center gap-3 min-w-0">
+          <img src="https://www.wkbl.or.kr/static/images/player/pimg/m_095999.jpg" alt="" aria-hidden="true" class="w-8 h-8 shrink-0 rounded-full object-cover bg-slate-800 border border-slate-700 shadow-sm" loading="lazy" data-placeholder="/static/images/player_placeholder.svg" onerror="if(!this.dataset.placeholderApplied){this.dataset.placeholderApplied='1';this.src=this.dataset.placeholder;}">
+          <div class="flex items-center gap-2 min-w-0">
+            <a href="/player/095999" class="player-name hover:text-orange-400 transition-colors truncate break-keep min-w-0">송윤하</a>
+            <span class="hidden"></span>
+          </div>
+        </div>
+      </td>
+      <td class="px-3 py-2"><a href="/team/KB%EC%8A%A4%ED%83%80%EC%A6%88" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium hover:brightness-125 transition" style="background-color: #FFCC0020; color: #FFCC00; border: 1px solid #FFCC0040"><img src="/static/images/team_01.png" alt="" aria-hidden="true" class="w-4 h-4 object-contain"><span class="truncate max-w-[96px] sm:max-w-[140px]">KB스타즈</span></a></td>
+      <td class="px-3 py-2 text-right text-slate-400">13</td>
+      <td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-orange-400 font-bold font-mono">7.7</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 100</span></div></td><td class="px-3 py-2 text-right text-sky-400 font-bold font-mono">+2.3</td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">5.2</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 67</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">1.5</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 20</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.6</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 8</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">1.4</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 18</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.7</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 9</span></div></td><td class="px-3 py-2 text-right text-orange-400 font-bold font-mono">7.3</td>
+    </tr>
+<tr class="group border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors">
+      <td class="px-3 py-2 text-slate-500 text-sm">14</td>
+      <td class="px-3 py-2 font-medium text-white">
+        <div class="flex items-center gap-3 min-w-0">
+          <img src="https://www.wkbl.or.kr/static/images/player/pimg/m_095713.jpg" alt="" aria-hidden="true" class="w-8 h-8 shrink-0 rounded-full object-cover bg-slate-800 border border-slate-700 shadow-sm" loading="lazy" data-placeholder="/static/images/player_placeholder.svg" onerror="if(!this.dataset.placeholderApplied){this.dataset.placeholderApplied='1';this.src=this.dataset.placeholder;}">
+          <div class="flex items-center gap-2 min-w-0">
+            <a href="/player/095713" class="player-name hover:text-orange-400 transition-colors truncate break-keep min-w-0">강유림</a>
+            <span class="hidden"></span>
+          </div>
+        </div>
+      </td>
+      <td class="px-3 py-2"><a href="/team/%EC%82%BC%EC%84%B1%EC%83%9D%EB%AA%85" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium hover:brightness-125 transition" style="background-color: #007AFF20; color: #007AFF; border: 1px solid #007AFF40"><img src="/static/images/team_03.png" alt="" aria-hidden="true" class="w-4 h-4 object-contain"><span class="truncate max-w-[96px] sm:max-w-[140px]">삼성생명</span></a></td>
+      <td class="px-3 py-2 text-right text-slate-400">12</td>
+      <td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-orange-400 font-bold font-mono">9.5</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 114</span></div></td><td class="px-3 py-2 text-right text-rose-400 font-bold font-mono">-1.8</td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">4.3</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 52</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">1.8</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 22</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">1.1</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 13</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">1.3</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 16</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">1.3</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 16</span></div></td><td class="px-3 py-2 text-right text-orange-400 font-bold font-mono">7.1</td>
+    </tr>
+<tr class="group border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors">
+      <td class="px-3 py-2 text-slate-500 text-sm">15</td>
+      <td class="px-3 py-2 font-medium text-white">
+        <div class="flex items-center gap-3 min-w-0">
+          <img src="https://www.wkbl.or.kr/static/images/player/pimg/m_095633.jpg" alt="" aria-hidden="true" class="w-8 h-8 shrink-0 rounded-full object-cover bg-slate-800 border border-slate-700 shadow-sm" loading="lazy" data-placeholder="/static/images/player_placeholder.svg" onerror="if(!this.dataset.placeholderApplied){this.dataset.placeholderApplied='1';this.src=this.dataset.placeholder;}">
+          <div class="flex items-center gap-2 min-w-0">
+            <a href="/player/095633" class="player-name hover:text-orange-400 transition-colors truncate break-keep min-w-0">신이슬</a>
+            <span class="hidden"></span>
+          </div>
+        </div>
+      </td>
+      <td class="px-3 py-2"><a href="/team/%EC%8B%A0%ED%95%9C%EC%9D%80%ED%96%89" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium hover:brightness-125 transition" style="background-color: #2B399020; color: #2B3990; border: 1px solid #2B399040"><img src="/static/images/team_07.png" alt="" aria-hidden="true" class="w-4 h-4 object-contain"><span class="truncate max-w-[96px] sm:max-w-[140px]">신한은행</span></a></td>
+      <td class="px-3 py-2 text-right text-slate-400">11</td>
+      <td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-orange-400 font-bold font-mono">12.1</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 133</span></div></td><td class="px-3 py-2 text-right text-rose-400 font-bold font-mono">-4.0</td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">5.1</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 56</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">2.6</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 29</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">1.5</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 16</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.4</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 4</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">2.4</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 26</span></div></td><td class="px-3 py-2 text-right text-orange-400 font-bold font-mono">6.8</td>
+    </tr>
+<tr class="group border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors">
+      <td class="px-3 py-2 text-slate-500 text-sm">16</td>
+      <td class="px-3 py-2 font-medium text-white">
+        <div class="flex items-center gap-3 min-w-0">
+          <img src="https://www.wkbl.or.kr/static/images/player/pimg/m_095788.jpg" alt="" aria-hidden="true" class="w-8 h-8 shrink-0 rounded-full object-cover bg-slate-800 border border-slate-700 shadow-sm" loading="lazy" data-placeholder="/static/images/player_placeholder.svg" onerror="if(!this.dataset.placeholderApplied){this.dataset.placeholderApplied='1';this.src=this.dataset.placeholder;}">
+          <div class="flex items-center gap-2 min-w-0">
+            <a href="/player/095788" class="player-name hover:text-orange-400 transition-colors truncate break-keep min-w-0">박소희</a>
+            <span class="hidden"></span>
+          </div>
+        </div>
+      </td>
+      <td class="px-3 py-2"><a href="/team/%ED%95%98%EB%82%98%EC%9D%80%ED%96%89" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium hover:brightness-125 transition" style="background-color: #00949020; color: #009490; border: 1px solid #00949040"><img src="/static/images/team_09.png" alt="" aria-hidden="true" class="w-4 h-4 object-contain"><span class="truncate max-w-[96px] sm:max-w-[140px]">하나은행</span></a></td>
+      <td class="px-3 py-2 text-right text-slate-400">13</td>
+      <td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-orange-400 font-bold font-mono">11.0</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 143</span></div></td><td class="px-3 py-2 text-right text-sky-400 font-bold font-mono">+5.2</td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">3.6</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 47</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">3.2</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 42</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.5</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 6</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.2</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 2</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">1.8</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 24</span></div></td><td class="px-3 py-2 text-right text-orange-400 font-bold font-mono">6.6</td>
+    </tr>
+<tr class="group border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors">
+      <td class="px-3 py-2 text-slate-500 text-sm">17</td>
+      <td class="px-3 py-2 font-medium text-white">
+        <div class="flex items-center gap-3 min-w-0">
+          <img src="https://www.wkbl.or.kr/static/images/player/pimg/m_095637.jpg" alt="" aria-hidden="true" class="w-8 h-8 shrink-0 rounded-full object-cover bg-slate-800 border border-slate-700 shadow-sm" loading="lazy" data-placeholder="/static/images/player_placeholder.svg" onerror="if(!this.dataset.placeholderApplied){this.dataset.placeholderApplied='1';this.src=this.dataset.placeholder;}">
+          <div class="flex items-center gap-2 min-w-0">
+            <a href="/player/095637" class="player-name hover:text-orange-400 transition-colors truncate break-keep min-w-0">이채은</a>
+            <span class="hidden"></span>
+          </div>
+        </div>
+      </td>
+      <td class="px-3 py-2"><a href="/team/KB%EC%8A%A4%ED%83%80%EC%A6%88" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium hover:brightness-125 transition" style="background-color: #FFCC0020; color: #FFCC00; border: 1px solid #FFCC0040"><img src="/static/images/team_01.png" alt="" aria-hidden="true" class="w-4 h-4 object-contain"><span class="truncate max-w-[96px] sm:max-w-[140px]">KB스타즈</span></a></td>
+      <td class="px-3 py-2 text-right text-slate-400">13</td>
+      <td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-orange-400 font-bold font-mono">9.0</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 117</span></div></td><td class="px-3 py-2 text-right text-sky-400 font-bold font-mono">+2.0</td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">2.9</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 38</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">1.2</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 15</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">1.3</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 17</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.0</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 0</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">1.2</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 16</span></div></td><td class="px-3 py-2 text-right text-orange-400 font-bold font-mono">6.6</td>
+    </tr>
+<tr class="group border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors">
+      <td class="px-3 py-2 text-slate-500 text-sm">18</td>
+      <td class="px-3 py-2 font-medium text-white">
+        <div class="flex items-center gap-3 min-w-0">
+          <img src="https://www.wkbl.or.kr/static/images/player/pimg/m_095703.jpg" alt="" aria-hidden="true" class="w-8 h-8 shrink-0 rounded-full object-cover bg-slate-800 border border-slate-700 shadow-sm" loading="lazy" data-placeholder="/static/images/player_placeholder.svg" onerror="if(!this.dataset.placeholderApplied){this.dataset.placeholderApplied='1';this.src=this.dataset.placeholder;}">
+          <div class="flex items-center gap-2 min-w-0">
+            <a href="/player/095703" class="player-name hover:text-orange-400 transition-colors truncate break-keep min-w-0">이명관</a>
+            <span class="hidden"></span>
+          </div>
+        </div>
+      </td>
+      <td class="px-3 py-2"><a href="/team/%EC%9A%B0%EB%A6%AC%EC%9D%80%ED%96%89" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium hover:brightness-125 transition" style="background-color: #005BAA20; color: #005BAA; border: 1px solid #005BAA40"><img src="/static/images/team_05.png" alt="" aria-hidden="true" class="w-4 h-4 object-contain"><span class="truncate max-w-[96px] sm:max-w-[140px]">우리은행</span></a></td>
+      <td class="px-3 py-2 text-right text-slate-400">13</td>
+      <td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-orange-400 font-bold font-mono">11.5</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 149</span></div></td><td class="px-3 py-2 text-right text-rose-400 font-bold font-mono">-2.3</td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">6.4</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 83</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">1.6</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 21</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">1.0</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 13</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.0</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 0</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">1.8</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 23</span></div></td><td class="px-3 py-2 text-right text-orange-400 font-bold font-mono">6.4</td>
+    </tr>
+<tr class="group border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors">
+      <td class="px-3 py-2 text-slate-500 text-sm">19</td>
+      <td class="px-3 py-2 font-medium text-white">
+        <div class="flex items-center gap-3 min-w-0">
+          <img src="https://www.wkbl.or.kr/static/images/player/pimg/m_096029.jpg" alt="" aria-hidden="true" class="w-8 h-8 shrink-0 rounded-full object-cover bg-slate-800 border border-slate-700 shadow-sm" loading="lazy" data-placeholder="/static/images/player_placeholder.svg" onerror="if(!this.dataset.placeholderApplied){this.dataset.placeholderApplied='1';this.src=this.dataset.placeholder;}">
+          <div class="flex items-center gap-2 min-w-0">
+            <a href="/player/096029" class="player-name hover:text-orange-400 transition-colors truncate break-keep min-w-0">미마 루이</a>
+            <span class="hidden"></span>
+          </div>
+        </div>
+      </td>
+      <td class="px-3 py-2"><a href="/team/%EC%8B%A0%ED%95%9C%EC%9D%80%ED%96%89" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium hover:brightness-125 transition" style="background-color: #2B399020; color: #2B3990; border: 1px solid #2B399040"><img src="/static/images/team_07.png" alt="" aria-hidden="true" class="w-4 h-4 object-contain"><span class="truncate max-w-[96px] sm:max-w-[140px]">신한은행</span></a></td>
+      <td class="px-3 py-2 text-right text-slate-400">8</td>
+      <td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-orange-400 font-bold font-mono">8.0</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 64</span></div></td><td class="px-3 py-2 text-right text-rose-400 font-bold font-mono">-3.1</td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">5.2</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 42</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.8</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 6</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.8</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 6</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.1</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 1</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">1.0</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 8</span></div></td><td class="px-3 py-2 text-right text-orange-400 font-bold font-mono">6.2</td>
+    </tr>
+<tr class="group border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors">
+      <td class="px-3 py-2 text-slate-500 text-sm">20</td>
+      <td class="px-3 py-2 font-medium text-white">
+        <div class="flex items-center gap-3 min-w-0">
+          <img src="https://www.wkbl.or.kr/static/images/player/pimg/m_095482.jpg" alt="" aria-hidden="true" class="w-8 h-8 shrink-0 rounded-full object-cover bg-slate-800 border border-slate-700 shadow-sm" loading="lazy" data-placeholder="/static/images/player_placeholder.svg" onerror="if(!this.dataset.placeholderApplied){this.dataset.placeholderApplied='1';this.src=this.dataset.placeholder;}">
+          <div class="flex items-center gap-2 min-w-0">
+            <a href="/player/095482" class="player-name hover:text-orange-400 transition-colors truncate break-keep min-w-0">김진영</a>
+            <span class="hidden"></span>
+          </div>
+        </div>
+      </td>
+      <td class="px-3 py-2"><a href="/team/%EC%8B%A0%ED%95%9C%EC%9D%80%ED%96%89" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium hover:brightness-125 transition" style="background-color: #2B399020; color: #2B3990; border: 1px solid #2B399040"><img src="/static/images/team_07.png" alt="" aria-hidden="true" class="w-4 h-4 object-contain"><span class="truncate max-w-[96px] sm:max-w-[140px]">신한은행</span></a></td>
+      <td class="px-3 py-2 text-right text-slate-400">11</td>
+      <td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-orange-400 font-bold font-mono">8.1</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 89</span></div></td><td class="px-3 py-2 text-right text-rose-400 font-bold font-mono">-3.2</td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">7.6</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 84</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">2.6</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 29</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.3</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 3</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.3</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 3</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">1.8</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 20</span></div></td><td class="px-3 py-2 text-right text-orange-400 font-bold font-mono">6.0</td>
+    </tr>
+<tr class="group border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors">
+      <td class="px-3 py-2 text-slate-500 text-sm">21</td>
+      <td class="px-3 py-2 font-medium text-white">
+        <div class="flex items-center gap-3 min-w-0">
+          <img src="https://www.wkbl.or.kr/static/images/player/pimg/m_095636.jpg" alt="" aria-hidden="true" class="w-8 h-8 shrink-0 rounded-full object-cover bg-slate-800 border border-slate-700 shadow-sm" loading="lazy" data-placeholder="/static/images/player_placeholder.svg" onerror="if(!this.dataset.placeholderApplied){this.dataset.placeholderApplied='1';this.src=this.dataset.placeholder;}">
+          <div class="flex items-center gap-2 min-w-0">
+            <a href="/player/095636" class="player-name hover:text-orange-400 transition-colors truncate break-keep min-w-0">이소희</a>
+            <span class="hidden"></span>
+          </div>
+        </div>
+      </td>
+      <td class="px-3 py-2"><a href="/team/BNK%20%EC%8D%B8" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium hover:brightness-125 transition" style="background-color: #D6001C20; color: #D6001C; border: 1px solid #D6001C40"><img src="/static/images/team_11.png" alt="" aria-hidden="true" class="w-4 h-4 object-contain"><span class="truncate max-w-[96px] sm:max-w-[140px]">BNK 썸</span></a></td>
+      <td class="px-3 py-2 text-right text-slate-400">12</td>
+      <td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-orange-400 font-bold font-mono">11.5</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 138</span></div></td><td class="px-3 py-2 text-right text-rose-400 font-bold font-mono">-0.2</td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">4.2</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 51</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">1.8</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 22</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.4</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 5</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.1</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 1</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">1.2</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 15</span></div></td><td class="px-3 py-2 text-right text-orange-400 font-bold font-mono">5.7</td>
+    </tr>
+<tr class="group border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors">
+      <td class="px-3 py-2 text-slate-500 text-sm">22</td>
+      <td class="px-3 py-2 font-medium text-white">
+        <div class="flex items-center gap-3 min-w-0">
+          <img src="https://www.wkbl.or.kr/static/images/player/pimg/m_095715.jpg" alt="" aria-hidden="true" class="w-8 h-8 shrink-0 rounded-full object-cover bg-slate-800 border border-slate-700 shadow-sm" loading="lazy" data-placeholder="/static/images/player_placeholder.svg" onerror="if(!this.dataset.placeholderApplied){this.dataset.placeholderApplied='1';this.src=this.dataset.placeholder;}">
+          <div class="flex items-center gap-2 min-w-0">
+            <a href="/player/095715" class="player-name hover:text-orange-400 transition-colors truncate break-keep min-w-0">정예림</a>
+            <span class="hidden"></span>
+          </div>
+        </div>
+      </td>
+      <td class="px-3 py-2"><a href="/team/%ED%95%98%EB%82%98%EC%9D%80%ED%96%89" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium hover:brightness-125 transition" style="background-color: #00949020; color: #009490; border: 1px solid #00949040"><img src="/static/images/team_09.png" alt="" aria-hidden="true" class="w-4 h-4 object-contain"><span class="truncate max-w-[96px] sm:max-w-[140px]">하나은행</span></a></td>
+      <td class="px-3 py-2 text-right text-slate-400">12</td>
+      <td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-orange-400 font-bold font-mono">3.9</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 47</span></div></td><td class="px-3 py-2 text-right text-sky-400 font-bold font-mono">+5.5</td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">5.1</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 61</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">1.9</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 23</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.3</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 4</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.6</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 7</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.4</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 5</span></div></td><td class="px-3 py-2 text-right text-orange-400 font-bold font-mono">5.2</td>
+    </tr>
+<tr class="group border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors">
+      <td class="px-3 py-2 text-slate-500 text-sm">23</td>
+      <td class="px-3 py-2 font-medium text-white">
+        <div class="flex items-center gap-3 min-w-0">
+          <img src="https://www.wkbl.or.kr/static/images/player/pimg/m_095749.jpg" alt="" aria-hidden="true" class="w-8 h-8 shrink-0 rounded-full object-cover bg-slate-800 border border-slate-700 shadow-sm" loading="lazy" data-placeholder="/static/images/player_placeholder.svg" onerror="if(!this.dataset.placeholderApplied){this.dataset.placeholderApplied='1';this.src=this.dataset.placeholder;}">
+          <div class="flex items-center gap-2 min-w-0">
+            <a href="/player/095749" class="player-name hover:text-orange-400 transition-colors truncate break-keep min-w-0">조수아</a>
+            <span class="hidden"></span>
+          </div>
+        </div>
+      </td>
+      <td class="px-3 py-2"><a href="/team/%EC%82%BC%EC%84%B1%EC%83%9D%EB%AA%85" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium hover:brightness-125 transition" style="background-color: #007AFF20; color: #007AFF; border: 1px solid #007AFF40"><img src="/static/images/team_03.png" alt="" aria-hidden="true" class="w-4 h-4 object-contain"><span class="truncate max-w-[96px] sm:max-w-[140px]">삼성생명</span></a></td>
+      <td class="px-3 py-2 text-right text-slate-400">12</td>
+      <td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-orange-400 font-bold font-mono">7.2</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 86</span></div></td><td class="px-3 py-2 text-right text-rose-400 font-bold font-mono">-1.5</td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">3.2</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 38</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">2.7</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 32</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.6</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 7</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.2</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 2</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">1.1</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 13</span></div></td><td class="px-3 py-2 text-right text-orange-400 font-bold font-mono">4.9</td>
+    </tr>
+<tr class="group border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors">
+      <td class="px-3 py-2 text-slate-500 text-sm">24</td>
+      <td class="px-3 py-2 font-medium text-white">
+        <div class="flex items-center gap-3 min-w-0">
+          <img src="https://www.wkbl.or.kr/static/images/player/pimg/m_095041.jpg" alt="" aria-hidden="true" class="w-8 h-8 shrink-0 rounded-full object-cover bg-slate-800 border border-slate-700 shadow-sm" loading="lazy" data-placeholder="/static/images/player_placeholder.svg" onerror="if(!this.dataset.placeholderApplied){this.dataset.placeholderApplied='1';this.src=this.dataset.placeholder;}">
+          <div class="flex items-center gap-2 min-w-0">
+            <a href="/player/095041" class="player-name hover:text-orange-400 transition-colors truncate break-keep min-w-0">김정은</a>
+            <span class="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"><span class="px-2 py-0.5 rounded bg-slate-800/50 border border-slate-700/50 text-[10px] font-mono text-slate-500 hover:text-slate-200 transition-colors whitespace-nowrap cursor-help" title="player_id: 095041" aria-label="player id 095041">ID 041</span></span>
+          </div>
+        </div>
+      </td>
+      <td class="px-3 py-2"><a href="/team/%ED%95%98%EB%82%98%EC%9D%80%ED%96%89" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium hover:brightness-125 transition" style="background-color: #00949020; color: #009490; border: 1px solid #00949040"><img src="/static/images/team_09.png" alt="" aria-hidden="true" class="w-4 h-4 object-contain"><span class="truncate max-w-[96px] sm:max-w-[140px]">하나은행</span></a></td>
+      <td class="px-3 py-2 text-right text-slate-400">13</td>
+      <td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-orange-400 font-bold font-mono">5.5</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 71</span></div></td><td class="px-3 py-2 text-right text-sky-400 font-bold font-mono">+6.0</td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">5.3</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 69</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">2.2</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 29</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.5</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 7</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.7</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 9</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.7</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 9</span></div></td><td class="px-3 py-2 text-right text-orange-400 font-bold font-mono">4.7</td>
+    </tr>
+<tr class="group border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors">
+      <td class="px-3 py-2 text-slate-500 text-sm">25</td>
+      <td class="px-3 py-2 font-medium text-white">
+        <div class="flex items-center gap-3 min-w-0">
+          <img src="https://www.wkbl.or.kr/static/images/player/pimg/m_096033.jpg" alt="" aria-hidden="true" class="w-8 h-8 shrink-0 rounded-full object-cover bg-slate-800 border border-slate-700 shadow-sm" loading="lazy" data-placeholder="/static/images/player_placeholder.svg" onerror="if(!this.dataset.placeholderApplied){this.dataset.placeholderApplied='1';this.src=this.dataset.placeholder;}">
+          <div class="flex items-center gap-2 min-w-0">
+            <a href="/player/096033" class="player-name hover:text-orange-400 transition-colors truncate break-keep min-w-0">사카이 사라</a>
+            <span class="hidden"></span>
+          </div>
+        </div>
+      </td>
+      <td class="px-3 py-2"><a href="/team/KB%EC%8A%A4%ED%83%80%EC%A6%88" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium hover:brightness-125 transition" style="background-color: #FFCC0020; color: #FFCC00; border: 1px solid #FFCC0040"><img src="/static/images/team_01.png" alt="" aria-hidden="true" class="w-4 h-4 object-contain"><span class="truncate max-w-[96px] sm:max-w-[140px]">KB스타즈</span></a></td>
+      <td class="px-3 py-2 text-right text-slate-400">13</td>
+      <td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-orange-400 font-bold font-mono">7.1</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 92</span></div></td><td class="px-3 py-2 text-right text-sky-400 font-bold font-mono">+3.0</td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">3.7</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 48</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">2.5</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 32</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">1.7</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 22</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.0</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 0</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">1.5</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 20</span></div></td><td class="px-3 py-2 text-right text-orange-400 font-bold font-mono">4.7</td>
+    </tr>
+<tr class="group border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors">
+      <td class="px-3 py-2 text-slate-500 text-sm">26</td>
+      <td class="px-3 py-2 font-medium text-white">
+        <div class="flex items-center gap-3 min-w-0">
+          <img src="https://www.wkbl.or.kr/static/images/player/pimg/m_095261.jpg" alt="" aria-hidden="true" class="w-8 h-8 shrink-0 rounded-full object-cover bg-slate-800 border border-slate-700 shadow-sm" loading="lazy" data-placeholder="/static/images/player_placeholder.svg" onerror="if(!this.dataset.placeholderApplied){this.dataset.placeholderApplied='1';this.src=this.dataset.placeholder;}">
+          <div class="flex items-center gap-2 min-w-0">
+            <a href="/player/095261" class="player-name hover:text-orange-400 transition-colors truncate break-keep min-w-0">최이샘</a>
+            <span class="hidden"></span>
+          </div>
+        </div>
+      </td>
+      <td class="px-3 py-2"><a href="/team/%EC%8B%A0%ED%95%9C%EC%9D%80%ED%96%89" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium hover:brightness-125 transition" style="background-color: #2B399020; color: #2B3990; border: 1px solid #2B399040"><img src="/static/images/team_07.png" alt="" aria-hidden="true" class="w-4 h-4 object-contain"><span class="truncate max-w-[96px] sm:max-w-[140px]">신한은행</span></a></td>
+      <td class="px-3 py-2 text-right text-slate-400">11</td>
+      <td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-orange-400 font-bold font-mono">6.4</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 70</span></div></td><td class="px-3 py-2 text-right text-rose-400 font-bold font-mono">-3.9</td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">6.4</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 70</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">1.5</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 17</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.0</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 0</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.2</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 2</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">1.0</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 11</span></div></td><td class="px-3 py-2 text-right text-orange-400 font-bold font-mono">4.4</td>
+    </tr>
+<tr class="group border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors">
+      <td class="px-3 py-2 text-slate-500 text-sm">27</td>
+      <td class="px-3 py-2 font-medium text-white">
+        <div class="flex items-center gap-3 min-w-0">
+          <img src="https://www.wkbl.or.kr/static/images/player/pimg/m_095528.jpg" alt="" aria-hidden="true" class="w-8 h-8 shrink-0 rounded-full object-cover bg-slate-800 border border-slate-700 shadow-sm" loading="lazy" data-placeholder="/static/images/player_placeholder.svg" onerror="if(!this.dataset.placeholderApplied){this.dataset.placeholderApplied='1';this.src=this.dataset.placeholder;}">
+          <div class="flex items-center gap-2 min-w-0">
+            <a href="/player/095528" class="player-name hover:text-orange-400 transition-colors truncate break-keep min-w-0">한엄지</a>
+            <span class="hidden"></span>
+          </div>
+        </div>
+      </td>
+      <td class="px-3 py-2"><a href="/team/%EC%9A%B0%EB%A6%AC%EC%9D%80%ED%96%89" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium hover:brightness-125 transition" style="background-color: #005BAA20; color: #005BAA; border: 1px solid #005BAA40"><img src="/static/images/team_05.png" alt="" aria-hidden="true" class="w-4 h-4 object-contain"><span class="truncate max-w-[96px] sm:max-w-[140px]">우리은행</span></a></td>
+      <td class="px-3 py-2 text-right text-slate-400">2</td>
+      <td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-orange-400 font-bold font-mono">3.0</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 6</span></div></td><td class="px-3 py-2 text-right text-rose-400 font-bold font-mono">-4.1</td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">5.0</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 10</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.5</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 1</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.0</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 0</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.0</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 0</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.0</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 0</span></div></td><td class="px-3 py-2 text-right text-orange-400 font-bold font-mono">4.2</td>
+    </tr>
+<tr class="group border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors">
+      <td class="px-3 py-2 text-slate-500 text-sm">28</td>
+      <td class="px-3 py-2 font-medium text-white">
+        <div class="flex items-center gap-3 min-w-0">
+          <img src="https://www.wkbl.or.kr/static/images/player/pimg/m_096005.jpg" alt="" aria-hidden="true" class="w-8 h-8 shrink-0 rounded-full object-cover bg-slate-800 border border-slate-700 shadow-sm" loading="lazy" data-placeholder="/static/images/player_placeholder.svg" onerror="if(!this.dataset.placeholderApplied){this.dataset.placeholderApplied='1';this.src=this.dataset.placeholder;}">
+          <div class="flex items-center gap-2 min-w-0">
+            <a href="/player/096005" class="player-name hover:text-orange-400 transition-colors truncate break-keep min-w-0">이민지</a>
+            <span class="hidden"></span>
+          </div>
+        </div>
+      </td>
+      <td class="px-3 py-2"><a href="/team/%EC%9A%B0%EB%A6%AC%EC%9D%80%ED%96%89" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium hover:brightness-125 transition" style="background-color: #005BAA20; color: #005BAA; border: 1px solid #005BAA40"><img src="/static/images/team_05.png" alt="" aria-hidden="true" class="w-4 h-4 object-contain"><span class="truncate max-w-[96px] sm:max-w-[140px]">우리은행</span></a></td>
+      <td class="px-3 py-2 text-right text-slate-400">12</td>
+      <td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-orange-400 font-bold font-mono">9.1</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 109</span></div></td><td class="px-3 py-2 text-right text-rose-400 font-bold font-mono">-4.8</td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">2.1</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 25</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.6</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 7</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.7</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 8</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.4</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 5</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.8</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 10</span></div></td><td class="px-3 py-2 text-right text-orange-400 font-bold font-mono">4.1</td>
+    </tr>
+<tr class="group border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors">
+      <td class="px-3 py-2 text-slate-500 text-sm">29</td>
+      <td class="px-3 py-2 font-medium text-white">
+        <div class="flex items-center gap-3 min-w-0">
+          <img src="https://www.wkbl.or.kr/static/images/player/pimg/m_095441.jpg" alt="" aria-hidden="true" class="w-8 h-8 shrink-0 rounded-full object-cover bg-slate-800 border border-slate-700 shadow-sm" loading="lazy" data-placeholder="/static/images/player_placeholder.svg" onerror="if(!this.dataset.placeholderApplied){this.dataset.placeholderApplied='1';this.src=this.dataset.placeholder;}">
+          <div class="flex items-center gap-2 min-w-0">
+            <a href="/player/095441" class="player-name hover:text-orange-400 transition-colors truncate break-keep min-w-0">신지현</a>
+            <span class="hidden"></span>
+          </div>
+        </div>
+      </td>
+      <td class="px-3 py-2"><a href="/team/%EC%8B%A0%ED%95%9C%EC%9D%80%ED%96%89" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium hover:brightness-125 transition" style="background-color: #2B399020; color: #2B3990; border: 1px solid #2B399040"><img src="/static/images/team_07.png" alt="" aria-hidden="true" class="w-4 h-4 object-contain"><span class="truncate max-w-[96px] sm:max-w-[140px]">신한은행</span></a></td>
+      <td class="px-3 py-2 text-right text-slate-400">11</td>
+      <td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-orange-400 font-bold font-mono">8.0</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 88</span></div></td><td class="px-3 py-2 text-right text-rose-400 font-bold font-mono">-4.3</td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">3.7</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 41</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">3.6</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 40</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.8</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 9</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.3</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 3</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">2.1</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 23</span></div></td><td class="px-3 py-2 text-right text-orange-400 font-bold font-mono">3.9</td>
+    </tr>
+<tr class="group border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors">
+      <td class="px-3 py-2 text-slate-500 text-sm">30</td>
+      <td class="px-3 py-2 font-medium text-white">
+        <div class="flex items-center gap-3 min-w-0">
+          <img src="https://www.wkbl.or.kr/static/images/player/pimg/m_095497.jpg" alt="" aria-hidden="true" class="w-8 h-8 shrink-0 rounded-full object-cover bg-slate-800 border border-slate-700 shadow-sm" loading="lazy" data-placeholder="/static/images/player_placeholder.svg" onerror="if(!this.dataset.placeholderApplied){this.dataset.placeholderApplied='1';this.src=this.dataset.placeholder;}">
+          <div class="flex items-center gap-2 min-w-0">
+            <a href="/player/095497" class="player-name hover:text-orange-400 transition-colors truncate break-keep min-w-0">윤예빈</a>
+            <span class="hidden"></span>
+          </div>
+        </div>
+      </td>
+      <td class="px-3 py-2"><a href="/team/%EC%82%BC%EC%84%B1%EC%83%9D%EB%AA%85" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium hover:brightness-125 transition" style="background-color: #007AFF20; color: #007AFF; border: 1px solid #007AFF40"><img src="/static/images/team_03.png" alt="" aria-hidden="true" class="w-4 h-4 object-contain"><span class="truncate max-w-[96px] sm:max-w-[140px]">삼성생명</span></a></td>
+      <td class="px-3 py-2 text-right text-slate-400">11</td>
+      <td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-orange-400 font-bold font-mono">4.8</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 53</span></div></td><td class="px-3 py-2 text-right text-rose-400 font-bold font-mono">-1.3</td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">3.7</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 41</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">1.0</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 11</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.9</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 10</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.6</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 7</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.8</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 9</span></div></td><td class="px-3 py-2 text-right text-orange-400 font-bold font-mono">3.8</td>
+    </tr>
+<tr class="group border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors">
+      <td class="px-3 py-2 text-slate-500 text-sm">31</td>
+      <td class="px-3 py-2 font-medium text-white">
+        <div class="flex items-center gap-3 min-w-0">
+          <img src="https://www.wkbl.or.kr/static/images/player/pimg/m_096008.jpg" alt="" aria-hidden="true" class="w-8 h-8 shrink-0 rounded-full object-cover bg-slate-800 border border-slate-700 shadow-sm" loading="lazy" data-placeholder="/static/images/player_placeholder.svg" onerror="if(!this.dataset.placeholderApplied){this.dataset.placeholderApplied='1';this.src=this.dataset.placeholder;}">
+          <div class="flex items-center gap-2 min-w-0">
+            <a href="/player/096008" class="player-name hover:text-orange-400 transition-colors truncate break-keep min-w-0">정현</a>
+            <span class="hidden"></span>
+          </div>
+        </div>
+      </td>
+      <td class="px-3 py-2"><a href="/team/%ED%95%98%EB%82%98%EC%9D%80%ED%96%89" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium hover:brightness-125 transition" style="background-color: #00949020; color: #009490; border: 1px solid #00949040"><img src="/static/images/team_09.png" alt="" aria-hidden="true" class="w-4 h-4 object-contain"><span class="truncate max-w-[96px] sm:max-w-[140px]">하나은행</span></a></td>
+      <td class="px-3 py-2 text-right text-slate-400">13</td>
+      <td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-orange-400 font-bold font-mono">6.5</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 84</span></div></td><td class="px-3 py-2 text-right text-sky-400 font-bold font-mono">+5.2</td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">4.2</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 55</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">1.2</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 16</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.8</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 11</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.6</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 8</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">1.5</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 19</span></div></td><td class="px-3 py-2 text-right text-orange-400 font-bold font-mono">3.7</td>
+    </tr>
+<tr class="group border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors">
+      <td class="px-3 py-2 text-slate-500 text-sm">32</td>
+      <td class="px-3 py-2 font-medium text-white">
+        <div class="flex items-center gap-3 min-w-0">
+          <img src="https://www.wkbl.or.kr/static/images/player/pimg/m_095915.jpg" alt="" aria-hidden="true" class="w-8 h-8 shrink-0 rounded-full object-cover bg-slate-800 border border-slate-700 shadow-sm" loading="lazy" data-placeholder="/static/images/player_placeholder.svg" onerror="if(!this.dataset.placeholderApplied){this.dataset.placeholderApplied='1';this.src=this.dataset.placeholder;}">
+          <div class="flex items-center gap-2 min-w-0">
+            <a href="/player/095915" class="player-name hover:text-orange-400 transition-colors truncate break-keep min-w-0">히라노 미츠키</a>
+            <span class="hidden"></span>
+          </div>
+        </div>
+      </td>
+      <td class="px-3 py-2"><a href="/team/%EC%8B%A0%ED%95%9C%EC%9D%80%ED%96%89" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium hover:brightness-125 transition" style="background-color: #2B399020; color: #2B3990; border: 1px solid #2B399040"><img src="/static/images/team_07.png" alt="" aria-hidden="true" class="w-4 h-4 object-contain"><span class="truncate max-w-[96px] sm:max-w-[140px]">신한은행</span></a></td>
+      <td class="px-3 py-2 text-right text-slate-400">8</td>
+      <td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-orange-400 font-bold font-mono">5.5</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 44</span></div></td><td class="px-3 py-2 text-right text-rose-400 font-bold font-mono">-1.7</td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">2.8</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 22</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">3.2</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 26</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.1</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 1</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.0</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 0</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">1.1</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 9</span></div></td><td class="px-3 py-2 text-right text-orange-400 font-bold font-mono">3.6</td>
+    </tr>
+<tr class="group border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors">
+      <td class="px-3 py-2 text-slate-500 text-sm">33</td>
+      <td class="px-3 py-2 font-medium text-white">
+        <div class="flex items-center gap-3 min-w-0">
+          <img src="https://www.wkbl.or.kr/static/images/player/pimg/m_095919.jpg" alt="" aria-hidden="true" class="w-8 h-8 shrink-0 rounded-full object-cover bg-slate-800 border border-slate-700 shadow-sm" loading="lazy" data-placeholder="/static/images/player_placeholder.svg" onerror="if(!this.dataset.placeholderApplied){this.dataset.placeholderApplied='1';this.src=this.dataset.placeholder;}">
+          <div class="flex items-center gap-2 min-w-0">
+            <a href="/player/095919" class="player-name hover:text-orange-400 transition-colors truncate break-keep min-w-0">스나가와 나츠키</a>
+            <span class="hidden"></span>
+          </div>
+        </div>
+      </td>
+      <td class="px-3 py-2"><a href="/team/BNK%20%EC%8D%B8" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium hover:brightness-125 transition" style="background-color: #D6001C20; color: #D6001C; border: 1px solid #D6001C40"><img src="/static/images/team_11.png" alt="" aria-hidden="true" class="w-4 h-4 object-contain"><span class="truncate max-w-[96px] sm:max-w-[140px]">BNK 썸</span></a></td>
+      <td class="px-3 py-2 text-right text-slate-400">11</td>
+      <td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-orange-400 font-bold font-mono">4.4</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 48</span></div></td><td class="px-3 py-2 text-right text-rose-400 font-bold font-mono">-2.7</td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">1.9</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 21</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.4</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 4</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.3</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 3</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.0</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 0</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.3</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 3</span></div></td><td class="px-3 py-2 text-right text-orange-400 font-bold font-mono">3.5</td>
+    </tr>
+<tr class="group border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors">
+      <td class="px-3 py-2 text-slate-500 text-sm">34</td>
+      <td class="px-3 py-2 font-medium text-white">
+        <div class="flex items-center gap-3 min-w-0">
+          <img src="https://www.wkbl.or.kr/static/images/player/pimg/m_095742.jpg" alt="" aria-hidden="true" class="w-8 h-8 shrink-0 rounded-full object-cover bg-slate-800 border border-slate-700 shadow-sm" loading="lazy" data-placeholder="/static/images/player_placeholder.svg" onerror="if(!this.dataset.placeholderApplied){this.dataset.placeholderApplied='1';this.src=this.dataset.placeholder;}">
+          <div class="flex items-center gap-2 min-w-0">
+            <a href="/player/095742" class="player-name hover:text-orange-400 transition-colors truncate break-keep min-w-0">이다연</a>
+            <span class="hidden"></span>
+          </div>
+        </div>
+      </td>
+      <td class="px-3 py-2"><a href="/team/%EC%9A%B0%EB%A6%AC%EC%9D%80%ED%96%89" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium hover:brightness-125 transition" style="background-color: #005BAA20; color: #005BAA; border: 1px solid #005BAA40"><img src="/static/images/team_05.png" alt="" aria-hidden="true" class="w-4 h-4 object-contain"><span class="truncate max-w-[96px] sm:max-w-[140px]">우리은행</span></a></td>
+      <td class="px-3 py-2 text-right text-slate-400">4</td>
+      <td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-orange-400 font-bold font-mono">3.2</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 13</span></div></td><td class="px-3 py-2 text-right text-rose-400 font-bold font-mono">-2.4</td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">4.0</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 16</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.5</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 2</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.8</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 3</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.2</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 1</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.8</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 3</span></div></td><td class="px-3 py-2 text-right text-orange-400 font-bold font-mono">3.4</td>
+    </tr>
+<tr class="group border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors">
+      <td class="px-3 py-2 text-slate-500 text-sm">35</td>
+      <td class="px-3 py-2 font-medium text-white">
+        <div class="flex items-center gap-3 min-w-0">
+          <img src="https://www.wkbl.or.kr/static/images/player/pimg/m_095908.jpg" alt="" aria-hidden="true" class="w-8 h-8 shrink-0 rounded-full object-cover bg-slate-800 border border-slate-700 shadow-sm" loading="lazy" data-placeholder="/static/images/player_placeholder.svg" onerror="if(!this.dataset.placeholderApplied){this.dataset.placeholderApplied='1';this.src=this.dataset.placeholder;}">
+          <div class="flex items-center gap-2 min-w-0">
+            <a href="/player/095908" class="player-name hover:text-orange-400 transition-colors truncate break-keep min-w-0">변하정</a>
+            <span class="hidden"></span>
+          </div>
+        </div>
+      </td>
+      <td class="px-3 py-2"><a href="/team/%EC%9A%B0%EB%A6%AC%EC%9D%80%ED%96%89" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium hover:brightness-125 transition" style="background-color: #005BAA20; color: #005BAA; border: 1px solid #005BAA40"><img src="/static/images/team_05.png" alt="" aria-hidden="true" class="w-4 h-4 object-contain"><span class="truncate max-w-[96px] sm:max-w-[140px]">우리은행</span></a></td>
+      <td class="px-3 py-2 text-right text-slate-400">13</td>
+      <td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-orange-400 font-bold font-mono">3.9</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 51</span></div></td><td class="px-3 py-2 text-right text-rose-400 font-bold font-mono">-0.3</td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">3.2</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 41</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.7</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 9</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">1.2</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 15</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.6</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 8</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.8</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 10</span></div></td><td class="px-3 py-2 text-right text-orange-400 font-bold font-mono">3.2</td>
+    </tr>
+<tr class="group border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors">
+      <td class="px-3 py-2 text-slate-500 text-sm">36</td>
+      <td class="px-3 py-2 font-medium text-white">
+        <div class="flex items-center gap-3 min-w-0">
+          <img src="https://www.wkbl.or.kr/static/images/player/pimg/m_095477.jpg" alt="" aria-hidden="true" class="w-8 h-8 shrink-0 rounded-full object-cover bg-slate-800 border border-slate-700 shadow-sm" loading="lazy" data-placeholder="/static/images/player_placeholder.svg" onerror="if(!this.dataset.placeholderApplied){this.dataset.placeholderApplied='1';this.src=this.dataset.placeholder;}">
+          <div class="flex items-center gap-2 min-w-0">
+            <a href="/player/095477" class="player-name hover:text-orange-400 transition-colors truncate break-keep min-w-0">김아름</a>
+            <span class="hidden"></span>
+          </div>
+        </div>
+      </td>
+      <td class="px-3 py-2"><a href="/team/%EC%82%BC%EC%84%B1%EC%83%9D%EB%AA%85" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium hover:brightness-125 transition" style="background-color: #007AFF20; color: #007AFF; border: 1px solid #007AFF40"><img src="/static/images/team_03.png" alt="" aria-hidden="true" class="w-4 h-4 object-contain"><span class="truncate max-w-[96px] sm:max-w-[140px]">삼성생명</span></a></td>
+      <td class="px-3 py-2 text-right text-slate-400">12</td>
+      <td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-orange-400 font-bold font-mono">4.8</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 58</span></div></td><td class="px-3 py-2 text-right text-rose-400 font-bold font-mono">-4.2</td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">3.2</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 39</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.9</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 11</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.2</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 2</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.0</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 0</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.7</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 8</span></div></td><td class="px-3 py-2 text-right text-orange-400 font-bold font-mono">3.1</td>
+    </tr>
+<tr class="group border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors">
+      <td class="px-3 py-2 text-slate-500 text-sm">37</td>
+      <td class="px-3 py-2 font-medium text-white">
+        <div class="flex items-center gap-3 min-w-0">
+          <img src="https://www.wkbl.or.kr/static/images/player/pimg/m_095543.jpg" alt="" aria-hidden="true" class="w-8 h-8 shrink-0 rounded-full object-cover bg-slate-800 border border-slate-700 shadow-sm" loading="lazy" data-placeholder="/static/images/player_placeholder.svg" onerror="if(!this.dataset.placeholderApplied){this.dataset.placeholderApplied='1';this.src=this.dataset.placeholder;}">
+          <div class="flex items-center gap-2 min-w-0">
+            <a href="/player/095543" class="player-name hover:text-orange-400 transition-colors truncate break-keep min-w-0">나윤정</a>
+            <span class="hidden"></span>
+          </div>
+        </div>
+      </td>
+      <td class="px-3 py-2"><a href="/team/KB%EC%8A%A4%ED%83%80%EC%A6%88" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium hover:brightness-125 transition" style="background-color: #FFCC0020; color: #FFCC00; border: 1px solid #FFCC0040"><img src="/static/images/team_01.png" alt="" aria-hidden="true" class="w-4 h-4 object-contain"><span class="truncate max-w-[96px] sm:max-w-[140px]">KB스타즈</span></a></td>
+      <td class="px-3 py-2 text-right text-slate-400">13</td>
+      <td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-orange-400 font-bold font-mono">6.5</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 85</span></div></td><td class="px-3 py-2 text-right text-sky-400 font-bold font-mono">+3.3</td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">2.6</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 34</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.6</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 8</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.5</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 7</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.1</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 1</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.4</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 5</span></div></td><td class="px-3 py-2 text-right text-orange-400 font-bold font-mono">2.9</td>
+    </tr>
+<tr class="group border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors">
+      <td class="px-3 py-2 text-slate-500 text-sm">38</td>
+      <td class="px-3 py-2 font-medium text-white">
+        <div class="flex items-center gap-3 min-w-0">
+          <img src="https://www.wkbl.or.kr/static/images/player/pimg/m_095780.jpg" alt="" aria-hidden="true" class="w-8 h-8 shrink-0 rounded-full object-cover bg-slate-800 border border-slate-700 shadow-sm" loading="lazy" data-placeholder="/static/images/player_placeholder.svg" onerror="if(!this.dataset.placeholderApplied){this.dataset.placeholderApplied='1';this.src=this.dataset.placeholder;}">
+          <div class="flex items-center gap-2 min-w-0">
+            <a href="/player/095780" class="player-name hover:text-orange-400 transition-colors truncate break-keep min-w-0">변소정</a>
+            <span class="hidden"></span>
+          </div>
+        </div>
+      </td>
+      <td class="px-3 py-2"><a href="/team/BNK%20%EC%8D%B8" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium hover:brightness-125 transition" style="background-color: #D6001C20; color: #D6001C; border: 1px solid #D6001C40"><img src="/static/images/team_11.png" alt="" aria-hidden="true" class="w-4 h-4 object-contain"><span class="truncate max-w-[96px] sm:max-w-[140px]">BNK 썸</span></a></td>
+      <td class="px-3 py-2 text-right text-slate-400">12</td>
+      <td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-orange-400 font-bold font-mono">4.4</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 53</span></div></td><td class="px-3 py-2 text-right text-sky-400 font-bold font-mono">+0.8</td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">2.9</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 35</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.6</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 7</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.3</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 4</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.1</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 1</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.9</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 11</span></div></td><td class="px-3 py-2 text-right text-orange-400 font-bold font-mono">2.2</td>
+    </tr>
+<tr class="group border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors">
+      <td class="px-3 py-2 text-slate-500 text-sm">39</td>
+      <td class="px-3 py-2 font-medium text-white">
+        <div class="flex items-center gap-3 min-w-0">
+          <img src="https://www.wkbl.or.kr/static/images/player/pimg/m_095746.jpg" alt="" aria-hidden="true" class="w-8 h-8 shrink-0 rounded-full object-cover bg-slate-800 border border-slate-700 shadow-sm" loading="lazy" data-placeholder="/static/images/player_placeholder.svg" onerror="if(!this.dataset.placeholderApplied){this.dataset.placeholderApplied='1';this.src=this.dataset.placeholder;}">
+          <div class="flex items-center gap-2 min-w-0">
+            <a href="/player/095746" class="player-name hover:text-orange-400 transition-colors truncate break-keep min-w-0">양지수</a>
+            <span class="hidden"></span>
+          </div>
+        </div>
+      </td>
+      <td class="px-3 py-2"><a href="/team/KB%EC%8A%A4%ED%83%80%EC%A6%88" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium hover:brightness-125 transition" style="background-color: #FFCC0020; color: #FFCC00; border: 1px solid #FFCC0040"><img src="/static/images/team_01.png" alt="" aria-hidden="true" class="w-4 h-4 object-contain"><span class="truncate max-w-[96px] sm:max-w-[140px]">KB스타즈</span></a></td>
+      <td class="px-3 py-2 text-right text-slate-400">13</td>
+      <td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-orange-400 font-bold font-mono">2.8</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 36</span></div></td><td class="px-3 py-2 text-right text-sky-400 font-bold font-mono">+4.2</td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">1.6</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 21</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.2</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 3</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.6</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 8</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.0</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 0</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.2</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 3</span></div></td><td class="px-3 py-2 text-right text-orange-400 font-bold font-mono">2.2</td>
+    </tr>
+<tr class="group border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors">
+      <td class="px-3 py-2 text-slate-500 text-sm">40</td>
+      <td class="px-3 py-2 font-medium text-white">
+        <div class="flex items-center gap-3 min-w-0">
+          <img src="https://www.wkbl.or.kr/static/images/player/pimg/m_095700.jpg" alt="" aria-hidden="true" class="w-8 h-8 shrink-0 rounded-full object-cover bg-slate-800 border border-slate-700 shadow-sm" loading="lazy" data-placeholder="/static/images/player_placeholder.svg" onerror="if(!this.dataset.placeholderApplied){this.dataset.placeholderApplied='1';this.src=this.dataset.placeholder;}">
+          <div class="flex items-center gap-2 min-w-0">
+            <a href="/player/095700" class="player-name hover:text-orange-400 transition-colors truncate break-keep min-w-0">고나연</a>
+            <span class="hidden"></span>
+          </div>
+        </div>
+      </td>
+      <td class="px-3 py-2"><a href="/team/%EC%8B%A0%ED%95%9C%EC%9D%80%ED%96%89" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium hover:brightness-125 transition" style="background-color: #2B399020; color: #2B3990; border: 1px solid #2B399040"><img src="/static/images/team_07.png" alt="" aria-hidden="true" class="w-4 h-4 object-contain"><span class="truncate max-w-[96px] sm:max-w-[140px]">신한은행</span></a></td>
+      <td class="px-3 py-2 text-right text-slate-400">10</td>
+      <td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-orange-400 font-bold font-mono">4.9</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 49</span></div></td><td class="px-3 py-2 text-right text-rose-400 font-bold font-mono">-3.9</td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">2.0</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 20</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">1.2</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 12</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.3</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 3</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.1</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 1</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.7</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 7</span></div></td><td class="px-3 py-2 text-right text-orange-400 font-bold font-mono">2.2</td>
+    </tr>
+<tr class="group border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors">
+      <td class="px-3 py-2 text-slate-500 text-sm">41</td>
+      <td class="px-3 py-2 font-medium text-white">
+        <div class="flex items-center gap-3 min-w-0">
+          <img src="https://www.wkbl.or.kr/static/images/player/pimg/m_095450.jpg" alt="" aria-hidden="true" class="w-8 h-8 shrink-0 rounded-full object-cover bg-slate-800 border border-slate-700 shadow-sm" loading="lazy" data-placeholder="/static/images/player_placeholder.svg" onerror="if(!this.dataset.placeholderApplied){this.dataset.placeholderApplied='1';this.src=this.dataset.placeholder;}">
+          <div class="flex items-center gap-2 min-w-0">
+            <a href="/player/095450" class="player-name hover:text-orange-400 transition-colors truncate break-keep min-w-0">강계리</a>
+            <span class="hidden"></span>
+          </div>
+        </div>
+      </td>
+      <td class="px-3 py-2"><a href="/team/%EC%9A%B0%EB%A6%AC%EC%9D%80%ED%96%89" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium hover:brightness-125 transition" style="background-color: #005BAA20; color: #005BAA; border: 1px solid #005BAA40"><img src="/static/images/team_05.png" alt="" aria-hidden="true" class="w-4 h-4 object-contain"><span class="truncate max-w-[96px] sm:max-w-[140px]">우리은행</span></a></td>
+      <td class="px-3 py-2 text-right text-slate-400">13</td>
+      <td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-orange-400 font-bold font-mono">3.8</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 49</span></div></td><td class="px-3 py-2 text-right text-rose-400 font-bold font-mono">-2.7</td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">2.2</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 29</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">2.1</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 27</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.5</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 7</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.0</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 0</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.4</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 5</span></div></td><td class="px-3 py-2 text-right text-orange-400 font-bold font-mono">2.1</td>
+    </tr>
+<tr class="group border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors">
+      <td class="px-3 py-2 text-slate-500 text-sm">42</td>
+      <td class="px-3 py-2 font-medium text-white">
+        <div class="flex items-center gap-3 min-w-0">
+          <img src="https://www.wkbl.or.kr/static/images/player/pimg/m_096007.jpg" alt="" aria-hidden="true" class="w-8 h-8 shrink-0 rounded-full object-cover bg-slate-800 border border-slate-700 shadow-sm" loading="lazy" data-placeholder="/static/images/player_placeholder.svg" onerror="if(!this.dataset.placeholderApplied){this.dataset.placeholderApplied='1';this.src=this.dataset.placeholder;}">
+          <div class="flex items-center gap-2 min-w-0">
+            <a href="/player/096007" class="player-name hover:text-orange-400 transition-colors truncate break-keep min-w-0">하지윤</a>
+            <span class="hidden"></span>
+          </div>
+        </div>
+      </td>
+      <td class="px-3 py-2"><a href="/team/%ED%95%98%EB%82%98%EC%9D%80%ED%96%89" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium hover:brightness-125 transition" style="background-color: #00949020; color: #009490; border: 1px solid #00949040"><img src="/static/images/team_09.png" alt="" aria-hidden="true" class="w-4 h-4 object-contain"><span class="truncate max-w-[96px] sm:max-w-[140px]">하나은행</span></a></td>
+      <td class="px-3 py-2 text-right text-slate-400">1</td>
+      <td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-orange-400 font-bold font-mono">3.0</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 3</span></div></td><td class="px-3 py-2 text-right text-rose-400 font-bold font-mono">-24.0</td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.0</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 0</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">2.0</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 2</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.0</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 0</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.0</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 0</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">2.0</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 2</span></div></td><td class="px-3 py-2 text-right text-orange-400 font-bold font-mono">2.1</td>
+    </tr>
+<tr class="group border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors">
+      <td class="px-3 py-2 text-slate-500 text-sm">43</td>
+      <td class="px-3 py-2 font-medium text-white">
+        <div class="flex items-center gap-3 min-w-0">
+          <img src="https://www.wkbl.or.kr/static/images/player/pimg/m_096028.jpg" alt="" aria-hidden="true" class="w-8 h-8 shrink-0 rounded-full object-cover bg-slate-800 border border-slate-700 shadow-sm" loading="lazy" data-placeholder="/static/images/player_placeholder.svg" onerror="if(!this.dataset.placeholderApplied){this.dataset.placeholderApplied='1';this.src=this.dataset.placeholder;}">
+          <div class="flex items-center gap-2 min-w-0">
+            <a href="/player/096028" class="player-name hover:text-orange-400 transition-colors truncate break-keep min-w-0">하마니시 나나미</a>
+            <span class="hidden"></span>
+          </div>
+        </div>
+      </td>
+      <td class="px-3 py-2"><a href="/team/%EC%82%BC%EC%84%B1%EC%83%9D%EB%AA%85" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium hover:brightness-125 transition" style="background-color: #007AFF20; color: #007AFF; border: 1px solid #007AFF40"><img src="/static/images/team_03.png" alt="" aria-hidden="true" class="w-4 h-4 object-contain"><span class="truncate max-w-[96px] sm:max-w-[140px]">삼성생명</span></a></td>
+      <td class="px-3 py-2 text-right text-slate-400">12</td>
+      <td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-orange-400 font-bold font-mono">4.1</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 49</span></div></td><td class="px-3 py-2 text-right text-rose-400 font-bold font-mono">-2.0</td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">2.4</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 29</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">2.8</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 33</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.7</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 8</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.2</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 2</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">1.6</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 19</span></div></td><td class="px-3 py-2 text-right text-orange-400 font-bold font-mono">2.1</td>
+    </tr>
+<tr class="group border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors">
+      <td class="px-3 py-2 text-slate-500 text-sm">44</td>
+      <td class="px-3 py-2 font-medium text-white">
+        <div class="flex items-center gap-3 min-w-0">
+          <img src="https://www.wkbl.or.kr/static/images/player/pimg/m_095830.jpg" alt="" aria-hidden="true" class="w-8 h-8 shrink-0 rounded-full object-cover bg-slate-800 border border-slate-700 shadow-sm" loading="lazy" data-placeholder="/static/images/player_placeholder.svg" onerror="if(!this.dataset.placeholderApplied){this.dataset.placeholderApplied='1';this.src=this.dataset.placeholder;}">
+          <div class="flex items-center gap-2 min-w-0">
+            <a href="/player/095830" class="player-name hover:text-orange-400 transition-colors truncate break-keep min-w-0">고서연</a>
+            <span class="hidden"></span>
+          </div>
+        </div>
+      </td>
+      <td class="px-3 py-2"><a href="/team/%ED%95%98%EB%82%98%EC%9D%80%ED%96%89" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium hover:brightness-125 transition" style="background-color: #00949020; color: #009490; border: 1px solid #00949040"><img src="/static/images/team_09.png" alt="" aria-hidden="true" class="w-4 h-4 object-contain"><span class="truncate max-w-[96px] sm:max-w-[140px]">하나은행</span></a></td>
+      <td class="px-3 py-2 text-right text-slate-400">13</td>
+      <td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-orange-400 font-bold font-mono">3.2</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 41</span></div></td><td class="px-3 py-2 text-right text-sky-400 font-bold font-mono">+5.8</td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">2.2</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 28</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">1.8</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 23</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.5</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 6</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.0</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 0</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.7</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 9</span></div></td><td class="px-3 py-2 text-right text-orange-400 font-bold font-mono">2.0</td>
+    </tr>
+<tr class="group border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors">
+      <td class="px-3 py-2 text-slate-500 text-sm">45</td>
+      <td class="px-3 py-2 font-medium text-white">
+        <div class="flex items-center gap-3 min-w-0">
+          <img src="https://www.wkbl.or.kr/static/images/player/pimg/m_095832.jpg" alt="" aria-hidden="true" class="w-8 h-8 shrink-0 rounded-full object-cover bg-slate-800 border border-slate-700 shadow-sm" loading="lazy" data-placeholder="/static/images/player_placeholder.svg" onerror="if(!this.dataset.placeholderApplied){this.dataset.placeholderApplied='1';this.src=this.dataset.placeholder;}">
+          <div class="flex items-center gap-2 min-w-0">
+            <a href="/player/095832" class="player-name hover:text-orange-400 transition-colors truncate break-keep min-w-0">박진영</a>
+            <span class="hidden"></span>
+          </div>
+        </div>
+      </td>
+      <td class="px-3 py-2"><a href="/team/%ED%95%98%EB%82%98%EC%9D%80%ED%96%89" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium hover:brightness-125 transition" style="background-color: #00949020; color: #009490; border: 1px solid #00949040"><img src="/static/images/team_09.png" alt="" aria-hidden="true" class="w-4 h-4 object-contain"><span class="truncate max-w-[96px] sm:max-w-[140px]">하나은행</span></a></td>
+      <td class="px-3 py-2 text-right text-slate-400">13</td>
+      <td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-orange-400 font-bold font-mono">4.3</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 56</span></div></td><td class="px-3 py-2 text-right text-sky-400 font-bold font-mono">+1.9</td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">2.5</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 32</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.7</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 9</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.1</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 1</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.2</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 3</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.8</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 11</span></div></td><td class="px-3 py-2 text-right text-orange-400 font-bold font-mono">2.0</td>
+    </tr>
+<tr class="group border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors">
+      <td class="px-3 py-2 text-slate-500 text-sm">46</td>
+      <td class="px-3 py-2 font-medium text-white">
+        <div class="flex items-center gap-3 min-w-0">
+          <img src="https://www.wkbl.or.kr/static/images/player/pimg/m_095899.jpg" alt="" aria-hidden="true" class="w-8 h-8 shrink-0 rounded-full object-cover bg-slate-800 border border-slate-700 shadow-sm" loading="lazy" data-placeholder="/static/images/player_placeholder.svg" onerror="if(!this.dataset.placeholderApplied){this.dataset.placeholderApplied='1';this.src=this.dataset.placeholder;}">
+          <div class="flex items-center gap-2 min-w-0">
+            <a href="/player/095899" class="player-name hover:text-orange-400 transition-colors truncate break-keep min-w-0">김정은</a>
+            <span class="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"><span class="px-2 py-0.5 rounded bg-slate-800/50 border border-slate-700/50 text-[10px] font-mono text-slate-500 hover:text-slate-200 transition-colors whitespace-nowrap cursor-help" title="player_id: 095899" aria-label="player id 095899">ID 899</span></span>
+          </div>
+        </div>
+      </td>
+      <td class="px-3 py-2"><a href="/team/BNK%20%EC%8D%B8" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium hover:brightness-125 transition" style="background-color: #D6001C20; color: #D6001C; border: 1px solid #D6001C40"><img src="/static/images/team_11.png" alt="" aria-hidden="true" class="w-4 h-4 object-contain"><span class="truncate max-w-[96px] sm:max-w-[140px]">BNK 썸</span></a></td>
+      <td class="px-3 py-2 text-right text-slate-400">12</td>
+      <td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-orange-400 font-bold font-mono">3.9</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 47</span></div></td><td class="px-3 py-2 text-right text-sky-400 font-bold font-mono">+0.6</td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">2.3</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 28</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.4</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 5</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.2</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 2</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.1</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 1</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.5</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 6</span></div></td><td class="px-3 py-2 text-right text-orange-400 font-bold font-mono">1.7</td>
+    </tr>
+<tr class="group border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors">
+      <td class="px-3 py-2 text-slate-500 text-sm">47</td>
+      <td class="px-3 py-2 font-medium text-white">
+        <div class="flex items-center gap-3 min-w-0">
+          <img src="https://www.wkbl.or.kr/static/images/player/pimg/m_095259.jpg" alt="" aria-hidden="true" class="w-8 h-8 shrink-0 rounded-full object-cover bg-slate-800 border border-slate-700 shadow-sm" loading="lazy" data-placeholder="/static/images/player_placeholder.svg" onerror="if(!this.dataset.placeholderApplied){this.dataset.placeholderApplied='1';this.src=this.dataset.placeholder;}">
+          <div class="flex items-center gap-2 min-w-0">
+            <a href="/player/095259" class="player-name hover:text-orange-400 transition-colors truncate break-keep min-w-0">양인영</a>
+            <span class="hidden"></span>
+          </div>
+        </div>
+      </td>
+      <td class="px-3 py-2"><a href="/team/%ED%95%98%EB%82%98%EC%9D%80%ED%96%89" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium hover:brightness-125 transition" style="background-color: #00949020; color: #009490; border: 1px solid #00949040"><img src="/static/images/team_09.png" alt="" aria-hidden="true" class="w-4 h-4 object-contain"><span class="truncate max-w-[96px] sm:max-w-[140px]">하나은행</span></a></td>
+      <td class="px-3 py-2 text-right text-slate-400">9</td>
+      <td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-orange-400 font-bold font-mono">2.1</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 19</span></div></td><td class="px-3 py-2 text-right text-rose-400 font-bold font-mono">-0.6</td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">2.4</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 22</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.6</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 5</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.2</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 2</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.3</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 3</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.9</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 8</span></div></td><td class="px-3 py-2 text-right text-orange-400 font-bold font-mono">1.4</td>
+    </tr>
+<tr class="group border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors">
+      <td class="px-3 py-2 text-slate-500 text-sm">48</td>
+      <td class="px-3 py-2 font-medium text-white">
+        <div class="flex items-center gap-3 min-w-0">
+          <img src="https://www.wkbl.or.kr/static/images/player/pimg/m_096001.jpg" alt="" aria-hidden="true" class="w-8 h-8 shrink-0 rounded-full object-cover bg-slate-800 border border-slate-700 shadow-sm" loading="lazy" data-placeholder="/static/images/player_placeholder.svg" onerror="if(!this.dataset.placeholderApplied){this.dataset.placeholderApplied='1';this.src=this.dataset.placeholder;}">
+          <div class="flex items-center gap-2 min-w-0">
+            <a href="/player/096001" class="player-name hover:text-orange-400 transition-colors truncate break-keep min-w-0">김도연</a>
+            <span class="hidden"></span>
+          </div>
+        </div>
+      </td>
+      <td class="px-3 py-2"><a href="/team/BNK%20%EC%8D%B8" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium hover:brightness-125 transition" style="background-color: #D6001C20; color: #D6001C; border: 1px solid #D6001C40"><img src="/static/images/team_11.png" alt="" aria-hidden="true" class="w-4 h-4 object-contain"><span class="truncate max-w-[96px] sm:max-w-[140px]">BNK 썸</span></a></td>
+      <td class="px-3 py-2 text-right text-slate-400">11</td>
+      <td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-orange-400 font-bold font-mono">2.1</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 23</span></div></td><td class="px-3 py-2 text-right text-rose-400 font-bold font-mono">-1.5</td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">2.4</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 26</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.1</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 1</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.1</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 1</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.7</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 8</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.3</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 3</span></div></td><td class="px-3 py-2 text-right text-orange-400 font-bold font-mono">1.2</td>
+    </tr>
+<tr class="group border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors">
+      <td class="px-3 py-2 text-slate-500 text-sm">49</td>
+      <td class="px-3 py-2 font-medium text-white">
+        <div class="flex items-center gap-3 min-w-0">
+          <img src="https://www.wkbl.or.kr/static/images/player/pimg/m_095210.jpg" alt="" aria-hidden="true" class="w-8 h-8 shrink-0 rounded-full object-cover bg-slate-800 border border-slate-700 shadow-sm" loading="lazy" data-placeholder="/static/images/player_placeholder.svg" onerror="if(!this.dataset.placeholderApplied){this.dataset.placeholderApplied='1';this.src=this.dataset.placeholder;}">
+          <div class="flex items-center gap-2 min-w-0">
+            <a href="/player/095210" class="player-name hover:text-orange-400 transition-colors truncate break-keep min-w-0">심성영</a>
+            <span class="hidden"></span>
+          </div>
+        </div>
+      </td>
+      <td class="px-3 py-2"><a href="/team/%EC%9A%B0%EB%A6%AC%EC%9D%80%ED%96%89" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium hover:brightness-125 transition" style="background-color: #005BAA20; color: #005BAA; border: 1px solid #005BAA40"><img src="/static/images/team_05.png" alt="" aria-hidden="true" class="w-4 h-4 object-contain"><span class="truncate max-w-[96px] sm:max-w-[140px]">우리은행</span></a></td>
+      <td class="px-3 py-2 text-right text-slate-400">8</td>
+      <td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-orange-400 font-bold font-mono">3.0</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 24</span></div></td><td class="px-3 py-2 text-right text-rose-400 font-bold font-mono">-7.4</td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">1.8</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 14</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.4</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 3</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.2</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 2</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.0</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 0</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.1</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 1</span></div></td><td class="px-3 py-2 text-right text-orange-400 font-bold font-mono">1.2</td>
+    </tr>
+<tr class="group border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors">
+      <td class="px-3 py-2 text-slate-500 text-sm">50</td>
+      <td class="px-3 py-2 font-medium text-white">
+        <div class="flex items-center gap-3 min-w-0">
+          <img src="https://www.wkbl.or.kr/static/images/player/pimg/m_096002.jpg" alt="" aria-hidden="true" class="w-8 h-8 shrink-0 rounded-full object-cover bg-slate-800 border border-slate-700 shadow-sm" loading="lazy" data-placeholder="/static/images/player_placeholder.svg" onerror="if(!this.dataset.placeholderApplied){this.dataset.placeholderApplied='1';this.src=this.dataset.placeholder;}">
+          <div class="flex items-center gap-2 min-w-0">
+            <a href="/player/096002" class="player-name hover:text-orange-400 transition-colors truncate break-keep min-w-0">최예슬</a>
+            <span class="hidden"></span>
+          </div>
+        </div>
+      </td>
+      <td class="px-3 py-2"><a href="/team/%EC%82%BC%EC%84%B1%EC%83%9D%EB%AA%85" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium hover:brightness-125 transition" style="background-color: #007AFF20; color: #007AFF; border: 1px solid #007AFF40"><img src="/static/images/team_03.png" alt="" aria-hidden="true" class="w-4 h-4 object-contain"><span class="truncate max-w-[96px] sm:max-w-[140px]">삼성생명</span></a></td>
+      <td class="px-3 py-2 text-right text-slate-400">11</td>
+      <td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-orange-400 font-bold font-mono">2.5</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 27</span></div></td><td class="px-3 py-2 text-right text-rose-400 font-bold font-mono">-2.4</td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">1.7</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 19</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.4</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 4</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.2</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 2</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.0</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 0</span></div></td><td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-300 font-mono">0.7</span><span class="text-slate-500 text-[10px] font-mono whitespace-nowrap">TOT 8</span></div></td><td class="px-3 py-2 text-right text-orange-400 font-bold font-mono">1.1</td>
+    </tr></tbody>
+    </table></div></div></main>
+  <footer class="border-t border-slate-800 py-6 text-center text-slate-500 text-sm">Built with OCaml + Dream + HTMX</footer>
+</body>
+</html>

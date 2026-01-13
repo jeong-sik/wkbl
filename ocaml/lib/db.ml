@@ -833,8 +833,26 @@ module Queries = struct
   let ensure_games_index_season_date = (unit ->. unit) {|
     CREATE INDEX IF NOT EXISTS idx_games_season_date ON games(season_code, game_date)
   |}
+  (* Drop old MATERIALIZED VIEW to allow schema change *)
+  let drop_leaders_base_cache = (unit ->. unit) {|
+    DROP MATERIALIZED VIEW IF EXISTS leaders_base_cache CASCADE
+  |}
   let ensure_leaders_base_cache_view = (unit ->. unit) {|
     CREATE MATERIALIZED VIEW IF NOT EXISTS leaders_base_cache AS
+    WITH player_team_games AS (
+      -- Count games per player per team to find primary team
+      SELECT s.player_id, s.team_code, COUNT(*) as game_count
+      FROM game_stats s
+      JOIN games g ON g.game_id = s.game_id
+      WHERE g.game_type != '10'
+      GROUP BY s.player_id, s.team_code
+    ),
+    primary_team AS (
+      -- Select team with most games for each player
+      SELECT DISTINCT ON (player_id) player_id, team_code
+      FROM player_team_games
+      ORDER BY player_id, game_count DESC
+    )
     SELECT
       g.season_code,
       p.player_id,
@@ -858,7 +876,8 @@ module Queries = struct
     FROM game_stats s
     JOIN games g ON g.game_id = s.game_id
     JOIN players p ON s.player_id = p.player_id
-    JOIN teams t ON s.team_code = t.team_code
+    JOIN primary_team pt ON pt.player_id = s.player_id
+    JOIN teams t ON t.team_code = pt.team_code
     WHERE g.game_type != '10'
     GROUP BY g.season_code, p.player_id, p.player_name, t.team_name_kr
   |}
@@ -2567,7 +2586,8 @@ end
       let* () = Db.exec Queries.ensure_game_stats_index_game_team () in
       let* () = Db.exec Queries.ensure_games_index_season_type () in
       let* () = Db.exec Queries.ensure_games_index_season_date () in
-      (* Leaders base cache MATERIALIZED VIEW from main *)
+      (* Leaders base cache MATERIALIZED VIEW - drop first to update schema *)
+      let* () = Db.exec Queries.drop_leaders_base_cache () in
       let* () = Db.exec Queries.ensure_leaders_base_cache_view () in
       let* () = Db.exec Queries.ensure_leaders_base_cache_unique () in
       let* () = Db.exec Queries.ensure_leaders_base_cache_index_season () in
