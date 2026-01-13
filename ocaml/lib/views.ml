@@ -546,7 +546,6 @@ let layout ~title ~content =
         <div class="flex items-center gap-3 shrink-0">
           <span class="text-2xl">🏀</span>
           <h1 class="text-lg font-bold text-slate-900 dark:text-slate-200">WKBL <span class="text-orange-500">Analytics</span></h1>
-          <span class="hidden sm:inline text-xs text-slate-500 dark:text-slate-400 font-mono">OCaml Edition</span>
         </div>
         <button onclick="toggleTheme()" class="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-orange-500 dark:hover:text-orange-400 transition sm:hidden" aria-label="Toggle theme">
           <svg class="w-5 h-5 dark:hidden" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
