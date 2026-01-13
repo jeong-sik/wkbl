@@ -2280,6 +2280,7 @@ let player_profile_page ?(leaderboards=None) (profile: player_profile) ~scope ~(
           team_badge_html
           video_links_html
           career_chips
+          "" (* Placeholder for hero footer element - line 2231 %s *)
           season_stats_component
           recent_games_header_html
           recent_rows
