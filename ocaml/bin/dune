@@ -1,4 +1,4 @@
 (executable
  (name main)
  (public_name wkbl)
- (libraries wkbl dream caqti-driver-postgresql))
+ (libraries wkbl dream caqti-driver-postgresql lwt.unix))

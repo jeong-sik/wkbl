@@ -671,3 +671,48 @@ select:focus-visible {
   align-items: center;
   gap: 0.5rem;
 }
+
+/* ===========================================
+   10. Global Loading Indicator
+   =========================================== */
+
+.global-loading-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: linear-gradient(90deg, rgba(249, 115, 22, 0.3), rgba(249, 115, 22, 0.9), rgba(56, 189, 248, 0.6));
+  transform: scaleX(0);
+  transform-origin: left;
+  opacity: 0;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+html.is-loading .global-loading-bar,
+html.htmx-loading .global-loading-bar {
+  opacity: 1;
+  animation: loadingBar 1.2s ease-in-out infinite;
+}
+
+@keyframes loadingBar {
+  0% {
+    transform: scaleX(0.05);
+  }
+  50% {
+    transform: scaleX(0.6);
+  }
+  100% {
+    transform: scaleX(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.is-loading .global-loading-bar,
+  html.htmx-loading .global-loading-bar {
+    animation: none;
+    opacity: 1;
+    transform: scaleX(0.2);
+  }
+}

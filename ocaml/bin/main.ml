@@ -98,6 +98,29 @@ let () =
   Printf.printf "Using DB path: %s\n%%!" db_url;
   Printf.printf "Listening on: 0.0.0.0:%d\n%%!" port;
 
+  let static_handler request =
+    let open Lwt.Syntax in
+    let* response = Dream.static static_path request in
+    Dream.set_header response "Cache-Control" "public, max-age=31536000, immutable";
+    Dream.set_header response "Vary" "Accept-Encoding";
+    Lwt.return response
+  in
+
+  let favicon_handler _request =
+    let open Lwt.Syntax in
+    let svg_path = Filename.concat static_path "images/player_placeholder.svg" in
+    if Sys.file_exists svg_path then (
+      let* body = Lwt_io.with_file ~mode:Lwt_io.Input svg_path Lwt_io.read in
+      Dream.respond
+        ~headers:[
+          ("Content-Type", "image/svg+xml");
+          ("Cache-Control", "public, max-age=86400");
+        ]
+        body
+    ) else
+      Dream.respond ~status:`Not_Found ""
+  in
+
   Dream.run ~interface:"0.0.0.0" ~port ~error_handler:Dream.debug_error_handler
   @@ Dream.logger
   (* Force UTF-8 for HTML without breaking static assets. *)
@@ -107,14 +130,24 @@ let () =
       (match Dream.header response "Content-Type" with
       | Some ct when has_prefix ~prefix:"text/html" (String.lowercase_ascii ct) ->
           Dream.set_header response "Content-Type" "text/html; charset=utf-8"
+      | Some _ -> ()
+      | _ -> ());
+      (match Dream.header response "Content-Type" with
+      | Some ct when has_prefix ~prefix:"text/html" (String.lowercase_ascii ct) ->
+          (match Dream.method_ request, Dream.header response "Cache-Control" with
+          | `GET, None ->
+              Dream.set_header response "Cache-Control" "public, max-age=60, stale-while-revalidate=300"
+          | _ -> ())
       | _ -> ());
       Lwt.return response)
   @@ Dream.router [
 
     (* Static Assets - Correctly scoped *)
     Dream.scope "/static" [] [
-      Dream.get "**" (Dream.static static_path)
+      Dream.get "**" static_handler
     ];
+
+    Dream.get "/favicon.ico" favicon_handler;
 
     (* Home Page *)
     Dream.get "/" (fun _ ->
