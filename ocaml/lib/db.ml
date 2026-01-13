@@ -806,6 +806,46 @@ module Queries = struct
   let ensure_games_index_season_date = (unit ->. unit) {|
     CREATE INDEX IF NOT EXISTS idx_games_season_date ON games(season_code, game_date)
   |}
+  let ensure_leaders_base_cache_view = (unit ->. unit) {|
+    CREATE MATERIALIZED VIEW IF NOT EXISTS leaders_base_cache AS
+    SELECT
+      g.season_code,
+      p.player_id,
+      p.player_name,
+      t.team_name_kr,
+      COUNT(*)::int AS gp,
+      COALESCE(SUM(s.min_seconds), 0)::int AS min_seconds,
+      COALESCE(SUM(s.pts), 0)::int AS pts,
+      COALESCE(SUM(s.reb_tot), 0)::int AS reb,
+      COALESCE(SUM(s.ast), 0)::int AS ast,
+      COALESCE(SUM(s.stl), 0)::int AS stl,
+      COALESCE(SUM(s.blk), 0)::int AS blk,
+      COALESCE(SUM(s.tov), 0)::int AS tov,
+      COALESCE(SUM(s.game_score), 0)::float8 AS eff,
+      COALESCE(SUM(s.fg_2p_m + s.fg_3p_m), 0)::int AS fg_m,
+      COALESCE(SUM(s.fg_2p_a + s.fg_3p_a), 0)::int AS fg_a,
+      COALESCE(SUM(s.fg_3p_m), 0)::int AS fg3_m,
+      COALESCE(SUM(s.fg_3p_a), 0)::int AS fg3_a,
+      COALESCE(SUM(s.ft_m), 0)::int AS ft_m,
+      COALESCE(SUM(s.ft_a), 0)::int AS ft_a
+    FROM game_stats s
+    JOIN games g ON g.game_id = s.game_id
+    JOIN players p ON s.player_id = p.player_id
+    JOIN teams t ON s.team_code = t.team_code
+    WHERE g.game_type != '10'
+    GROUP BY g.season_code, p.player_id, p.player_name, t.team_name_kr
+  |}
+  let ensure_leaders_base_cache_unique = (unit ->. unit) {|
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_leaders_base_cache_unique
+    ON leaders_base_cache(season_code, player_id, team_name_kr)
+  |}
+  let ensure_leaders_base_cache_index_season = (unit ->. unit) {|
+    CREATE INDEX IF NOT EXISTS idx_leaders_base_cache_season
+    ON leaders_base_cache(season_code)
+  |}
+  let refresh_leaders_base_cache = (unit ->. unit) {|
+    REFRESH MATERIALIZED VIEW leaders_base_cache
+  |}
   let ensure_score_mismatch_view = (unit ->. unit) {|
     CREATE OR REPLACE VIEW score_mismatch_games AS
     WITH sums AS (
@@ -1761,6 +1801,52 @@ module Queries = struct
       AND g.game_type != '10'
     GROUP BY p.player_id, p.player_name, t.team_name_kr
   |}
+  let leaders_base_cached = (string ->* Types.leader_base) {|
+    SELECT
+      player_id,
+      player_name,
+      team_name_kr,
+      gp,
+      min_seconds,
+      pts,
+      reb,
+      ast,
+      stl,
+      blk,
+      tov,
+      eff,
+      fg_m,
+      fg_a,
+      fg3_m,
+      fg3_a,
+      ft_m,
+      ft_a
+    FROM leaders_base_cache
+    WHERE season_code = ?
+  |}
+  let leaders_base_cached_all = (unit ->* Types.leader_base) {|
+    SELECT
+      player_id,
+      player_name,
+      team_name_kr,
+      COALESCE(SUM(gp), 0)::int,
+      COALESCE(SUM(min_seconds), 0)::int,
+      COALESCE(SUM(pts), 0)::int,
+      COALESCE(SUM(reb), 0)::int,
+      COALESCE(SUM(ast), 0)::int,
+      COALESCE(SUM(stl), 0)::int,
+      COALESCE(SUM(blk), 0)::int,
+      COALESCE(SUM(tov), 0)::int,
+      COALESCE(SUM(eff), 0)::float8,
+      COALESCE(SUM(fg_m), 0)::int,
+      COALESCE(SUM(fg_a), 0)::int,
+      COALESCE(SUM(fg3_m), 0)::int,
+      COALESCE(SUM(fg3_a), 0)::int,
+      COALESCE(SUM(ft_m), 0)::int,
+      COALESCE(SUM(ft_a), 0)::int
+    FROM leaders_base_cache
+    GROUP BY player_id, player_name, team_name_kr
+  |}
 
   let leaders_pts = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, AVG(s.pts) FROM game_stats s JOIN players p ON s.player_id = p.player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING COUNT(*) >= 5 ORDER BY AVG(s.pts) DESC LIMIT 5 |}
   let leaders_pts_per36 = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, (SUM(s.pts) * 1.0 / SUM(s.min_seconds)) * 36 * 60 FROM game_stats s JOIN players p ON s.player_id = p.player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING SUM(s.min_seconds) >= 6000 ORDER BY (SUM(s.pts) / SUM(s.min_seconds)) DESC LIMIT 5 |}
@@ -2429,6 +2515,10 @@ end
       let* () = Db.exec Queries.ensure_game_stats_index_game_team () in
       let* () = Db.exec Queries.ensure_games_index_season_type () in
       let* () = Db.exec Queries.ensure_games_index_season_date () in
+      let* () = Db.exec Queries.ensure_leaders_base_cache_view () in
+      let* () = Db.exec Queries.ensure_leaders_base_cache_unique () in
+      let* () = Db.exec Queries.ensure_leaders_base_cache_index_season () in
+      let* () = Db.exec Queries.refresh_leaders_base_cache () in
       let* () = Db.exec Queries.ensure_score_mismatch_view () in
       Db.exec Queries.ensure_games_calc_view ()
   let get_teams (module Db : Caqti_lwt.CONNECTION) = Db.collect_list Queries.all_teams ()
@@ -2531,7 +2621,11 @@ end
     Db.collect_list q (season, season)
 
   let get_leaders_base ~season (module Db : Caqti_lwt.CONNECTION) =
-    Db.collect_list Queries.leaders_base_stats (season, season)
+    let s = if String.trim season = "" then "ALL" else season in
+    if s = "ALL" then
+      Db.collect_list Queries.leaders_base_cached_all ()
+    else
+      Db.collect_list Queries.leaders_base_cached s
 
   let get_stat_mvp_eff ~season ~include_mismatch (module Db : Caqti_lwt.CONNECTION) =
     let include_int = if include_mismatch then 1 else 0 in
