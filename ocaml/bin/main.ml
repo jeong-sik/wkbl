@@ -810,6 +810,28 @@ let () =
           | Error e -> Dream.html (Views.error_page (Db.show_db_error e)))
     );
 
+    (* Convenience aliases for transactions *)
+    Dream.get "/draft" (fun request ->
+      let year = Dream.query request "year" |> Option.value ~default:"" in
+      let q = Dream.query request "q" |> Option.value ~default:"" in
+      let params = String.concat "&" (List.filter (fun s -> s <> "") [
+        "tab=draft";
+        (if year <> "" then "year=" ^ year else "");
+        (if q <> "" then "q=" ^ q else "")
+      ]) in
+      Dream.redirect request ("/transactions?" ^ params)
+    );
+    Dream.get "/trade" (fun request ->
+      let year = Dream.query request "year" |> Option.value ~default:"" in
+      let q = Dream.query request "q" |> Option.value ~default:"" in
+      let params = String.concat "&" (List.filter (fun s -> s <> "") [
+        "tab=trade";
+        (if year <> "" then "year=" ^ year else "");
+        (if q <> "" then "q=" ^ q else "")
+      ]) in
+      Dream.redirect request ("/transactions?" ^ params)
+    );
+
     (* Draft / Trade (official transactions) *)
     Dream.get "/transactions" (fun request ->
       let tab =

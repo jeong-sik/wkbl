@@ -1,0 +1,3 @@
+- [ ] wkbl 데이터 복구/재적재 (codex) - 2025-02-14 시작 (MCP timeout으로 수동 기록)
+- [x] wkbl 데이터 복구/재적재 (codex) - 2025-02-14 완료
+- [2026-01-13] masc_status timeout; proceeding without MCP. Task: remove OCaml/HTMX mentions + add contact.

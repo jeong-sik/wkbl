@@ -1,0 +1,2 @@
+WRN 2026-01-12T21:07:00.625 ?.57125    server_start:199: Failed to start server: operation not permitted: /var/folders/bv/cjrbl01x52s6j80krdfb63400000gp/T/nvim.dancer/BwLgGp/nvim.57125.0
+WRN 2026-01-12T21:07:12.458 ui.57092   tui_stop:654: TUI: timed out waiting for DA1 response
