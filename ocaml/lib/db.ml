@@ -487,11 +487,11 @@ module Types = struct
                                  (t int
                                     (t int
                                        (t float
-                                          (t int
-                                             (t int
-                                                (t int
-                                                   (t int
-                                                      (t int int))))))))))))))))
+         (t int
+            (t int
+               (t int
+                  (t int
+                     (t int int)))))))))))))))))
 
   let player_info =
     let encode _ = assert false in
