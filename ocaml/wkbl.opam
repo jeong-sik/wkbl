@@ -14,6 +14,7 @@ depends: [
   "dream" {>= "1.0.0~alpha5"}
   "caqti" {>= "1.9"}
   "caqti-driver-sqlite3" {>= "1.9"}
+  "caqti-driver-postgresql" {>= "1.9"}
   "caqti-lwt" {>= "1.9"}
   "lwt" {>= "5.7"}
   "yojson" {>= "2.1"}
