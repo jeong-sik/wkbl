@@ -46,8 +46,9 @@ docker build -t wkbl --build-arg WKBL_SYNC_DRAFT_TRADE=1 .
 
 ### Railway에 상시 배포 (추천)
 1. Railway에서 GitHub repo를 연결하고, Dockerfile 기반으로 서비스를 생성합니다.
-2. Health check는 `/health`를 사용합니다.
-3. 데이터는 이미지 빌드 단계에서 생성되므로, 최신 데이터가 필요하면 재배포(redeploy)로 갱신합니다.
+2. main 브랜치 업데이트 시 Railway가 자동 배포합니다. (Auto Deploy)
+3. Health check는 `/health`를 사용합니다.
+4. 데이터는 이미지 빌드 단계에서 생성되므로, 최신 데이터가 필요하면 재배포(redeploy)로 갱신합니다.
 
 ### VPS + Cloudflare Tunnel (월 ~$5, 덜 귀찮은 상시 운영)
 - `docs/DEPLOY-VPS.md` 참고
