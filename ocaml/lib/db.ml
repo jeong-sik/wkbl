@@ -66,6 +66,27 @@ type qa_db_report = {
   qdr_duplicate_player_name_sample: qa_duplicate_player_name list;
 }
 
+type leader_base = {
+  lb_player_id: string;
+  lb_player_name: string;
+  lb_team_name: string;
+  lb_gp: int;
+  lb_min_seconds: int;
+  lb_pts: int;
+  lb_reb: int;
+  lb_ast: int;
+  lb_stl: int;
+  lb_blk: int;
+  lb_tov: int;
+  lb_eff: float;
+  lb_fg_m: int;
+  lb_fg_a: int;
+  lb_fg3_m: int;
+  lb_fg3_a: int;
+  lb_ft_m: int;
+  lb_ft_a: int;
+}
+
 (** Database connection URI *)
 let default_db_path = "../data/wkbl.db"
 
@@ -322,6 +343,66 @@ module Types = struct
       Ok { le_player_id = player_id; le_player_name = player_name; le_team_name = team_name; le_stat_value = stat_value }
     in
     custom ~encode ~decode (tup2 string (tup2 string (tup2 string float)))
+
+  let leader_base =
+    let encode _ = assert false in
+    let decode (player_id, rest) =
+      let (player_name, rest) = rest in
+      let (team_name, rest) = rest in
+      let (gp, rest) = rest in
+      let (min_seconds, rest) = rest in
+      let (pts, rest) = rest in
+      let (reb, rest) = rest in
+      let (ast, rest) = rest in
+      let (stl, rest) = rest in
+      let (blk, rest) = rest in
+      let (tov, rest) = rest in
+      let (eff, rest) = rest in
+      let (fg_m, rest) = rest in
+      let (fg_a, rest) = rest in
+      let (fg3_m, rest) = rest in
+      let (fg3_a, rest) = rest in
+      let (ft_m, ft_a) = rest in
+      Ok {
+        lb_player_id = player_id;
+        lb_player_name = player_name;
+        lb_team_name = team_name;
+        lb_gp = gp;
+        lb_min_seconds = min_seconds;
+        lb_pts = pts;
+        lb_reb = reb;
+        lb_ast = ast;
+        lb_stl = stl;
+        lb_blk = blk;
+        lb_tov = tov;
+        lb_eff = eff;
+        lb_fg_m = fg_m;
+        lb_fg_a = fg_a;
+        lb_fg3_m = fg3_m;
+        lb_fg3_a = fg3_a;
+        lb_ft_m = ft_m;
+        lb_ft_a = ft_a;
+      }
+    in
+    let t = tup2 in
+    custom ~encode ~decode
+      (t string
+         (t string
+            (t string
+               (t int
+                  (t int
+                     (t int
+                        (t int
+                           (t int
+                              (t int
+                                 (t int
+                                    (t int
+                                       (t float
+                                          (t int
+                                             (t int
+                                                (t int
+                                                   (t int
+                                                      (t int int))))))))))))))))
 
   let player_info =
     let encode _ = assert false in
@@ -617,6 +698,24 @@ module Queries = struct
   |}
   let ensure_player_external_links_index_player = (unit ->. unit) {|
     CREATE INDEX IF NOT EXISTS idx_player_external_links_player_id ON player_external_links(player_id)
+  |}
+  let ensure_game_stats_index_game = (unit ->. unit) {|
+    CREATE INDEX IF NOT EXISTS idx_game_stats_game_id ON game_stats(game_id)
+  |}
+  let ensure_game_stats_index_player = (unit ->. unit) {|
+    CREATE INDEX IF NOT EXISTS idx_game_stats_player_id ON game_stats(player_id)
+  |}
+  let ensure_game_stats_index_team = (unit ->. unit) {|
+    CREATE INDEX IF NOT EXISTS idx_game_stats_team_code ON game_stats(team_code)
+  |}
+  let ensure_game_stats_index_game_team = (unit ->. unit) {|
+    CREATE INDEX IF NOT EXISTS idx_game_stats_game_team ON game_stats(game_id, team_code)
+  |}
+  let ensure_games_index_season_type = (unit ->. unit) {|
+    CREATE INDEX IF NOT EXISTS idx_games_season_type ON games(season_code, game_type)
+  |}
+  let ensure_games_index_season_date = (unit ->. unit) {|
+    CREATE INDEX IF NOT EXISTS idx_games_season_date ON games(season_code, game_date)
   |}
   let ensure_score_mismatch_view = (unit ->. unit) {|
     CREATE OR REPLACE VIEW score_mismatch_games AS
@@ -1804,6 +1903,35 @@ module Queries = struct
     ORDER BY AVG(s.game_score) DESC
     LIMIT ?
   |}
+  let leaders_base_stats = (tup2 string string ->* Types.leader_base) {|
+    SELECT
+      p.player_id,
+      p.player_name,
+      t.team_name_kr,
+      COUNT(*) as gp,
+      COALESCE(SUM(s.min_seconds), 0),
+      COALESCE(SUM(s.pts), 0),
+      COALESCE(SUM(s.reb_tot), 0),
+      COALESCE(SUM(s.ast), 0),
+      COALESCE(SUM(s.stl), 0),
+      COALESCE(SUM(s.blk), 0),
+      COALESCE(SUM(s.tov), 0),
+      COALESCE(SUM(s.game_score) * 1.0, 0),
+      COALESCE(SUM(s.fg_2p_m + s.fg_3p_m), 0),
+      COALESCE(SUM(s.fg_2p_a + s.fg_3p_a), 0),
+      COALESCE(SUM(s.fg_3p_m), 0),
+      COALESCE(SUM(s.fg_3p_a), 0),
+      COALESCE(SUM(s.ft_m), 0),
+      COALESCE(SUM(s.ft_a), 0)
+    FROM game_stats s
+    JOIN players p ON s.player_id = p.player_id
+    JOIN teams t ON s.team_code = t.team_code
+    JOIN games g ON g.game_id = s.game_id
+    WHERE (? = 'ALL' OR g.season_code = ?)
+      AND g.game_type != '10'
+    GROUP BY p.player_id, p.player_name, t.team_name_kr
+  |}
+
   let leaders_pts = (tup2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, AVG(s.pts) FROM game_stats s JOIN players p ON s.player_id = p.player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING COUNT(*) >= 5 ORDER BY AVG(s.pts) DESC LIMIT 5 |}
   let leaders_pts_per36 = (tup2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, (SUM(s.pts) * 1.0 / SUM(s.min_seconds)) * 36 * 60 FROM game_stats s JOIN players p ON s.player_id = p.player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING SUM(s.min_seconds) >= 6000 ORDER BY (SUM(s.pts) / SUM(s.min_seconds)) DESC LIMIT 5 |}
   let leaders_reb = (tup2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, AVG(s.reb_tot) FROM game_stats s JOIN players p ON s.player_id = p.player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING COUNT(*) >= 5 ORDER BY AVG(s.reb_tot) DESC LIMIT 5 |}
@@ -2462,11 +2590,17 @@ end
       let* () = Db.exec Queries.ensure_player_drafts_index_year () in
 	      let* () = Db.exec Queries.ensure_official_trade_events_table () in
 	      let* () = Db.exec Queries.ensure_official_trade_events_index_date () in
-	      let* () = Db.exec Queries.ensure_official_trade_events_index_year () in
-	      let* () = Db.exec Queries.ensure_player_external_links_table () in
-	      let* () = Db.exec Queries.ensure_player_external_links_index_player () in
-	      let* () = Db.exec Queries.ensure_score_mismatch_view () in
-	      Db.exec Queries.ensure_games_calc_view ()
+      let* () = Db.exec Queries.ensure_official_trade_events_index_year () in
+      let* () = Db.exec Queries.ensure_player_external_links_table () in
+      let* () = Db.exec Queries.ensure_player_external_links_index_player () in
+      let* () = Db.exec Queries.ensure_game_stats_index_game () in
+      let* () = Db.exec Queries.ensure_game_stats_index_player () in
+      let* () = Db.exec Queries.ensure_game_stats_index_team () in
+      let* () = Db.exec Queries.ensure_game_stats_index_game_team () in
+      let* () = Db.exec Queries.ensure_games_index_season_type () in
+      let* () = Db.exec Queries.ensure_games_index_season_date () in
+      let* () = Db.exec Queries.ensure_score_mismatch_view () in
+      Db.exec Queries.ensure_games_calc_view ()
   let get_teams (module Db : Caqti_lwt.CONNECTION) = Db.collect_list Queries.all_teams ()
   let get_seasons (module Db : Caqti_lwt.CONNECTION) = Db.collect_list Queries.all_seasons ()
   let get_player_by_name ~name ~season (module Db : Caqti_lwt.CONNECTION) = let s = if season = "" then "ALL" else season in Db.find_opt Queries.player_by_name (name, (s, s))
@@ -2566,6 +2700,9 @@ end
       | _ -> Queries.leaders_pts
     in
     Db.collect_list q (season, season)
+
+  let get_leaders_base ~season (module Db : Caqti_lwt.CONNECTION) =
+    Db.collect_list Queries.leaders_base_stats (season, season)
 
   let get_stat_mvp_eff ~season ~include_mismatch (module Db : Caqti_lwt.CONNECTION) =
     let include_int = if include_mismatch then 1 else 0 in
@@ -2822,6 +2959,7 @@ let player_profile_cache = Cache.create ~ttl:120.0 ~max_entries:256
 let player_season_stats_cache = Cache.create ~ttl:120.0 ~max_entries:256
 let player_game_logs_cache = Cache.create ~ttl:120.0 ~max_entries:256
 let boxscore_cache = Cache.create ~ttl:120.0 ~max_entries:128
+let leaders_base_cache = Cache.create ~ttl:120.0 ~max_entries:16
 let leaders_cache = Cache.create ~ttl:120.0 ~max_entries:128
 let awards_cache = Cache.create ~ttl:300.0 ~max_entries:32
 let draft_cache = Cache.create ~ttl:300.0 ~max_entries:32
@@ -2984,9 +3122,132 @@ let get_boxscore ~game_id () =
     | Ok None, _ -> Lwt.return (Error (QueryFailed "Game not found"))
     | Error err, _ -> Lwt.return (Error err)
     | _, Error err -> Lwt.return (Error err))
+let get_leaders_base ?(season="ALL") () =
+  let key = cache_key_text season in
+  cached leaders_base_cache key (fun () -> with_db (fun db -> Repo.get_leaders_base ~season db))
+
+let take n items =
+  let rec loop acc count = function
+    | _ when count <= 0 -> List.rev acc
+    | [] -> List.rev acc
+    | x :: xs -> loop (x :: acc) (count - 1) xs
+  in
+  loop [] n items
+
+let leaders_from_base ~scope ~category (bases: leader_base list) =
+  let scope_value = scope |> String.trim |> String.lowercase_ascii in
+  let category_value = category |> String.trim |> String.lowercase_ascii in
+  let to_entry (b: leader_base) value =
+    { le_player_id = b.lb_player_id
+    ; le_player_name = b.lb_player_name
+    ; le_team_name = b.lb_team_name
+    ; le_stat_value = value
+    }
+  in
+  let minutes_total (b: leader_base) = (float_of_int b.lb_min_seconds) /. 60.0 in
+  let minutes_per_game (b: leader_base) =
+    if b.lb_gp = 0 then 0.0 else minutes_total b /. float_of_int b.lb_gp
+  in
+  let per_game_int v (b: leader_base) =
+    if b.lb_gp = 0 then 0.0 else (float_of_int v) /. float_of_int b.lb_gp
+  in
+  let per_game_float v (b: leader_base) =
+    if b.lb_gp = 0 then 0.0 else v /. float_of_int b.lb_gp
+  in
+  let per_36_int v (b: leader_base) =
+    if b.lb_min_seconds <= 0 then 0.0 else (float_of_int v) /. float_of_int b.lb_min_seconds *. 2160.0
+  in
+  let per_36_float v (b: leader_base) =
+    if b.lb_min_seconds <= 0 then 0.0 else v /. float_of_int b.lb_min_seconds *. 2160.0
+  in
+  let fg_pct (b: leader_base) =
+    if b.lb_fg_a = 0 then 0.0 else (float_of_int b.lb_fg_m) /. float_of_int b.lb_fg_a
+  in
+  let fg3_pct (b: leader_base) =
+    if b.lb_fg3_a = 0 then 0.0 else (float_of_int b.lb_fg3_m) /. float_of_int b.lb_fg3_a
+  in
+  let ft_pct (b: leader_base) =
+    if b.lb_ft_a = 0 then 0.0 else (float_of_int b.lb_ft_m) /. float_of_int b.lb_ft_a
+  in
+  let ts_pct (b: leader_base) =
+    let denom = 2.0 *. ((float_of_int b.lb_fg_a) +. 0.44 *. (float_of_int b.lb_ft_a)) in
+    if denom <= 0.0 then 0.0 else (float_of_int b.lb_pts) /. denom
+  in
+  let efg_pct (b: leader_base) =
+    if b.lb_fg_a = 0 then 0.0
+    else
+      ((float_of_int b.lb_fg_m) +. 0.5 *. (float_of_int b.lb_fg3_m)) /. float_of_int b.lb_fg_a
+  in
+  let min_games (b: leader_base) = b.lb_gp >= 5 in
+  let min_minutes (b: leader_base) = b.lb_min_seconds >= 6000 in
+  let min_fga (b: leader_base) = b.lb_fg_a >= 50 in
+  let min_fg3a (b: leader_base) = b.lb_fg3_a >= 20 in
+  let min_fta (b: leader_base) = b.lb_ft_a >= 20 in
+  let min_ts (b: leader_base) = (b.lb_fg_a + b.lb_ft_a) >= 50 in
+  let value_fn, predicate =
+    match scope_value with
+    | "totals" ->
+        (match category_value with
+        | "gp" -> (fun b -> float_of_int b.lb_gp), (fun _ -> true)
+        | "min" -> (fun b -> minutes_total b), (fun _ -> true)
+        | "pts" -> (fun b -> float_of_int b.lb_pts), min_games
+        | "reb" -> (fun b -> float_of_int b.lb_reb), min_games
+        | "ast" -> (fun b -> float_of_int b.lb_ast), min_games
+        | "stl" -> (fun b -> float_of_int b.lb_stl), min_games
+        | "blk" -> (fun b -> float_of_int b.lb_blk), min_games
+        | "tov" -> (fun b -> float_of_int b.lb_tov), min_games
+        | "fg_pct" -> fg_pct, min_fga
+        | "fg3_pct" -> fg3_pct, min_fg3a
+        | "ft_pct" -> ft_pct, min_fta
+        | "ts_pct" -> ts_pct, min_ts
+        | "efg_pct" -> efg_pct, min_fga
+        | _ -> (fun _ -> 0.0), (fun _ -> false))
+    | "per_36" ->
+        (match category_value with
+        | "pts" -> (fun b -> per_36_int b.lb_pts b), min_minutes
+        | "reb" -> (fun b -> per_36_int b.lb_reb b), min_minutes
+        | "ast" -> (fun b -> per_36_int b.lb_ast b), min_minutes
+        | "stl" -> (fun b -> per_36_int b.lb_stl b), min_minutes
+        | "blk" -> (fun b -> per_36_int b.lb_blk b), min_minutes
+        | "tov" -> (fun b -> per_36_int b.lb_tov b), min_minutes
+        | "eff" -> (fun b -> per_36_float b.lb_eff b), min_minutes
+        | "fg_pct" -> fg_pct, min_fga
+        | "fg3_pct" -> fg3_pct, min_fg3a
+        | "ft_pct" -> ft_pct, min_fta
+        | "ts_pct" -> ts_pct, min_ts
+        | "efg_pct" -> efg_pct, min_fga
+        | _ -> (fun _ -> 0.0), (fun _ -> false))
+    | _ ->
+        (match category_value with
+        | "pts" -> (fun b -> per_game_int b.lb_pts b), min_games
+        | "reb" -> (fun b -> per_game_int b.lb_reb b), min_games
+        | "ast" -> (fun b -> per_game_int b.lb_ast b), min_games
+        | "stl" -> (fun b -> per_game_int b.lb_stl b), min_games
+        | "blk" -> (fun b -> per_game_int b.lb_blk b), min_games
+        | "tov" -> (fun b -> per_game_int b.lb_tov b), min_games
+        | "min" -> minutes_per_game, min_games
+        | "eff" -> (fun b -> per_game_float b.lb_eff b), min_games
+        | "fg_pct" -> fg_pct, min_fga
+        | "fg3_pct" -> fg3_pct, min_fg3a
+        | "ft_pct" -> ft_pct, min_fta
+        | "ts_pct" -> ts_pct, min_ts
+        | "efg_pct" -> efg_pct, min_fga
+        | _ -> (fun _ -> 0.0), (fun _ -> false))
+  in
+  bases
+  |> List.filter predicate
+  |> List.map (fun b -> to_entry b (value_fn b))
+  |> List.sort (fun a b -> Float.compare b.le_stat_value a.le_stat_value)
+  |> take 5
+
 let get_leaders ?(season="ALL") ?(scope="per_game") category =
   let key = Printf.sprintf "season=%s|scope=%s|category=%s" season scope category in
-  cached leaders_cache key (fun () -> with_db (fun db -> Repo.get_leaders ~category ~scope ~season db))
+  cached leaders_cache key (fun () ->
+    let open Lwt.Syntax in
+    let* base_res = get_leaders_base ~season () in
+    match base_res with
+    | Error err -> Lwt.return (Error err)
+    | Ok bases -> Lwt.return (Ok (leaders_from_base ~scope ~category bases)))
 
 let get_stat_mvp_eff ?(season="ALL") ?(include_mismatch=false) () =
   let key = Printf.sprintf "mvp|season=%s|mismatch=%b" season include_mismatch in
