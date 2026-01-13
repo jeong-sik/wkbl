@@ -113,7 +113,11 @@ let () =
 
     (* Static Assets - Correctly scoped *)
     Dream.scope "/static" [] [
-      Dream.get "**" (Dream.static static_path)
+      Dream.get "**" (fun request ->
+        let open Lwt.Syntax in
+        let* response = Dream.static static_path request in
+        Dream.set_header response "Cache-Control" "public, max-age=31536000, immutable";
+        Lwt.return response)
     ];
 
     (* Home Page *)
