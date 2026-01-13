@@ -873,6 +873,10 @@ module Queries = struct
   let refresh_leaders_base_cache = (unit ->. unit) {|
     REFRESH MATERIALIZED VIEW leaders_base_cache
   |}
+  (* Migration: Drop old regular VIEWs before creating MATERIALIZED VIEWs *)
+  let drop_score_mismatch_view = (unit ->. unit) {|
+    DROP VIEW IF EXISTS score_mismatch_games CASCADE
+  |}
   (* Materialized View: score_mismatch_games - cached for performance *)
   let ensure_score_mismatch_matview = (unit ->. unit) {|
     CREATE MATERIALIZED VIEW IF NOT EXISTS score_mismatch_games AS
@@ -905,6 +909,9 @@ module Queries = struct
   |}
   let refresh_score_mismatch = (unit ->. unit) {|
     REFRESH MATERIALIZED VIEW CONCURRENTLY score_mismatch_games
+  |}
+  let drop_games_calc_view = (unit ->. unit) {|
+    DROP VIEW IF EXISTS games_calc CASCADE
   |}
   (* Materialized View: games_calc - pre-computed game scores for performance *)
   let ensure_games_calc_matview = (unit ->. unit) {|
@@ -2565,6 +2572,9 @@ end
       let* () = Db.exec Queries.ensure_leaders_base_cache_unique () in
       let* () = Db.exec Queries.ensure_leaders_base_cache_index_season () in
       let* () = Db.exec Queries.refresh_leaders_base_cache () in
+      (* Migration: Drop old regular VIEWs before creating MATERIALIZED VIEWs *)
+      let* () = Db.exec Queries.drop_score_mismatch_view () in
+      let* () = Db.exec Queries.drop_games_calc_view () in
       (* Materialized Views for performance - pre-computed and cached *)
       let* () = Db.exec Queries.ensure_score_mismatch_matview () in
       let* () = Db.exec Queries.ensure_score_mismatch_index () in
