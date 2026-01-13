@@ -2188,6 +2188,9 @@ let player_profile_page ?(leaderboards=None) (profile: player_profile) ~scope ~(
   (* TODO: Restore team_movement_html from commit 6496a34 - lost during merge 106e40a *)
   let team_movement_html = "" in
 
+  (* TODO: Restore leaderboards_html from commit 6496a34 - lost during merge 106e40a *)
+  let leaderboards_html = "" in
+
   let display_name = normalize_name p.name in
   layout ~title:(display_name ^ " | WKBL Profile")
     ~content:(Printf.sprintf {html|<div class="space-y-6 sm:space-y-8 animate-fade-in">
