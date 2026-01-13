@@ -239,6 +239,38 @@ a.card-link:hover {
 }
 
 /* HTMX loading indicator */
+.global-loading {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, rgba(249, 115, 22, 0.2), #f97316, #fb7185, #f97316);
+  background-size: 200% 100%;
+  transform: scaleX(0);
+  transform-origin: left;
+  opacity: 0;
+  z-index: 60;
+  pointer-events: none;
+  box-shadow: 0 0 12px rgba(249, 115, 22, 0.35);
+  transition: opacity 150ms ease, transform 200ms ease;
+}
+
+.global-loading.active {
+  opacity: 1;
+  transform: scaleX(1);
+  animation: loading-bar 900ms ease-in-out infinite;
+}
+
+@keyframes loading-bar {
+  0% {
+    background-position: 0% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
 .htmx-indicator {
   display: none;
   opacity: 0;
