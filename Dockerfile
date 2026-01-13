@@ -14,7 +14,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 USER opam
-WORKDIR /home/opam/src
+WORKDIR /home/opam/src/ocaml
 
 # Update opam repository to find latest dream/caqti versions
 RUN opam update
@@ -46,7 +46,7 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 # Copy binary from build stage
-COPY --from=build /home/opam/src/_build/default/bin/main.exe /app/wkbl-server
+COPY --from=build /home/opam/src/ocaml/_build/default/bin/main.exe /app/wkbl-server
 COPY ocaml/static /app/static
 
 # Expose port
