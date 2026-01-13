@@ -2104,8 +2104,7 @@ let player_profile_page ?(leaderboards=None) (profile: player_profile) ~scope ~(
           (escape_html pm_str)
           g.reb
           g.ast
-          g.stl
-          g.blk)
+          g.stl)
     |> String.concat "\n"
   in
   let birth_chip =
