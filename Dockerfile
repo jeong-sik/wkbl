@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     libgmp-dev \
     libffi-dev \
+    libsqlite3-dev \
     pkg-config \
     perl \
     && rm -rf /var/lib/apt/lists/*
@@ -39,6 +40,7 @@ RUN apt-get update && apt-get install -y \
     libssl3 \
     libpq5 \
     libgmp10 \
+    libsqlite3-0 \
     ca-certificates \
     netbase \
     && rm -rf /var/lib/apt/lists/*
