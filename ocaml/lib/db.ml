@@ -4,9 +4,36 @@
     - Type-safe queries
     - Connection pooling via Caqti
     - All errors as Result, never exceptions
+    - Memory caching for performance (TTL-based)
 *)
 
 open Domain
+
+(** Simple TTL-based memory cache for frequently accessed data *)
+module Cache = struct
+  type 'a entry = {
+    value: 'a;
+    expires_at: float;
+  }
+
+  let players_cache : (string, player_aggregate list entry) Hashtbl.t = Hashtbl.create 16
+  let cache_ttl = 30.0  (* 30 seconds TTL *)
+
+  let make_key ~season ~sort ~search ~limit ~include_mismatch =
+    Printf.sprintf "%s|%s|%s|%d|%b" season sort search limit include_mismatch
+
+  let get key cache =
+    match Hashtbl.find_opt cache key with
+    | Some entry when Unix.gettimeofday () < entry.expires_at -> Some entry.value
+    | Some _ -> Hashtbl.remove cache key; None  (* expired, clean up *)
+    | None -> None
+
+  let set key value cache =
+    let entry = { value; expires_at = Unix.gettimeofday () +. cache_ttl } in
+    Hashtbl.replace cache key entry
+
+  let invalidate_all cache = Hashtbl.clear cache
+end
 
 (** Database error type - explicit, not string *)
 type db_error =
@@ -846,8 +873,9 @@ module Queries = struct
   let refresh_leaders_base_cache = (unit ->. unit) {|
     REFRESH MATERIALIZED VIEW leaders_base_cache
   |}
-  let ensure_score_mismatch_view = (unit ->. unit) {|
-    CREATE OR REPLACE VIEW score_mismatch_games AS
+  (* Materialized View: score_mismatch_games - cached for performance *)
+  let ensure_score_mismatch_matview = (unit ->. unit) {|
+    CREATE MATERIALIZED VIEW IF NOT EXISTS score_mismatch_games AS
     WITH sums AS (
       SELECT game_id, team_code, SUM(pts) AS pts_sum
       FROM game_stats
@@ -872,8 +900,15 @@ module Queries = struct
       OR
       (away_score IS NOT NULL AND away_sum IS NOT NULL AND away_score != away_sum)
   |}
-  let ensure_games_calc_view = (unit ->. unit) {|
-    CREATE OR REPLACE VIEW games_calc AS
+  let ensure_score_mismatch_index = (unit ->. unit) {|
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_score_mismatch_game_id ON score_mismatch_games(game_id)
+  |}
+  let refresh_score_mismatch = (unit ->. unit) {|
+    REFRESH MATERIALIZED VIEW CONCURRENTLY score_mismatch_games
+  |}
+  (* Materialized View: games_calc - pre-computed game scores for performance *)
+  let ensure_games_calc_matview = (unit ->. unit) {|
+    CREATE MATERIALIZED VIEW IF NOT EXISTS games_calc AS
     WITH sums AS (
       SELECT game_id, team_code, SUM(pts) AS pts_sum
       FROM game_stats
@@ -888,6 +923,15 @@ module Queries = struct
     FROM games g
     LEFT JOIN sums sh ON sh.game_id = g.game_id AND sh.team_code = g.home_team_code
     LEFT JOIN sums sa ON sa.game_id = g.game_id AND sa.team_code = g.away_team_code
+  |}
+  let ensure_games_calc_index = (unit ->. unit) {|
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_games_calc_game_id ON games_calc(game_id)
+  |}
+  let ensure_games_calc_season_index = (unit ->. unit) {|
+    CREATE INDEX IF NOT EXISTS idx_games_calc_season ON games_calc(season_code)
+  |}
+  let refresh_games_calc = (unit ->. unit) {|
+    REFRESH MATERIALIZED VIEW CONCURRENTLY games_calc
   |}
   let pbp_periods_by_game = (string ->* string) {|
     SELECT period_code
@@ -2509,18 +2553,31 @@ end
       let* () = Db.exec Queries.ensure_official_trade_events_index_year () in
       let* () = Db.exec Queries.ensure_player_external_links_table () in
       let* () = Db.exec Queries.ensure_player_external_links_index_player () in
+      (* Performance indexes for game_stats - critical for fast queries *)
       let* () = Db.exec Queries.ensure_game_stats_index_game () in
       let* () = Db.exec Queries.ensure_game_stats_index_player () in
       let* () = Db.exec Queries.ensure_game_stats_index_team () in
       let* () = Db.exec Queries.ensure_game_stats_index_game_team () in
       let* () = Db.exec Queries.ensure_games_index_season_type () in
       let* () = Db.exec Queries.ensure_games_index_season_date () in
+      (* Leaders base cache MATERIALIZED VIEW from main *)
       let* () = Db.exec Queries.ensure_leaders_base_cache_view () in
       let* () = Db.exec Queries.ensure_leaders_base_cache_unique () in
       let* () = Db.exec Queries.ensure_leaders_base_cache_index_season () in
       let* () = Db.exec Queries.refresh_leaders_base_cache () in
-      let* () = Db.exec Queries.ensure_score_mismatch_view () in
-      Db.exec Queries.ensure_games_calc_view ()
+      (* Materialized Views for performance - pre-computed and cached *)
+      let* () = Db.exec Queries.ensure_score_mismatch_matview () in
+      let* () = Db.exec Queries.ensure_score_mismatch_index () in
+      let* () = Db.exec Queries.ensure_games_calc_matview () in
+      let* () = Db.exec Queries.ensure_games_calc_index () in
+      Db.exec Queries.ensure_games_calc_season_index ()
+
+    (* Refresh materialized views - call after data sync *)
+    let refresh_matviews (module Db : Caqti_lwt.CONNECTION) =
+      let open Lwt_result.Syntax in
+      let* () = Db.exec Queries.refresh_leaders_base_cache () in
+      let* () = Db.exec Queries.refresh_games_calc () in
+      Db.exec Queries.refresh_score_mismatch ()
   let get_teams (module Db : Caqti_lwt.CONNECTION) = Db.collect_list Queries.all_teams ()
   let get_seasons (module Db : Caqti_lwt.CONNECTION) = Db.collect_list Queries.all_seasons ()
   let get_player_by_name ~name ~season (module Db : Caqti_lwt.CONNECTION) = let s = if season = "" then "ALL" else season in Db.find_opt Queries.player_by_name (name, (s, s))
@@ -3003,6 +3060,7 @@ let filter_player_bases ~search ~sort (items: player_base list) =
   sort_player_bases sort with_margin_threshold
 
 let ensure_schema () = with_db (fun db -> Repo.ensure_schema db)
+let refresh_matviews () = with_db (fun db -> Repo.refresh_matviews db)
 let get_all_teams () =
   cached teams_cache "all" (fun () -> with_db (fun db -> Repo.get_teams db))
 let get_seasons () =
