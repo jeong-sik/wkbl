@@ -527,6 +527,21 @@ let layout ~title ~content =
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>%s</title>
+  <meta name="description" content="WKBL 여자농구 통계 분석 - 선수별 효율, 팀 순위, 박스스코어, 드래프트/이적 정보를 basketball-reference 스타일로 제공합니다.">
+  <meta name="keywords" content="WKBL, 여자농구, 한국여자농구, 통계, 분석, 선수, 팀, 박스스코어">
+  <meta property="og:title" content="%s">
+  <meta property="og:description" content="WKBL 여자농구 통계 분석 - 선수별 효율, 팀 순위, 박스스코어 정보">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="WKBL Analytics">
+  <meta property="og:locale" content="ko_KR">
+  <meta property="og:image" content="https://wkbl.win/static/images/og-image.jpeg">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="%s">
+  <meta name="twitter:description" content="WKBL 여자농구 통계 분석 - 선수별 효율, 팀 순위, 박스스코어 정보">
+  <meta name="twitter:image" content="https://wkbl.win/static/images/og-image.jpeg">
+  <link rel="canonical" href="https://wkbl.win/">
+  <link rel="icon" href="/static/images/app-icon.jpeg" type="image/jpeg">
+  <link rel="apple-touch-icon" href="/static/images/app-icon.jpeg">
   <script src="/static/js/theme-toggle.js?v=%s" data-cfasync="false"></script>
   <script src="/static/js/htmx-1.9.10.min.js?v=%s" defer data-cfasync="false"></script>
   <script src="/static/js/page-transitions.js?v=%s" defer data-cfasync="false"></script>
@@ -577,7 +592,7 @@ let layout ~title ~content =
   <footer class="border-t border-slate-200 dark:border-slate-800 py-6 text-center text-slate-500 dark:text-slate-400 text-sm"></footer>
 </body>
 </html>|html}
-    (escape_html title) v v v v v cf_wa_script content
+    (escape_html title) (escape_html title) (escape_html title) v v v v v cf_wa_script content
 
 (** Home page *)
 let home_page players =
