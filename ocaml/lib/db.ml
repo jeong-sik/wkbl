@@ -866,9 +866,9 @@ module Queries = struct
   let refresh_leaders_base_cache = (unit ->. unit) {|
     REFRESH MATERIALIZED VIEW leaders_base_cache
   |}
-  (* Migration: Drop old regular VIEWs before creating MATERIALIZED VIEWs *)
+  (* Migration: Drop old VIEWs before creating MATERIALIZED VIEWs *)
   let drop_score_mismatch_view = (unit ->. unit) {|
-    DROP VIEW IF EXISTS score_mismatch_games CASCADE
+    DROP MATERIALIZED VIEW IF EXISTS score_mismatch_games CASCADE
   |}
   (* Materialized View: score_mismatch_games - cached for performance *)
   let ensure_score_mismatch_matview = (unit ->. unit) {|
@@ -904,7 +904,7 @@ module Queries = struct
     REFRESH MATERIALIZED VIEW CONCURRENTLY score_mismatch_games
   |}
   let drop_games_calc_view = (unit ->. unit) {|
-    DROP VIEW IF EXISTS games_calc CASCADE
+    DROP MATERIALIZED VIEW IF EXISTS games_calc CASCADE
   |}
   (* Materialized View: games_calc - pre-computed game scores for performance *)
   let ensure_games_calc_matview = (unit ->. unit) {|
