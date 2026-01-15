@@ -7,3 +7,4 @@ venv/
 *.log
 data/wkbl/
 data/wkbl.db*
+ocaml/static/images/originals/
