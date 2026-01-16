@@ -691,6 +691,122 @@ module Types = struct
     let t = t2 in
     custom ~encode ~decode
       (t string (t int (t int (t string (t (option int) (t (option int) string))))))
+
+  (** Historical season type *)
+  let historical_season =
+    let encode _ = assert false in
+    let decode (season_id, rest) =
+      let (season_name, rest) = rest in
+      let (champion_team, rest) = rest in
+      let (runner_up, rest) = rest in
+      let (regular_mvp, rest) = rest in
+      let (finals_mvp, rest) = rest in
+      let (rookie_of_year, rest) = rest in
+      let (scoring_leader, notes) = rest in
+      Ok {
+        hs_season_id = season_id;
+        hs_season_name = season_name;
+        hs_champion_team = champion_team;
+        hs_runner_up = runner_up;
+        hs_regular_mvp = regular_mvp;
+        hs_finals_mvp = finals_mvp;
+        hs_rookie_of_year = rookie_of_year;
+        hs_scoring_leader = scoring_leader;
+        hs_notes = notes;
+      }
+    in
+    let t = t2 in
+    custom ~encode ~decode
+      (t string (t string (t (option string) (t (option string) (t (option string) (t (option string) (t (option string) (t (option string) (option string)))))))))
+
+  (** Legend player type *)
+  let legend_player =
+    let encode _ = assert false in
+    let decode (player_name, rest) =
+      let (career_years, rest) = rest in
+      let (teams, rest) = rest in
+      let (championships, rest) = rest in
+      let (mvp_count, rest) = rest in
+      let (all_star_count, rest) = rest in
+      let (career_points, rest) = rest in
+      let (career_rebounds, rest) = rest in
+      let (career_assists, rest) = rest in
+      let (notable_achievements, is_hall_of_fame) = rest in
+      Ok {
+        lp_player_name = player_name;
+        lp_career_years = career_years;
+        lp_teams = teams;
+        lp_championships = championships;
+        lp_mvp_count = mvp_count;
+        lp_all_star_count = all_star_count;
+        lp_career_points = career_points;
+        lp_career_rebounds = career_rebounds;
+        lp_career_assists = career_assists;
+        lp_notable_achievements = notable_achievements;
+        lp_is_hall_of_fame = is_hall_of_fame;
+      }
+    in
+    let t = t2 in
+    custom ~encode ~decode
+      (t string (t (option string) (t (option string) (t int (t int (t int (t int (t int (t int (t (option string) bool))))))))))
+
+  (** Coach type *)
+  let coach =
+    let encode _ = assert false in
+    let decode (coach_name, rest) =
+      let (team, rest) = rest in
+      let (tenure_start, rest) = rest in
+      let (tenure_end, rest) = rest in
+      let (championships, rest) = rest in
+      let (regular_season_wins, rest) = rest in
+      let (playoff_wins, rest) = rest in
+      let (former_player, rest) = rest in
+      let (player_career_years, notable_achievements) = rest in
+      Ok {
+        c_coach_name = coach_name;
+        c_team = team;
+        c_tenure_start = tenure_start;
+        c_tenure_end = tenure_end;
+        c_championships = championships;
+        c_regular_season_wins = regular_season_wins;
+        c_playoff_wins = playoff_wins;
+        c_former_player = former_player;
+        c_player_career_years = player_career_years;
+        c_notable_achievements = notable_achievements;
+      }
+    in
+    let t = t2 in
+    custom ~encode ~decode
+      (t string (t (option string) (t (option int) (t (option int) (t int (t int (t int (t bool (t (option string) (option string))))))))))
+
+  (** Player career entry type *)
+  let player_career_entry =
+    let encode _ = assert false in
+    let decode (player_name, rest) =
+      let (season_id, rest) = rest in
+      let (team, rest) = rest in
+      let (jersey_number, rest) = rest in
+      let (games_played, rest) = rest in
+      let (points_per_game, rest) = rest in
+      let (rebounds_per_game, rest) = rest in
+      let (assists_per_game, rest) = rest in
+      let (is_allstar, awards) = rest in
+      Ok {
+        pce_player_name = player_name;
+        pce_season_id = season_id;
+        pce_team = team;
+        pce_jersey_number = jersey_number;
+        pce_games_played = games_played;
+        pce_points_per_game = points_per_game;
+        pce_rebounds_per_game = rebounds_per_game;
+        pce_assists_per_game = assists_per_game;
+        pce_is_allstar = is_allstar;
+        pce_awards = awards;
+      }
+    in
+    let t = t2 in
+    custom ~encode ~decode
+      (t string (t string (t string (t (option int) (t (option int) (t (option float) (t (option float) (t (option float) (t bool (option string))))))))))
 end
 
 (** Use oneshot queries to avoid prepared-statement conflicts with PgBouncer. *)
@@ -969,6 +1085,76 @@ module Queries = struct
   |}
   let all_teams = (unit ->* string) "SELECT DISTINCT team_name_kr FROM teams ORDER BY team_name_kr"
   let all_seasons = (unit ->* Types.season_info) "SELECT season_code, season_name FROM seasons ORDER BY season_code"
+
+  (** Historical seasons with champion and MVP data *)
+  let all_historical_seasons = (unit ->* Types.historical_season) {|
+    SELECT
+      season_id,
+      season_name,
+      champion_team,
+      runner_up,
+      regular_mvp,
+      finals_mvp,
+      rookie_of_year,
+      scoring_leader,
+      notes
+    FROM historical_seasons
+    ORDER BY season_id DESC
+  |}
+
+  (** Legend players *)
+  let all_legend_players = (unit ->* Types.legend_player) {|
+    SELECT
+      player_name,
+      career_years,
+      teams,
+      championships,
+      mvp_count,
+      all_star_count,
+      career_points,
+      career_rebounds,
+      career_assists,
+      notable_achievements,
+      is_hall_of_fame
+    FROM legend_players
+    ORDER BY championships DESC, mvp_count DESC, career_points DESC
+  |}
+
+  (** All coaches *)
+  let all_coaches = (unit ->* Types.coach) {|
+    SELECT
+      coach_name,
+      team,
+      tenure_start,
+      tenure_end,
+      championships,
+      regular_season_wins,
+      playoff_wins,
+      former_player,
+      player_career_years,
+      notable_achievements
+    FROM coaches
+    ORDER BY championships DESC, tenure_start DESC
+  |}
+
+  (** Player career history by player name *)
+  let player_career_by_name = (string ->* Types.player_career_entry) {|
+    SELECT
+      player_name,
+      season_id,
+      team,
+      jersey_number,
+      games_played,
+      points_per_game,
+      rebounds_per_game,
+      assists_per_game,
+      is_allstar,
+      awards
+    FROM player_career_history
+    WHERE player_name = ?
+    ORDER BY season_id DESC
+  |}
+
   let player_stats_base = (t2 (t2 string string) int ->* Types.player_aggregate) {|
     SELECT
       p.player_id,
@@ -2584,6 +2770,10 @@ end
       Db.exec Queries.refresh_score_mismatch ()
   let get_teams (module Db : Caqti_lwt.CONNECTION) = Db.collect_list Queries.all_teams ()
   let get_seasons (module Db : Caqti_lwt.CONNECTION) = Db.collect_list Queries.all_seasons ()
+  let get_historical_seasons (module Db : Caqti_lwt.CONNECTION) = Db.collect_list Queries.all_historical_seasons ()
+  let get_legend_players (module Db : Caqti_lwt.CONNECTION) = Db.collect_list Queries.all_legend_players ()
+  let get_coaches (module Db : Caqti_lwt.CONNECTION) = Db.collect_list Queries.all_coaches ()
+  let get_player_career ~player_name (module Db : Caqti_lwt.CONNECTION) = Db.collect_list Queries.player_career_by_name player_name
   let get_player_by_name ~name ~season (module Db : Caqti_lwt.CONNECTION) = let s = if season = "" then "ALL" else season in Db.find_opt Queries.player_by_name (name, (s, s))
   let get_player_aggregate_by_id ~player_id ~season (module Db : Caqti_lwt.CONNECTION) =
     let s = if String.trim season = "" then "ALL" else season in
@@ -2952,6 +3142,10 @@ let draft_picks_cache = Cache.create ~ttl:300.0 ~max_entries:32
 let trade_years_cache = Cache.create ~ttl:300.0 ~max_entries:8
 let trade_events_cache = Cache.create ~ttl:300.0 ~max_entries:32
 let qa_report_cache = Cache.create ~ttl:300.0 ~max_entries:4
+let history_cache = Cache.create ~ttl:(60.0 *. 60.0 *. 6.0) ~max_entries:16  (* 6h TTL for history data *)
+let legends_cache = Cache.create ~ttl:(60.0 *. 60.0 *. 6.0) ~max_entries:16
+let coaches_cache = Cache.create ~ttl:(60.0 *. 60.0 *. 6.0) ~max_entries:16
+let player_career_cache = Cache.create ~ttl:300.0 ~max_entries:128
 
 let take n items =
   let rec loop acc count = function
@@ -3434,3 +3628,22 @@ let get_db_quality_report () : qa_db_report db_result =
         qdr_duplicate_player_name_count = int_or_zero dup_name_count_opt;
         qdr_duplicate_player_name_sample = dup_name_sample;
       })
+
+(* ===== History & Legends Public API ===== *)
+
+let get_historical_seasons () =
+  cached history_cache "all" (fun () ->
+    with_db (fun db -> Repo.get_historical_seasons db))
+
+let get_legend_players () =
+  cached legends_cache "all" (fun () ->
+    with_db (fun db -> Repo.get_legend_players db))
+
+let get_coaches () =
+  cached coaches_cache "all" (fun () ->
+    with_db (fun db -> Repo.get_coaches db))
+
+let get_player_career ~player_name () =
+  let key = Printf.sprintf "player=%s" (cache_key_text player_name) in
+  cached player_career_cache key (fun () ->
+    with_db (fun db -> Repo.get_player_career ~player_name db))

@@ -893,4 +893,35 @@ let () =
       | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
     );
     Dream.get "/health" (fun _ -> Dream.json "{\"status\": \"ok\", \"engine\": \"OCaml/Dream\"}");
+
+    (* History & Legends *)
+    Dream.get "/history" (fun _ ->
+      let open Lwt.Syntax in
+      let* result = Db.get_historical_seasons () in
+      match result with
+      | Ok seasons -> Dream.html (Views.history_page seasons)
+      | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+    );
+    Dream.get "/legends" (fun _ ->
+      let open Lwt.Syntax in
+      let* result = Db.get_legend_players () in
+      match result with
+      | Ok legends -> Dream.html (Views.legends_page legends)
+      | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+    );
+    Dream.get "/coaches" (fun _ ->
+      let open Lwt.Syntax in
+      let* result = Db.get_coaches () in
+      match result with
+      | Ok coaches -> Dream.html (Views.coaches_page coaches)
+      | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+    );
+    Dream.get "/player/:id/career" (fun request ->
+      let open Lwt.Syntax in
+      let player_name = Dream.param request "id" |> Uri.pct_decode in
+      let* result = Db.get_player_career ~player_name () in
+      match result with
+      | Ok entries -> Dream.html (Views.player_career_page ~player_name entries)
+      | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+    );
   ]
