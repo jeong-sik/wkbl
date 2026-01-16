@@ -429,6 +429,62 @@ type prediction_output = {
   breakdown: prediction_breakdown;
 }
 
+(** Historical season data - champions and MVPs *)
+type historical_season = {
+  hs_season_id: string;
+  hs_season_name: string;
+  hs_champion_team: string option;
+  hs_runner_up: string option;
+  hs_regular_mvp: string option;
+  hs_finals_mvp: string option;
+  hs_rookie_of_year: string option;
+  hs_scoring_leader: string option;
+  hs_notes: string option;
+}
+
+(** Legend player data *)
+type legend_player = {
+  lp_player_name: string;
+  lp_career_years: string option;
+  lp_teams: string option;
+  lp_championships: int;
+  lp_mvp_count: int;
+  lp_all_star_count: int;
+  lp_career_points: int;
+  lp_career_rebounds: int;
+  lp_career_assists: int;
+  lp_notable_achievements: string option;
+  lp_is_hall_of_fame: bool;
+}
+
+(** Coach data *)
+type coach = {
+  c_coach_name: string;
+  c_team: string option;
+  c_tenure_start: int option;
+  c_tenure_end: int option;
+  c_championships: int;
+  c_regular_season_wins: int;
+  c_playoff_wins: int;
+  c_former_player: bool;
+  c_player_career_years: string option;
+  c_notable_achievements: string option;
+}
+
+(** Player career history entry - year by year *)
+type player_career_entry = {
+  pce_player_name: string;
+  pce_season_id: string;
+  pce_team: string;
+  pce_jersey_number: int option;
+  pce_games_played: int option;
+  pce_points_per_game: float option;
+  pce_rebounds_per_game: float option;
+  pce_assists_per_game: float option;
+  pce_is_allstar: bool;
+  pce_awards: string option;
+}
+
 (** Helper to map team names to codes *)
 let normalize_label (s: string) =
   let len = String.length s in
