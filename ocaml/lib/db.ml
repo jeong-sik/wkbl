@@ -264,6 +264,11 @@ module Types = struct
     let decode (code, name) = Ok { code; name } in
     custom ~encode ~decode (t2 string string)
 
+  let team_info =
+    let encode _ = assert false in
+    let decode (team_code, team_name) = Ok { team_code; team_name } in
+    custom ~encode ~decode (t2 string string)
+
   let team_totals =
     let encode _ = assert false in
     let decode
