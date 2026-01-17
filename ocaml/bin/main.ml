@@ -370,6 +370,59 @@ Sitemap: https://wkbl.win/sitemap.xml
               | Error e -> Dream.html (Views.error_page (Db.show_db_error e)))
     );
 
+    (* Clutch Stats JSON API *)
+    Dream.get "/api/clutch/:id" (fun request ->
+      let game_id = Dream.param request "id" in
+      let open Lwt.Syntax in
+      let* events_res = Db.get_play_by_play ~game_id () in
+      match events_res with
+      | Error e -> Dream.json (Printf.sprintf "{\"error\": \"%s\"}" (Db.show_db_error e))
+      | Ok events ->
+          let stats = Clutch.calculate_clutch_stats events in
+          let json_items = List.map (fun (s: Clutch.player_clutch_stats) ->
+            `Assoc [
+              "player_name", `String s.player_name;
+              "team_side", `Int s.team_side;
+              "pts", `Int s.pts;
+              "reb", `Int s.reb;
+              "ast", `Int s.ast;
+              "stl", `Int s.stl;
+              "blk", `Int s.blk;
+              "tov", `Int s.tov;
+              "fg3_m", `Int s.fg3_m;
+              "fg2_m", `Int s.fg2_m;
+              "ft_m", `Int s.ft_m;
+            ]
+          ) stats in
+          Dream.json (Yojson.Safe.to_string (`List json_items))
+    );
+
+    (* Player Similarity API *)
+    Dream.get "/api/player/:id/similar" (fun request ->
+      let player_id = Dream.param request "id" in
+      let season = Dream.query request "season" |> Option.value ~default:"ALL" in
+      let open Lwt.Syntax in
+      let* target_res = Db.get_player_aggregate_by_id ~player_id ~season () in
+      match target_res with
+      | Error e -> Dream.json (Printf.sprintf "{\"error\": \"%s\"}" (Db.show_db_error e))
+      | Ok None -> Dream.json "{\"error\": \"Player not found\"}"
+      | Ok (Some target) ->
+          let* all_players_res = Db.get_team_stats ~season ~scope:Totals ~include_mismatch:false () in
+          match all_players_res with
+          | Error e -> Dream.json (Printf.sprintf "{\"error\": \"%s\"}" (Db.show_db_error e))
+          | Ok all_players ->
+              let similar = Similarity.calculate_similar_players target all_players ~limit:5 in
+              let json_items = List.map (fun (s: Similarity.similarity_score) ->
+                `Assoc [
+                  "player_id", `String s.player_id;
+                  "player_name", `String s.player_name;
+                  "team_name", `String s.team_name;
+                  "score", `Float s.score;
+                ]
+              ) similar in
+              Dream.json (Yojson.Safe.to_string (`List json_items))
+    );
+
     (* Leaders *)
     Dream.get "/leaders" (fun request ->
       let open Lwt.Syntax in
@@ -438,7 +491,7 @@ Sitemap: https://wkbl.win/sitemap.xml
             | Some prev_season -> Db.get_stat_mip_eff_delta ~season ~prev_season ~include_mismatch ()
           in
           match mvp_res, mip_res with
-          | Ok mvp, Ok mip -> Dream.html (Views.awards_page ~season ~seasons ~include_mismatch ~prev_season_name ~mvp ~mip)
+          | Ok mvp, Ok mip -> Dream.html (Views.awards_page ~season ~seasons ~include_mismatch ~prev_season_name ~mvp ~mip ())
           | Error e, _ | _, Error e -> Dream.html (Views.error_page (Db.show_db_error e))
     );
 
@@ -645,7 +698,8 @@ Sitemap: https://wkbl.win/sitemap.xml
       let* teams_res = Db.get_all_teams () in
       match seasons_res, teams_res with
       | Error e, _ | _, Error e -> Dream.html (Views.error_page (Db.show_db_error e))
-      | Ok seasons, Ok teams ->
+      | Ok seasons, Ok teams_info ->
+          let teams = List.map (fun (t: Domain.team_info) -> t.team_name) teams_info in
           let season = query_season_or_latest request seasons in
           let render result error =
             Dream.html (Views.predict_page ~season ~seasons ~teams ~home ~away ~is_neutral ~context_enabled ~include_mismatch result error)
