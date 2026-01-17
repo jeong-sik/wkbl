@@ -43,6 +43,11 @@ type season_info = {
   name: string;
 }
 
+type team_info = {
+  team_code: string;
+  team_name: string;
+}
+
 type team_totals = {
   season: string;
   team: string;
