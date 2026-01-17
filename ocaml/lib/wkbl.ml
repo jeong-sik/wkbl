@@ -6,3 +6,5 @@ module Stats = Stats
 module Views = Views
 module Prediction = Prediction
 module Qa = Qa
+module Clutch = Clutch
+module Similarity = Similarity
