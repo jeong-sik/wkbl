@@ -2003,8 +2003,14 @@ let player_profile_page ?(leaderboards=None) (profile: player_profile) ~scope ~(
     | _ -> "-"
   in
   let avg = profile.averages in
+  (* Use most recent team from team_stints instead of averages *)
+  let current_team =
+    match List.rev profile.team_stints with
+    | latest :: _ -> String.trim latest.pts_team_name
+    | [] -> String.trim avg.team_name  (* fallback to averages if no stints *)
+  in
   let team_color =
-    team_code_of_string avg.team_name
+    team_code_of_string current_team
     |> Option.map team_code_to_color
     |> Option.value ~default:"#64748b"
   in
@@ -2020,8 +2026,7 @@ let player_profile_page ?(leaderboards=None) (profile: player_profile) ~scope ~(
         avg.avg_assists
   in
   let team_badge_html =
-    let t = String.trim avg.team_name in
-    if t = "" then "" else team_badge t
+    if current_team = "" then "" else team_badge current_team
   in
   let video_links_html =
     let find_external_link link_type =
@@ -2044,7 +2049,7 @@ let player_profile_page ?(leaderboards=None) (profile: player_profile) ~scope ~(
         (escape_html source_url)
     in
     let name = normalize_label p.name in
-    let team = String.trim avg.team_name |> normalize_label in
+    let team = normalize_label current_team in  (* Use current team, not career average *)
     let base_query = if team = "" then name else Printf.sprintf "%s %s" name team in
     let wkbl_profile =
       "https://www.wkbl.or.kr/player/detail2.asp?pno=" ^ Uri.pct_encode p.id
