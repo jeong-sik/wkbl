@@ -1,14 +1,105 @@
 #!/usr/bin/env python3
+"""
+Compute per-game +/- from stored PBP (play-by-play) data.
+Supports both SQLite (local) and PostgreSQL (production).
+"""
 from __future__ import annotations
 
 import argparse
+import os
 import shutil
 import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any, Protocol, Sequence
+
+# PostgreSQL support (optional)
+try:
+    import psycopg2
+    HAS_PSYCOPG2 = True
+except ImportError:
+    HAS_PSYCOPG2 = False
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 DEFAULT_DB_PATH = ROOT_DIR / "data" / "wkbl.db"
+
+
+class DbConnection(Protocol):
+    """Database connection protocol for SQLite/PostgreSQL abstraction."""
+    def cursor(self) -> Any: ...
+    def execute(self, sql: str, params: Sequence = ()) -> Any: ...
+    def executemany(self, sql: str, params_list: Sequence) -> Any: ...
+    def commit(self) -> None: ...
+    def close(self) -> None: ...
+
+
+class SqliteWrapper:
+    """SQLite connection wrapper."""
+    def __init__(self, path: Path):
+        self.conn = sqlite3.connect(path)
+        self.placeholder = "?"
+
+    def cursor(self):
+        return self.conn.cursor()
+
+    def execute(self, sql: str, params: Sequence = ()):
+        return self.conn.execute(sql, params)
+
+    def executemany(self, sql: str, params_list: Sequence):
+        return self.conn.executemany(sql, params_list)
+
+    def executescript(self, sql: str):
+        return self.conn.executescript(sql)
+
+    def commit(self):
+        self.conn.commit()
+
+    def close(self):
+        self.conn.close()
+
+
+class PostgresWrapper:
+    """PostgreSQL connection wrapper."""
+    def __init__(self, db_url: str):
+        if not HAS_PSYCOPG2:
+            raise ImportError("psycopg2 is required for PostgreSQL support: pip install psycopg2-binary")
+        self.conn = psycopg2.connect(db_url)
+        self.placeholder = "%s"
+
+    def cursor(self):
+        return self.conn.cursor()
+
+    def execute(self, sql: str, params: Sequence = ()):
+        cursor = self.conn.cursor()
+        cursor.execute(sql, params)
+        return cursor
+
+    def executemany(self, sql: str, params_list: Sequence):
+        cursor = self.conn.cursor()
+        cursor.executemany(sql, params_list)
+        return cursor
+
+    def executescript(self, sql: str):
+        """Execute multiple SQL statements."""
+        cursor = self.conn.cursor()
+        for stmt in sql.split(';'):
+            stmt = stmt.strip()
+            if stmt:
+                cursor.execute(stmt)
+        return cursor
+
+    def commit(self):
+        self.conn.commit()
+
+    def close(self):
+        self.conn.close()
+
+
+def q(sql: str, placeholder: str) -> str:
+    """Convert SQLite placeholder (?) to target placeholder (%s for PostgreSQL)."""
+    if placeholder == "?":
+        return sql
+    return sql.replace("?", placeholder)
 
 
 PERIOD_ORDER = {
@@ -34,7 +125,8 @@ class PbpRow:
     clock: str
 
 
-def ensure_schema(conn: sqlite3.Connection) -> None:
+def ensure_schema(conn: SqliteWrapper | PostgresWrapper) -> None:
+    """Ensure player_plus_minus table exists."""
     conn.executescript(
         """
         CREATE TABLE IF NOT EXISTS player_plus_minus (
@@ -49,10 +141,10 @@ def ensure_schema(conn: sqlite3.Connection) -> None:
     )
 
 
-def load_game_teams(conn: sqlite3.Connection, game_id: str) -> tuple[str, str]:
+def load_game_teams(conn: SqliteWrapper | PostgresWrapper, game_id: str) -> tuple[str, str]:
     cursor = conn.cursor()
     cursor.execute(
-        "SELECT home_team_code, away_team_code FROM games WHERE game_id = ?",
+        q("SELECT home_team_code, away_team_code FROM games WHERE game_id = ?", conn.placeholder),
         (game_id,),
     )
     row = cursor.fetchone()
@@ -61,10 +153,10 @@ def load_game_teams(conn: sqlite3.Connection, game_id: str) -> tuple[str, str]:
     home_team_code, away_team_code = row
     return str(home_team_code), str(away_team_code)
 
-def load_official_final_scores(conn: sqlite3.Connection, game_id: str) -> tuple[int, int]:
+def load_official_final_scores(conn: SqliteWrapper | PostgresWrapper, game_id: str) -> tuple[int, int]:
     cursor = conn.cursor()
     cursor.execute(
-        """
+        q("""
         SELECT
           COALESCE(
             g.away_score,
@@ -76,7 +168,7 @@ def load_official_final_scores(conn: sqlite3.Connection, game_id: str) -> tuple[
           ) AS home_score
         FROM games g
         WHERE g.game_id = ?
-        """,
+        """, conn.placeholder),
         (game_id,),
     )
     row = cursor.fetchone()
@@ -88,42 +180,42 @@ def load_official_final_scores(conn: sqlite3.Connection, game_id: str) -> tuple[
     return int(away_score), int(home_score)
 
 
-def load_team_player_ids(conn: sqlite3.Connection, *, game_id: str, team_code: str) -> list[str]:
+def load_team_player_ids(conn: SqliteWrapper | PostgresWrapper, *, game_id: str, team_code: str) -> list[str]:
     cursor = conn.cursor()
     cursor.execute(
-        """
+        q("""
         SELECT s.player_id
         FROM game_stats s
         WHERE s.game_id = ? AND s.team_code = ?
-        """,
+        """, conn.placeholder),
         (game_id, team_code),
     )
     return [str(pid) for (pid,) in cursor.fetchall()]
 
 
-def load_team_minutes(conn: sqlite3.Connection, *, game_id: str, team_code: str) -> dict[str, int]:
+def load_team_minutes(conn: SqliteWrapper | PostgresWrapper, *, game_id: str, team_code: str) -> dict[str, int]:
     cursor = conn.cursor()
     cursor.execute(
-        """
+        q("""
         SELECT player_id, COALESCE(min_seconds, 0)
         FROM game_stats
         WHERE game_id = ? AND team_code = ?
-        """,
+        """, conn.placeholder),
         (game_id, team_code),
     )
     return {str(pid): int(mins or 0) for pid, mins in cursor.fetchall()}
 
 
-def load_name_to_player_id(conn: sqlite3.Connection, *, game_id: str, team_code: str) -> dict[str, str]:
+def load_name_to_player_id(conn: SqliteWrapper | PostgresWrapper, *, game_id: str, team_code: str) -> dict[str, str]:
     cursor = conn.cursor()
     cursor.execute(
-        """
+        q("""
         SELECT p.player_id, p.player_name, COALESCE(SUM(s.min_seconds), 0) AS total_min_seconds
         FROM game_stats s
         JOIN players p ON p.player_id = s.player_id
         WHERE s.game_id = ? AND s.team_code = ?
         GROUP BY p.player_id, p.player_name
-        """,
+        """, conn.placeholder),
         (game_id, team_code),
     )
 
@@ -139,14 +231,14 @@ def load_name_to_player_id(conn: sqlite3.Connection, *, game_id: str, team_code:
     return {name: pid for name, (pid, _mins) in best.items()}
 
 
-def load_pbp_rows(conn: sqlite3.Connection, game_id: str) -> list[PbpRow]:
+def load_pbp_rows(conn: SqliteWrapper | PostgresWrapper, game_id: str) -> list[PbpRow]:
     cursor = conn.cursor()
     cursor.execute(
-        """
+        q("""
         SELECT period_code, event_index, team_side, description, team1_score, team2_score, clock
         FROM play_by_play_events
         WHERE game_id = ?
-        """,
+        """, conn.placeholder),
         (game_id,),
     )
     rows: list[PbpRow] = []
@@ -178,7 +270,7 @@ def extract_player_name(description: str, known_names: list[str]) -> str | None:
 
 
 def compute_plus_minus_for_game(
-    conn: sqlite3.Connection,
+    conn: SqliteWrapper | PostgresWrapper,
     *,
     game_id: str,
 ) -> dict[str, int] | None:
@@ -396,21 +488,34 @@ def compute_plus_minus_for_game(
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Compute per-game +/- from stored PBP (text live) data.")
-    parser.add_argument("--db", type=Path, default=DEFAULT_DB_PATH)
+    parser.add_argument("--db", type=Path, default=DEFAULT_DB_PATH, help="SQLite DB path (default)")
+    parser.add_argument("--db-url", default="", help="PostgreSQL connection URL (overrides --db)")
     parser.add_argument("--game-id", default="", help="Single game_id (e.g. 046-01-37). Empty = all games with PBP.")
     parser.add_argument("--dry-run", action="store_true", help="Compute and report without writing DB.")
-    parser.add_argument("--backup", action="store_true", help="Create a .bak copy next to the DB before edits.")
+    parser.add_argument("--backup", action="store_true", help="Create a .bak copy next to the DB before edits (SQLite only).")
+    parser.add_argument("--limit", type=int, default=0, help="Limit number of games to process (0 = all)")
     args = parser.parse_args()
 
-    if not args.db.exists():
-        raise SystemExit(f"DB not found: {args.db}")
+    # Determine connection type
+    db_url = args.db_url or os.environ.get("WKBL_DATABASE_URL", "")
 
-    if args.backup and not args.dry_run:
-        backup_path = args.db.with_suffix(args.db.suffix + ".bak")
-        shutil.copy2(args.db, backup_path)
-        print(f"Backup created: {backup_path}")
+    if db_url:
+        print(f"Using PostgreSQL: {db_url[:50]}...")
+        conn: SqliteWrapper | PostgresWrapper = PostgresWrapper(db_url)
+        use_postgres = True
+    else:
+        if not args.db.exists():
+            raise SystemExit(f"DB not found: {args.db}")
 
-    conn = sqlite3.connect(args.db)
+        if args.backup and not args.dry_run:
+            backup_path = args.db.with_suffix(args.db.suffix + ".bak")
+            shutil.copy2(args.db, backup_path)
+            print(f"Backup created: {backup_path}")
+
+        print(f"Using SQLite: {args.db}")
+        conn = SqliteWrapper(args.db)
+        use_postgres = False
+
     try:
         ensure_schema(conn)
 
@@ -425,17 +530,36 @@ def main() -> int:
             print("No games with PBP data found.")
             return 0
 
+        if args.limit > 0:
+            game_ids = game_ids[:args.limit]
+
+        print(f"Processing {len(game_ids)} games...")
+
         for i, game_id in enumerate(game_ids, start=1):
             print(f"[{i}/{len(game_ids)}] {game_id}")
             plus_minus = compute_plus_minus_for_game(conn, game_id=game_id)
 
             if not args.dry_run:
-                conn.execute("DELETE FROM player_plus_minus WHERE game_id = ?", (game_id,))
+                # Delete existing data
+                ph = conn.placeholder
+                conn.execute(q("DELETE FROM player_plus_minus WHERE game_id = ?", ph), (game_id,))
+
                 if plus_minus is not None:
-                    conn.executemany(
-                        "INSERT OR REPLACE INTO player_plus_minus(game_id, player_id, plus_minus) VALUES (?, ?, ?)",
-                        [(game_id, pid, pm) for pid, pm in plus_minus.items()],
-                    )
+                    if use_postgres:
+                        # PostgreSQL: use ON CONFLICT
+                        for pid, pm in plus_minus.items():
+                            conn.execute(
+                                """INSERT INTO player_plus_minus(game_id, player_id, plus_minus)
+                                   VALUES (%s, %s, %s)
+                                   ON CONFLICT (game_id, player_id) DO UPDATE SET plus_minus = EXCLUDED.plus_minus""",
+                                (game_id, pid, pm),
+                            )
+                    else:
+                        # SQLite: use INSERT OR REPLACE
+                        conn.executemany(
+                            "INSERT OR REPLACE INTO player_plus_minus(game_id, player_id, plus_minus) VALUES (?, ?, ?)",
+                            [(game_id, pid, pm) for pid, pm in plus_minus.items()],
+                        )
                 conn.commit()
 
         return 0
