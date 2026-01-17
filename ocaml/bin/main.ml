@@ -121,14 +121,35 @@ let () =
     ];
 
     (* Home Page *)
-    Dream.get "/" (fun _ ->
+    Dream.get "/" (fun request ->
       let open Lwt.Syntax in
-      let* players_res = Db.get_players ~limit:20 () in
-      match players_res with
-      | Ok p -> Dream.html (Views.home_page p)
+      let search = Dream.query request "search" |> Option.value ~default:"" in
+      let* seasons_res = Db.get_seasons () in
+      match seasons_res with
       | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+      | Ok seasons ->
+          let season = query_season_or_latest request seasons in
+          let* players_res = Db.get_players ~season ~search ~limit:20 () in
+          match players_res with
+          | Ok p -> Dream.html (Views.home_page ~season ~seasons p)
+          | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
     );
-    
+
+    (* Home Page Table HTMX *)
+    Dream.get "/home/table" (fun request ->
+      let open Lwt.Syntax in
+      let search = Dream.query request "search" |> Option.value ~default:"" in
+      let* seasons_res = Db.get_seasons () in
+      match seasons_res with
+      | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+      | Ok seasons ->
+          let season = query_season_or_latest request seasons in
+          let* players_res = Db.get_players ~season ~search ~limit:20 () in
+          match players_res with
+          | Ok p -> Dream.html (Views.players_table p)
+          | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+    );
+
     (* Handle HEAD requests *)
     Dream.head "/" (fun _ -> Dream.empty `OK);
 

@@ -599,12 +599,19 @@ let layout ~title ~content =
     (escape_html title) (escape_html title) (escape_html title) v v v v v cf_wa_script content
 
 (** Home page *)
-let home_page players =
+let home_page ~season ~seasons players =
+  let season_options =
+    seasons
+    |> List.map (fun (s: season_info) ->
+        let selected = if s.code = season then "selected" else "" in
+        Printf.sprintf {html|<option value="%s" %s>%s</option>|html} s.code selected (escape_html s.name))
+    |> String.concat "\n"
+  in
   let table = players_table players in
   layout ~title:"WKBL Analytics"
     ~content:(Printf.sprintf
-      {html|<div class="space-y-6"><div class="flex items-center justify-between"><h2 class="text-xl font-bold text-slate-900 dark:text-slate-200">Top Players by Efficiency</h2><div class="flex gap-2"><input type="text" placeholder="Search player..." aria-label="선수 검색" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-1.5 text-sm focus:border-orange-500 focus:outline-none" hx-get="/players/table" hx-trigger="keyup changed delay:300ms" hx-target="#players-table" name="search"></div></div><div id="players-table" class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto overflow-y-hidden">%s</div></div>|html}
-      table)
+      {html|<div class="space-y-6"><div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"><h2 class="text-xl font-bold text-slate-900 dark:text-slate-200">Top Players by Efficiency</h2><form class="flex gap-2" hx-get="/home/table" hx-target="#players-table" hx-trigger="change"><select name="season" aria-label="시즌 선택" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-1.5 text-sm focus:border-orange-500 focus:outline-none">%s</select><input type="text" placeholder="Search player..." aria-label="선수 검색" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-1.5 text-sm focus:border-orange-500 focus:outline-none" hx-get="/home/table" hx-trigger="keyup changed delay:300ms" hx-target="#players-table" name="search"></form></div><div id="players-table" class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto overflow-y-hidden">%s</div></div>|html}
+      season_options table)
 
 let players_page ~season ~seasons ~search ~sort ~include_mismatch players =
   let season_options =
