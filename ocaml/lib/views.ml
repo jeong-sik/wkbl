@@ -375,14 +375,17 @@ let player_season_stats_component ~player_id ~scope (stats: season_stats list) =
   let s_tot = btn_class (scope = "totals") in
   let s_36 = btn_class (scope = "per_36") in
 
+  let aria_per = if scope = "per_game" then "true" else "false" in
+  let aria_tot = if scope = "totals" then "true" else "false" in
+  let aria_36 = if scope = "per_36" then "true" else "false" in
   let tabs = Printf.sprintf
-    {html|<div id="season-stats-tabs" class="flex items-center gap-2 sm:gap-4 border-b border-slate-200 dark:border-slate-800 mb-4 overflow-x-auto no-scrollbar whitespace-nowrap -mx-4 px-4 sm:mx-0 sm:px-0">
-      <button type="button" class="%s" hx-get="/player/%s/season-stats?scope=per_game" hx-target="#season-stats-component" hx-swap="outerHTML transition:true" hx-indicator="#season-stats-indicator" hx-disabled-elt="#season-stats-tabs button">Per Game</button>
-      <button type="button" class="%s" hx-get="/player/%s/season-stats?scope=totals" hx-target="#season-stats-component" hx-swap="outerHTML transition:true" hx-indicator="#season-stats-indicator" hx-disabled-elt="#season-stats-tabs button">Totals</button>
-      <button type="button" class="%s" hx-get="/player/%s/season-stats?scope=per_36" hx-target="#season-stats-component" hx-swap="outerHTML transition:true" hx-indicator="#season-stats-indicator" hx-disabled-elt="#season-stats-tabs button">Per 36</button>
-      <span id="season-stats-indicator" class="htmx-indicator season-stats-indicator ml-auto text-xs text-slate-500 dark:text-slate-400"><span class="spinner"></span><span>Loading...</span></span>
+    {html|<div id="season-stats-tabs" role="tablist" aria-label="시즌 스탯 보기 방식" class="flex items-center gap-2 sm:gap-4 border-b border-slate-200 dark:border-slate-800 mb-4 overflow-x-auto no-scrollbar whitespace-nowrap -mx-4 px-4 sm:mx-0 sm:px-0">
+      <button type="button" role="tab" aria-selected="%s" class="%s" hx-get="/player/%s/season-stats?scope=per_game" hx-target="#season-stats-component" hx-swap="outerHTML transition:true" hx-indicator="#season-stats-indicator" hx-disabled-elt="#season-stats-tabs button">Per Game</button>
+      <button type="button" role="tab" aria-selected="%s" class="%s" hx-get="/player/%s/season-stats?scope=totals" hx-target="#season-stats-component" hx-swap="outerHTML transition:true" hx-indicator="#season-stats-indicator" hx-disabled-elt="#season-stats-tabs button">Totals</button>
+      <button type="button" role="tab" aria-selected="%s" class="%s" hx-get="/player/%s/season-stats?scope=per_36" hx-target="#season-stats-component" hx-swap="outerHTML transition:true" hx-indicator="#season-stats-indicator" hx-disabled-elt="#season-stats-tabs button">Per 36</button>
+      <span id="season-stats-indicator" class="htmx-indicator season-stats-indicator ml-auto text-xs text-slate-500 dark:text-slate-400" aria-live="polite"><span class="spinner" aria-hidden="true"></span><span>Loading...</span></span>
     </div>|html}
-    s_per player_id s_tot player_id s_36 player_id
+    aria_per s_per player_id aria_tot s_tot player_id aria_36 s_36 player_id
   in
   let mg_note =
     {html|<p class="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed mb-3"><span class="font-mono text-slate-700 dark:text-slate-300">MG</span>는 팀 득실마진(출전시간 가중)이며, 개인 <span class="font-mono text-slate-700 dark:text-slate-300">+/-</span>는 문자중계(PBP) 기반으로 <span class="font-mono text-slate-700 dark:text-slate-300">일부 경기만</span> 제공됩니다. (데이터가 없으면 <span class="font-mono text-slate-700 dark:text-slate-300">-</span>)</p>|html}
@@ -553,21 +556,22 @@ let layout ~title ~content =
 %s
 </head>
 <body class="bg-slate-50 dark:bg-[#0b0e14] text-slate-900 dark:text-slate-200 font-sans antialiased min-h-screen is-loading">
+  <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[60] focus:bg-orange-500 focus:text-white focus:px-4 focus:py-2 focus:rounded-lg focus:font-semibold focus:shadow-lg">본문으로 건너뛰기</a>
   <div id="page-loader" class="page-loader" aria-hidden="true"><div class="page-loader-bar"></div></div>
-  <header class="sticky top-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 py-3 sm:py-4">
+  <header role="banner" class="sticky top-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 py-3 sm:py-4">
     <div class="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
       <div class="flex items-center justify-between w-full sm:w-auto">
-        <div class="flex items-center gap-3 shrink-0">
-          <span class="text-2xl">🏀</span>
-          <h1 class="text-lg font-bold text-slate-900 dark:text-slate-200">WKBL <span class="text-orange-500">Analytics</span></h1>
-        </div>
-        <button onclick="toggleTheme()" class="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-orange-500 dark:hover:text-orange-400 transition sm:hidden" aria-label="Toggle theme">
-          <svg class="w-5 h-5 dark:hidden" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
-          <svg class="w-5 h-5 hidden dark:block" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" fill-rule="evenodd" clip-rule="evenodd"></path></svg>
+        <a href="/" class="flex items-center gap-3 shrink-0" aria-label="WKBL Analytics 홈으로 이동">
+          <span class="text-2xl" aria-hidden="true">🏀</span>
+          <span class="text-lg font-bold text-slate-900 dark:text-slate-200">WKBL <span class="text-orange-500">Analytics</span></span>
+        </a>
+        <button onclick="toggleTheme()" class="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-orange-500 dark:hover:text-orange-400 transition sm:hidden" aria-label="테마 전환 (라이트/다크)">
+          <svg class="w-5 h-5 dark:hidden" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
+          <svg class="w-5 h-5 hidden dark:block" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" fill-rule="evenodd" clip-rule="evenodd"></path></svg>
         </button>
       </div>
       <div class="flex items-center gap-3">
-        <nav class="flex items-center gap-3 sm:gap-x-4 sm:gap-y-2 text-xs sm:text-sm overflow-x-auto no-scrollbar whitespace-nowrap -mx-4 px-4 sm:mx-0 sm:px-0 flex-nowrap sm:flex-wrap sm:justify-end sm:overflow-visible flex-1">
+        <nav aria-label="메인 내비게이션" class="flex items-center gap-3 sm:gap-x-4 sm:gap-y-2 text-xs sm:text-sm overflow-x-auto no-scrollbar whitespace-nowrap -mx-4 px-4 sm:mx-0 sm:px-0 flex-nowrap sm:flex-wrap sm:justify-end sm:overflow-visible flex-1">
           <a href="/" class="shrink-0 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white dark:text-slate-200 transition">Home</a>
           <a href="/awards" class="shrink-0 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white dark:text-slate-200 transition">Awards</a>
           <a href="/leaders" class="shrink-0 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white dark:text-slate-200 transition">Leaders</a>
@@ -581,14 +585,14 @@ let layout ~title ~content =
           <a href="/transactions" class="shrink-0 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white dark:text-slate-200 transition">Draft/Trade</a>
           <a href="/qa" class="shrink-0 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white dark:text-slate-200 transition">QA</a>
         </nav>
-        <button onclick="toggleTheme()" class="hidden sm:block p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-orange-500 dark:hover:text-orange-400 transition" aria-label="Toggle theme">
-          <svg class="w-5 h-5 dark:hidden" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
-          <svg class="w-5 h-5 hidden dark:block" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" fill-rule="evenodd" clip-rule="evenodd"></path></svg>
+        <button onclick="toggleTheme()" class="hidden sm:block p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-orange-500 dark:hover:text-orange-400 transition" aria-label="테마 전환 (라이트/다크)">
+          <svg class="w-5 h-5 dark:hidden" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
+          <svg class="w-5 h-5 hidden dark:block" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" fill-rule="evenodd" clip-rule="evenodd"></path></svg>
         </button>
       </div>
     </div>
   </header>
-  <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">%s</main>
+  <main id="main-content" class="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8" tabindex="-1">%s</main>
   <footer class="border-t border-slate-200 dark:border-slate-800 py-6 text-center text-slate-500 dark:text-slate-400 text-sm"></footer>
 </body>
 </html>|html}
@@ -599,7 +603,7 @@ let home_page players =
   let table = players_table players in
   layout ~title:"WKBL Analytics"
     ~content:(Printf.sprintf
-      {html|<div class="space-y-6"><div class="flex items-center justify-between"><h2 class="text-xl font-bold text-slate-900 dark:text-slate-200">Top Players by Efficiency</h2><div class="flex gap-2"><input type="text" placeholder="Search player..." class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-1.5 text-sm focus:border-orange-500 focus:outline-none" hx-get="/players/table" hx-trigger="keyup changed delay:300ms" hx-target="#players-table" name="search"></div></div><div id="players-table" class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto overflow-y-hidden">%s</div></div>|html}
+      {html|<div class="space-y-6"><div class="flex items-center justify-between"><h2 class="text-xl font-bold text-slate-900 dark:text-slate-200">Top Players by Efficiency</h2><div class="flex gap-2"><input type="text" placeholder="Search player..." aria-label="선수 검색" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-1.5 text-sm focus:border-orange-500 focus:outline-none" hx-get="/players/table" hx-trigger="keyup changed delay:300ms" hx-target="#players-table" name="search"></div></div><div id="players-table" class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto overflow-y-hidden">%s</div></div>|html}
       table)
 
 let players_page ~season ~seasons ~search ~sort ~include_mismatch players =
@@ -3101,6 +3105,7 @@ let history_page (seasons: historical_season list) =
 
 (** Legends page - Hall of fame and legendary players *)
 let legends_page (legends: legend_player list) =
+  (* Mobile card view *)
   let cards = legends |> List.map (fun (l: legend_player) ->
     let teams = match l.lp_teams with Some t -> escape_html t | None -> "-" in
     let years = match l.lp_career_years with Some y -> escape_html y | None -> "-" in
@@ -3116,21 +3121,21 @@ let legends_page (legends: legend_player list) =
         <div class="grid grid-cols-3 gap-3 text-center mb-3">
           <div class="bg-slate-100 dark:bg-slate-800 rounded p-2">
             <div class="text-xl font-bold text-orange-600 dark:text-orange-400">%d</div>
-            <div class="text-[10px] text-slate-500 dark:text-slate-400 uppercase">Championships</div>
+            <div class="text-[10px] text-slate-500 dark:text-slate-400">우승</div>
           </div>
           <div class="bg-slate-100 dark:bg-slate-800 rounded p-2">
             <div class="text-xl font-bold text-orange-600 dark:text-orange-400">%d</div>
-            <div class="text-[10px] text-slate-500 dark:text-slate-400 uppercase">MVPs</div>
+            <div class="text-[10px] text-slate-500 dark:text-slate-400">MVP</div>
           </div>
           <div class="bg-slate-100 dark:bg-slate-800 rounded p-2">
             <div class="text-xl font-bold text-orange-600 dark:text-orange-400">%d</div>
-            <div class="text-[10px] text-slate-500 dark:text-slate-400 uppercase">All-Star</div>
+            <div class="text-[10px] text-slate-500 dark:text-slate-400">올스타</div>
           </div>
         </div>
         <div class="flex justify-around text-xs text-slate-500 dark:text-slate-400 border-t border-slate-200 dark:border-slate-700 pt-3">
-          <span>PTS: <strong class="text-slate-900 dark:text-slate-200">%d</strong></span>
-          <span>REB: <strong class="text-slate-900 dark:text-slate-200">%d</strong></span>
-          <span>AST: <strong class="text-slate-900 dark:text-slate-200">%d</strong></span>
+          <span>득점: <strong class="text-slate-900 dark:text-slate-200">%d</strong></span>
+          <span>리바: <strong class="text-slate-900 dark:text-slate-200">%d</strong></span>
+          <span>어시: <strong class="text-slate-900 dark:text-slate-200">%d</strong></span>
         </div>
         %s
       </div>|html}
@@ -3139,25 +3144,105 @@ let legends_page (legends: legend_player list) =
       l.lp_career_points l.lp_career_rebounds l.lp_career_assists
       (if achievements = "" then "" else Printf.sprintf {html|<div class="mt-3 text-xs text-slate-500 dark:text-slate-400 italic">%s</div>|html} achievements)
   ) |> String.concat "\n" in
+  (* Desktop table view *)
+  let rows = legends |> List.map (fun (l: legend_player) ->
+    let teams = match l.lp_teams with Some t -> escape_html t | None -> "-" in
+    let years = match l.lp_career_years with Some y -> escape_html y | None -> "-" in
+    let hof_badge = if l.lp_is_hall_of_fame then {html|<span class="bg-yellow-500 text-white text-[10px] px-2 py-0.5 rounded-full ml-1">HOF</span>|html} else "" in
+    Printf.sprintf
+      {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-50 dark:hover:bg-slate-800/30">
+        <td class="px-4 py-3 font-bold whitespace-nowrap">%s%s</td>
+        <td class="px-4 py-3 text-slate-600 dark:text-slate-400">%s</td>
+        <td class="px-4 py-3 text-slate-600 dark:text-slate-400 text-sm">%s</td>
+        <td class="px-4 py-3 text-center font-bold text-orange-600 dark:text-orange-400">%d</td>
+        <td class="px-4 py-3 text-center font-bold text-orange-600 dark:text-orange-400">%d</td>
+        <td class="px-4 py-3 text-center">%d</td>
+        <td class="px-4 py-3 text-center font-mono">%d</td>
+        <td class="px-4 py-3 text-center font-mono">%d</td>
+        <td class="px-4 py-3 text-center font-mono">%d</td>
+      </tr>|html}
+      (escape_html l.lp_player_name) hof_badge years teams
+      l.lp_championships l.lp_mvp_count l.lp_all_star_count
+      l.lp_career_points l.lp_career_rebounds l.lp_career_assists
+  ) |> String.concat "\n" in
   layout ~title:"Legends | WKBL" ~content:(Printf.sprintf
     {html|<div class="space-y-6">
-      <div><h2 class="text-2xl font-bold text-slate-900 dark:text-slate-200">WKBL Legends</h2>
-        <p class="text-slate-500 dark:text-slate-400 text-sm">Hall of fame and all-time great players.</p></div>
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">%s</div>
+      <div><h2 class="text-2xl font-bold text-slate-900 dark:text-slate-200">WKBL 레전드</h2>
+        <p class="text-slate-500 dark:text-slate-400 text-sm">명예의 전당 및 역대 최고 선수들</p></div>
+      <!-- Mobile card view -->
+      <div class="grid grid-cols-1 gap-4 md:hidden">%s</div>
+      <!-- Desktop table view -->
+      <div class="hidden md:block bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-lg">
+        <table class="min-w-full text-sm">
+          <thead class="bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 text-xs uppercase">
+            <tr>
+              <th class="px-4 py-3 text-left">선수</th>
+              <th class="px-4 py-3 text-left">활동기간</th>
+              <th class="px-4 py-3 text-left">소속팀</th>
+              <th class="px-4 py-3 text-center">우승</th>
+              <th class="px-4 py-3 text-center">MVP</th>
+              <th class="px-4 py-3 text-center">올스타</th>
+              <th class="px-4 py-3 text-center">통산득점</th>
+              <th class="px-4 py-3 text-center">통산리바</th>
+              <th class="px-4 py-3 text-center">통산어시</th>
+            </tr>
+          </thead>
+          <tbody>%s</tbody>
+        </table>
+      </div>
     </div>|html}
-    cards)
+    cards rows)
 
 (** Coaches page - Coaching records *)
 let coaches_page (coaches: coach list) =
+  (* Mobile card view *)
+  let cards = coaches |> List.map (fun (c: coach) ->
+    let team = match c.c_team with Some t -> escape_html t | None -> "-" in
+    let tenure = match c.c_tenure_start, c.c_tenure_end with
+      | Some s, Some e -> Printf.sprintf "%d-%d" s e
+      | Some s, None -> Printf.sprintf "%d-현재" s
+      | _ -> "-" in
+    let player_badge = if c.c_former_player then
+      match c.c_player_career_years with
+      | Some y -> Printf.sprintf {html|<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs">선수 출신 %s</span>|html} (escape_html y)
+      | None -> {html|<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs">선수 출신</span>|html}
+    else "" in
+    Printf.sprintf
+      {html|<div class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-4 shadow-sm">
+        <div class="flex items-start justify-between gap-3 mb-3">
+          <div>
+            <h3 class="font-bold text-slate-900 dark:text-slate-200">%s</h3>
+            <p class="text-sm text-slate-500 dark:text-slate-400">%s · %s</p>
+          </div>
+          %s
+        </div>
+        <div class="grid grid-cols-3 gap-3 text-center">
+          <div class="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-2">
+            <div class="text-xl font-bold text-orange-600 dark:text-orange-400">%d</div>
+            <div class="text-xs text-slate-500 dark:text-slate-400">우승</div>
+          </div>
+          <div class="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-2">
+            <div class="text-xl font-bold text-slate-700 dark:text-slate-300">%d</div>
+            <div class="text-xs text-slate-500 dark:text-slate-400">정규 W</div>
+          </div>
+          <div class="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-2">
+            <div class="text-xl font-bold text-slate-700 dark:text-slate-300">%d</div>
+            <div class="text-xs text-slate-500 dark:text-slate-400">플옵 W</div>
+          </div>
+        </div>
+      </div>|html}
+      (escape_html c.c_coach_name) team tenure player_badge c.c_championships c.c_regular_season_wins c.c_playoff_wins
+  ) |> String.concat "\n" in
+  (* Desktop table view *)
   let rows = coaches |> List.map (fun (c: coach) ->
     let team = match c.c_team with Some t -> escape_html t | None -> "-" in
     let tenure = match c.c_tenure_start, c.c_tenure_end with
       | Some s, Some e -> Printf.sprintf "%d-%d" s e
-      | Some s, None -> Printf.sprintf "%d-present" s
+      | Some s, None -> Printf.sprintf "%d-현재" s
       | _ -> "-" in
     let player_info = if c.c_former_player then
       match c.c_player_career_years with
-      | Some y -> Printf.sprintf {html|<span class="text-green-600 dark:text-green-400" title="Former player">⚫ %s</span>|html} (escape_html y)
+      | Some y -> Printf.sprintf {html|<span class="text-green-600 dark:text-green-400" title="선수 출신">⚫ %s</span>|html} (escape_html y)
       | None -> {html|<span class="text-green-600 dark:text-green-400">⚫</span>|html}
     else "" in
     Printf.sprintf
@@ -3174,18 +3259,21 @@ let coaches_page (coaches: coach list) =
   ) |> String.concat "\n" in
   layout ~title:"Coaches | WKBL" ~content:(Printf.sprintf
     {html|<div class="space-y-6">
-      <div><h2 class="text-2xl font-bold text-slate-900 dark:text-slate-200">WKBL Coaches</h2>
-        <p class="text-slate-500 dark:text-slate-400 text-sm">Coaching records and achievements.</p></div>
-      <div class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-lg">
+      <div><h2 class="text-2xl font-bold text-slate-900 dark:text-slate-200">WKBL 감독</h2>
+        <p class="text-slate-500 dark:text-slate-400 text-sm">감독 기록 및 업적</p></div>
+      <!-- Mobile card view -->
+      <div class="grid gap-4 md:hidden">%s</div>
+      <!-- Desktop table view -->
+      <div class="hidden md:block bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-lg">
         <table class="min-w-full text-sm">
           <thead class="bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 text-xs uppercase">
-            <tr><th class="px-4 py-3 text-left">Coach</th><th class="px-4 py-3 text-left">Team</th><th class="px-4 py-3 text-left">Tenure</th><th class="px-4 py-3 text-center">Titles</th><th class="px-4 py-3 text-center">Regular W</th><th class="px-4 py-3 text-center">Playoff W</th><th class="px-4 py-3 text-left">Player</th></tr>
+            <tr><th class="px-4 py-3 text-left">감독</th><th class="px-4 py-3 text-left">팀</th><th class="px-4 py-3 text-left">재임기간</th><th class="px-4 py-3 text-center">우승</th><th class="px-4 py-3 text-center">정규 W</th><th class="px-4 py-3 text-center">플옵 W</th><th class="px-4 py-3 text-left">선수경력</th></tr>
           </thead>
           <tbody>%s</tbody>
         </table>
       </div>
     </div>|html}
-    rows)
+    cards rows)
 
 (** Player career page - Year by year stats for a player *)
 let player_career_page ~player_name (entries: player_career_entry list) =
