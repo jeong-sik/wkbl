@@ -513,7 +513,7 @@ let players_table (players: player_aggregate list) =
     rows
 
 (** Main layout *)
-let layout ~title ?(canonical_path="/") ?(description="") ~content =
+let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="") ~content =
   let v = escape_html asset_version in
   let cf_wa_script =
     match Sys.getenv_opt "CF_WEB_ANALYTICS_TOKEN" |> Option.map String.trim with
@@ -529,6 +529,24 @@ let layout ~title ?(canonical_path="/") ?(description="") ~content =
   let short_desc = if description = "" then "WKBL 여자농구 통계 분석 - 선수별 효율, 팀 순위, 박스스코어 정보" else description in
   (* SEO: Canonical URL 동적 생성 *)
   let canonical_url = Printf.sprintf "https://wkbl.win%s" canonical_path in
+  (* SEO: JSON-LD 구조화 데이터 - 기본 WebSite 스키마 또는 페이지별 커스텀 *)
+  let default_json_ld = Printf.sprintf {|{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "WKBL Analytics",
+  "url": "https://wkbl.win",
+  "description": "%s",
+  "inLanguage": "ko-KR",
+  "publisher": {
+    "@type": "Organization",
+    "name": "WKBL Analytics",
+    "url": "https://wkbl.win"
+  }
+}|} (String.escaped meta_desc) in
+  let json_ld_script =
+    let ld = if json_ld = "" then default_json_ld else json_ld in
+    Printf.sprintf {html|  <script type="application/ld+json">%s</script>|html} ld
+  in
   Printf.sprintf
     {html|<!DOCTYPE html>
 <html lang="ko">
@@ -560,6 +578,7 @@ let layout ~title ?(canonical_path="/") ?(description="") ~content =
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/css/styles.css?v=%s">
   <script data-cfasync="false">tailwind.config = { darkMode: 'class', theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] } } } }</script>
+%s
 %s
 </head>
 <body class="bg-slate-50 dark:bg-[#0b0e14] text-slate-900 dark:text-slate-200 font-sans antialiased min-h-screen is-loading">
@@ -603,7 +622,7 @@ let layout ~title ?(canonical_path="/") ?(description="") ~content =
   <footer class="border-t border-slate-200 dark:border-slate-800 py-6 text-center text-slate-500 dark:text-slate-400 text-sm"></footer>
 </body>
 </html>|html}
-    (escape_html title) (escape_html meta_desc) (escape_html title) (escape_html short_desc) (escape_html title) (escape_html short_desc) (escape_html canonical_url) v v v v v cf_wa_script content
+    (escape_html title) (escape_html meta_desc) (escape_html title) (escape_html short_desc) (escape_html title) (escape_html short_desc) (escape_html canonical_url) v v v v v json_ld_script cf_wa_script content
 
 (** Home page *)
 let home_page ~season ~seasons players =
