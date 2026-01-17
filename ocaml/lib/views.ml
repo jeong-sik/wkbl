@@ -1228,6 +1228,7 @@ let pbp_page ~(game: game_info) ~(periods: string list) ~(selected_period: strin
       official_link
       (escape_html game.gi_game_id)
       body)
+    ()
 
 let compare_stat_row ?(signed=false) label val1 val2 =
   let max_val = max (abs_float val1) (abs_float val2) in
