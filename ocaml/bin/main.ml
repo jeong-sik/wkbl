@@ -170,7 +170,7 @@ Sitemap: https://wkbl.win/sitemap.xml
           let season = query_season_or_latest request seasons in
           let* players_res = Db.get_players ~season ~search ~limit:20 () in
           match players_res with
-          | Ok p -> Dream.html (Views.home_page ~season ~seasons p ())
+          | Ok p -> Dream.html (Views.home_page ~season ~seasons p)
           | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
     );
 
@@ -209,7 +209,7 @@ Sitemap: https://wkbl.win/sitemap.xml
           let season = query_season_or_latest request seasons in
           let* players_res = Db.get_players ~season ~search ~sort ~include_mismatch () in
           match players_res with
-          | Ok p -> Dream.html (Views.players_page ~season ~seasons ~search ~sort:sort_str ~include_mismatch p ())
+          | Ok p -> Dream.html (Views.players_page ~season ~seasons ~search ~sort:sort_str ~include_mismatch p)
           | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
     );
 
@@ -245,7 +245,7 @@ Sitemap: https://wkbl.win/sitemap.xml
           let season = query_season_or_latest request seasons in
           let* stats_res = Db.get_team_stats ~season ~scope ~sort ~include_mismatch () in
           (match stats_res with
-          | Ok stats -> Dream.html (Views.teams_page ~season ~seasons ~scope ~sort:sort_str ~include_mismatch stats ())
+          | Ok stats -> Dream.html (Views.teams_page ~season ~seasons ~scope ~sort:sort_str ~include_mismatch stats)
           | Error e -> Dream.html (Views.error_page (Db.show_db_error e)))
     );
 
@@ -273,7 +273,7 @@ Sitemap: https://wkbl.win/sitemap.xml
           let season = query_season_or_latest request seasons in
           let* standings_res = Db.get_standings ~season () in
           (match standings_res with
-          | Ok standings -> Dream.html (Views.standings_page ~season ~seasons standings ())
+          | Ok standings -> Dream.html (Views.standings_page ~season ~seasons standings)
           | Error e -> Dream.html (Views.error_page (Db.show_db_error e)))
     );
 
@@ -296,7 +296,7 @@ Sitemap: https://wkbl.win/sitemap.xml
           let season = query_season_or_latest request seasons in
           let* games_res = Db.get_games ~season () in
           (match games_res with
-          | Ok games -> Dream.html (Views.games_page ~season ~seasons games ())
+          | Ok games -> Dream.html (Views.games_page ~season ~seasons games)
           | Error e -> Dream.html (Views.error_page (Db.show_db_error e)))
     );
 
@@ -319,7 +319,7 @@ Sitemap: https://wkbl.win/sitemap.xml
           let season = query_season_or_latest request seasons in
           let* games_res = Db.get_games ~season () in
           (match games_res with
-          | Ok games -> Dream.html (Views.boxscores_page ~season ~seasons games ())
+          | Ok games -> Dream.html (Views.boxscores_page ~season ~seasons games)
           | Error e -> Dream.html (Views.error_page (Db.show_db_error e)))
     );
 
@@ -338,7 +338,7 @@ Sitemap: https://wkbl.win/sitemap.xml
       let open Lwt.Syntax in
       let* boxscore_res = Db.get_boxscore ~game_id () in
       match boxscore_res with
-      | Ok bs -> Dream.html (Views.boxscore_page bs ())
+      | Ok bs -> Dream.html (Views.boxscore_page bs)
       | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
     );
 
@@ -366,7 +366,7 @@ Sitemap: https://wkbl.win/sitemap.xml
                 | _ -> Db.get_pbp_events ~game_id ~period_code:selected_period ()
               in
               match events_res with
-              | Ok events -> Dream.html (Views.pbp_page ~game:bs.boxscore_game ~periods ~selected_period ~events ())
+              | Ok events -> Dream.html (Views.pbp_page ~game:bs.boxscore_game ~periods ~selected_period ~events)
               | Error e -> Dream.html (Views.error_page (Db.show_db_error e)))
     );
 
@@ -399,7 +399,7 @@ Sitemap: https://wkbl.win/sitemap.xml
           let* leaders_res = fetch_all [] categories in
           match leaders_res with
           | Ok leaders_by_category ->
-              Dream.html (Views.leaders_page ~season ~seasons ~scope leaders_by_category ())
+              Dream.html (Views.leaders_page ~season ~seasons ~scope leaders_by_category)
           | Error e ->
               Dream.html (Views.error_page (Db.show_db_error e))
     );
@@ -438,7 +438,7 @@ Sitemap: https://wkbl.win/sitemap.xml
             | Some prev_season -> Db.get_stat_mip_eff_delta ~season ~prev_season ~include_mismatch ()
           in
           match mvp_res, mip_res with
-          | Ok mvp, Ok mip -> Dream.html (Views.awards_page ~season ~seasons ~include_mismatch ~prev_season_name ~mvp ~mip ())
+          | Ok mvp, Ok mip -> Dream.html (Views.awards_page ~season ~seasons ~include_mismatch ~prev_season_name ~mvp ~mip)
           | Error e, _ | _, Error e -> Dream.html (Views.error_page (Db.show_db_error e))
     );
 
@@ -617,8 +617,7 @@ Sitemap: https://wkbl.win/sitemap.xml
                ~h2h_disabled_reason
                p1_selected
                p2_selected
-               h2h
-               ())
+               h2h)
     );
 
     (* Predict (Team vs Team) *)
@@ -649,7 +648,7 @@ Sitemap: https://wkbl.win/sitemap.xml
       | Ok seasons, Ok teams ->
           let season = query_season_or_latest request seasons in
           let render result error =
-            Dream.html (Views.predict_page ~season ~seasons ~teams ~home ~away ~is_neutral ~context_enabled ~include_mismatch result error ())
+            Dream.html (Views.predict_page ~season ~seasons ~teams ~home ~away ~is_neutral ~context_enabled ~include_mismatch result error)
           in
 
           if String.trim home = "" || String.trim away = "" then
@@ -822,7 +821,7 @@ Sitemap: https://wkbl.win/sitemap.xml
             | Error _ ->
                 None
           in
-          Dream.html (Views.player_profile_page ~leaderboards final_profile ~scope ~seasons_catalog ())
+          Dream.html (Views.player_profile_page ~leaderboards final_profile ~scope ~seasons_catalog)
       | Ok None -> Dream.html (Views.error_page "Player not found")
       | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
     );
@@ -841,7 +840,7 @@ Sitemap: https://wkbl.win/sitemap.xml
           let season = query_season_or_latest request seasons in
           let* games_res = Db.get_player_game_logs ~player_id ~season ~include_mismatch () in
           (match games_res with
-          | Ok games -> Dream.html (Views.player_game_logs_page profile ~season ~seasons ~include_mismatch games ())
+          | Ok games -> Dream.html (Views.player_game_logs_page profile ~season ~seasons ~include_mismatch games)
           | Error e -> Dream.html (Views.error_page (Db.show_db_error e)))
     );
 
@@ -867,7 +866,7 @@ Sitemap: https://wkbl.win/sitemap.xml
           let season = query_season_or_latest request seasons in
           let* detail_res = Db.get_team_full_detail ~team_name ~season () in
           (match detail_res with
-          | Ok detail -> Dream.html (Views.team_profile_page detail ~season ~seasons ())
+          | Ok detail -> Dream.html (Views.team_profile_page detail ~season ~seasons)
           | Error e -> Dream.html (Views.error_page (Db.show_db_error e)))
     );
 
@@ -926,8 +925,7 @@ Sitemap: https://wkbl.win/sitemap.xml
                      ~draft_years
                      ~trade_years
                      ~draft_picks:[]
-                     ~trade_events:events
-                     ())
+                     ~trade_events:events)
           ) else (
             let* picks_res = Db.get_draft_picks ~year ~search:q () in
             match picks_res with
@@ -941,8 +939,7 @@ Sitemap: https://wkbl.win/sitemap.xml
                      ~draft_years
                      ~trade_years
                      ~draft_picks:picks
-                     ~trade_events:[]
-                     ())
+                     ~trade_events:[])
           )
     );
 
@@ -962,21 +959,21 @@ Sitemap: https://wkbl.win/sitemap.xml
       let open Lwt.Syntax in
       let* result = Db.get_historical_seasons () in
       match result with
-      | Ok seasons -> Dream.html (Views.history_page seasons ())
+      | Ok seasons -> Dream.html (Views.history_page seasons)
       | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
     );
     Dream.get "/legends" (fun _ ->
       let open Lwt.Syntax in
       let* result = Db.get_legend_players () in
       match result with
-      | Ok legends -> Dream.html (Views.legends_page legends ())
+      | Ok legends -> Dream.html (Views.legends_page legends)
       | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
     );
     Dream.get "/coaches" (fun _ ->
       let open Lwt.Syntax in
       let* result = Db.get_coaches () in
       match result with
-      | Ok coaches -> Dream.html (Views.coaches_page coaches ())
+      | Ok coaches -> Dream.html (Views.coaches_page coaches)
       | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
     );
     Dream.get "/player/:id/career" (fun request ->
@@ -984,7 +981,7 @@ Sitemap: https://wkbl.win/sitemap.xml
       let player_name = Dream.param request "id" |> Uri.pct_decode in
       let* result = Db.get_player_career ~player_name () in
       match result with
-      | Ok entries -> Dream.html (Views.player_career_page ~player_name entries ())
+      | Ok entries -> Dream.html (Views.player_career_page ~player_name entries)
       | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
     );
   ]
