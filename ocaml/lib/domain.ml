@@ -587,3 +587,21 @@ let team_code_to_logo = function
   | "HN" -> Some "team_09.png"
   | "BN" -> Some "team_11.png"
   | _ -> None
+
+let team_code_to_name_en = function
+  | "WO" -> "Woori Bank Wibee"
+  | "SS" -> "Samsung Life Blueminx"
+  | "SH" -> "Shinhan Bank S-Birds"
+  | "KB" -> "KB Stars"
+  | "HN" -> "Hana Bank"
+  | "BN" -> "BNK Sum"
+  | _ -> "Unknown"
+
+let team_code_to_city_en = function
+  | "WO" -> "Asan"
+  | "SS" -> "Yongin"
+  | "SH" -> "Incheon"
+  | "KB" -> "Cheongju"
+  | "HN" -> "Bucheon"
+  | "BN" -> "Busan"
+  | _ -> ""
