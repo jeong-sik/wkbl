@@ -1083,7 +1083,7 @@ module Queries = struct
       AND period_code = ?
     ORDER BY event_index ASC
   |}
-  let all_teams = (unit ->* string) "SELECT DISTINCT team_name_kr FROM teams ORDER BY team_name_kr"
+  let all_teams = (unit ->* Types.team_info) "SELECT team_code, team_name_kr FROM teams ORDER BY team_name_kr"
   let all_seasons = (unit ->* Types.season_info) "SELECT season_code, season_name FROM seasons ORDER BY season_code"
 
   (** Historical seasons with champion and MVP data *)
