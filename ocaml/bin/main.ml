@@ -438,7 +438,7 @@ Sitemap: https://wkbl.win/sitemap.xml
             | Some prev_season -> Db.get_stat_mip_eff_delta ~season ~prev_season ~include_mismatch ()
           in
           match mvp_res, mip_res with
-          | Ok mvp, Ok mip -> Dream.html (Views.awards_page ~season ~seasons ~include_mismatch ~prev_season_name ~mvp ~mip)
+          | Ok mvp, Ok mip -> Dream.html (Views.awards_page ~season ~seasons ~include_mismatch ~prev_season_name ~mvp ~mip ())
           | Error e, _ | _, Error e -> Dream.html (Views.error_page (Db.show_db_error e))
     );
 
@@ -643,12 +643,15 @@ Sitemap: https://wkbl.win/sitemap.xml
 
       let* seasons_res = Db.get_seasons () in
       let* teams_res = Db.get_all_teams () in
+      let* upcoming_res = Db.get_upcoming_schedule ~status:"scheduled" ~limit:6 () in
       match seasons_res, teams_res with
       | Error e, _ | _, Error e -> Dream.html (Views.error_page (Db.show_db_error e))
       | Ok seasons, Ok teams ->
+          let upcoming = match upcoming_res with Ok u -> u | Error _ -> [] in
+          let team_names = List.map (fun (t: team_info) -> t.team_name) teams in
           let season = query_season_or_latest request seasons in
           let render result error =
-            Dream.html (Views.predict_page ~season ~seasons ~teams ~home ~away ~is_neutral ~context_enabled ~include_mismatch result error)
+            Dream.html (Views.predict_page ~season ~seasons ~teams:team_names ~home ~away ~is_neutral ~context_enabled ~include_mismatch ~upcoming result error)
           in
 
           if String.trim home = "" || String.trim away = "" then
