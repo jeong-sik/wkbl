@@ -1696,7 +1696,38 @@ let prediction_result_card ~(home: string) ~(away: string) (output: prediction_o
     context_card_html
     context_note_html
 
-let predict_page ~season ~seasons ~teams ~home ~away ~is_neutral ~context_enabled ~include_mismatch (result: prediction_output option) (error: string option) =
+let upcoming_games_section (upcoming: Domain.schedule_entry list) =
+  if upcoming = [] then ""
+  else
+    let game_card (g: Domain.schedule_entry) =
+      let home_name = Option.value g.sch_home_team_name ~default:g.sch_home_team_code in
+      let away_name = Option.value g.sch_away_team_name ~default:g.sch_away_team_code in
+      let time_str = match g.sch_game_time with
+        | Some t -> Printf.sprintf " %s" t
+        | None -> ""
+      in
+      Printf.sprintf
+        {html|<a href="/predict?home=%s&away=%s" class="block bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700 hover:border-orange-500/50 rounded-lg p-3 transition-all group">
+          <div class="text-xs text-slate-400 mb-1">%s%s</div>
+          <div class="flex items-center justify-between">
+            <span class="text-sm font-medium text-slate-200 group-hover:text-orange-400">%s</span>
+            <span class="text-xs text-slate-500">vs</span>
+            <span class="text-sm font-medium text-slate-200 group-hover:text-orange-400">%s</span>
+          </div>
+        </a>|html}
+        (escape_html home_name) (escape_html away_name)
+        (escape_html g.sch_game_date) time_str
+        (escape_html home_name) (escape_html away_name)
+    in
+    let cards = upcoming |> List.map game_card |> String.concat "\n" in
+    Printf.sprintf
+      {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 mb-6">
+        <h3 class="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">📅 Upcoming Games</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">%s</div>
+      </div>|html}
+      cards
+
+let predict_page ~season ~seasons ~teams ~home ~away ~is_neutral ~context_enabled ~include_mismatch ~upcoming (result: prediction_output option) (error: string option) =
   let season_options =
     let base =
       seasons
@@ -1725,6 +1756,7 @@ let predict_page ~season ~seasons ~teams ~home ~away ~is_neutral ~context_enable
     | None, None ->
         {html|<div class="text-slate-500 dark:text-slate-400 text-sm">Select teams to see a prediction.</div>|html}
   in
+  let upcoming_html = upcoming_games_section upcoming in
   layout ~title:"WKBL Predict"
     ~content:(Printf.sprintf
       {html|<div class="space-y-6 animate-fade-in">
@@ -1734,6 +1766,7 @@ let predict_page ~season ~seasons ~teams ~home ~away ~is_neutral ~context_enable
             <p class="text-slate-500 dark:text-slate-400 text-sm">농구광 모드: Elo + Pythagorean + Stats 근거를 함께 보여줍니다.</p>
           </div>
         </div>
+        %s
         <form action="/predict" method="get" class="grid grid-cols-1 md:grid-cols-3 gap-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
           <select name="season" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none">%s</select>
           <select name="home" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none">%s</select>
@@ -1756,6 +1789,7 @@ let predict_page ~season ~seasons ~teams ~home ~away ~is_neutral ~context_enable
         </form>
         %s
       </div>|html}
+      upcoming_html
       season_options
       (team_options home)
       (team_options away)

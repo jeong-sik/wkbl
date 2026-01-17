@@ -2731,7 +2731,7 @@ module Queries = struct
   (* ===== Schedule Table Queries ===== *)
   let ensure_schedule_table = (unit ->. unit) {|
     CREATE TABLE IF NOT EXISTS schedule (
-      schedule_id INTEGER PRIMARY KEY AUTOINCREMENT,
+      schedule_id SERIAL PRIMARY KEY,
       game_date TEXT NOT NULL,
       game_time TEXT,
       season_code TEXT NOT NULL,
@@ -2799,7 +2799,7 @@ module Queries = struct
     LEFT JOIN teams th ON s.home_team_code = th.team_code
     LEFT JOIN teams ta ON s.away_team_code = ta.team_code
     WHERE s.status = ?
-      AND s.game_date >= date('now')
+      AND s.game_date >= to_char(CURRENT_DATE, 'YYYY-MM-DD')
     ORDER BY s.game_date ASC, s.game_time ASC
     LIMIT ?
   |}
@@ -3773,8 +3773,15 @@ let get_player_career ~player_name () =
 
 let get_upcoming_schedule ?(status="scheduled") ?(limit=10) () =
   let key = Printf.sprintf "status=%s,limit=%d" status limit in
-  cached schedule_cache key (fun () ->
-    with_db (fun db -> Repo.get_upcoming_schedule ~status ~limit db))
+  let open Lwt.Syntax in
+  let* result = cached schedule_cache key (fun () ->
+    with_db (fun db -> Repo.get_upcoming_schedule ~status ~limit db)) in
+  (match result with
+   | Ok entries ->
+     Printf.printf "[DEBUG] get_upcoming_schedule: OK, %d entries\n%!" (List.length entries)
+   | Error e ->
+     Printf.printf "[DEBUG] get_upcoming_schedule: Error - %s\n%!" (show_db_error e));
+  Lwt.return result
 
 let get_schedule_by_date_range ~start_date ~end_date ?(status="ALL") () =
   let key = Printf.sprintf "start=%s,end=%s,status=%s" start_date end_date status in
