@@ -1877,6 +1877,7 @@ let leaders_page ~season ~seasons ~scope (leaders_by_category: (string * leader_
           ; ("FT%", "ft_pct", fmt_f3)
           ; ("TS%", "ts_pct", fmt_f3)
           ; ("eFG%", "efg_pct", fmt_f3)
+          ; ("USG%", "usg_pct", fmt_f1)
           ]
         )
     | "per_36" ->
@@ -1893,6 +1894,7 @@ let leaders_page ~season ~seasons ~scope (leaders_by_category: (string * leader_
           ; ("FT%", "ft_pct", fmt_f3)
           ; ("TS%", "ts_pct", fmt_f3)
           ; ("eFG%", "efg_pct", fmt_f3)
+          ; ("USG%", "usg_pct", fmt_f1)
           ]
         )
     | _ ->
@@ -1910,6 +1912,7 @@ let leaders_page ~season ~seasons ~scope (leaders_by_category: (string * leader_
           ; ("FT%", "ft_pct", fmt_f3)
           ; ("TS%", "ts_pct", fmt_f3)
           ; ("eFG%", "efg_pct", fmt_f3)
+          ; ("USG%", "usg_pct", fmt_f1)
           ]
         )
   in

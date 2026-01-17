@@ -2117,6 +2117,7 @@ module Queries = struct
   let leaders_ft_pct = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, (SUM(s.ft_m) * 1.0) / NULLIF(SUM(s.ft_a), 0) FROM game_stats s JOIN players p ON s.player_id = p.player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING SUM(s.ft_a) >= 20 ORDER BY ((SUM(s.ft_m) * 1.0) / NULLIF(SUM(s.ft_a), 0)) DESC LIMIT 5 |}
   let leaders_ts_pct = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, (SUM(s.pts) * 1.0) / NULLIF(2.0 * (SUM(s.fg_2p_a + s.fg_3p_a) + 0.44 * SUM(s.ft_a)), 0) FROM game_stats s JOIN players p ON s.player_id = p.player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING (SUM(s.fg_2p_a + s.fg_3p_a) + SUM(s.ft_a)) >= 50 ORDER BY ((SUM(s.pts) * 1.0) / NULLIF(2.0 * (SUM(s.fg_2p_a + s.fg_3p_a) + 0.44 * SUM(s.ft_a)), 0)) DESC LIMIT 5 |}
   let leaders_efg_pct = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, ((SUM(s.fg_2p_m + s.fg_3p_m) + 0.5 * SUM(s.fg_3p_m)) * 1.0) / NULLIF(SUM(s.fg_2p_a + s.fg_3p_a), 0) FROM game_stats s JOIN players p ON s.player_id = p.player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING SUM(s.fg_2p_a + s.fg_3p_a) >= 50 ORDER BY (((SUM(s.fg_2p_m + s.fg_3p_m) + 0.5 * SUM(s.fg_3p_m)) * 1.0) / NULLIF(SUM(s.fg_2p_a + s.fg_3p_a), 0)) DESC LIMIT 5 |}
+  let leaders_usg_pct = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, AVG(u.usg_pct) FROM player_usg_stats u JOIN players p ON u.player_id = p.player_id JOIN teams t ON u.team_code = t.team_code JOIN games g ON g.game_id = u.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' AND u.usg_pct IS NOT NULL GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING COUNT(*) >= 5 AND SUM(u.min_seconds) >= 6000 ORDER BY AVG(u.usg_pct) DESC LIMIT 5 |}
 
   (** Stat Awards (unofficial) *)
   let stat_mvp_eff = (t2 string (t2 string int) ->* Types.leader_entry) {|
@@ -2872,6 +2873,7 @@ end
       | "ft_pct", _ -> Queries.leaders_ft_pct
       | "ts_pct", _ -> Queries.leaders_ts_pct
       | "efg_pct", _ -> Queries.leaders_efg_pct
+      | "usg_pct", _ -> Queries.leaders_usg_pct
       | _ -> Queries.leaders_pts
     in
     Db.collect_list q (season, season)
