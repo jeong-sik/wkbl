@@ -513,7 +513,7 @@ let players_table (players: player_aggregate list) =
     rows
 
 (** Main layout *)
-let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="") ~content =
+let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="") ~content () =
   let v = escape_html asset_version in
   let cf_wa_script =
     match Sys.getenv_opt "CF_WEB_ANALYTICS_TOKEN" |> Option.map String.trim with
@@ -638,7 +638,7 @@ let home_page ~season ~seasons players =
     ~description:"WKBL 여자농구 효율성 순위, 팀 순위, 선수 통계를 한눈에 확인하세요."
     ~content:(Printf.sprintf
       {html|<div class="space-y-6"><div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"><h2 class="text-xl font-bold text-slate-900 dark:text-slate-200">Top Players by Efficiency</h2><form class="flex gap-2" hx-get="/home/table" hx-target="#players-table" hx-trigger="change"><select name="season" aria-label="시즌 선택" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-1.5 text-sm focus:border-orange-500 focus:outline-none">%s</select><input type="text" placeholder="Search player..." aria-label="선수 검색" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-1.5 text-sm focus:border-orange-500 focus:outline-none" hx-get="/home/table" hx-trigger="keyup changed delay:300ms" hx-target="#players-table" name="search"></form></div><div id="players-table" class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto overflow-y-hidden">%s</div></div>|html}
-      season_options table)
+      season_options table) ()
 
 let players_page ~season ~seasons ~search ~sort ~include_mismatch players =
   let season_options =
@@ -683,7 +683,7 @@ let players_page ~season ~seasons ~search ~sort ~include_mismatch players =
       (String.uppercase_ascii sort_value)
       include_checked
       mg_note
-      table)
+      table) ()
 
 let format_float ?(digits=1) value = Printf.sprintf "%.*f" digits value
 
@@ -726,7 +726,7 @@ let teams_page ~season ~seasons ~scope ~sort ~include_mismatch stats =
     ~description:"WKBL 여자농구 팀 통계 - 6개 구단의 득점, 리바운드, 어시스트 등 시즌별 성적을 비교하세요."
     ~content:(Printf.sprintf
       {html|<div class="space-y-6"><div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3"><div><h2 class="text-2xl font-bold text-slate-900 dark:text-slate-200">Teams</h2><p class="text-slate-500 dark:text-slate-400 text-sm">Team aggregates by season and scope.</p></div><a class="text-orange-600 dark:text-orange-400 hover:text-orange-700 text-sm" href="/teams">Reset</a></div><form id="teams-filter" class="grid grid-cols-1 md:grid-cols-3 gap-3" hx-get="/teams/table" hx-target="#teams-table" hx-trigger="change"><select name="season" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none">%s</select><select name="scope" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none">%s%s</select><select name="sort" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none">%s%s%s%s%s%s%s%s%s</select><label class="md:col-span-3 flex items-center justify-end gap-2 text-xs text-slate-500 dark:text-slate-400"><input type="checkbox" name="include_mismatch" value="1" %s class="h-4 w-4 rounded border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 accent-orange-500" title="Final score != sum(points) 경기 포함"><span>Mismatch 포함</span></label></form><div id="teams-table">%s</div></div>|html}
-      season_options (scope_option "per_game" "Per Game") (scope_option "totals" "Totals") (sort_option "pts" "PTS") (sort_option "reb" "REB") (sort_option "ast" "AST") (sort_option "stl" "STL") (sort_option "blk" "BLK") (sort_option "eff" "EFF") (sort_option "ts_pct" "TS%") (sort_option "fg3_pct" "3P%") (sort_option "min_total" "MIN") include_checked table)
+      season_options (scope_option "per_game" "Per Game") (scope_option "totals" "Totals") (sort_option "pts" "PTS") (sort_option "reb" "REB") (sort_option "ast" "AST") (sort_option "stl" "STL") (sort_option "blk" "BLK") (sort_option "eff" "EFF") (sort_option "ts_pct" "TS%") (sort_option "fg3_pct" "3P%") (sort_option "min_total" "MIN") include_checked table) ()
 
 let standings_table ~season (standings : team_standing list) =
   let rows =
@@ -756,7 +756,7 @@ let standings_page ~season ~seasons standings =
     ~description:"WKBL 여자농구 순위표 - 시즌별 팀 순위, 승률, 승패 기록을 확인하세요."
     ~content:(Printf.sprintf
       {html|<div class="space-y-6"><div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3"><div><h2 class="text-2xl font-bold text-slate-900 dark:text-slate-200">Standings</h2><p class="text-slate-500 dark:text-slate-400 text-sm">League rank and win percentage.</p></div></div><form id="standings-filter" class="flex gap-3" hx-get="/standings/table" hx-target="#standings-table" hx-trigger="change"><select name="season" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none w-48">%s</select></form><div id="standings-table">%s</div></div>|html}
-      season_options table)
+      season_options table) ()
 
 let games_table (games : game_summary list) =
   let mobile_cards =
@@ -822,7 +822,7 @@ let games_page ~season ~seasons games =
   layout ~title:"WKBL Games"
     ~content:(Printf.sprintf
       {html|<div class="space-y-6"><div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3"><div><h2 class="text-2xl font-bold text-slate-900 dark:text-slate-200">Games</h2><p class="text-slate-500 dark:text-slate-400 text-sm">Season schedule and results.</p></div></div><form id="games-filter" class="flex gap-3" hx-get="/games/table" hx-target="#games-table" hx-trigger="change"><select name="season" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none w-48">%s</select></form><div id="games-table">%s</div></div>|html}
-      season_options table)
+      season_options table) ()
 
 let boxscores_table (games : game_summary list) =
   let mobile_cards =
@@ -892,7 +892,7 @@ let boxscores_page ~season ~seasons games =
     ~description:"WKBL 여자농구 경기 박스스코어 - 경기별 개인 기록과 팀 통계를 확인하세요."
     ~content:(Printf.sprintf
       {html|<div class="space-y-6"><div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3"><div><h2 class="text-2xl font-bold text-slate-900 dark:text-slate-200">Boxscores</h2><p class="text-slate-500 dark:text-slate-400 text-sm">Game results and margins.</p></div></div><form id="boxscores-filter" class="flex gap-3" hx-get="/boxscores/table" hx-target="#boxscores-table" hx-trigger="change"><select name="season" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none w-48">%s</select></form><div id="boxscores-table">%s</div></div>|html}
-      season_options table)
+      season_options table) ()
 
 let boxscore_player_table (title: string) (players: boxscore_player_stat list) =
   (* Dedupe: if the same stat line is duplicated due to name matching, keep 1 row. *)
@@ -1083,7 +1083,7 @@ let boxscore_page (bs: game_boxscore) =
       gi.gi_away_score
       (Uri.pct_encode gi.gi_away_team_name) (escape_html gi.gi_away_team_name) (team_logo_tag ~class_name:"w-10 h-10 sm:w-16 sm:h-16" gi.gi_away_team_name)
       data_notes
-      home_table away_table)
+      home_table away_table) ()
 
 let pbp_period_label = function
   | "Q1" -> "1Q"
@@ -1525,7 +1525,7 @@ let compare_page
       (match p2_selected with
       | Some p -> selected_card ~accent_border:"border-t-sky-500" ~season_code:p2_season p
       | None -> candidates_panel ~title:"Player 2" ~slot:`P2 ~accent_btn_class:"text-sky-700" p2_display p2_candidates)
-      compare_result_html)
+      compare_result_html) ()
 
 let prediction_result_card ~(home: string) ~(away: string) (output: prediction_output) =
   let pct value = value *. 100.0 in
@@ -1761,7 +1761,7 @@ let predict_page ~season ~seasons ~teams ~home ~away ~is_neutral ~context_enable
       (if context_enabled then "checked" else "")
       (if is_neutral then "checked" else "")
       (if include_mismatch then "checked" else "")
-      result_html)
+      result_html) ()
 
 let leader_card ?(value_fmt=(fun v -> Printf.sprintf "%.1f" v)) title (leaders: leader_entry list) =
   if leaders = [] then ""
@@ -2353,7 +2353,7 @@ let player_profile_page ?(leaderboards=None) (profile: player_profile) ~scope ~(
           leaderboards_html
           (career_highs_card profile.career_highs)
           missing_data_html
-          data_notes_html)
+          data_notes_html) ()
 let player_game_logs_page (profile: player_profile) ~(season: string) ~(seasons: season_info list) ~(include_mismatch: bool) (games: player_game_stat list) =
   let p = profile.player in
   let display_name = normalize_name p.name in
@@ -2465,7 +2465,7 @@ let player_game_logs_page (profile: player_profile) ~(season: string) ~(seasons:
       season_options
       include_checked
       quality_chips
-      rows)
+      rows) ()
 
 let team_profile_page (detail: team_full_detail) ~season ~seasons =
   let t = detail.tfd_team_name in
@@ -2715,7 +2715,7 @@ let team_profile_page (detail: team_full_detail) ~season ~seasons =
 	          roster_table_inner
 	          roster_table_inner
 	          game_results_chart
-	          game_rows)
+	          game_rows) ()
 
 (** DB QA dashboard page *)
 let qa_dashboard_page (report: Db.qa_db_report) ?(markdown=None) () =
@@ -2839,7 +2839,7 @@ let qa_dashboard_page (report: Db.qa_db_report) ?(markdown=None) () =
       dup_row_rows
       report.qdr_duplicate_player_name_count
       dup_name_rows
-      markdown_block)
+      markdown_block) ()
 
 (** Draft / Trade (official) page *)
 let transactions_page
@@ -3092,7 +3092,7 @@ let transactions_page
       filter_form
       section
   in
-  layout ~title:"Draft / Trade | WKBL" ~content
+  layout ~title:"Draft / Trade | WKBL" ~content ()
 
 (* ===== History & Legends Pages ===== *)
 
@@ -3144,7 +3144,7 @@ let history_page (seasons: historical_season list) =
         </table>
       </div>
     </div>|html}
-    mobile_cards rows)
+    mobile_cards rows) ()
 
 (** Legends page - Hall of fame and legendary players *)
 let legends_page (legends: legend_player list) =
@@ -3234,7 +3234,7 @@ let legends_page (legends: legend_player list) =
         </table>
       </div>
     </div>|html}
-    cards rows)
+    cards rows) ()
 
 (** Coaches page - Coaching records *)
 let coaches_page (coaches: coach list) =
@@ -3316,7 +3316,7 @@ let coaches_page (coaches: coach list) =
         </table>
       </div>
     </div>|html}
-    cards rows)
+    cards rows) ()
 
 (** Player career page - Year by year stats for a player *)
 let player_career_page ~player_name (entries: player_career_entry list) =
@@ -3356,9 +3356,9 @@ let player_career_page ~player_name (entries: player_career_entry list) =
       </div>
       <div class="text-center"><a href="/legends" class="text-orange-500 hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 text-sm">← Back to Legends</a></div>
     </div>|html}
-    (escape_html player_name) rows)
+    (escape_html player_name) rows) ()
 
 (** Error page *)
-let error_page message = layout ~title:"Error" ~content:(Printf.sprintf {html|<div class="flex flex-col items-center justify-center py-20"><span class="text-6xl mb-4">😵</span><h2 class="text-xl font-bold text-slate-900 dark:text-slate-200 mb-2">Something went wrong</h2><p class="text-slate-500 dark:text-slate-400">%s</p><a href="/" class="mt-4 text-orange-500 hover:underline">← Back to home</a></div>|html} (escape_html message))
+let error_page message = layout ~title:"Error" ~content:(Printf.sprintf {html|<div class="flex flex-col items-center justify-center py-20"><span class="text-6xl mb-4">😵</span><h2 class="text-xl font-bold text-slate-900 dark:text-slate-200 mb-2">Something went wrong</h2><p class="text-slate-500 dark:text-slate-400">%s</p><a href="/" class="mt-4 text-orange-500 hover:underline">← Back to home</a></div>|html} (escape_html message)) ()
 (* Force update *)
 (* Force update *)
