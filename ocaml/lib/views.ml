@@ -549,8 +549,9 @@ let layout ~title ?(canonical_path="/") ?(description="") ~content =
   <meta name="twitter:description" content="%s">
   <meta name="twitter:image" content="https://wkbl.win/static/images/og-image.jpeg">
   <link rel="canonical" href="%s">
-  <link rel="icon" href="/static/images/app-icon.jpeg" type="image/jpeg">
-  <link rel="apple-touch-icon" href="/static/images/app-icon.jpeg">
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/images/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/static/images/favicon-16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/static/images/apple-touch-icon.png">
   <script src="/static/js/theme-toggle.js?v=%s" data-cfasync="false"></script>
   <script src="/static/js/htmx-1.9.10.min.js?v=%s" defer data-cfasync="false"></script>
   <script src="/static/js/page-transitions.js?v=%s" defer data-cfasync="false"></script>
