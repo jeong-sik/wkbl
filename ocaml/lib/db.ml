@@ -675,27 +675,7 @@ module Types = struct
     let t = t2 in
     custom ~encode ~decode (t string (t string (t string (t string (t int (t int (t int (t int (t int (t int (t string int)))))))))))
 
-  let pbp_event =
-    let encode _ = assert false in
-    let decode (period_code, rest) =
-      let (event_index, rest) = rest in
-      let (team_side, rest) = rest in
-      let (description, rest) = rest in
-      let (team1_score, rest) = rest in
-      let (team2_score, clock) = rest in
-      Ok {
-        pe_period_code = period_code;
-        pe_event_index = event_index;
-        pe_team_side = team_side;
-        pe_description = description;
-        pe_team1_score = team1_score;
-        pe_team2_score = team2_score;
-        pe_clock = clock;
-      }
-    in
-    let t = t2 in
-    custom ~encode ~decode
-      (t string (t int (t int (t string (t (option int) (t (option int) string))))))
+
 
   (** Historical season type *)
   let historical_season =
@@ -812,6 +792,28 @@ module Types = struct
     let t = t2 in
     custom ~encode ~decode
       (t string (t string (t string (t (option int) (t (option int) (t (option float) (t (option float) (t (option float) (t bool (option string))))))))))
+
+  let pbp_event =
+    let encode _ = assert false in
+    let decode (period_code, (event_index, (team_side, (description, (team1_score, (team2_score, clock)))))) =
+      Ok {
+        pe_period_code = period_code;
+        pe_event_index = event_index;
+        pe_team_side = team_side;
+        pe_description = description;
+        pe_team1_score = team1_score;
+        pe_team2_score = team2_score;
+        pe_clock = clock;
+      }
+    in
+    let t = t2 in
+    custom ~encode ~decode
+      (t string
+        (t int
+          (t int
+            (t string
+              (t (option int)
+                (t (option int) string))))))
 end
 
 (** Use oneshot queries to avoid prepared-statement conflicts with PgBouncer. *)
@@ -863,6 +865,14 @@ module Queries = struct
   let ensure_play_by_play_events_index_game_period = (unit ->. unit) {|
     CREATE INDEX IF NOT EXISTS idx_pbp_game_period ON play_by_play_events(game_id, period_code)
   |}
+
+  let fetch_play_by_play_events = (string ->* Types.pbp_event) {|
+    SELECT period_code, event_index, team_side, description, team1_score, team2_score, clock
+    FROM play_by_play_events
+    WHERE game_id = ?
+    ORDER BY event_index ASC
+  |}
+
   let ensure_player_drafts_table = (unit ->. unit) {|
     CREATE TABLE IF NOT EXISTS player_drafts (
       player_id TEXT PRIMARY KEY,
@@ -3016,9 +3026,12 @@ end
 	             (team_name,
 	              (s, s)))))))))
 	    in
-	    Db.collect_list Queries.team_recent_games t
-	  let get_team_games ~team_name ~season (module Db : Caqti_lwt.CONNECTION) =
-	    let s = if String.trim season = "" then "ALL" else season in
+	                Db.collect_list Queries.team_recent_games t
+	    
+	              let get_play_by_play ~game_id (module Db : Caqti_lwt.CONNECTION) =
+	                Db.collect_list Queries.fetch_play_by_play_events game_id
+	    
+	              let get_team_games ~team_name ~season (module Db : Caqti_lwt.CONNECTION) =	    let s = if String.trim season = "" then "ALL" else season in
 	    let t =
 	      (team_name,
 	       (team_name,
@@ -3654,3 +3667,7 @@ let get_player_career ~player_name () =
   let key = Printf.sprintf "player=%s" (cache_key_text player_name) in
   cached player_career_cache key (fun () ->
     with_db (fun db -> Repo.get_player_career ~player_name db))
+
+let get_play_by_play ~game_id () =
+  with_db (fun db -> Repo.get_play_by_play ~game_id db)
+
