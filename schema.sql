@@ -81,3 +81,27 @@ CREATE TABLE game_stats (
 CREATE INDEX idx_game_stats_player ON game_stats(player_id);
 CREATE INDEX idx_game_stats_game ON game_stats(game_id);
 CREATE INDEX idx_games_date ON games(game_date);
+
+-- 6. Advanced Stats Views
+-- USG% (Usage Rate) - measures how much of the team's possessions a player uses
+CREATE OR REPLACE VIEW player_usg_stats AS
+WITH team_totals AS (
+  SELECT
+    game_id, team_code,
+    SUM(min_seconds) as team_mp,
+    SUM(fg_2p_a + fg_3p_a) as team_fga,
+    SUM(ft_a) as team_fta,
+    SUM(tov) as team_tov
+  FROM game_stats
+  WHERE min_seconds > 0
+  GROUP BY game_id, team_code
+)
+SELECT
+  gs.game_id, gs.player_id, gs.team_code,
+  gs.min_seconds, gs.pts,
+  CASE WHEN gs.min_seconds > 0 AND (tt.team_fga + 0.44 * tt.team_fta + tt.team_tov) > 0
+  THEN ROUND(100.0 * ((gs.fg_2p_a + gs.fg_3p_a + 0.44 * gs.ft_a + gs.tov) * (tt.team_mp / 5.0)) /
+       (gs.min_seconds * (tt.team_fga + 0.44 * tt.team_fta + tt.team_tov)), 1)
+  ELSE NULL END as usg_pct
+FROM game_stats gs
+JOIN team_totals tt ON gs.game_id = tt.game_id AND gs.team_code = tt.team_code;
