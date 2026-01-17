@@ -2727,6 +2727,106 @@ module Queries = struct
       AND g.away_score_calc IS NOT NULL
     ORDER BY g.game_date DESC
   |}
+
+  (* ===== Schedule Table Queries ===== *)
+  let ensure_schedule_table = (unit ->. unit) {|
+    CREATE TABLE IF NOT EXISTS schedule (
+      schedule_id INTEGER PRIMARY KEY AUTOINCREMENT,
+      game_date TEXT NOT NULL,
+      game_time TEXT,
+      season_code TEXT NOT NULL,
+      home_team_code TEXT NOT NULL,
+      away_team_code TEXT NOT NULL,
+      venue TEXT,
+      status TEXT DEFAULT 'scheduled',
+      game_id INTEGER,
+      UNIQUE(game_date, home_team_code, away_team_code)
+    )
+  |}
+  let ensure_schedule_index_date = (unit ->. unit) {|
+    CREATE INDEX IF NOT EXISTS idx_schedule_date ON schedule(game_date)
+  |}
+  let ensure_schedule_index_status = (unit ->. unit) {|
+    CREATE INDEX IF NOT EXISTS idx_schedule_status ON schedule(status)
+  |}
+  let ensure_schedule_index_season = (unit ->. unit) {|
+    CREATE INDEX IF NOT EXISTS idx_schedule_season ON schedule(season_code)
+  |}
+
+  let schedule_entry_row =
+    let encode _ = assert false in
+    let decode (schedule_id, (game_date, (game_time, (season_code, (home_team_code, (away_team_code, (home_team_name, (away_team_name, (venue, status))))))))) =
+      Ok {
+        Domain.sch_id = schedule_id;
+        sch_game_date = game_date;
+        sch_game_time = game_time;
+        sch_season_code = season_code;
+        sch_home_team_code = home_team_code;
+        sch_away_team_code = away_team_code;
+        sch_home_team_name = home_team_name;
+        sch_away_team_name = away_team_name;
+        sch_venue = venue;
+        sch_status = status;
+      }
+    in
+    let t = t2 in
+    custom ~encode ~decode
+      (t int
+        (t string
+          (t (option string)
+            (t string
+              (t string
+                (t string
+                  (t (option string)
+                    (t (option string)
+                      (t (option string) string)))))))))
+
+  let get_upcoming_schedule =
+    (t2 string int ->* schedule_entry_row)
+    {|
+    SELECT
+      s.schedule_id,
+      s.game_date,
+      s.game_time,
+      s.season_code,
+      s.home_team_code,
+      s.away_team_code,
+      th.team_name_kr AS home_team_name,
+      ta.team_name_kr AS away_team_name,
+      s.venue,
+      s.status
+    FROM schedule s
+    LEFT JOIN teams th ON s.home_team_code = th.team_code
+    LEFT JOIN teams ta ON s.away_team_code = ta.team_code
+    WHERE s.status = ?
+      AND s.game_date >= date('now')
+    ORDER BY s.game_date ASC, s.game_time ASC
+    LIMIT ?
+  |}
+
+  let get_schedule_by_date_range =
+    let params = t2 string (t2 string (t2 string string)) in
+    (params ->* schedule_entry_row)
+    {|
+    SELECT
+      s.schedule_id,
+      s.game_date,
+      s.game_time,
+      s.season_code,
+      s.home_team_code,
+      s.away_team_code,
+      th.team_name_kr AS home_team_name,
+      ta.team_name_kr AS away_team_name,
+      s.venue,
+      s.status
+    FROM schedule s
+    LEFT JOIN teams th ON s.home_team_code = th.team_code
+    LEFT JOIN teams ta ON s.away_team_code = ta.team_code
+    WHERE s.game_date >= ?
+      AND s.game_date <= ?
+      AND (? = 'ALL' OR s.status = ?)
+    ORDER BY s.game_date ASC, s.game_time ASC
+  |}
 end
 
 (** Database operations *)
@@ -2752,6 +2852,11 @@ end
       let* () = Db.exec Queries.ensure_game_stats_index_game_team () in
       let* () = Db.exec Queries.ensure_games_index_season_type () in
       let* () = Db.exec Queries.ensure_games_index_season_date () in
+      (* Schedule table for upcoming games *)
+      let* () = Db.exec Queries.ensure_schedule_table () in
+      let* () = Db.exec Queries.ensure_schedule_index_date () in
+      let* () = Db.exec Queries.ensure_schedule_index_status () in
+      let* () = Db.exec Queries.ensure_schedule_index_season () in
       (* Leaders base cache MATERIALIZED VIEW - drop first to update schema *)
       let* () = Db.exec Queries.drop_leaders_base_cache () in
       let* () = Db.exec Queries.ensure_leaders_base_cache_view () in
@@ -2798,6 +2903,14 @@ end
   let get_official_trade_events ~year ~search (module Db : Caqti_lwt.CONNECTION) =
     let pattern = normalize_search_pattern (normalize_label search) in
     Db.collect_list Queries.official_trade_events_filtered ((year, year), pattern)
+
+  (* Schedule queries *)
+  let get_upcoming_schedule ~status ~limit (module Db : Caqti_lwt.CONNECTION) =
+    Db.collect_list Queries.get_upcoming_schedule (status, limit)
+
+  let get_schedule_by_date_range ~start_date ~end_date ~status (module Db : Caqti_lwt.CONNECTION) =
+    Db.collect_list Queries.get_schedule_by_date_range (start_date, (end_date, (status, status)))
+
   let get_players_base ~season ~include_mismatch (module Db : Caqti_lwt.CONNECTION) =
     let s = if String.trim season = "" then "ALL" else season in
     let include_int = if include_mismatch then 1 else 0 in
@@ -3153,6 +3266,7 @@ let history_cache = Cache.create ~ttl:(60.0 *. 60.0 *. 6.0) ~max_entries:16  (* 
 let legends_cache = Cache.create ~ttl:(60.0 *. 60.0 *. 6.0) ~max_entries:16
 let coaches_cache = Cache.create ~ttl:(60.0 *. 60.0 *. 6.0) ~max_entries:16
 let player_career_cache = Cache.create ~ttl:300.0 ~max_entries:128
+let schedule_cache = Cache.create ~ttl:60.0 ~max_entries:16  (* 1 min TTL - schedule changes frequently *)
 
 let take n items =
   let rec loop acc count = function
@@ -3654,3 +3768,15 @@ let get_player_career ~player_name () =
   let key = Printf.sprintf "player=%s" (cache_key_text player_name) in
   cached player_career_cache key (fun () ->
     with_db (fun db -> Repo.get_player_career ~player_name db))
+
+(* ===== Schedule Public API ===== *)
+
+let get_upcoming_schedule ?(status="scheduled") ?(limit=10) () =
+  let key = Printf.sprintf "status=%s,limit=%d" status limit in
+  cached schedule_cache key (fun () ->
+    with_db (fun db -> Repo.get_upcoming_schedule ~status ~limit db))
+
+let get_schedule_by_date_range ~start_date ~end_date ?(status="ALL") () =
+  let key = Printf.sprintf "start=%s,end=%s,status=%s" start_date end_date status in
+  cached schedule_cache key (fun () ->
+    with_db (fun db -> Repo.get_schedule_by_date_range ~start_date ~end_date ~status db))
