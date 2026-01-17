@@ -125,6 +125,23 @@ def create_schema(conn: sqlite3.Connection) -> None:
         CREATE INDEX idx_game_stats_player_id ON game_stats(player_id);
         CREATE INDEX idx_game_stats_team_code ON game_stats(team_code);
         CREATE INDEX idx_games_season_code ON games(season_code);
+
+        CREATE TABLE schedule (
+          schedule_id INTEGER PRIMARY KEY AUTOINCREMENT,
+          game_date TEXT NOT NULL,           -- YYYY-MM-DD
+          game_time TEXT,                    -- HH:MM (24h)
+          season_code TEXT NOT NULL,
+          home_team_code TEXT NOT NULL,
+          away_team_code TEXT NOT NULL,
+          venue TEXT,
+          status TEXT DEFAULT 'scheduled',   -- scheduled/live/final/postponed
+          game_id INTEGER,                   -- links to games table after completion
+          UNIQUE(game_date, home_team_code, away_team_code)
+        );
+
+        CREATE INDEX idx_schedule_date ON schedule(game_date);
+        CREATE INDEX idx_schedule_status ON schedule(status);
+        CREATE INDEX idx_schedule_season ON schedule(season_code);
         """
     )
 

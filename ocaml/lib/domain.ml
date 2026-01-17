@@ -154,6 +154,20 @@ type game_summary = {
   game_type: string;
 }
 
+(** Schedule entry for upcoming/scheduled games *)
+type schedule_entry = {
+  sch_id: int;
+  sch_game_date: string;
+  sch_game_time: string option;
+  sch_season_code: string;
+  sch_home_team_code: string;
+  sch_away_team_code: string;
+  sch_home_team_name: string option;
+  sch_away_team_name: string option;
+  sch_venue: string option;
+  sch_status: string;
+}
+
 type boxscore_player_stat = {
   bs_player_id: string;
   bs_player_name: string;
