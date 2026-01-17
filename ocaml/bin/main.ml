@@ -120,6 +120,45 @@ let () =
         Lwt.return response)
     ];
 
+    (* SEO: robots.txt *)
+    Dream.get "/robots.txt" (fun _ ->
+      Dream.respond
+        ~headers:[("Content-Type", "text/plain; charset=utf-8")]
+        {|User-agent: *
+Allow: /
+Disallow: /qa
+
+Sitemap: https://wkbl.win/sitemap.xml
+|});
+
+    (* SEO: sitemap.xml - Dynamic sitemap *)
+    Dream.get "/sitemap.xml" (fun _ ->
+      let open Lwt.Syntax in
+      let* seasons_res = Db.get_seasons () in
+      let* teams_res = Db.get_all_teams () in
+      match seasons_res, teams_res with
+      | Ok seasons, Ok teams ->
+          let today = Unix.time () |> Unix.gmtime in
+          let lastmod = Printf.sprintf "%04d-%02d-%02d" (today.Unix.tm_year + 1900) (today.Unix.tm_mon + 1) today.Unix.tm_mday in
+          let static_pages = ["/"; "/players"; "/teams"; "/standings"; "/boxscores"; "/games"; "/leaders"; "/awards"; "/compare"; "/predict"; "/transactions"] in
+          let static_urls = static_pages |> List.map (fun path ->
+            Printf.sprintf {|  <url><loc>https://wkbl.win%s</loc><lastmod>%s</lastmod><changefreq>daily</changefreq><priority>%s</priority></url>|}
+              path lastmod (if path = "/" then "1.0" else "0.8")) |> String.concat "\n" in
+          let team_urls = teams |> List.map (fun (t: team_info) ->
+            Printf.sprintf {|  <url><loc>https://wkbl.win/team/%s</loc><lastmod>%s</lastmod><changefreq>weekly</changefreq><priority>0.7</priority></url>|}
+              t.team_code lastmod) |> String.concat "\n" in
+          let season_urls = seasons |> List.map (fun (s: season_info) ->
+            Printf.sprintf {|  <url><loc>https://wkbl.win/standings?season=%s</loc><lastmod>%s</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>|}
+              s.code lastmod) |> String.concat "\n" in
+          let sitemap = Printf.sprintf {|<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+%s
+%s
+%s
+</urlset>|} static_urls team_urls season_urls in
+          Dream.respond ~headers:[("Content-Type", "application/xml; charset=utf-8")] sitemap
+      | _ -> Dream.respond ~status:`Internal_Server_Error "Failed to generate sitemap");
+
     (* Home Page *)
     Dream.get "/" (fun request ->
       let open Lwt.Syntax in
