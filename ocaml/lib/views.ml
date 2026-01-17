@@ -513,7 +513,7 @@ let players_table (players: player_aggregate list) =
     rows
 
 (** Main layout *)
-let layout ~title ~content =
+let layout ~title ?(canonical_path="/") ?(description="") ~content =
   let v = escape_html asset_version in
   let cf_wa_script =
     match Sys.getenv_opt "CF_WEB_ANALYTICS_TOKEN" |> Option.map String.trim with
@@ -523,6 +523,12 @@ let layout ~title ~content =
           (escape_html token)
     | _ -> ""
   in
+  (* SEO: 기본 설명 또는 페이지별 맞춤 설명 사용 *)
+  let default_desc = "WKBL 여자농구 통계 분석 - 선수별 효율, 팀 순위, 박스스코어, 드래프트/이적 정보를 basketball-reference 스타일로 제공합니다." in
+  let meta_desc = if description = "" then default_desc else description in
+  let short_desc = if description = "" then "WKBL 여자농구 통계 분석 - 선수별 효율, 팀 순위, 박스스코어 정보" else description in
+  (* SEO: Canonical URL 동적 생성 *)
+  let canonical_url = Printf.sprintf "https://wkbl.win%s" canonical_path in
   Printf.sprintf
     {html|<!DOCTYPE html>
 <html lang="ko">
@@ -530,19 +536,19 @@ let layout ~title ~content =
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>%s</title>
-  <meta name="description" content="WKBL 여자농구 통계 분석 - 선수별 효율, 팀 순위, 박스스코어, 드래프트/이적 정보를 basketball-reference 스타일로 제공합니다.">
+  <meta name="description" content="%s">
   <meta name="keywords" content="WKBL, 여자농구, 한국여자농구, 통계, 분석, 선수, 팀, 박스스코어">
   <meta property="og:title" content="%s">
-  <meta property="og:description" content="WKBL 여자농구 통계 분석 - 선수별 효율, 팀 순위, 박스스코어 정보">
+  <meta property="og:description" content="%s">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="WKBL Analytics">
   <meta property="og:locale" content="ko_KR">
   <meta property="og:image" content="https://wkbl.win/static/images/og-image.jpeg">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="%s">
-  <meta name="twitter:description" content="WKBL 여자농구 통계 분석 - 선수별 효율, 팀 순위, 박스스코어 정보">
+  <meta name="twitter:description" content="%s">
   <meta name="twitter:image" content="https://wkbl.win/static/images/og-image.jpeg">
-  <link rel="canonical" href="https://wkbl.win/">
+  <link rel="canonical" href="%s">
   <link rel="icon" href="/static/images/app-icon.jpeg" type="image/jpeg">
   <link rel="apple-touch-icon" href="/static/images/app-icon.jpeg">
   <script src="/static/js/theme-toggle.js?v=%s" data-cfasync="false"></script>
@@ -596,7 +602,7 @@ let layout ~title ~content =
   <footer class="border-t border-slate-200 dark:border-slate-800 py-6 text-center text-slate-500 dark:text-slate-400 text-sm"></footer>
 </body>
 </html>|html}
-    (escape_html title) (escape_html title) (escape_html title) v v v v v cf_wa_script content
+    (escape_html title) (escape_html meta_desc) (escape_html title) (escape_html short_desc) (escape_html title) (escape_html short_desc) (escape_html canonical_url) v v v v v cf_wa_script content
 
 (** Home page *)
 let home_page ~season ~seasons players =
@@ -608,7 +614,8 @@ let home_page ~season ~seasons players =
     |> String.concat "\n"
   in
   let table = players_table players in
-  layout ~title:"WKBL Analytics"
+  layout ~title:"WKBL Analytics" ~canonical_path:"/"
+    ~description:"WKBL 여자농구 효율성 순위, 팀 순위, 선수 통계를 한눈에 확인하세요."
     ~content:(Printf.sprintf
       {html|<div class="space-y-6"><div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"><h2 class="text-xl font-bold text-slate-900 dark:text-slate-200">Top Players by Efficiency</h2><form class="flex gap-2" hx-get="/home/table" hx-target="#players-table" hx-trigger="change"><select name="season" aria-label="시즌 선택" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-1.5 text-sm focus:border-orange-500 focus:outline-none">%s</select><input type="text" placeholder="Search player..." aria-label="선수 검색" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-1.5 text-sm focus:border-orange-500 focus:outline-none" hx-get="/home/table" hx-trigger="keyup changed delay:300ms" hx-target="#players-table" name="search"></form></div><div id="players-table" class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto overflow-y-hidden">%s</div></div>|html}
       season_options table)
@@ -641,7 +648,8 @@ let players_page ~season ~seasons ~search ~sort ~include_mismatch players =
     else
       ""
   in
-  layout ~title:"WKBL Players"
+  layout ~title:"WKBL Players" ~canonical_path:"/players"
+    ~description:"WKBL 여자농구 선수 통계 - 효율성, 득점, 리바운드, 어시스트 순위를 시즌별로 비교하세요."
     ~content:(Printf.sprintf
       {html|<div class="space-y-6"><div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3"><div><h2 class="text-2xl font-bold text-slate-900 dark:text-slate-200">Players</h2><p class="text-slate-500 dark:text-slate-400 text-sm">Season-filtered player aggregates.</p></div><a class="text-orange-600 dark:text-orange-400 hover:text-orange-700 text-sm" href="/players">Reset</a></div><form id="players-filter" class="grid grid-cols-1 md:grid-cols-4 gap-3" hx-get="/players/table" hx-target="#players-table" hx-trigger="change, keyup delay:250ms"><select name="season" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none">%s</select><input type="text" name="search" placeholder="Search player..." value="%s" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none"><select name="sort" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none">%s%s%s%s%s%s</select><div class="flex items-center justify-between gap-3 text-xs"><div class="text-slate-500 dark:text-slate-400 flex items-center">Sorted by %s</div><label class="flex items-center gap-2 text-slate-500 dark:text-slate-400 whitespace-nowrap"><input type="checkbox" name="include_mismatch" value="1" %s class="h-4 w-4 rounded border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 accent-orange-500" title="Final score != sum(points) 경기 포함"><span>Mismatch 포함</span></label></div></form>%s<div id="players-table" class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto overflow-y-hidden">%s</div></div>|html}
       season_options
@@ -694,7 +702,8 @@ let teams_page ~season ~seasons ~scope ~sort ~include_mismatch stats =
   let season_options = let base = seasons |> List.map (fun s -> let selected = if s.code = season then "selected" else "" in Printf.sprintf {html|<option value="%s" %s>%s</option>|html} s.code selected (escape_html s.name)) |> String.concat "\n" in Printf.sprintf {html|<option value="ALL" %s>All Seasons</option>%s|html} (if season = "ALL" then "selected" else "") base in
   let table = teams_table ~season ~scope stats in
   let include_checked = if include_mismatch then "checked" else "" in
-  layout ~title:"WKBL Teams"
+  layout ~title:"WKBL Teams" ~canonical_path:"/teams"
+    ~description:"WKBL 여자농구 팀 통계 - 6개 구단의 득점, 리바운드, 어시스트 등 시즌별 성적을 비교하세요."
     ~content:(Printf.sprintf
       {html|<div class="space-y-6"><div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3"><div><h2 class="text-2xl font-bold text-slate-900 dark:text-slate-200">Teams</h2><p class="text-slate-500 dark:text-slate-400 text-sm">Team aggregates by season and scope.</p></div><a class="text-orange-600 dark:text-orange-400 hover:text-orange-700 text-sm" href="/teams">Reset</a></div><form id="teams-filter" class="grid grid-cols-1 md:grid-cols-3 gap-3" hx-get="/teams/table" hx-target="#teams-table" hx-trigger="change"><select name="season" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none">%s</select><select name="scope" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none">%s%s</select><select name="sort" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none">%s%s%s%s%s%s%s%s%s</select><label class="md:col-span-3 flex items-center justify-end gap-2 text-xs text-slate-500 dark:text-slate-400"><input type="checkbox" name="include_mismatch" value="1" %s class="h-4 w-4 rounded border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 accent-orange-500" title="Final score != sum(points) 경기 포함"><span>Mismatch 포함</span></label></form><div id="teams-table">%s</div></div>|html}
       season_options (scope_option "per_game" "Per Game") (scope_option "totals" "Totals") (sort_option "pts" "PTS") (sort_option "reb" "REB") (sort_option "ast" "AST") (sort_option "stl" "STL") (sort_option "blk" "BLK") (sort_option "eff" "EFF") (sort_option "ts_pct" "TS%") (sort_option "fg3_pct" "3P%") (sort_option "min_total" "MIN") include_checked table)
@@ -723,7 +732,8 @@ let standings_table ~season (standings : team_standing list) =
 let standings_page ~season ~seasons standings =
   let season_options = let base = seasons |> List.map (fun (s: season_info) -> let selected = if s.code = season then "selected" else "" in Printf.sprintf {html|<option value="%s" %s>%s</option>|html} s.code selected (escape_html s.name)) |> String.concat "\n" in Printf.sprintf {html|<option value="ALL" %s>All Seasons</option>%s|html} (if season = "ALL" then "selected" else "") base in
   let table = standings_table ~season standings in
-  layout ~title:"WKBL Standings"
+  layout ~title:"WKBL Standings" ~canonical_path:"/standings"
+    ~description:"WKBL 여자농구 순위표 - 시즌별 팀 순위, 승률, 승패 기록을 확인하세요."
     ~content:(Printf.sprintf
       {html|<div class="space-y-6"><div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3"><div><h2 class="text-2xl font-bold text-slate-900 dark:text-slate-200">Standings</h2><p class="text-slate-500 dark:text-slate-400 text-sm">League rank and win percentage.</p></div></div><form id="standings-filter" class="flex gap-3" hx-get="/standings/table" hx-target="#standings-table" hx-trigger="change"><select name="season" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none w-48">%s</select></form><div id="standings-table">%s</div></div>|html}
       season_options table)
@@ -858,7 +868,8 @@ let boxscores_table (games : game_summary list) =
 let boxscores_page ~season ~seasons games =
   let season_options = let base = seasons |> List.map (fun (s: season_info) -> let selected = if s.code = season then "selected" else "" in Printf.sprintf {html|<option value="%s" %s>%s</option>|html} s.code selected (escape_html s.name)) |> String.concat "\n" in Printf.sprintf {html|<option value="ALL" %s>All Seasons</option>%s|html} (if season = "ALL" then "selected" else "") base in
   let table = boxscores_table games in
-  layout ~title:"WKBL Boxscores"
+  layout ~title:"WKBL Boxscores" ~canonical_path:"/boxscores"
+    ~description:"WKBL 여자농구 경기 박스스코어 - 경기별 개인 기록과 팀 통계를 확인하세요."
     ~content:(Printf.sprintf
       {html|<div class="space-y-6"><div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3"><div><h2 class="text-2xl font-bold text-slate-900 dark:text-slate-200">Boxscores</h2><p class="text-slate-500 dark:text-slate-400 text-sm">Game results and margins.</p></div></div><form id="boxscores-filter" class="flex gap-3" hx-get="/boxscores/table" hx-target="#boxscores-table" hx-trigger="change"><select name="season" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none w-48">%s</select></form><div id="boxscores-table">%s</div></div>|html}
       season_options table)
