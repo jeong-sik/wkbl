@@ -39,7 +39,7 @@ jobs:
       - name: Install dependencies
         run: |
           opam install . --deps-only --with-test --yes
-          opam install ocamlformat.0.26.1 --yes
+          opam install ocamlformat.0.26.2 --yes
 
       - name: Build
         run: opam exec -- dune build
