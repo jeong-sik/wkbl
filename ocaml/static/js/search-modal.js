@@ -13,20 +13,20 @@
   let selectedIndex = -1;
   let lastFocusedElement = null;
 
-  // Static navigation items
+  // Static navigation items (Korean + English for search)
   const NAV_ITEMS = [
-    { type: 'page', name: 'Home', path: '/', icon: '🏠' },
-    { type: 'page', name: 'Awards', path: '/awards', icon: '🏆' },
-    { type: 'page', name: 'Leaders', path: '/leaders', icon: '📊' },
-    { type: 'page', name: 'Boxscores', path: '/boxscores', icon: '📋' },
-    { type: 'page', name: 'Games', path: '/games', icon: '📅' },
-    { type: 'page', name: 'Standings', path: '/standings', icon: '🏅' },
-    { type: 'page', name: 'Teams', path: '/teams', icon: '👥' },
-    { type: 'page', name: 'Players', path: '/players', icon: '👤' },
-    { type: 'page', name: 'Predict', path: '/predict', icon: '🔮' },
-    { type: 'page', name: 'Compare', path: '/compare', icon: '⚖️' },
-    { type: 'page', name: 'Draft/Trade', path: '/transactions', icon: '📜' },
-    { type: 'page', name: 'QA Dashboard', path: '/qa', icon: '✅' }
+    { type: 'page', name: '홈', alias: 'Home', path: '/', icon: '🏠' },
+    { type: 'page', name: '시상식', alias: 'Awards', path: '/awards', icon: '🏆' },
+    { type: 'page', name: '리더스', alias: 'Leaders Stats', path: '/leaders', icon: '📊' },
+    { type: 'page', name: '박스스코어', alias: 'Boxscores', path: '/boxscores', icon: '📋' },
+    { type: 'page', name: '경기일정', alias: 'Games Schedule', path: '/games', icon: '📅' },
+    { type: 'page', name: '순위', alias: 'Standings', path: '/standings', icon: '🏅' },
+    { type: 'page', name: '팀', alias: 'Teams', path: '/teams', icon: '👥' },
+    { type: 'page', name: '선수', alias: 'Players', path: '/players', icon: '👤' },
+    { type: 'page', name: '승부예측', alias: 'Predict', path: '/predict', icon: '🔮' },
+    { type: 'page', name: '선수비교', alias: 'Compare Players', path: '/compare', icon: '⚖️' },
+    { type: 'page', name: '드래프트/트레이드', alias: 'Draft Trade Transactions', path: '/transactions', icon: '📜' },
+    { type: 'page', name: 'QA 대시보드', alias: 'QA Dashboard', path: '/qa', icon: '✅' }
   ];
 
   function init() {
@@ -146,9 +146,10 @@
       return;
     }
 
-    // Filter nav items
+    // Filter nav items (search name, alias, and path)
     const filtered = NAV_ITEMS.filter(function(item) {
       return item.name.toLowerCase().includes(query) ||
+             (item.alias && item.alias.toLowerCase().includes(query)) ||
              item.path.toLowerCase().includes(query);
     });
 
@@ -216,7 +217,7 @@
       return;
     }
 
-    resultsList.innerHTML = items.map(function(item, idx) {
+    resultsList.innerHTML = items.map(function(item) {
       return `
         <li
           role="option"

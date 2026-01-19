@@ -12,9 +12,11 @@
     // Table row skeleton (for stats tables)
     tableRow: function(cols) {
       cols = cols || 8;
+      // Deterministic width pattern to avoid layout jitter
+      var widths = ['80%', '60%', '45%', '55%', '50%', '65%', '40%', '70%'];
       let cells = '';
       for (let i = 0; i < cols; i++) {
-        const width = i === 0 ? '80%' : (40 + Math.random() * 40) + '%';
+        const width = widths[i % widths.length];
         cells += '<td class="px-3 py-3"><div class="skeleton-box h-4" style="width: ' + width + '"></div></td>';
       }
       return '<tr class="skeleton-row animate-pulse">' + cells + '</tr>';
