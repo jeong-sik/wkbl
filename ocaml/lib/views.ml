@@ -619,7 +619,9 @@ let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="") ~content
     </div>
   </header>
   <main id="main-content" class="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8" tabindex="-1">%s</main>
-  <footer class="border-t border-slate-200 dark:border-slate-800 py-6 text-center text-slate-500 dark:text-slate-400 text-sm"></footer>
+  <footer class="border-t border-slate-200 dark:border-slate-800 py-6 text-center text-slate-500 dark:text-slate-400 text-sm">
+    <a href="mailto:contact@wkbl.win" class="hover:text-slate-700 dark:hover:text-slate-300 transition-colors">📧 contact@wkbl.win</a>
+  </footer>
 </body>
 </html>|html}
     (escape_html title) (escape_html meta_desc) (escape_html title) (escape_html short_desc) (escape_html title) (escape_html short_desc) (escape_html canonical_url) v v v v v json_ld_script cf_wa_script content
