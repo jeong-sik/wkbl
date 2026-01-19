@@ -829,6 +829,219 @@ let score_flow_tests = [
 ]
 
 (* ============================================= *)
+(* Lineup Chemistry Tests                        *)
+(* ============================================= *)
+
+let test_make_lineup_key () =
+  (* Test that lineup key is created correctly with sorted IDs *)
+  let key1 = make_lineup_key ["p3"; "p1"; "p5"; "p2"; "p4"] in
+  let key2 = make_lineup_key ["p1"; "p2"; "p3"; "p4"; "p5"] in
+  Alcotest.(check string) "Keys should be sorted and equal" key1 key2;
+  Alcotest.(check string) "Key format" "p1,p2,p3,p4,p5" key1
+
+let test_make_lineup_key_single () =
+  let key = make_lineup_key ["player1"] in
+  Alcotest.(check string) "Single player key" "player1" key
+
+let test_calculate_synergy_score_basic () =
+  (* Positive avg_plus_minus should give positive score *)
+  let score = calculate_synergy_score
+    ~games_together:10 ~total_minutes:100.0 ~avg_plus_minus:5.0 in
+  Alcotest.(check bool) "Positive synergy" true (score > 0.0);
+  Alcotest.(check bool) "Score with max weights" true (score >= 4.9 && score <= 5.1)
+
+let test_calculate_synergy_score_insufficient_data () =
+  (* Less than 2 games should return 0 *)
+  let score1 = calculate_synergy_score
+    ~games_together:1 ~total_minutes:100.0 ~avg_plus_minus:5.0 in
+  Alcotest.(check (float 0.01)) "1 game = 0 synergy" 0.0 score1;
+  (* Less than 10 minutes should return 0 *)
+  let score2 = calculate_synergy_score
+    ~games_together:10 ~total_minutes:5.0 ~avg_plus_minus:5.0 in
+  Alcotest.(check (float 0.01)) "5 min = 0 synergy" 0.0 score2
+
+let test_calculate_synergy_score_negative () =
+  (* Negative avg_plus_minus should give negative score *)
+  let score = calculate_synergy_score
+    ~games_together:10 ~total_minutes:100.0 ~avg_plus_minus:(-3.0) in
+  Alcotest.(check bool) "Negative synergy" true (score < 0.0)
+
+let test_compare_lineup_stats_by_minutes () =
+  let l1 : lineup_stats = {
+    ls_players = []; ls_team_name = "A"; ls_games_together = 1;
+    ls_total_minutes = 100.0; ls_total_pts = 50; ls_total_opp_pts = 40;
+    ls_plus_minus = 10; ls_avg_pts_per_min = 0.5; ls_avg_margin_per_min = 0.1;
+  } in
+  let l2 : lineup_stats = { l1 with ls_total_minutes = 200.0 } in
+  (* l2 should come first (more minutes) *)
+  let cmp = compare_lineup_stats LineupByMinutes l1 l2 in
+  Alcotest.(check bool) "l2 has more minutes" true (cmp > 0)
+
+let test_compare_lineup_stats_by_plus_minus () =
+  let l1 : lineup_stats = {
+    ls_players = []; ls_team_name = "A"; ls_games_together = 1;
+    ls_total_minutes = 100.0; ls_total_pts = 50; ls_total_opp_pts = 40;
+    ls_plus_minus = 10; ls_avg_pts_per_min = 0.5; ls_avg_margin_per_min = 0.1;
+  } in
+  let l2 : lineup_stats = { l1 with ls_plus_minus = 20 } in
+  (* l2 should come first (higher +/-) *)
+  let cmp = compare_lineup_stats LineupByPlusMinus l1 l2 in
+  Alcotest.(check bool) "l2 has higher +/-" true (cmp > 0)
+
+let test_lineup_sort_of_string () =
+  Alcotest.(check bool) "min -> LineupByMinutes"
+    true (lineup_sort_of_string "min" = LineupByMinutes);
+  Alcotest.(check bool) "minutes -> LineupByMinutes"
+    true (lineup_sort_of_string "minutes" = LineupByMinutes);
+  Alcotest.(check bool) "pm -> LineupByPlusMinus"
+    true (lineup_sort_of_string "pm" = LineupByPlusMinus);
+  Alcotest.(check bool) "eff -> LineupByEfficiency"
+    true (lineup_sort_of_string "eff" = LineupByEfficiency);
+  Alcotest.(check bool) "unknown -> LineupByFrequency"
+    true (lineup_sort_of_string "unknown" = LineupByFrequency)
+
+let test_empty_lineup_stats () =
+  let empty = empty_lineup_stats ~team_name:"Test Team" in
+  Alcotest.(check string) "Team name set" "Test Team" empty.ls_team_name;
+  Alcotest.(check int) "Games = 0" 0 empty.ls_games_together;
+  Alcotest.(check (float 0.01)) "Minutes = 0" 0.0 empty.ls_total_minutes;
+  Alcotest.(check int) "Pts = 0" 0 empty.ls_total_pts;
+  Alcotest.(check int) "+/- = 0" 0 empty.ls_plus_minus;
+  Alcotest.(check (list pass)) "Players empty" [] empty.ls_players
+
+let lineup_chemistry_tests = [
+  Alcotest.test_case "Make lineup key (sorted)" `Quick test_make_lineup_key;
+  Alcotest.test_case "Make lineup key (single)" `Quick test_make_lineup_key_single;
+  Alcotest.test_case "Calculate synergy score (basic)" `Quick test_calculate_synergy_score_basic;
+  Alcotest.test_case "Calculate synergy score (insufficient)" `Quick test_calculate_synergy_score_insufficient_data;
+  Alcotest.test_case "Calculate synergy score (negative)" `Quick test_calculate_synergy_score_negative;
+  Alcotest.test_case "Compare lineup stats (by minutes)" `Quick test_compare_lineup_stats_by_minutes;
+  Alcotest.test_case "Compare lineup stats (by +/-)" `Quick test_compare_lineup_stats_by_plus_minus;
+  Alcotest.test_case "Lineup sort of string" `Quick test_lineup_sort_of_string;
+  Alcotest.test_case "Empty lineup stats" `Quick test_empty_lineup_stats;
+]
+
+(* ============================================= *)
+(* On/Off Impact Tests                           *)
+(* ============================================= *)
+
+let test_calculate_net_rating_basic () =
+  (* Team scores 110, opponent scores 100, 100 possessions -> +10.0 net rating *)
+  let net = calculate_net_rating ~team_pts:110 ~opp_pts:100 ~possessions:100.0 in
+  Alcotest.(check float_testable) "Net rating +10" 10.0 net
+
+let test_calculate_net_rating_negative () =
+  (* Team scores 90, opponent scores 100, 100 possessions -> -10.0 net rating *)
+  let net = calculate_net_rating ~team_pts:90 ~opp_pts:100 ~possessions:100.0 in
+  Alcotest.(check float_testable) "Net rating -10" (-10.0) net
+
+let test_calculate_net_rating_zero_possessions () =
+  (* Zero possessions should return 0 *)
+  let net = calculate_net_rating ~team_pts:110 ~opp_pts:100 ~possessions:0.0 in
+  Alcotest.(check float_testable) "Net rating with 0 poss" 0.0 net
+
+let test_calculate_off_rating () =
+  (* 110 points on 100 possessions -> 110.0 offensive rating *)
+  let off = calculate_off_rating ~team_pts:110 ~possessions:100.0 in
+  Alcotest.(check float_testable) "Offensive rating 110" 110.0 off
+
+let test_calculate_def_rating () =
+  (* 95 opponent points on 100 possessions -> 95.0 defensive rating *)
+  let def = calculate_def_rating ~opp_pts:95 ~possessions:100.0 in
+  Alcotest.(check float_testable) "Defensive rating 95" 95.0 def
+
+let test_estimate_possessions () =
+  (* FGA=80, FTA=20, TOV=15, OREB=10 -> 80 + 0.44*20 + 15 - 10 = 93.8 *)
+  let poss = estimate_possessions ~fga:80 ~fta:20 ~tov:15 ~oreb:10 in
+  Alcotest.(check float_testable) "Possessions estimate" 93.8 poss
+
+let test_create_on_off_impact () =
+  let impact = create_on_off_impact
+    ~player_id:"P001"
+    ~player_name:"Test Player"
+    ~team_name:"Test Team"
+    ~games_played:20
+    ~total_minutes:500.0
+    ~on_minutes:500.0
+    ~on_team_pts:1100
+    ~on_opp_pts:1000
+    ~on_possessions:1000.0
+    ~off_minutes:0.0
+    ~off_team_pts:0
+    ~off_opp_pts:0
+    ~off_possessions:0.0
+    ~plus_minus_total:100
+  in
+  Alcotest.(check string) "Player ID" "P001" impact.ooi_player_id;
+  Alcotest.(check string) "Player name" "Test Player" impact.ooi_player_name;
+  Alcotest.(check int) "Games played" 20 impact.ooi_games_played;
+  Alcotest.(check float_testable) "Total minutes" 500.0 impact.ooi_total_minutes;
+  Alcotest.(check int) "Plus/minus total" 100 impact.ooi_plus_minus_total;
+  Alcotest.(check float_testable) "Plus/minus avg" 5.0 impact.ooi_plus_minus_avg;
+  (* Net rating on: (1100-1000)/1000 * 100 = 10.0 *)
+  Alcotest.(check float_testable) "Net rating on" 10.0 impact.ooi_net_rating_on
+
+let test_simple_on_off_impact () =
+  let impact = simple_on_off_impact_from_plus_minus
+    ~player_id:"P002"
+    ~player_name:"Simple Player"
+    ~team_name:"Simple Team"
+    ~games_played:10
+    ~total_minutes:200.0
+    ~plus_minus_total:50
+  in
+  Alcotest.(check string) "Player ID" "P002" impact.ooi_player_id;
+  Alcotest.(check int) "Games played" 10 impact.ooi_games_played;
+  Alcotest.(check float_testable) "Plus/minus avg" 5.0 impact.ooi_plus_minus_avg;
+  (* Simple function sets net ratings to 0 *)
+  Alcotest.(check float_testable) "Net rating on" 0.0 impact.ooi_net_rating_on
+
+let test_on_off_impact_zero_games () =
+  let impact = create_on_off_impact
+    ~player_id:"P003"
+    ~player_name:"Zero Player"
+    ~team_name:"Zero Team"
+    ~games_played:0
+    ~total_minutes:0.0
+    ~on_minutes:0.0
+    ~on_team_pts:0
+    ~on_opp_pts:0
+    ~on_possessions:0.0
+    ~off_minutes:0.0
+    ~off_team_pts:0
+    ~off_opp_pts:0
+    ~off_possessions:0.0
+    ~plus_minus_total:0
+  in
+  Alcotest.(check float_testable) "Zero games -> 0 avg" 0.0 impact.ooi_plus_minus_avg;
+  Alcotest.(check int) "On court games" 0 impact.ooi_on_court.ocs_games
+
+let test_on_off_impact_negative_pm () =
+  let impact = simple_on_off_impact_from_plus_minus
+    ~player_id:"P004"
+    ~player_name:"Negative Player"
+    ~team_name:"Negative Team"
+    ~games_played:10
+    ~total_minutes:300.0
+    ~plus_minus_total:(-50)
+  in
+  Alcotest.(check int) "Negative plus/minus" (-50) impact.ooi_plus_minus_total;
+  Alcotest.(check float_testable) "Negative avg" (-5.0) impact.ooi_plus_minus_avg
+
+let on_off_impact_tests = [
+  Alcotest.test_case "Calculate net rating (positive)" `Quick test_calculate_net_rating_basic;
+  Alcotest.test_case "Calculate net rating (negative)" `Quick test_calculate_net_rating_negative;
+  Alcotest.test_case "Calculate net rating (zero poss)" `Quick test_calculate_net_rating_zero_possessions;
+  Alcotest.test_case "Calculate offensive rating" `Quick test_calculate_off_rating;
+  Alcotest.test_case "Calculate defensive rating" `Quick test_calculate_def_rating;
+  Alcotest.test_case "Estimate possessions" `Quick test_estimate_possessions;
+  Alcotest.test_case "Create on/off impact" `Quick test_create_on_off_impact;
+  Alcotest.test_case "Simple on/off from +/-" `Quick test_simple_on_off_impact;
+  Alcotest.test_case "On/off impact zero games" `Quick test_on_off_impact_zero_games;
+  Alcotest.test_case "On/off impact negative +/-" `Quick test_on_off_impact_negative_pm;
+]
+
+(* ============================================= *)
 (* Main Test Runner                              *)
 (* ============================================= *)
 
@@ -846,4 +1059,6 @@ let () =
     "Hot Streaks", streaks_tests;
     "Clutch Time", clutch_tests;
     "Score Flow", score_flow_tests;
+    "Lineup Chemistry", lineup_chemistry_tests;
+    "On/Off Impact", on_off_impact_tests;
   ]

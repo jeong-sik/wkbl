@@ -1012,3 +1012,385 @@ let game_flow_page ~(game: Domain.game_info) (flow_points: Domain.score_flow_poi
       stats_section
       (escape_html game.gi_game_id)
       (escape_html game.gi_game_id)) ()
+
+(* ===== Lineup Chemistry Views ===== *)
+
+(** Render a single lineup row *)
+let render_lineup_row (lineup: Domain.lineup_stats) (rank: int) : string =
+  let players_html = lineup.ls_players
+    |> List.map (fun p ->
+        Printf.sprintf {html|<span class="inline-block px-2 py-1 text-xs bg-slate-100 dark:bg-slate-800 rounded mr-1 mb-1">%s</span>|html}
+          (escape_html p.Domain.lp_player_name))
+    |> String.concat "" in
+  let pm_class = if lineup.ls_plus_minus >= 0
+    then "text-green-600 dark:text-green-400"
+    else "text-red-600 dark:text-red-400" in
+  let pm_sign = if lineup.ls_plus_minus >= 0 then "+" else "" in
+  Printf.sprintf
+    {html|<tr class="border-b border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900/50">
+      <td class="px-3 py-3 text-center font-mono text-sm">%d</td>
+      <td class="px-3 py-3">
+        <div class="flex flex-wrap">%s</div>
+      </td>
+      <td class="px-3 py-3 text-center font-mono text-sm">%d</td>
+      <td class="px-3 py-3 text-center font-mono text-sm">%.1f</td>
+      <td class="px-3 py-3 text-center font-mono text-sm">%d</td>
+      <td class="px-3 py-3 text-center font-mono text-sm %s">%s%d</td>
+      <td class="px-3 py-3 text-center font-mono text-sm">%.2f</td>
+    </tr>|html}
+    rank
+    players_html
+    lineup.ls_games_together
+    lineup.ls_total_minutes
+    lineup.ls_total_pts
+    pm_class pm_sign lineup.ls_plus_minus
+    lineup.ls_avg_margin_per_min
+
+(** Render a synergy row *)
+let render_synergy_row (syn: Domain.lineup_synergy) (rank: int) : string =
+  let score_class = if syn.syn_synergy_score >= 0.0
+    then "text-green-600 dark:text-green-400"
+    else "text-red-600 dark:text-red-400" in
+  let pm_class = if syn.syn_avg_plus_minus >= 0.0
+    then "text-green-600 dark:text-green-400"
+    else "text-red-600 dark:text-red-400" in
+  Printf.sprintf
+    {html|<tr class="border-b border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900/50">
+      <td class="px-3 py-3 text-center font-mono text-sm">%d</td>
+      <td class="px-3 py-3 text-sm">%s</td>
+      <td class="px-3 py-3 text-sm">%s</td>
+      <td class="px-3 py-3 text-center font-mono text-sm">%d</td>
+      <td class="px-3 py-3 text-center font-mono text-sm">%.1f</td>
+      <td class="px-3 py-3 text-center font-mono text-sm %s">%+.2f</td>
+      <td class="px-3 py-3 text-center font-mono text-sm font-bold %s">%.2f</td>
+    </tr>|html}
+    rank
+    (escape_html syn.syn_player1_name)
+    (escape_html syn.syn_player2_name)
+    syn.syn_games_together
+    syn.syn_total_minutes
+    pm_class syn.syn_avg_plus_minus
+    score_class syn.syn_synergy_score
+
+(** Render lineup table *)
+let render_lineup_table ~title (lineups: Domain.lineup_stats list) : string =
+  if lineups = [] then
+    Printf.sprintf {html|<div class="text-center text-slate-500 dark:text-slate-400 py-8">%s: No data available</div>|html} title
+  else
+    let rows = lineups |> List.mapi (fun i l -> render_lineup_row l (i + 1)) |> String.concat "\n" in
+    Printf.sprintf
+      {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+        <div class="px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
+          <h2 class="font-bold text-slate-900 dark:text-slate-200">%s</h2>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-slate-50 dark:bg-slate-800/30">
+              <tr class="text-left text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                <th class="px-3 py-2 text-center">#</th>
+                <th class="px-3 py-2">Players</th>
+                <th class="px-3 py-2 text-center">Games</th>
+                <th class="px-3 py-2 text-center">Min</th>
+                <th class="px-3 py-2 text-center">Pts</th>
+                <th class="px-3 py-2 text-center">+/-</th>
+                <th class="px-3 py-2 text-center">+/-/min</th>
+              </tr>
+            </thead>
+            <tbody class="text-slate-700 dark:text-slate-300">
+              %s
+            </tbody>
+          </table>
+        </div>
+      </div>|html}
+      title rows
+
+(** Render synergy table *)
+let render_synergy_table (synergies: Domain.lineup_synergy list) : string =
+  if synergies = [] then
+    {html|<div class="text-center text-slate-500 dark:text-slate-400 py-8">Player Synergies: No data available</div>|html}
+  else
+    let rows = synergies |> List.mapi (fun i s -> render_synergy_row s (i + 1)) |> String.concat "\n" in
+    Printf.sprintf
+      {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+        <div class="px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
+          <h2 class="font-bold text-slate-900 dark:text-slate-200">Player Synergies (Top Pairs)</h2>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-slate-50 dark:bg-slate-800/30">
+              <tr class="text-left text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                <th class="px-3 py-2 text-center">#</th>
+                <th class="px-3 py-2">Player 1</th>
+                <th class="px-3 py-2">Player 2</th>
+                <th class="px-3 py-2 text-center">Games</th>
+                <th class="px-3 py-2 text-center">Min</th>
+                <th class="px-3 py-2 text-center">+/-/min</th>
+                <th class="px-3 py-2 text-center">Synergy</th>
+              </tr>
+            </thead>
+            <tbody class="text-slate-700 dark:text-slate-300">
+              %s
+            </tbody>
+          </table>
+        </div>
+      </div>|html}
+      rows
+
+(** Full lineup chemistry page *)
+let lineup_chemistry_page
+    ~teams ~seasons
+    ~selected_team ~selected_season
+    (chemistry: Domain.lineup_chemistry) : string =
+
+  let team_options = teams
+    |> List.map (fun t ->
+        let selected = if t.Domain.team_code = selected_team then " selected" else "" in
+        Printf.sprintf {|<option value="%s"%s>%s</option>|}
+          (escape_html t.team_code) selected (escape_html t.team_name))
+    |> String.concat "\n" in
+
+  let season_options = seasons
+    |> List.map (fun s ->
+        let selected = if s.Domain.code = selected_season then " selected" else "" in
+        Printf.sprintf {|<option value="%s"%s>%s</option>|}
+          (escape_html s.code) selected (escape_html s.name))
+    |> String.concat "\n" in
+
+  let filter_form = Printf.sprintf
+    {html|<form class="flex flex-wrap gap-4 items-end mb-6" hx-get="/lineups/table" hx-target="#lineup-content" hx-swap="innerHTML">
+      <div>
+        <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">Team</label>
+        <select name="team" class="px-3 py-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-sm">
+          <option value="ALL"%s>All Teams</option>
+          %s
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">Season</label>
+        <select name="season" class="px-3 py-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-sm">
+          <option value="ALL"%s>All Seasons</option>
+          %s
+        </select>
+      </div>
+      <button type="submit" class="px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-sm font-medium transition">
+        Apply Filter
+      </button>
+    </form>|html}
+    (if selected_team = "ALL" then " selected" else "") team_options
+    (if selected_season = "ALL" then " selected" else "") season_options
+  in
+
+  let frequent_table = render_lineup_table
+    ~title:"Most Frequent Lineups (Top 10 by Minutes)"
+    chemistry.lc_frequent_lineups in
+
+  let top_table = render_lineup_table
+    ~title:"Best Performing Lineups (Top 10 by +/-)"
+    chemistry.lc_top_lineups in
+
+  let synergy_table = render_synergy_table chemistry.lc_synergies in
+
+  layout ~title:"Lineup Chemistry"
+    ~content:(Printf.sprintf
+      {html|<div class="space-y-6 animate-fade-in">
+        <div class="flex items-center justify-between">
+          <h1 class="text-2xl font-black text-slate-900 dark:text-slate-200">Lineup Chemistry</h1>
+          <span class="text-sm text-slate-500 dark:text-slate-400">5-Player Lineup Analysis</span>
+        </div>
+        %s
+        <div id="lineup-content" class="space-y-6">
+          %s
+          %s
+          %s
+        </div>
+      </div>|html}
+      filter_form
+      frequent_table
+      top_table
+      synergy_table) ()
+
+(** Lineup chemistry table content (for HTMX partial update) *)
+let lineup_chemistry_table_content (chemistry: Domain.lineup_chemistry) : string =
+  let frequent_table = render_lineup_table
+    ~title:"Most Frequent Lineups (Top 10 by Minutes)"
+    chemistry.lc_frequent_lineups in
+
+  let top_table = render_lineup_table
+    ~title:"Best Performing Lineups (Top 10 by +/-)"
+    chemistry.lc_top_lineups in
+
+  let synergy_table = render_synergy_table chemistry.lc_synergies in
+
+  Printf.sprintf {html|%s
+%s
+%s|html}
+    frequent_table top_table synergy_table
+
+(* ===== On/Off Impact Page ===== *)
+
+(** Format plus/minus with color *)
+let format_plus_minus (pm: float) : string =
+  if pm > 0.0 then
+    Printf.sprintf {html|<span class="text-emerald-600 dark:text-emerald-400 font-semibold">+%.1f</span>|html} pm
+  else if pm < 0.0 then
+    Printf.sprintf {html|<span class="text-rose-600 dark:text-rose-400 font-semibold">%.1f</span>|html} pm
+  else
+    {html|<span class="text-slate-500 dark:text-slate-400">0.0</span>|html}
+
+let format_plus_minus_int (pm: int) : string =
+  if pm > 0 then
+    Printf.sprintf {html|<span class="text-emerald-600 dark:text-emerald-400 font-semibold">+%d</span>|html} pm
+  else if pm < 0 then
+    Printf.sprintf {html|<span class="text-rose-600 dark:text-rose-400 font-semibold">%d</span>|html} pm
+  else
+    {html|<span class="text-slate-500 dark:text-slate-400">0</span>|html}
+
+(** On/Off Impact table *)
+let on_off_impact_table (impacts: Domain.on_off_impact list) : string =
+  let rows = impacts |> List.mapi (fun i (impact: Domain.on_off_impact) ->
+    let rank = i + 1 in
+    let rank_badge =
+      if rank <= 3 then
+        Printf.sprintf {html|<span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-xs font-bold">%d</span>|html} rank
+      else
+        Printf.sprintf {html|<span class="text-slate-500 dark:text-slate-400">%d</span>|html} rank
+    in
+    Printf.sprintf
+      {html|<tr class="border-b border-slate-200/50 dark:border-slate-800/50 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+        <td class="py-3 px-4 text-center">%s</td>
+        <td class="py-3 px-4">
+          <a href="/player/%s" class="font-semibold text-sky-600 dark:text-sky-400 hover:underline">%s</a>
+          <div class="text-xs text-slate-500 dark:text-slate-400">%s</div>
+        </td>
+        <td class="py-3 px-4 text-center font-mono tabular-nums">%d</td>
+        <td class="py-3 px-4 text-center font-mono tabular-nums">%.1f</td>
+        <td class="py-3 px-4 text-center font-mono tabular-nums">%s</td>
+        <td class="py-3 px-4 text-center font-mono tabular-nums">%s</td>
+        <td class="py-3 px-4 text-center font-mono tabular-nums">%d</td>
+      </tr>|html}
+      rank_badge
+      impact.ooi_player_id
+      (escape_html impact.ooi_player_name)
+      (escape_html impact.ooi_team_name)
+      impact.ooi_games_played
+      impact.ooi_total_minutes
+      (format_plus_minus impact.ooi_plus_minus_avg)
+      (format_plus_minus_int impact.ooi_plus_minus_total)
+      impact.ooi_on_court.ocs_games
+  ) |> String.concat "\n" in
+
+  Printf.sprintf
+    {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-lg overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="bg-slate-50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-300">
+            <tr>
+              <th class="py-3 px-4 text-center font-semibold w-16">#</th>
+              <th class="py-3 px-4 text-left font-semibold">Player</th>
+              <th class="py-3 px-4 text-center font-semibold">GP</th>
+              <th class="py-3 px-4 text-center font-semibold">MIN</th>
+              <th class="py-3 px-4 text-center font-semibold">+/- AVG</th>
+              <th class="py-3 px-4 text-center font-semibold">+/- Total</th>
+              <th class="py-3 px-4 text-center font-semibold">Games w/ +/-</th>
+            </tr>
+          </thead>
+          <tbody class="text-slate-700 dark:text-slate-300">
+            %s
+          </tbody>
+        </table>
+      </div>
+    </div>|html}
+    rows
+
+(** On/Off Impact page *)
+let on_off_impact_page
+    ~season
+    ~(seasons: Domain.season_info list)
+    (impacts: Domain.on_off_impact list)
+    : string =
+  let season_options = seasons |> List.map (fun (s: Domain.season_info) ->
+    Printf.sprintf {html|<option value="%s"%s>%s</option>|html}
+      s.code
+      (if s.code = season then " selected" else "")
+      (escape_html s.name)
+  ) |> String.concat "\n" in
+
+  let filter_form = Printf.sprintf
+    {html|<form method="get" action="/on-off" class="flex flex-wrap items-end gap-4 p-4 bg-slate-100 dark:bg-slate-800/50 rounded-xl mb-6">
+      <div>
+        <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">Season</label>
+        <select name="season" class="px-3 py-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-sm">
+          <option value="ALL"%s>All Seasons</option>
+          %s
+        </select>
+      </div>
+      <button type="submit" class="px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-sm font-medium transition">
+        Apply Filter
+      </button>
+    </form>|html}
+    (if season = "ALL" then " selected" else "") season_options
+  in
+
+  let content =
+    if List.length impacts = 0 then
+      {html|<div class="text-center py-12 text-slate-500 dark:text-slate-400">
+        <div class="text-4xl mb-4">📊</div>
+        <div>No on/off impact data available for this season.</div>
+        <div class="text-sm mt-2">Players need at least 5 games and 50 minutes played.</div>
+      </div>|html}
+    else
+      on_off_impact_table impacts
+  in
+
+  (* Summary stats *)
+  let total_players = List.length impacts in
+  let avg_pm =
+    if total_players > 0 then
+      let sum = List.fold_left (fun acc (i: Domain.on_off_impact) -> acc +. i.ooi_plus_minus_avg) 0.0 impacts in
+      sum /. float_of_int total_players
+    else 0.0
+  in
+  let best_player = match impacts with
+    | [] -> None
+    | h :: _ -> Some h
+  in
+
+  let summary_cards = Printf.sprintf
+    {html|<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-lg">
+        <div class="text-slate-500 dark:text-slate-400 text-xs uppercase tracking-widest font-bold">Players Tracked</div>
+        <div class="text-2xl font-black text-slate-900 dark:text-slate-200 mt-1 font-mono tabular-nums">%d</div>
+      </div>
+      <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-lg">
+        <div class="text-slate-500 dark:text-slate-400 text-xs uppercase tracking-widest font-bold">Avg +/- per Game</div>
+        <div class="text-2xl font-black mt-1 font-mono tabular-nums">%s</div>
+      </div>
+      <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-lg">
+        <div class="text-slate-500 dark:text-slate-400 text-xs uppercase tracking-widest font-bold">Best Impact Player</div>
+        <div class="text-lg font-black text-slate-900 dark:text-slate-200 mt-1">%s</div>
+      </div>
+    </div>|html}
+    total_players
+    (format_plus_minus avg_pm)
+    (match best_player with
+     | Some p -> Printf.sprintf {html|<a href="/player/%s" class="text-sky-600 dark:text-sky-400 hover:underline">%s</a>|html}
+         p.ooi_player_id (escape_html p.ooi_player_name)
+     | None -> "-")
+  in
+
+  layout ~title:"On/Off Impact | WKBL"
+    ~content:(Printf.sprintf
+      {html|<div class="space-y-6 animate-fade-in">
+        <div class="flex items-center justify-between">
+          <h1 class="text-2xl font-black text-slate-900 dark:text-slate-200">On/Off Impact</h1>
+          <span class="text-sm text-slate-500 dark:text-slate-400">Player Plus/Minus Analysis</span>
+        </div>
+        %s
+        %s
+        %s
+        <div class="text-xs text-slate-500 dark:text-slate-400 mt-4">
+          <p><strong>+/- (Plus/Minus):</strong> Point differential when player is on court. Positive = team outscores opponents, Negative = team gets outscored.</p>
+          <p class="mt-1"><strong>Note:</strong> +/- data availability depends on official box score coverage.</p>
+        </div>
+      </div>|html}
+      filter_form summary_cards content) ()
