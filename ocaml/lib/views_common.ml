@@ -421,6 +421,244 @@ let career_highs_card (ch: career_high_item list option) =
       in
       Printf.sprintf {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 sm:p-6 shadow-lg h-full"><h3 class="text-orange-600 dark:text-orange-400 font-bold uppercase tracking-wider text-xs mb-4 flex items-center gap-2"><span class="text-lg">🚀</span> Career Highs</h3><div class="space-y-3">%s</div></div>|html} items_html
 
+(** Career Trajectory Chart - SVG-based line chart for season stats *)
+let career_trajectory_chart (stats: season_stats list) =
+  match stats with
+  | [] | [_] -> ""  (* Need at least 2 seasons for trajectory *)
+  | _ ->
+      (* Sort by season code (chronological order) *)
+      let sorted_stats = List.sort (fun a b -> String.compare a.ss_season_code b.ss_season_code) stats in
+      let n = List.length sorted_stats in
+
+      (* Chart dimensions *)
+      let chart_width = 100.0 in  (* viewBox units *)
+      let chart_height = 60.0 in
+      let padding_left = 8.0 in
+      let padding_right = 4.0 in
+      let padding_top = 8.0 in
+      let padding_bottom = 12.0 in
+      let plot_width = chart_width -. padding_left -. padding_right in
+      let plot_height = chart_height -. padding_top -. padding_bottom in
+
+      (* Extract data series *)
+      let pts_data = List.map (fun s -> s.ss_avg_points) sorted_stats in
+      let reb_data = List.map (fun s -> s.ss_avg_rebounds) sorted_stats in
+      let ast_data = List.map (fun s -> s.ss_avg_assists) sorted_stats in
+      let eff_data = List.map (fun s -> s.ss_efficiency) sorted_stats in
+
+      (* Calculate bounds for scaling *)
+      let all_values = pts_data @ eff_data in  (* Use PTS and EFF for main scale *)
+      let max_val = List.fold_left max 0.0 all_values in
+      let min_val = 0.0 in  (* Always start from 0 *)
+      let range = max 1.0 (max_val -. min_val) in
+
+      (* Secondary scale for REB/AST (smaller values) *)
+      let secondary_values = reb_data @ ast_data in
+      let max_secondary = List.fold_left max 0.0 secondary_values in
+      let secondary_range = max 1.0 max_secondary in
+
+      (* Scale functions *)
+      let scale_x i = padding_left +. (float_of_int i /. float_of_int (n - 1)) *. plot_width in
+      let scale_y v = padding_top +. plot_height -. ((v -. min_val) /. range *. plot_height) in
+      let scale_y_secondary v = padding_top +. plot_height -. (v /. secondary_range *. plot_height *. 0.6) in
+
+      (* Generate path data *)
+      let make_path scale_fn data =
+        data
+        |> List.mapi (fun i v ->
+            let x = scale_x i in
+            let y = scale_fn v in
+            if i = 0 then Printf.sprintf "M%.2f,%.2f" x y
+            else Printf.sprintf "L%.2f,%.2f" x y)
+        |> String.concat " "
+      in
+
+      let pts_path = make_path scale_y pts_data in
+      let reb_path = make_path scale_y_secondary reb_data in
+      let ast_path = make_path scale_y_secondary ast_data in
+      let eff_path = make_path scale_y eff_data in
+
+      (* Find peak season (highest efficiency) *)
+      let peak_idx, peak_stats =
+        sorted_stats
+        |> List.mapi (fun i s -> (i, s))
+        |> List.fold_left (fun (best_i, best_s) (i, s) ->
+            if s.ss_efficiency > best_s.ss_efficiency then (i, s) else (best_i, best_s))
+          (0, List.hd sorted_stats)
+      in
+      let peak_x = scale_x peak_idx in
+      let peak_y = scale_y peak_stats.ss_efficiency in
+
+      (* Season labels (x-axis) *)
+      let season_labels =
+        sorted_stats
+        |> List.mapi (fun i s ->
+            let x = scale_x i in
+            let label =
+              (* Extract short season name like "24-25" from full name *)
+              let code = s.ss_season_code in
+              if String.length code >= 4 then
+                let year = String.sub code 0 4 in
+                let y1 = int_of_string_opt year |> Option.value ~default:0 in
+                Printf.sprintf "%02d-%02d" (y1 mod 100) ((y1 + 1) mod 100)
+              else
+                s.ss_season_name
+            in
+            Printf.sprintf
+              {svg|<text x="%.2f" y="%.2f" class="fill-slate-500 dark:fill-slate-400 text-[3px] sm:text-[4px]" text-anchor="middle">%s</text>|svg}
+              x (chart_height -. 2.0) (escape_html label))
+        |> String.concat "\n"
+      in
+
+      (* Data points for PTS (with values on hover) *)
+      let pts_points =
+        pts_data
+        |> List.mapi (fun i v ->
+            let x = scale_x i in
+            let y = scale_y v in
+            let season = (List.nth sorted_stats i).ss_season_name in
+            Printf.sprintf
+              {svg|<circle cx="%.2f" cy="%.2f" r="1.5" class="fill-orange-500 stroke-white dark:stroke-slate-900" stroke-width="0.5"><title>%s: %.1f PPG</title></circle>|svg}
+              x y (escape_html season) v)
+        |> String.concat "\n"
+      in
+
+      (* Data points for EFF *)
+      let eff_points =
+        eff_data
+        |> List.mapi (fun i v ->
+            let x = scale_x i in
+            let y = scale_y v in
+            let season = (List.nth sorted_stats i).ss_season_name in
+            Printf.sprintf
+              {svg|<circle cx="%.2f" cy="%.2f" r="1.5" class="fill-emerald-500 stroke-white dark:stroke-slate-900" stroke-width="0.5"><title>%s: %.1f EFF</title></circle>|svg}
+              x y (escape_html season) v)
+        |> String.concat "\n"
+      in
+
+      (* Grid lines *)
+      let grid_lines =
+        let lines = [0.25; 0.5; 0.75] in
+        lines
+        |> List.map (fun pct ->
+            let y = padding_top +. plot_height *. (1.0 -. pct) in
+            Printf.sprintf
+              {svg|<line x1="%.2f" y1="%.2f" x2="%.2f" y2="%.2f" class="stroke-slate-200 dark:stroke-slate-700/50" stroke-width="0.2" stroke-dasharray="1,1"/>|svg}
+              padding_left y (chart_width -. padding_right) y)
+        |> String.concat "\n"
+      in
+
+      (* Peak season highlight *)
+      let peak_highlight =
+        Printf.sprintf
+          {svg|<g class="animate-pulse">
+            <circle cx="%.2f" cy="%.2f" r="3" class="fill-yellow-400/30 dark:fill-yellow-500/20"/>
+            <circle cx="%.2f" cy="%.2f" r="1.8" class="fill-yellow-500 stroke-white dark:stroke-slate-900" stroke-width="0.5">
+              <title>Career Peak: %s - %.1f EFF</title>
+            </circle>
+          </g>|svg}
+          peak_x peak_y peak_x peak_y (escape_html peak_stats.ss_season_name) peak_stats.ss_efficiency
+      in
+
+      (* Legend *)
+      let legend =
+        {html|<div class="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 mt-3 text-[10px] sm:text-xs">
+          <div class="flex items-center gap-1.5">
+            <span class="w-3 h-0.5 bg-orange-500 rounded"></span>
+            <span class="text-slate-600 dark:text-slate-400">PPG</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span class="w-3 h-0.5 bg-emerald-500 rounded"></span>
+            <span class="text-slate-600 dark:text-slate-400">EFF</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span class="w-3 h-0.5 bg-sky-400 rounded"></span>
+            <span class="text-slate-600 dark:text-slate-400">RPG</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span class="w-3 h-0.5 bg-violet-400 rounded"></span>
+            <span class="text-slate-600 dark:text-slate-400">APG</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span class="w-2 h-2 bg-yellow-500 rounded-full"></span>
+            <span class="text-slate-600 dark:text-slate-400">Peak</span>
+          </div>
+        </div>|html}
+      in
+
+      (* Stats summary *)
+      let first_season = List.hd sorted_stats in
+      let last_season = List.hd (List.rev sorted_stats) in
+      let pts_trend = last_season.ss_avg_points -. first_season.ss_avg_points in
+      let eff_trend = last_season.ss_efficiency -. first_season.ss_efficiency in
+      let trend_class sign = if sign > 0.0 then "text-emerald-600 dark:text-emerald-400" else if sign < 0.0 then "text-rose-600 dark:text-rose-400" else "text-slate-500" in
+      let trend_arrow sign = if sign > 0.0 then "+" else "" in
+
+      let summary =
+        Printf.sprintf
+          {html|<div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-4 text-xs">
+            <div class="bg-slate-100 dark:bg-slate-800/40 rounded-lg p-2 text-center">
+              <div class="text-slate-500 dark:text-slate-400 text-[10px] uppercase tracking-wider">Seasons</div>
+              <div class="text-slate-900 dark:text-slate-200 font-mono font-bold">%d</div>
+            </div>
+            <div class="bg-slate-100 dark:bg-slate-800/40 rounded-lg p-2 text-center">
+              <div class="text-slate-500 dark:text-slate-400 text-[10px] uppercase tracking-wider">Peak EFF</div>
+              <div class="text-yellow-600 dark:text-yellow-400 font-mono font-bold">%.1f</div>
+            </div>
+            <div class="bg-slate-100 dark:bg-slate-800/40 rounded-lg p-2 text-center">
+              <div class="text-slate-500 dark:text-slate-400 text-[10px] uppercase tracking-wider">PPG Trend</div>
+              <div class="%s font-mono font-bold">%s%.1f</div>
+            </div>
+            <div class="bg-slate-100 dark:bg-slate-800/40 rounded-lg p-2 text-center">
+              <div class="text-slate-500 dark:text-slate-400 text-[10px] uppercase tracking-wider">EFF Trend</div>
+              <div class="%s font-mono font-bold">%s%.1f</div>
+            </div>
+          </div>|html}
+          n
+          peak_stats.ss_efficiency
+          (trend_class pts_trend) (trend_arrow pts_trend) pts_trend
+          (trend_class eff_trend) (trend_arrow eff_trend) eff_trend
+      in
+
+      Printf.sprintf
+        {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 sm:p-6 shadow-lg">
+          <h3 class="text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-xs mb-4 flex items-center gap-2">
+            <span class="text-lg">📈</span> Career Trajectory
+          </h3>
+          <div class="relative">
+            <svg viewBox="0 0 %.0f %.0f" class="w-full h-auto" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Career statistics trend chart">
+              <!-- Grid -->
+              %s
+
+              <!-- Lines (back to front: AST, REB, EFF, PTS) -->
+              <path d="%s" fill="none" class="stroke-violet-400/60" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="%s" fill="none" class="stroke-sky-400/60" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="%s" fill="none" class="stroke-emerald-500" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="%s" fill="none" class="stroke-orange-500" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+
+              <!-- Data points -->
+              %s
+              %s
+
+              <!-- Peak highlight -->
+              %s
+
+              <!-- Season labels -->
+              %s
+            </svg>
+          </div>
+          %s
+          %s
+        </div>|html}
+        chart_width chart_height
+        grid_lines
+        ast_path reb_path eff_path pts_path
+        eff_points pts_points
+        peak_highlight
+        season_labels
+        legend
+        summary
+
 (** Player row component *)
 let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2 w-[120px] sm:w-[160px]") ?(include_team=true) (rank: int) (p: player_aggregate) =
   let id_badge =
