@@ -137,12 +137,16 @@
     }
   }
 
+  let searchTimeout = null;
+  let lastQuery = '';
+
   function handleInput() {
     const query = input.value.toLowerCase().trim();
     selectedIndex = -1;
 
     if (query === '') {
       renderResults(NAV_ITEMS);
+      lastQuery = '';
       return;
     }
 
@@ -153,7 +157,38 @@
              item.path.toLowerCase().includes(query);
     });
 
+    // Immediately show nav results
     renderResults(filtered);
+
+    // Debounced player search (only if 2+ chars)
+    if (query.length >= 2 && query !== lastQuery) {
+      lastQuery = query;
+      if (searchTimeout) clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(function() {
+        searchPlayers(query, filtered);
+      }, 200);
+    }
+  }
+
+  function searchPlayers(query, navResults) {
+    fetch('/api/search/players?q=' + encodeURIComponent(query))
+      .then(function(res) { return res.json(); })
+      .then(function(players) {
+        if (players.length > 0) {
+          var playerItems = players.map(function(p) {
+            return {
+              type: 'player',
+              name: p.name,
+              alias: p.team + ' · ' + p.pts + ' PPG',
+              path: '/player/' + p.id,
+              icon: '🏀'
+            };
+          });
+          // Combine: nav results first, then players
+          renderResults(navResults.concat(playerItems));
+        }
+      })
+      .catch(function() { /* silent fail */ });
   }
 
   function handleKeydown(e) {
