@@ -131,7 +131,7 @@ module Types = struct
 
   (** Custom type for player_aggregate *)
   let player_aggregate =
-    let encode _ = assert false in  (* We only decode *)
+    let encode _ = Error "Encode not supported: read-only type" in
     let decode (player_id, rest) =
       let (name, rest) = rest in
       let (team_name, rest) = rest in
@@ -194,7 +194,7 @@ module Types = struct
                                           (t float float))))))))))))))))))
 
   let player_base =
-    let encode _ = assert false in  (* We only decode *)
+    let encode _ = Error "Encode not supported: read-only type" in
     let decode (player_id, rest) =
       let (name, rest) = rest in
       let (team_name, rest) = rest in
@@ -260,17 +260,17 @@ module Types = struct
                                           (t float int)))))))))))))))))))
 
   let season_info =
-    let encode _ = assert false in
+    let encode _ = Error "Encode not supported: read-only type" in
     let decode (code, name) = Ok { code; name } in
     custom ~encode ~decode (t2 string string)
 
   let team_info =
-    let encode _ = assert false in
+    let encode _ = Error "Encode not supported: read-only type" in
     let decode (team_code, team_name) = Ok { team_code; team_name } in
     custom ~encode ~decode (t2 string string)
 
   let team_totals =
-    let encode _ = assert false in
+    let encode _ = Error "Encode not supported: read-only type" in
     let decode
         ( season,
           ( team,
@@ -302,14 +302,14 @@ module Types = struct
       (t string (t string (t int (t float (t int (t int (t int (t int (t int (t int (t int (t int (t int (t int (t int (t int (t int int)))))))))))))))))
 
   let team_margin =
-    let encode _ = assert false in
+    let encode _ = Error "Encode not supported: read-only type" in
     let decode (season, (team, (gp, (pts_for, pts_against)))) =
       Ok { season; team; gp; pts_for; pts_against }
     in
     custom ~encode ~decode (t2 string (t2 string (t2 int (t2 int int))))
 
   let team_standing =
-    let encode _ = assert false in
+    let encode _ = Error "Encode not supported: read-only type" in
     let decode (team_name, (games_played, (wins, (losses, (avg_pts, avg_opp_pts))))) =
       let win_pct = if games_played = 0 then 0.0 else Stdlib.float wins /. Stdlib.float games_played in
       let diff = avg_pts -. avg_opp_pts in
@@ -318,7 +318,7 @@ module Types = struct
     custom ~encode ~decode (t2 string (t2 int (t2 int (t2 int (t2 float float)))))
 
   let game_summary =
-    let encode _ = assert false in
+    let encode _ = Error "Encode not supported: read-only type" in
     let decode (game_id, (game_date, (home_team, (away_team, (home_score, (away_score, game_type)))))) =
       Ok { game_id; game_date; home_team; away_team; home_score; away_score; game_type }
     in
@@ -326,7 +326,7 @@ module Types = struct
       (t2 string (t2 string (t2 string (t2 string (t2 (option int) (t2 (option int) string))))))
 
   let qa_score_mismatch =
-    let encode _ = assert false in
+    let encode _ = Error "Encode not supported: read-only type" in
     let decode (game_id, (game_date, (home_team, (away_team, (home_score, (away_score, (home_sum, away_sum))))))) =
       Ok { qsm_game_id = game_id;
            qsm_game_date = game_date;
@@ -349,12 +349,12 @@ module Types = struct
                         (t (option int) (option int))))))))
 
   let qa_team_count_anomaly =
-    let encode _ = assert false in
+    let encode _ = Error "Encode not supported: read-only type" in
     let decode (game_id, team_count) = Ok { qtca_game_id = game_id; qtca_team_count = team_count } in
     custom ~encode ~decode (t2 string int)
 
   let qa_duplicate_player_row =
-    let encode _ = assert false in
+    let encode _ = Error "Encode not supported: read-only type" in
     let decode (game_id, (team_code, (team_name, (player_id, (player_name, row_count))))) =
       Ok { qdpr_game_id = game_id;
            qdpr_team_code = team_code;
@@ -368,14 +368,14 @@ module Types = struct
     custom ~encode ~decode (t string (t string (t string (t string (t string int)))))
 
   let qa_duplicate_player_name_row =
-    let encode _ = assert false in
+    let encode _ = Error "Encode not supported: read-only type" in
     let decode (player_name, (id_count, player_ids_csv)) =
       Ok (player_name, id_count, player_ids_csv)
     in
     custom ~encode ~decode (t2 string (t2 int string))
 
   let boxscore_player_stat =
-    let encode _ = assert false in
+    let encode _ = Error "Encode not supported: read-only type" in
     let decode (player_id, (player_name, (position, (team_code, (team_name, (min_seconds, (pts, (plus_minus, (reb, (ast, (stl, (blk, (tov, (fg2_m, (fg2_a, (fg3_m, (fg3_a, (ft_m, ft_a)))))))))))))))))) =
       let min = Stdlib.float min_seconds /. 60.0 in
       let fg_m = fg2_m + fg3_m in
@@ -417,7 +417,7 @@ module Types = struct
                            (t (option int) stats_tail))))))))
 
   let game_info =
-    let encode _ = assert false in
+    let encode _ = Error "Encode not supported: read-only type" in
     let decode (game_id, (game_date, (home_code, (home_name, (away_code, (away_name, (home_score, (away_score, score_quality_int)))))))) =
       Ok {
         gi_game_id = game_id; gi_game_date = game_date;
@@ -433,14 +433,14 @@ module Types = struct
       (t string (t string (t string (t string (t string (t string (t int (t int int))))))))
 
   let leader_entry =
-    let encode _ = assert false in
+    let encode _ = Error "Encode not supported: read-only type" in
     let decode (player_id, (player_name, (team_name, stat_value))) =
       Ok { le_player_id = player_id; le_player_name = player_name; le_team_name = team_name; le_stat_value = stat_value }
     in
     custom ~encode ~decode (t2 string (t2 string (t2 string float)))
 
   let leader_base =
-    let encode _ = assert false in
+    let encode _ = Error "Encode not supported: read-only type" in
     let decode (player_id, rest) =
       let (player_name, rest) = rest in
       let (team_name, rest) = rest in
@@ -500,7 +500,7 @@ module Types = struct
                      (t int int)))))))))))))))))
 
   let player_info =
-    let encode _ = assert false in
+    let encode _ = Error "Encode not supported: read-only type" in
     let decode (id, (name, (position, (birth_date, (height, weight))))) =
       Ok { id; name; position; birth_date; height; weight }
     in
@@ -508,7 +508,7 @@ module Types = struct
     custom ~encode ~decode (t string (t string (t (option string) (t (option string) (t (option int) (option int))))))
 
   let player_draft =
-    let encode _ = assert false in
+    let encode _ = Error "Encode not supported: read-only type" in
     let decode (player_id, rest) =
       let (draft_year, rest) = rest in
       let (draft_round, rest) = rest in
@@ -539,7 +539,7 @@ module Types = struct
                      (t (option string) (t string (t string string))))))))
 
   let draft_pick_row =
-    let encode _ = assert false in
+    let encode _ = Error "Encode not supported: read-only type" in
     let decode (player_id, rest) =
       let (player_name, rest) = rest in
       let (draft_year, rest) = rest in
@@ -573,7 +573,7 @@ module Types = struct
                         (t (option string) (t string (t string string)))))))))
 
 	  let official_trade_event =
-	    let encode _ = assert false in
+	    let encode _ = Error "Encode not supported: read-only type" in
 	    let decode (event_date, rest) =
 	      let (event_year, rest) = rest in
 	      let (event_text, rest) = rest in
@@ -590,7 +590,7 @@ module Types = struct
 	    custom ~encode ~decode (t string (t int (t string (t string string))))
 
 	  let player_external_link =
-	    let encode _ = assert false in
+	    let encode _ = Error "Encode not supported: read-only type" in
 	    let decode (player_id, rest) =
 	      let (link_type, rest) = rest in
 	      let (url, rest) = rest in
@@ -607,7 +607,7 @@ module Types = struct
 	    custom ~encode ~decode (t string (t string (t string (t (option string) string))))
 
 	  let season_stats =
-	    let encode _ = assert false in
+	    let encode _ = Error "Encode not supported: read-only type" in
 	    let decode (season_code, rest) =
 	      let (season_name, rest) = rest in
       let (gp, rest) = rest in
@@ -642,7 +642,7 @@ module Types = struct
       (t string (t string (t int (t float (t float (t float (t float (t float (t float (t float (t float (t float (t float float)))))))))))))
 
   let player_game_stat =
-    let encode _ = assert false in
+    let encode _ = Error "Encode not supported: read-only type" in
     let decode (game_id, (game_date, (opponent, (is_home_int, (team_score, (opponent_score, (score_quality_int, (min, (pts, (reb, (ast, (stl, (blk, (tov, plus_minus)))))))))))))) =
       let is_home = is_home_int = 1 in
       Ok { game_id; game_date; opponent; is_home; team_score; opponent_score; score_quality = game_score_quality_of_int score_quality_int; min; pts; reb; ast; stl; blk; tov; plus_minus }
@@ -660,7 +660,7 @@ module Types = struct
                               (t int (t int (t int (t int (t int (t int (option int)))))))))))))))
 
   let player_game_stat_with_id =
-    let encode _ = assert false in
+    let encode _ = Error "Encode not supported: read-only type" in
     let decode (player_id, (game_id, (game_date, (opponent, (is_home_int, (team_score, (opponent_score, (score_quality_int, (min, (pts, (reb, (ast, (stl, (blk, (tov, plus_minus))))))))))))))) =
       let is_home = is_home_int = 1 in
       let stat = { game_id; game_date; opponent; is_home; team_score; opponent_score; score_quality = game_score_quality_of_int score_quality_int; min; pts; reb; ast; stl; blk; tov; plus_minus } in
@@ -680,7 +680,7 @@ module Types = struct
                                  (t int (t int (t int (t int (t int (t int (option int))))))))))))))))
 
   let team_game_result =
-    let encode _ = assert false in
+    let encode _ = Error "Encode not supported: read-only type" in
     let decode (game_id, (game_date, (opponent, (is_home_int, (team_score, (opp_score, is_win_int)))))) =
       Ok { tgr_game_id = game_id; tgr_game_date = game_date; tgr_opponent = opponent; tgr_is_home = is_home_int = 1; tgr_team_score = team_score; tgr_opponent_score = opp_score; tgr_is_win = is_win_int = 1 }
     in
@@ -688,7 +688,7 @@ module Types = struct
     custom ~encode ~decode (t string (t string (t string (t int (t int (t int int))))))
 
   let h2h_game =
-    let encode _ = assert false in
+    let encode _ = Error "Encode not supported: read-only type" in
     let decode (game_id, (game_date, (p1_team, (p2_team, (p1_pts, (p1_reb, (p1_ast, (p2_pts, (p2_reb, (p2_ast, (winner, score_diff))))))))))) =
       Ok { game_id; game_date; player1_team = p1_team; player2_team = p2_team; player1_pts = p1_pts; player1_reb = p1_reb; player1_ast = p1_ast; player2_pts = p2_pts; player2_reb = p2_reb; player2_ast = p2_ast; winner_team = winner; score_diff }
     in
@@ -696,7 +696,7 @@ module Types = struct
     custom ~encode ~decode (t string (t string (t string (t string (t int (t int (t int (t int (t int (t int (t string int)))))))))))
 
   let pbp_event =
-    let encode _ = assert false in
+    let encode _ = Error "Encode not supported: read-only type" in
     let decode (period_code, rest) =
       let (event_index, rest) = rest in
       let (team_side, rest) = rest in
@@ -719,7 +719,7 @@ module Types = struct
 
   (** Historical season type *)
   let historical_season =
-    let encode _ = assert false in
+    let encode _ = Error "Encode not supported: read-only type" in
     let decode (season_id, rest) =
       let (season_name, rest) = rest in
       let (champion_team, rest) = rest in
@@ -746,7 +746,7 @@ module Types = struct
 
   (** Legend player type *)
   let legend_player =
-    let encode _ = assert false in
+    let encode _ = Error "Encode not supported: read-only type" in
     let decode (player_name, rest) =
       let (career_years, rest) = rest in
       let (teams, rest) = rest in
@@ -777,7 +777,7 @@ module Types = struct
 
   (** Coach type *)
   let coach =
-    let encode _ = assert false in
+    let encode _ = Error "Encode not supported: read-only type" in
     let decode (coach_name, rest) =
       let (team, rest) = rest in
       let (tenure_start, rest) = rest in
@@ -806,7 +806,7 @@ module Types = struct
 
   (** Player career entry type *)
   let player_career_entry =
-    let encode _ = assert false in
+    let encode _ = Error "Encode not supported: read-only type" in
     let decode (player_name, rest) =
       let (season_id, rest) = rest in
       let (team, rest) = rest in
@@ -835,7 +835,7 @@ module Types = struct
 
   (** MVP candidate type for MVP Race feature *)
   let mvp_candidate =
-    let encode _ = assert false in
+    let encode _ = Error "Encode not supported: read-only type" in
     let decode (player_id, rest) =
       let (player_name, rest) = rest in
       let (team_name, rest) = rest in
@@ -2868,7 +2868,7 @@ module Queries = struct
   |}
 
   let schedule_entry_row =
-    let encode _ = assert false in
+    let encode _ = Error "Encode not supported: read-only type" in
     let decode (schedule_id, (game_date, (game_time, (season_code, (home_team_code, (away_team_code, (home_team_name, (away_team_name, (venue, status))))))))) =
       Ok {
         Domain.sch_id = schedule_id;

@@ -145,7 +145,7 @@ let mvp_race_page ~season ~seasons (candidates: mvp_candidate list) =
           </form>
         </div>
         %s
-        <div id="mvp-table">%s</div>
+        <div id="mvp-table" data-skeleton="table" data-skeleton-count="10" data-skeleton-cols="6">%s</div>
       </div>|html}
       season_options
       formula_section

@@ -391,7 +391,7 @@ let player_season_stats_component ~player_id ~scope (stats: season_stats list) =
     {html|<p class="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed mb-3"><span class="font-mono text-slate-700 dark:text-slate-300">MG</span>는 팀 득실마진(출전시간 가중)이며, 개인 <span class="font-mono text-slate-700 dark:text-slate-300">+/-</span>는 문자중계(PBP) 기반으로 <span class="font-mono text-slate-700 dark:text-slate-300">일부 경기만</span> 제공됩니다. (데이터가 없으면 <span class="font-mono text-slate-700 dark:text-slate-300">-</span>)</p>|html}
   in
   let table = player_season_stats_table ~scope stats in
-  Printf.sprintf {html|<div id="season-stats-component" class="stats-container animate-fade-in">%s%s%s</div>|html} tabs mg_note table
+  Printf.sprintf {html|<div id="season-stats-component" class="stats-container animate-fade-in" data-skeleton="table" data-skeleton-count="8" data-skeleton-cols="10">%s%s%s</div>|html} tabs mg_note table
 
 (** Career Highs Component *)
 let career_highs_card (ch: career_high_item list option) =
@@ -430,13 +430,13 @@ let career_trajectory_chart (stats: season_stats list) =
       let sorted_stats = List.sort (fun a b -> String.compare a.ss_season_code b.ss_season_code) stats in
       let n = List.length sorted_stats in
 
-      (* Chart dimensions *)
-      let chart_width = 100.0 in  (* viewBox units *)
-      let chart_height = 60.0 in
-      let padding_left = 8.0 in
-      let padding_right = 4.0 in
-      let padding_top = 8.0 in
-      let padding_bottom = 12.0 in
+      (* Chart dimensions - increased for better text rendering *)
+      let chart_width = 400.0 in  (* viewBox units *)
+      let chart_height = 200.0 in
+      let padding_left = 32.0 in
+      let padding_right = 16.0 in
+      let padding_top = 24.0 in
+      let padding_bottom = 40.0 in
       let plot_width = chart_width -. padding_left -. padding_right in
       let plot_height = chart_height -. padding_top -. padding_bottom in
 
@@ -505,8 +505,8 @@ let career_trajectory_chart (stats: season_stats list) =
                 s.ss_season_name
             in
             Printf.sprintf
-              {svg|<text x="%.2f" y="%.2f" class="fill-slate-500 dark:fill-slate-400 text-[3px] sm:text-[4px]" text-anchor="middle">%s</text>|svg}
-              x (chart_height -. 2.0) (escape_html label))
+              {svg|<text x="%.2f" y="%.2f" class="fill-slate-500 dark:fill-slate-400" font-size="12" text-anchor="middle">%s</text>|svg}
+              x (chart_height -. 8.0) (escape_html label))
         |> String.concat "\n"
       in
 
@@ -518,7 +518,7 @@ let career_trajectory_chart (stats: season_stats list) =
             let y = scale_y v in
             let season = (List.nth sorted_stats i).ss_season_name in
             Printf.sprintf
-              {svg|<circle cx="%.2f" cy="%.2f" r="1.5" class="fill-orange-500 stroke-white dark:stroke-slate-900" stroke-width="0.5"><title>%s: %.1f PPG</title></circle>|svg}
+              {svg|<circle cx="%.2f" cy="%.2f" r="5" class="fill-orange-500 stroke-white dark:stroke-slate-900" stroke-width="2"><title>%s: %.1f PPG</title></circle>|svg}
               x y (escape_html season) v)
         |> String.concat "\n"
       in
@@ -531,7 +531,7 @@ let career_trajectory_chart (stats: season_stats list) =
             let y = scale_y v in
             let season = (List.nth sorted_stats i).ss_season_name in
             Printf.sprintf
-              {svg|<circle cx="%.2f" cy="%.2f" r="1.5" class="fill-emerald-500 stroke-white dark:stroke-slate-900" stroke-width="0.5"><title>%s: %.1f EFF</title></circle>|svg}
+              {svg|<circle cx="%.2f" cy="%.2f" r="5" class="fill-emerald-500 stroke-white dark:stroke-slate-900" stroke-width="2"><title>%s: %.1f EFF</title></circle>|svg}
               x y (escape_html season) v)
         |> String.concat "\n"
       in
@@ -543,7 +543,7 @@ let career_trajectory_chart (stats: season_stats list) =
         |> List.map (fun pct ->
             let y = padding_top +. plot_height *. (1.0 -. pct) in
             Printf.sprintf
-              {svg|<line x1="%.2f" y1="%.2f" x2="%.2f" y2="%.2f" class="stroke-slate-200 dark:stroke-slate-700/50" stroke-width="0.2" stroke-dasharray="1,1"/>|svg}
+              {svg|<line x1="%.2f" y1="%.2f" x2="%.2f" y2="%.2f" class="stroke-slate-200 dark:stroke-slate-700/50" stroke-width="1" stroke-dasharray="4,4"/>|svg}
               padding_left y (chart_width -. padding_right) y)
         |> String.concat "\n"
       in
@@ -552,8 +552,8 @@ let career_trajectory_chart (stats: season_stats list) =
       let peak_highlight =
         Printf.sprintf
           {svg|<g class="animate-pulse">
-            <circle cx="%.2f" cy="%.2f" r="3" class="fill-yellow-400/30 dark:fill-yellow-500/20"/>
-            <circle cx="%.2f" cy="%.2f" r="1.8" class="fill-yellow-500 stroke-white dark:stroke-slate-900" stroke-width="0.5">
+            <circle cx="%.2f" cy="%.2f" r="12" class="fill-yellow-400/30 dark:fill-yellow-500/20"/>
+            <circle cx="%.2f" cy="%.2f" r="7" class="fill-yellow-500 stroke-white dark:stroke-slate-900" stroke-width="2">
               <title>Career Peak: %s - %.1f EFF</title>
             </circle>
           </g>|svg}
@@ -631,10 +631,10 @@ let career_trajectory_chart (stats: season_stats list) =
               %s
 
               <!-- Lines (back to front: AST, REB, EFF, PTS) -->
-              <path d="%s" fill="none" class="stroke-violet-400/60" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="%s" fill="none" class="stroke-sky-400/60" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="%s" fill="none" class="stroke-emerald-500" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="%s" fill="none" class="stroke-orange-500" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="%s" fill="none" class="stroke-violet-400/60" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="%s" fill="none" class="stroke-sky-400/60" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="%s" fill="none" class="stroke-emerald-500" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="%s" fill="none" class="stroke-orange-500" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
 
               <!-- Data points -->
               %s
