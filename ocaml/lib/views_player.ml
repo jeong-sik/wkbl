@@ -197,6 +197,7 @@ let player_profile_page ?(leaderboards=None) (profile: player_profile) ~scope ~(
   let recent_rows = game_rows profile.recent_games in
   let all_star_rows = game_rows profile.all_star_games in
   let season_stats_component = player_season_stats_component ~player_id:p.id ~scope profile.season_breakdown in
+  let career_trajectory_html = career_trajectory_chart profile.season_breakdown in
   let rec take n xs =
     match n, xs with
     | n, _ when n <= 0 -> []
@@ -388,7 +389,7 @@ let player_profile_page ?(leaderboards=None) (profile: player_profile) ~scope ~(
 	          current_team_html transfers last_move_value_html stint_rows official_html
   in
 
-  let career_highs_html = career_highs_card profile.career_highs in
+  let _career_highs_html = career_highs_card profile.career_highs in
   let leaderboards_html =
     match leaderboards with
     | None -> ""
@@ -671,6 +672,7 @@ let player_profile_page ?(leaderboards=None) (profile: player_profile) ~scope ~(
       <div class="grid grid-cols-1 lg:grid-cols-6 gap-6 sm:gap-8">
         <div class="lg:col-span-4 space-y-6 sm:space-y-8">
           %s
+          %s
           <div class="space-y-4">
             %s
             <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-lg">
@@ -716,6 +718,7 @@ let player_profile_page ?(leaderboards=None) (profile: player_profile) ~scope ~(
           career_chips
           "" (* Placeholder for hero footer element - line 2231 %s *)
           season_stats_component
+          career_trajectory_html
           recent_games_header_html
           recent_rows
           all_star_section_html
