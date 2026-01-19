@@ -5,17 +5,10 @@
 open Wkbl
 open Wkbl.Domain
 
-let has_prefix ~prefix s =
-  let prefix_len = String.length prefix in
-  String.length s >= prefix_len && String.sub s 0 prefix_len = prefix
-
 let query_bool request name =
   Dream.query request name
-  |> Option.map (fun v ->
-      match String.lowercase_ascii (String.trim v) with
-      | "1" | "true" | "yes" | "on" -> true
-      | _ -> false)
-  |> Option.value ~default:false
+  |> Option.fold ~none:false ~some:(fun v ->
+      List.mem (String.lowercase_ascii (String.trim v)) ["1"; "true"; "yes"; "on"])
 
 let query_nonempty request name =
   match Dream.query request name with
@@ -52,7 +45,7 @@ let () =
         | Some url -> url
         | None ->
             let path = Sys.getenv_opt "WKBL_DB_PATH" |> Option.value ~default:Db.default_db_path in
-            if has_prefix ~prefix:"postgresql://" path || has_prefix ~prefix:"postgres://" path || has_prefix ~prefix:"sqlite3://" path then
+            if String.starts_with ~prefix:"postgresql://" path || String.starts_with ~prefix:"postgres://" path || String.starts_with ~prefix:"sqlite3://" path then
               path
             else
               "sqlite3:" ^ path)
@@ -105,7 +98,7 @@ let () =
       let open Lwt.Syntax in
       let* response = next_handler request in
       (match Dream.header response "Content-Type" with
-      | Some ct when has_prefix ~prefix:"text/html" (String.lowercase_ascii ct) ->
+      | Some ct when String.starts_with ~prefix:"text/html" (String.lowercase_ascii ct) ->
           Dream.set_header response "Content-Type" "text/html; charset=utf-8"
       | _ -> ());
       Lwt.return response)

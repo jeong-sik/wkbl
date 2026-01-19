@@ -4017,7 +4017,7 @@ let get_player_h2h_data ~p1_id ~p2_id ?(season="ALL") () =
 let get_db_quality_report () : qa_db_report db_result =
   cached qa_report_cache "qa_report" (fun () ->
     let open Lwt_result.Syntax in
-    let int_or_zero = function | None -> 0 | Some v -> v in
+    let int_or_zero = Option.value ~default:0 in
     let round1 v = Float.round (v *. 10.0) /. 10.0 in
     let* games_total_opt = with_db (fun db -> Repo.qa_games_total db) in
     let* games_with_stats_opt = with_db (fun db -> Repo.qa_games_with_stats db) in
