@@ -2986,6 +2986,56 @@ module Queries = struct
       AND ($1 = 'ALL' OR g.season_code = $1)
     ORDER BY p.game_id, event_index
   |}
+
+  (* On/Off Impact Queries *)
+  let on_off_impact_stats = (t2 string string ->* (t2 string (t2 string (t2 string (t2 int (t2 int (t2 int int))))))) {|
+    SELECT
+      p.player_id,
+      p.player_name,
+      t.team_name_kr,
+      COUNT(DISTINCT s.game_id) as games_played,
+      COALESCE(SUM(s.min_seconds), 0) as total_min_seconds,
+      COALESCE(SUM(pm.plus_minus), 0) as total_plus_minus,
+      COUNT(pm.plus_minus) as games_with_pm
+    FROM game_stats s
+    JOIN players p ON s.player_id = p.player_id
+    JOIN teams t ON s.team_code = t.team_code
+    JOIN games g ON g.game_id = s.game_id
+    LEFT JOIN player_plus_minus pm ON pm.game_id = s.game_id AND pm.player_id = s.player_id
+    WHERE ($1 = 'ALL' OR g.season_code = $1)
+      AND g.game_type != '10'
+      AND s.min_seconds > 0
+    GROUP BY p.player_id, p.player_name, t.team_name_kr
+    HAVING COUNT(DISTINCT s.game_id) >= 5
+      AND COALESCE(SUM(s.min_seconds), 0) / 60.0 >= 50
+    ORDER BY
+      CASE WHEN COUNT(pm.plus_minus) > 0
+        THEN CAST(COALESCE(SUM(pm.plus_minus), 0) AS FLOAT) / COUNT(pm.plus_minus)
+        ELSE -999
+      END DESC
+    LIMIT CASE WHEN $2 = '' THEN 50 ELSE CAST($2 AS INTEGER) END
+  |}
+
+  let on_off_impact_for_player = (t2 string string ->? (t2 string (t2 string (t2 string (t2 int (t2 int (t2 int int))))))) {|
+    SELECT
+      p.player_id,
+      p.player_name,
+      t.team_name_kr,
+      COUNT(DISTINCT s.game_id) as games_played,
+      COALESCE(SUM(s.min_seconds), 0) as total_min_seconds,
+      COALESCE(SUM(pm.plus_minus), 0) as total_plus_minus,
+      COUNT(pm.plus_minus) as games_with_pm
+    FROM game_stats s
+    JOIN players p ON s.player_id = p.player_id
+    JOIN teams t ON s.team_code = t.team_code
+    JOIN games g ON g.game_id = s.game_id
+    LEFT JOIN player_plus_minus pm ON pm.game_id = s.game_id AND pm.player_id = s.player_id
+    WHERE s.player_id = $1
+      AND ($2 = 'ALL' OR g.season_code = $2)
+      AND g.game_type != '10'
+      AND s.min_seconds > 0
+    GROUP BY p.player_id, p.player_name, t.team_name_kr
+  |}
 end
 
 (** Database operations *)
@@ -3980,3 +4030,320 @@ let get_clutch_stats ~season () =
   (* TODO: Implement when PBP data model includes player_id
      For now, return empty list to show the page structure works *)
   Lwt.return (Ok ([] : Domain.clutch_stats list))
+
+(* ===== On/Off Impact Public API ===== *)
+
+(** Convert DB row to on_off_impact *)
+let row_to_on_off_impact (player_id, (player_name, (team_name, (games_played, (total_min_seconds, (total_plus_minus, games_with_pm)))))) : Domain.on_off_impact =
+  let total_minutes = float_of_int total_min_seconds /. 60.0 in
+  let avg_pm = if games_with_pm > 0 then float_of_int total_plus_minus /. float_of_int games_with_pm else 0.0 in
+  {
+    ooi_player_id = player_id;
+    ooi_player_name = player_name;
+    ooi_team_name = team_name;
+    ooi_games_played = games_played;
+    ooi_total_minutes = total_minutes;
+    ooi_on_court = {
+      ocs_games = games_with_pm;
+      ocs_minutes = total_minutes;
+      ocs_team_pts = 0;
+      ocs_opp_pts = 0;
+      ocs_possessions = 0.0;
+    };
+    ooi_off_court = {
+      ofcs_games = 0;
+      ofcs_minutes = 0.0;
+      ofcs_team_pts = 0;
+      ofcs_opp_pts = 0;
+      ofcs_possessions = 0.0;
+    };
+    ooi_net_rating_on = 0.0;
+    ooi_net_rating_off = 0.0;
+    ooi_net_rating_diff = 0.0;
+    ooi_plus_minus_total = total_plus_minus;
+    ooi_plus_minus_avg = avg_pm;
+  }
+
+(** Get on/off impact stats for all qualifying players in a season *)
+let get_on_off_impact_stats ~season ?(limit=50) () =
+  let open Lwt.Syntax in
+  let limit_str = string_of_int limit in
+  let* result = with_db (fun (module Db : Caqti_lwt.CONNECTION) ->
+    Db.collect_list Queries.on_off_impact_stats (season, limit_str)
+  ) in
+  match result with
+  | Ok rows -> Lwt.return (Ok (List.map row_to_on_off_impact rows))
+  | Error e -> Lwt.return (Error e)
+
+(** Get on/off impact for a specific player *)
+let get_on_off_impact_for_player ~player_id ~season () =
+  let open Lwt.Syntax in
+  let* result = with_db (fun (module Db : Caqti_lwt.CONNECTION) ->
+    Db.find_opt Queries.on_off_impact_for_player (player_id, season)
+  ) in
+  match result with
+  | Ok (Some row) -> Lwt.return (Ok (Some (row_to_on_off_impact row)))
+  | Ok None -> Lwt.return (Ok None)
+  | Error e -> Lwt.return (Error e)
+
+(* ===== Lineup Chemistry Public API ===== *)
+
+(** Lineup analysis data - player stats per game for lineup analysis *)
+type lineup_game_data = {
+  lgd_game_id: string;
+  lgd_player_id: string;
+  lgd_player_name: string;
+  lgd_team_code: string;
+  lgd_team_name: string;
+  lgd_minutes: float;
+  lgd_pts: int;
+  lgd_plus_minus: int option;
+}
+
+let lineup_cache = Cache.create ~ttl:300.0 ~max_entries:32
+
+(** Get all player game stats for lineup analysis *)
+let get_lineup_data ~season ~team_name () =
+  let key = Printf.sprintf "season=%s,team=%s" season team_name in
+  cached lineup_cache key (fun () ->
+    with_db (fun (module Db : Caqti_lwt.CONNECTION) ->
+      let open Caqti_type in
+      let open Lwt_result.Syntax in
+      let query = Request_oneshot.(
+        t2 string (t2 string (t2 string string)) ->*
+        (t2 string (t2 string (t2 string (t2 string (t2 string (t2 int (t2 int (option int))))))))
+      ) {|
+        SELECT
+          s.game_id,
+          s.player_id,
+          p.player_name,
+          s.team_code,
+          t.team_name,
+          s.min_seconds,
+          s.pts,
+          s.plus_minus
+        FROM game_stats s
+        JOIN games g ON g.game_id = s.game_id
+        JOIN players p ON p.player_id = s.player_id
+        JOIN teams t ON t.team_code = s.team_code
+        WHERE g.game_type != '10'
+          AND (g.season_id = ? OR ? = 'ALL')
+          AND (s.team_code = ? OR ? = 'ALL')
+          AND s.min_seconds > 0
+        ORDER BY s.game_id, s.team_code, s.min_seconds DESC
+      |} in
+      let* data = Db.collect_list query (season, (season, (team_name, team_name))) in
+      let parsed = data |> List.map (fun (game_id, (player_id, (player_name, (team_code, (team_name, (min_secs, (pts, plus_minus))))))) ->
+        { lgd_game_id = game_id;
+          lgd_player_id = player_id;
+          lgd_player_name = player_name;
+          lgd_team_code = team_code;
+          lgd_team_name = team_name;
+          lgd_minutes = float_of_int min_secs /. 60.0;
+          lgd_pts = pts;
+          lgd_plus_minus = plus_minus;
+        })
+      in
+      Lwt_result.return parsed))
+
+(** Module for lineup analysis calculations *)
+module LineupAnalysis = struct
+  open Domain
+
+  (** Group game data by (game_id, team_code) *)
+  let group_by_game_team (data: lineup_game_data list)
+      : (string * string, lineup_game_data list) Hashtbl.t =
+    let tbl = Hashtbl.create 256 in
+    List.iter (fun d ->
+      let key = (d.lgd_game_id, d.lgd_team_code) in
+      let existing = try Hashtbl.find tbl key with Not_found -> [] in
+      Hashtbl.replace tbl key (d :: existing)
+    ) data;
+    tbl
+
+  (** Get top 5 players by minutes in a game-team combo *)
+  let get_starting_five (players: lineup_game_data list) : lineup_game_data list =
+    players
+    |> List.sort (fun a b -> compare b.lgd_minutes a.lgd_minutes)
+    |> (fun l ->
+        let rec take n acc = function
+          | [] -> List.rev acc
+          | x :: xs -> if n <= 0 then List.rev acc else take (n-1) (x::acc) xs
+        in take 5 [] l)
+
+  (** Create lineup key from players *)
+  let players_to_key (players: lineup_game_data list) : string =
+    players
+    |> List.map (fun p -> p.lgd_player_id)
+    |> List.sort String.compare
+    |> String.concat ","
+
+  (** Analyze lineups from game data *)
+  let analyze_lineups ~team_name (data: lineup_game_data list) : lineup_stats list =
+    let grouped = group_by_game_team data in
+    (* Collect lineup stats *)
+    let lineup_tbl : (string, lineup_stats * lineup_game_data list) Hashtbl.t =
+      Hashtbl.create 128 in
+
+    Hashtbl.iter (fun (_game_id, team_code) players ->
+      if team_name = "ALL" || team_code = team_name then begin
+        let top5 = get_starting_five players in
+        if List.length top5 >= 5 then begin
+          let key = players_to_key top5 in
+          let team = (List.hd top5).lgd_team_name in
+          let total_min = List.fold_left (fun acc p -> acc +. p.lgd_minutes) 0.0 top5 in
+          let total_pts = List.fold_left (fun acc p -> acc + p.lgd_pts) 0 top5 in
+          let total_pm = List.fold_left (fun acc p ->
+            acc + (match p.lgd_plus_minus with Some pm -> pm | None -> 0)
+          ) 0 top5 in
+
+          let (existing, players_ref) =
+            try Hashtbl.find lineup_tbl key
+            with Not_found -> (empty_lineup_stats ~team_name:team, []) in
+
+          let updated = {
+            existing with
+            ls_games_together = existing.ls_games_together + 1;
+            ls_total_minutes = existing.ls_total_minutes +. total_min;
+            ls_total_pts = existing.ls_total_pts + total_pts;
+            ls_plus_minus = existing.ls_plus_minus + total_pm;
+          } in
+          Hashtbl.replace lineup_tbl key (updated, top5 @ players_ref)
+        end
+      end
+    ) grouped;
+
+    (* Convert to list and calculate averages *)
+    Hashtbl.fold (fun _key (stats, players_sample) acc ->
+      let player_infos =
+        players_sample
+        |> List.sort_uniq (fun a b -> String.compare a.lgd_player_id b.lgd_player_id)
+        |> (fun l ->
+            let rec take n acc = function
+              | [] -> List.rev acc
+              | x :: xs -> if n <= 0 then List.rev acc else take (n-1) (x::acc) xs
+            in take 5 [] l)
+        |> List.map (fun p -> {
+            lp_player_id = p.lgd_player_id;
+            lp_player_name = p.lgd_player_name;
+            lp_position = None;
+          })
+      in
+      let avg_pts_per_min =
+        if stats.ls_total_minutes > 0.0
+        then float_of_int stats.ls_total_pts /. stats.ls_total_minutes
+        else 0.0 in
+      let avg_margin_per_min =
+        if stats.ls_total_minutes > 0.0
+        then float_of_int stats.ls_plus_minus /. stats.ls_total_minutes
+        else 0.0 in
+      { stats with
+        ls_players = player_infos;
+        ls_avg_pts_per_min = avg_pts_per_min;
+        ls_avg_margin_per_min = avg_margin_per_min;
+      } :: acc
+    ) lineup_tbl []
+
+  (** Calculate player pair synergies *)
+  let analyze_synergies (lineups: lineup_stats list) : lineup_synergy list =
+    let pair_tbl : (string * string, int * float * int) Hashtbl.t = Hashtbl.create 256 in
+
+    (* Collect pair data from lineups *)
+    List.iter (fun lineup ->
+      let players = lineup.ls_players in
+      (* Generate all pairs *)
+      let rec pairs acc = function
+        | [] -> acc
+        | p1 :: rest ->
+          let new_pairs = List.map (fun p2 -> (p1, p2)) rest in
+          pairs (new_pairs @ acc) rest
+      in
+      let all_pairs = pairs [] players in
+      List.iter (fun (p1, p2) ->
+        let (id1, id2) =
+          if p1.lp_player_id < p2.lp_player_id
+          then (p1.lp_player_id, p2.lp_player_id)
+          else (p2.lp_player_id, p1.lp_player_id) in
+        let key = (id1, id2) in
+        let (games, mins, pm) =
+          try Hashtbl.find pair_tbl key
+          with Not_found -> (0, 0.0, 0) in
+        Hashtbl.replace pair_tbl key
+          (games + lineup.ls_games_together,
+           mins +. lineup.ls_total_minutes,
+           pm + lineup.ls_plus_minus)
+      ) all_pairs
+    ) lineups;
+
+    (* Build player name lookup *)
+    let name_tbl = Hashtbl.create 64 in
+    List.iter (fun lineup ->
+      List.iter (fun p ->
+        Hashtbl.replace name_tbl p.lp_player_id p.lp_player_name
+      ) lineup.ls_players
+    ) lineups;
+
+    (* Convert to synergy list *)
+    Hashtbl.fold (fun (id1, id2) (games, mins, pm) acc ->
+      let avg_pm = if mins > 0.0 then float_of_int pm /. mins else 0.0 in
+      let score = calculate_synergy_score
+        ~games_together:games ~total_minutes:mins ~avg_plus_minus:avg_pm in
+      let name1 = try Hashtbl.find name_tbl id1 with Not_found -> id1 in
+      let name2 = try Hashtbl.find name_tbl id2 with Not_found -> id2 in
+      { syn_player1_id = id1;
+        syn_player1_name = name1;
+        syn_player2_id = id2;
+        syn_player2_name = name2;
+        syn_games_together = games;
+        syn_total_minutes = mins;
+        syn_avg_plus_minus = avg_pm;
+        syn_synergy_score = score;
+      } :: acc
+    ) pair_tbl []
+    |> List.sort (fun a b -> compare b.syn_synergy_score a.syn_synergy_score)
+end
+
+(** Get full lineup chemistry analysis for a team *)
+let get_lineup_chemistry ~season ~team_name () : (Domain.lineup_chemistry, db_error) result Lwt.t =
+  let open Lwt.Syntax in
+  let open Domain in
+  let* data_result = get_lineup_data ~season ~team_name () in
+  match data_result with
+  | Error e -> Lwt.return (Error e)
+  | Ok data ->
+    let lineups = LineupAnalysis.analyze_lineups ~team_name data in
+    let synergies = LineupAnalysis.analyze_synergies lineups in
+
+    (* Sort lineups by different criteria *)
+    let by_minutes =
+      lineups
+      |> List.sort (compare_lineup_stats LineupByMinutes)
+      |> (fun l -> let rec take n acc = function
+          | [] -> List.rev acc
+          | x :: xs -> if n <= 0 then List.rev acc else take (n-1) (x::acc) xs
+        in take 10 [] l) in
+
+    let by_plus_minus =
+      lineups
+      |> List.filter (fun l -> l.ls_total_minutes >= 20.0)  (* Min 20 min filter *)
+      |> List.sort (compare_lineup_stats LineupByPlusMinus)
+      |> (fun l -> let rec take n acc = function
+          | [] -> List.rev acc
+          | x :: xs -> if n <= 0 then List.rev acc else take (n-1) (x::acc) xs
+        in take 10 [] l) in
+
+    let top_synergies =
+      synergies
+      |> List.filter (fun s -> s.syn_games_together >= 2)
+      |> (fun l -> let rec take n acc = function
+          | [] -> List.rev acc
+          | x :: xs -> if n <= 0 then List.rev acc else take (n-1) (x::acc) xs
+        in take 20 [] l) in
+
+    Lwt.return (Ok {
+      lc_team_name = team_name;
+      lc_season = season;
+      lc_top_lineups = by_plus_minus;
+      lc_frequent_lineups = by_minutes;
+      lc_synergies = top_synergies;
+    })

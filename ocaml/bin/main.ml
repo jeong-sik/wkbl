@@ -454,6 +454,40 @@ Sitemap: https://wkbl.win/sitemap.xml
               Dream.html (Views.error_page (Db.show_db_error e))
     );
 
+    (* Lineup Chemistry - Full Page *)
+    Dream.get "/lineups" (fun request ->
+      let open Lwt.Syntax in
+      let* seasons_res = Db.get_seasons () in
+      let* teams_res = Db.get_all_teams () in
+      match seasons_res, teams_res with
+      | Error e, _ | _, Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+      | Ok seasons, Ok teams ->
+          let season = query_season_or_latest request seasons in
+          let team = Dream.query request "team" |> Option.value ~default:"ALL" in
+          let* chemistry_res = Db.get_lineup_chemistry ~season ~team_name:team () in
+          match chemistry_res with
+          | Ok chemistry ->
+              Dream.html (Views_tools.lineup_chemistry_page
+                ~teams ~seasons ~selected_team:team ~selected_season:season chemistry)
+          | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+    );
+
+    (* Lineup Chemistry - Table Content (HTMX partial) *)
+    Dream.get "/lineups/table" (fun request ->
+      let open Lwt.Syntax in
+      let* seasons_res = Db.get_seasons () in
+      match seasons_res with
+      | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+      | Ok seasons ->
+          let season = query_season_or_latest request seasons in
+          let team = Dream.query request "team" |> Option.value ~default:"ALL" in
+          let* chemistry_res = Db.get_lineup_chemistry ~season ~team_name:team () in
+          match chemistry_res with
+          | Ok chemistry ->
+              Dream.html (Views_tools.lineup_chemistry_table_content chemistry)
+          | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+    );
+
     (* Awards (Stat-based, unofficial) *)
     Dream.get "/awards" (fun request ->
       let open Lwt.Syntax in
@@ -1148,6 +1182,20 @@ Sitemap: https://wkbl.win/sitemap.xml
                 ~active_team_streaks
                 ~all_time_records
                 ())
+    );
+
+    (* On/Off Impact *)
+    Dream.get "/on-off" (fun request ->
+      let open Lwt.Syntax in
+      let* seasons_res = Db.get_seasons () in
+      match seasons_res with
+      | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+      | Ok seasons ->
+          let season = query_season_or_latest request seasons in
+          let* impacts_res = Db.get_on_off_impact_stats ~season () in
+          (match impacts_res with
+          | Ok impacts -> Dream.html (Views_tools.on_off_impact_page ~season ~seasons impacts)
+          | Error e -> Dream.html (Views.error_page (Db.show_db_error e)))
     );
 
     (* QA & System *)
