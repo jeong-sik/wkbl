@@ -199,7 +199,8 @@ let streaks_page
             <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">연속 기록 트래커 - 선수 및 팀의 핫 스트릭을 확인하세요.</p>
           </div>
           <form class="flex gap-2" hx-get="/streaks" hx-target="body" hx-trigger="change" hx-push-url="true">
-            <select name="season" aria-label="시즌 선택" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-1.5 text-sm focus:border-orange-500 focus:outline-none">%s</select>
+            <label for="season-select" class="sr-only">시즌 선택</label>
+            <select id="season-select" name="season" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-1.5 text-sm focus:border-orange-500 focus:outline-none">%s</select>
           </form>
         </div>
 

@@ -691,6 +691,17 @@ let test_streak_minimum_length () =
   let pts_streaks = List.filter (fun (s: player_streak) -> s.ps_streak_type = Points20Plus) streaks in
   Alcotest.(check int) "no streak for single game" 0 (List.length pts_streaks)
 
+let test_streak_empty_games () =
+  (* Empty games list should return no streaks *)
+  let games = [] in
+  let streaks = Wkbl.Streaks.analyze_player_streaks
+    ~player_id:"P001"
+    ~player_name:"Test Player"
+    ~team_name:"Test Team"
+    games
+  in
+  Alcotest.(check int) "no streaks for empty games" 0 (List.length streaks)
+
 let test_streak_type_labels () =
   Alcotest.(check string) "WinStreak" "win_streak" (streak_type_to_string WinStreak);
   Alcotest.(check string) "Points20Plus" "pts_20plus" (streak_type_to_string Points20Plus);
@@ -709,6 +720,7 @@ let streaks_tests = [
   Alcotest.test_case "Get best streaks" `Quick test_streak_get_best;
   Alcotest.test_case "Get active streaks" `Quick test_streak_get_active;
   Alcotest.test_case "Minimum streak length" `Quick test_streak_minimum_length;
+  Alcotest.test_case "Empty games list" `Quick test_streak_empty_games;
   Alcotest.test_case "Streak type labels" `Quick test_streak_type_labels;
 ]
 
