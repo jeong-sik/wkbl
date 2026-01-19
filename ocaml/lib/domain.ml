@@ -362,6 +362,12 @@ type player_game_stat = {
   plus_minus: int option;
 }
 
+(** Player game stat with player_id for batch queries *)
+type player_game_stat_with_id = {
+  pgs_player_id: string;
+  pgs_stat: player_game_stat;
+}
+
 type career_high_item = {
   chi_label: string;
   chi_value: int;
@@ -684,17 +690,22 @@ let normalize_label (s: string) =
 
 let team_code_of_string team_name =
   let key = team_name |> normalize_label |> String.uppercase_ascii in
+  let key_len = String.length key in
+  (* Reject strings longer than 30 characters to prevent loose matching on arbitrary text *)
+  let max_length_for_contains = 30 in
   let contains (needle : string) =
-    let nlen = String.length needle in
-    let hlen = String.length key in
-    if nlen = 0 then false
+    if key_len > max_length_for_contains then false
     else
-      let rec loop i =
-        if i + nlen > hlen then false
-        else if String.sub key i nlen = needle then true
-        else loop (i + 1)
-      in
-      loop 0
+      let nlen = String.length needle in
+      let hlen = key_len in
+      if nlen = 0 then false
+      else
+        let rec loop i =
+          if i + nlen > hlen then false
+          else if String.sub key i nlen = needle then true
+          else loop (i + 1)
+        in
+        loop 0
   in
   match key with
   | "아산 우리은행 우리WON" | "우리은행" | "우리WON" | "WO" -> Some "WO"
@@ -776,9 +787,18 @@ type mvp_candidate = {
     - Final Score = Base Score + Win Bonus
 *)
 let calculate_mvp_score ~ppg ~rpg ~apg ~spg ~bpg ~efficiency ~win_pct =
-  let base_score = (ppg *. 2.0) +. (rpg *. 1.2) +. (apg *. 1.5) +. (spg *. 2.0) +. (bpg *. 2.0) +. (efficiency *. 0.5) in
-  let win_bonus = win_pct *. 20.0 in
-  (base_score, win_bonus, base_score +. win_bonus)
+  (* Input validation: check for NaN values and invalid win_pct range *)
+  let is_invalid_input =
+    Float.is_nan ppg || Float.is_nan rpg || Float.is_nan apg ||
+    Float.is_nan spg || Float.is_nan bpg || Float.is_nan efficiency ||
+    Float.is_nan win_pct || win_pct < 0.0 || win_pct > 1.0
+  in
+  if is_invalid_input then
+    (0.0, 0.0, 0.0)
+  else
+    let base_score = (ppg *. 2.0) +. (rpg *. 1.2) +. (apg *. 1.5) +. (spg *. 2.0) +. (bpg *. 2.0) +. (efficiency *. 0.5) in
+    let win_bonus = win_pct *. 20.0 in
+    (base_score, win_bonus, base_score +. win_bonus)
 
 (** Fantasy scoring types and functions *)
 type fantasy_scoring_rule = {
