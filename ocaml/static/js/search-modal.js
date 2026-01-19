@@ -58,8 +58,10 @@
                 Esc
               </kbd>
             </div>
+            <!-- Status announcer for screen readers -->
+            <div id="search-status" class="sr-only" aria-live="polite" aria-atomic="true"></div>
             <!-- Results List -->
-            <ul id="search-results" class="max-h-80 overflow-y-auto py-2" role="listbox">
+            <ul id="search-results" class="max-h-80 overflow-y-auto py-2" role="listbox" aria-label="검색 결과">
               <!-- Results populated by JS -->
             </ul>
             <!-- Footer Hint -->
@@ -88,6 +90,9 @@
     input.addEventListener('input', handleInput);
     input.addEventListener('keydown', handleKeydown);
     modal.querySelector('[data-search-backdrop]').addEventListener('click', close);
+    // Event delegation for result items (accessibility)
+    resultsList.addEventListener('click', handleResultClick);
+    resultsList.addEventListener('keydown', handleResultKeydown);
 
     // Show initial results
     renderResults(NAV_ITEMS);
@@ -239,34 +244,60 @@
     });
   }
 
+  function announceStatus(message) {
+    var status = document.getElementById('search-status');
+    if (status) status.textContent = message;
+  }
+
   function renderResults(items) {
     if (items.length === 0) {
       resultsList.innerHTML = `
-        <li class="px-4 py-8 text-center text-slate-400">
-          <svg class="w-12 h-12 mx-auto mb-2 text-slate-300 dark:text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <li class="px-4 py-8 text-center text-slate-400" role="status">
+          <svg class="w-12 h-12 mx-auto mb-2 text-slate-300 dark:text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
           </svg>
           검색 결과가 없습니다
         </li>
       `;
+      announceStatus('검색 결과가 없습니다');
       return;
     }
+    announceStatus(items.length + '개의 결과가 있습니다');
 
     resultsList.innerHTML = items.map(function(item) {
       return `
         <li
           role="option"
           aria-selected="false"
+          tabindex="0"
           data-path="${item.path}"
-          class="flex items-center gap-3 px-4 py-2 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition"
-          onclick="window.location.href='${item.path}'"
+          class="flex items-center gap-3 px-4 py-2 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition focus:outline-none focus:ring-2 focus:ring-orange-500"
         >
-          <span class="text-lg">${item.icon}</span>
+          <span class="text-lg" aria-hidden="true">${item.icon}</span>
           <span class="flex-1 text-slate-900 dark:text-white">${item.name}</span>
           <span class="text-xs text-slate-400">${item.path}</span>
         </li>
       `;
     }).join('');
+  }
+
+  function navigateToPath(path) {
+    if (path) window.location.href = path;
+  }
+
+  function handleResultClick(e) {
+    var li = e.target.closest('[role="option"]');
+    if (li) navigateToPath(li.dataset.path);
+  }
+
+  function handleResultKeydown(e) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      var li = e.target.closest('[role="option"]');
+      if (li) {
+        e.preventDefault();
+        navigateToPath(li.dataset.path);
+      }
+    }
   }
 
   // Expose for external use

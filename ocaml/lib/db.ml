@@ -3488,10 +3488,27 @@ module Cache = struct
         None
     | None -> None
 
+  (** Evict expired entries first, then oldest 25% if still over capacity *)
+  let evict t =
+    let current = now () in
+    (* Phase 1: Remove expired entries *)
+    let expired_keys = Hashtbl.fold (fun k entry acc ->
+      if entry.expires_at <= current then k :: acc else acc
+    ) t.store [] in
+    List.iter (Hashtbl.remove t.store) expired_keys;
+    (* Phase 2: If still over capacity, remove oldest 25% *)
+    if Hashtbl.length t.store > t.max_entries then begin
+      let entries = Hashtbl.fold (fun k e acc -> (k, e.expires_at) :: acc) t.store [] in
+      let sorted = List.sort (fun (_, t1) (_, t2) -> Float.compare t1 t2) entries in
+      let to_remove = max 1 (List.length sorted / 4) in
+      List.iteri (fun i (k, _) ->
+        if i < to_remove then Hashtbl.remove t.store k
+      ) sorted
+    end
+
   let set t key value =
     Hashtbl.replace t.store key { value; expires_at = now () +. t.ttl };
-    if Hashtbl.length t.store > t.max_entries then
-      Hashtbl.clear t.store
+    if Hashtbl.length t.store > t.max_entries then evict t
 end
 
 let cached cache key f =
@@ -4084,15 +4101,8 @@ let get_player_career ~player_name () =
 
 let get_upcoming_schedule ?(status="scheduled") ?(limit=10) () =
   let key = Printf.sprintf "status=%s,limit=%d" status limit in
-  let open Lwt.Syntax in
-  let* result = cached schedule_cache key (fun () ->
-    with_db (fun db -> Repo.get_upcoming_schedule ~status ~limit db)) in
-  (match result with
-   | Ok entries ->
-     Printf.printf "[DEBUG] get_upcoming_schedule: OK, %d entries\n%!" (List.length entries)
-   | Error e ->
-     Printf.printf "[DEBUG] get_upcoming_schedule: Error - %s\n%!" (show_db_error e));
-  Lwt.return result
+  cached schedule_cache key (fun () ->
+    with_db (fun db -> Repo.get_upcoming_schedule ~status ~limit db))
 
 let get_schedule_by_date_range ~start_date ~end_date ?(status="ALL") () =
   let key = Printf.sprintf "start=%s,end=%s,status=%s" start_date end_date status in
