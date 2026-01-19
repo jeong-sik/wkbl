@@ -5,6 +5,9 @@
 open Domain
 open Views_common
 
+(* Re-export table function from Views_common for external use *)
+let players_table = players_table
+
 let home_page ~season ~seasons players =
   let season_options =
     seasons
@@ -429,6 +432,11 @@ let boxscore_page (bs: game_boxscore) =
       {html|<a href="/boxscore/%s/pbp" class="px-2 py-1 rounded-full bg-slate-100 dark:bg-slate-800/70 border border-slate-300 dark:border-slate-700 text-[10px] font-mono tracking-wider text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white dark:text-slate-200 hover:border-slate-500 transition">PBP</a>|html}
       (escape_html gi.gi_game_id)
   in
+  let flow_link =
+    Printf.sprintf
+      {html|<a href="/boxscore/%s/flow" class="px-2 py-1 rounded-full bg-slate-100 dark:bg-slate-800/70 border border-slate-300 dark:border-slate-700 text-[10px] font-mono tracking-wider text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white dark:text-slate-200 hover:border-slate-500 transition">FLOW</a>|html}
+      (escape_html gi.gi_game_id)
+  in
   let data_notes =
     Printf.sprintf
       {html|<details class="max-w-2xl mx-auto bg-white dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-800 p-4 text-xs text-slate-500 dark:text-slate-400">
@@ -453,13 +461,14 @@ let boxscore_page (bs: game_boxscore) =
   let away_table = boxscore_player_table gi.gi_away_team_name bs.boxscore_away_players in
   layout ~title:(Printf.sprintf "Boxscore: %s vs %s" gi.gi_home_team_name gi.gi_away_team_name)
     ~content:(Printf.sprintf
-      {html|<div class="space-y-8 animate-fade-in"><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-2xl"><div class="flex flex-col items-center gap-6"><div class="text-slate-500 dark:text-slate-400 font-mono text-sm uppercase tracking-widest">%s</div><div class="flex items-center justify-between w-full max-w-2xl gap-2 sm:gap-6"><div class="flex flex-col items-center gap-2 sm:gap-3 flex-shrink-0"><div class="text-sm sm:text-2xl font-black text-slate-900 dark:text-slate-200 flex items-center gap-1 sm:gap-3">%s<a href="/team/%s" class="hover:text-orange-600 dark:text-orange-400 transition-colors whitespace-nowrap">%s</a></div><div class="text-[10px] sm:text-sm text-slate-500 dark:text-slate-400">HOME</div></div><div class="flex items-center gap-2 sm:gap-8"><div class="text-3xl sm:text-5xl font-black text-slate-900 dark:text-slate-200">%d</div><div class="flex flex-col items-center gap-1 sm:gap-2"><div class="text-base sm:text-2xl text-slate-700 dark:text-slate-300 font-light">vs</div><div class="flex flex-wrap items-center justify-center gap-1 sm:gap-2">%s%s%s</div></div><div class="text-3xl sm:text-5xl font-black text-slate-900 dark:text-slate-200">%d</div></div><div class="flex flex-col items-center gap-2 sm:gap-3 flex-shrink-0"><div class="text-sm sm:text-2xl font-black text-slate-900 dark:text-slate-200 flex items-center gap-1 sm:gap-3"><a href="/team/%s" class="hover:text-orange-600 dark:text-orange-400 transition-colors whitespace-nowrap">%s</a>%s</div><div class="text-[10px] sm:text-sm text-slate-500 dark:text-slate-400">AWAY</div></div></div></div></div>%s<div class="grid grid-cols-1 gap-8">%s%s</div><div class="flex justify-center"><a href="/games" class="text-slate-500 dark:text-slate-400 hover:text-orange-500 transition text-sm">← Back to Games</a></div></div>|html}
+      {html|<div class="space-y-8 animate-fade-in"><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-2xl"><div class="flex flex-col items-center gap-6"><div class="text-slate-500 dark:text-slate-400 font-mono text-sm uppercase tracking-widest">%s</div><div class="flex items-center justify-between w-full max-w-2xl gap-2 sm:gap-6"><div class="flex flex-col items-center gap-2 sm:gap-3 flex-shrink-0"><div class="text-sm sm:text-2xl font-black text-slate-900 dark:text-slate-200 flex items-center gap-1 sm:gap-3">%s<a href="/team/%s" class="hover:text-orange-600 dark:text-orange-400 transition-colors whitespace-nowrap">%s</a></div><div class="text-[10px] sm:text-sm text-slate-500 dark:text-slate-400">HOME</div></div><div class="flex items-center gap-2 sm:gap-8"><div class="text-3xl sm:text-5xl font-black text-slate-900 dark:text-slate-200">%d</div><div class="flex flex-col items-center gap-1 sm:gap-2"><div class="text-base sm:text-2xl text-slate-700 dark:text-slate-300 font-light">vs</div><div class="flex flex-wrap items-center justify-center gap-1 sm:gap-2">%s%s%s%s</div></div><div class="text-3xl sm:text-5xl font-black text-slate-900 dark:text-slate-200">%d</div></div><div class="flex flex-col items-center gap-2 sm:gap-3 flex-shrink-0"><div class="text-sm sm:text-2xl font-black text-slate-900 dark:text-slate-200 flex items-center gap-1 sm:gap-3"><a href="/team/%s" class="hover:text-orange-600 dark:text-orange-400 transition-colors whitespace-nowrap">%s</a>%s</div><div class="text-[10px] sm:text-sm text-slate-500 dark:text-slate-400">AWAY</div></div></div></div></div>%s<div class="grid grid-cols-1 gap-8">%s%s</div><div class="flex justify-center"><a href="/games" class="text-slate-500 dark:text-slate-400 hover:text-orange-500 transition text-sm">← Back to Games</a></div></div>|html}
       (escape_html gi.gi_game_date)
       (team_logo_tag ~class_name:"w-10 h-10 sm:w-16 sm:h-16" gi.gi_home_team_name) (Uri.pct_encode gi.gi_home_team_name) (escape_html gi.gi_home_team_name)
       gi.gi_home_score
       margin_badge
       quality_badge
       pbp_link
+      flow_link
       gi.gi_away_score
       (Uri.pct_encode gi.gi_away_team_name) (escape_html gi.gi_away_team_name) (team_logo_tag ~class_name:"w-10 h-10 sm:w-16 sm:h-16" gi.gi_away_team_name)
       data_notes
@@ -834,7 +843,11 @@ let compare_page
               if h2h = [] then
                 {html|<div class="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 p-4 text-sm text-slate-500 dark:text-slate-400">No match history for this season.</div>|html}
               else
-                h2h_game_table (normalize_name a.name) (normalize_name b.name) h2h
+                let p1_n = normalize_name a.name in
+                let p2_n = normalize_name b.name in
+                let match_history = h2h_game_table p1_n p2_n h2h in
+                let h2h_advanced = Views_tools.h2h_advanced_section ~p1_name:p1_n ~p2_name:p2_n h2h in
+                match_history ^ h2h_advanced
         in
         Printf.sprintf
           {html|<div class="space-y-8 animate-fade-in"><div class="grid grid-cols-1 md:grid-cols-3 gap-8 items-start"><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 flex flex-col items-center gap-4 shadow-xl border-t-4 border-t-orange-500">%s<div class="text-center space-y-2"><div class="text-2xl font-black text-slate-900 dark:text-slate-200 hover:text-orange-600 dark:text-orange-400"><a href="/player/%s">%s</a></div><div class="text-slate-500 dark:text-slate-400">%s</div>%s</div></div><div class="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 p-6 space-y-6"><div class="text-center space-y-2"><h3 class="text-slate-500 dark:text-slate-400 text-sm font-bold uppercase">Average Stats</h3><p class="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed"><span class="font-mono">MG</span>는 팀 득실마진(출전시간 가중)이며, 개인 +/-는 문자중계(PBP) 기반으로 일부 경기에서만 제공됩니다. (데이터가 없으면 -)</p></div>%s%s%s%s%s%s%s%s</div><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 flex flex-col items-center gap-4 shadow-xl border-t-4 border-t-sky-500">%s<div class="text-center space-y-2"><div class="text-2xl font-black text-slate-900 dark:text-slate-200 hover:text-sky-600 dark:text-sky-400"><a href="/player/%s">%s</a></div><div class="text-slate-500 dark:text-slate-400">%s</div>%s</div></div></div>%s</div>|html}
@@ -1405,6 +1418,125 @@ let awards_page ~(season: string) ~(seasons: season_info list) ~(include_mismatc
       mip_card
       disclaimer_html)
 
+(** Clutch Time Leaderboard Page
+    Clutch time = Q4 remaining 5 minutes + score diff <= 5 points *)
+let clutch_page ~season ~seasons (stats: clutch_stats list) =
+  let season_options =
+    let base =
+      seasons
+      |> List.map (fun (s: season_info) ->
+          let selected = if s.code = season then "selected" else "" in
+          Printf.sprintf {html|<option value="%s" %s>%s</option>|html} s.code selected (escape_html s.name))
+      |> String.concat "\n"
+    in
+    Printf.sprintf
+      {html|<option value="ALL" %s>All Seasons</option>%s|html}
+      (if season = "ALL" then "selected" else "")
+      base
+  in
+  let rows =
+    stats
+    |> List.mapi (fun i (s: clutch_stats) ->
+        let rank = i + 1 in
+        let fg_pct_str = if s.cs_clutch_fg_att > 0
+          then Printf.sprintf "%.1f%%" (s.cs_clutch_fg_pct *. 100.0)
+          else "-"
+        in
+        Printf.sprintf
+          {html|<tr class="border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50">
+            <td class="px-3 py-2 text-center font-medium text-slate-500">%d</td>
+            <td class="px-3 py-2"><a href="/player/%s" class="text-orange-500 hover:underline font-medium">%s</a></td>
+            <td class="px-3 py-2 text-slate-600 dark:text-slate-400">%s</td>
+            <td class="px-3 py-2 text-center">%d</td>
+            <td class="px-3 py-2 text-center font-bold text-orange-500">%d</td>
+            <td class="px-3 py-2 text-center">%d-%d</td>
+            <td class="px-3 py-2 text-center">%s</td>
+            <td class="px-3 py-2 text-center">%d</td>
+            <td class="px-3 py-2 text-center">%d-%d</td>
+          </tr>|html}
+          rank
+          (escape_html s.cs_player_id)
+          (escape_html s.cs_player_name)
+          (escape_html s.cs_team_name)
+          s.cs_clutch_games
+          s.cs_clutch_points
+          s.cs_clutch_fg_made s.cs_clutch_fg_att
+          fg_pct_str
+          s.cs_clutch_3p_made
+          s.cs_clutch_ft_made s.cs_clutch_ft_att)
+    |> String.concat "\n"
+  in
+  let empty_state =
+    if List.length stats = 0 then
+      {html|<tr><td colspan="9" class="px-4 py-12 text-center text-slate-500 dark:text-slate-400">
+        <div class="flex flex-col items-center gap-2">
+          <span class="text-4xl">🏀</span>
+          <p>No clutch time data available for this season.</p>
+          <p class="text-xs">Clutch time = Q4 remaining 5 min + score diff ≤ 5 pts</p>
+        </div>
+      </td></tr>|html}
+    else ""
+  in
+  let table_html = Printf.sprintf
+    {html|<div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+          <tr>
+            <th class="px-3 py-2 text-center">#</th>
+            <th class="px-3 py-2 text-left">Player</th>
+            <th class="px-3 py-2 text-left">Team</th>
+            <th class="px-3 py-2 text-center" title="Clutch Games">GP</th>
+            <th class="px-3 py-2 text-center" title="Clutch Points">PTS</th>
+            <th class="px-3 py-2 text-center" title="Field Goals Made-Attempted">FGM-A</th>
+            <th class="px-3 py-2 text-center" title="Field Goal Percentage">FG%%</th>
+            <th class="px-3 py-2 text-center" title="3-Pointers Made">3PM</th>
+            <th class="px-3 py-2 text-center" title="Free Throws Made-Attempted">FTM-A</th>
+          </tr>
+        </thead>
+        <tbody>%s%s</tbody>
+      </table>
+    </div>|html}
+    rows empty_state
+  in
+  let content = Printf.sprintf
+    {html|<div class="space-y-6 animate-fade-in">
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <div>
+          <h2 class="text-3xl font-black text-slate-900 dark:text-slate-200">Clutch Time Leaders</h2>
+          <p class="text-slate-500 dark:text-slate-400">
+            Q4 remaining 5 minutes + score difference ≤ 5 points
+          </p>
+        </div>
+        <form action="/clutch" method="get" class="flex items-center gap-3">
+          <select name="season" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none w-48" onchange="this.form.submit()">
+            %s
+          </select>
+        </form>
+      </div>
+      <div class="bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
+        %s
+      </div>
+      <div class="text-xs text-slate-500 dark:text-slate-400 text-center">
+        Data sourced from play-by-play records. Clutch time scoring events are aggregated per player.
+      </div>
+    </div>|html}
+    season_options table_html
+  in
+  layout ~title:"Clutch Time Leaders - WKBL" ~content ()
+
 let error_page message = layout ~title:"Error" ~content:(Printf.sprintf {html|<div class="flex flex-col items-center justify-center py-20"><span class="text-6xl mb-4">😵</span><h2 class="text-xl font-bold text-slate-900 dark:text-slate-200 mb-2">Something went wrong</h2><p class="text-slate-500 dark:text-slate-400">%s</p><a href="/" class="mt-4 text-orange-500 hover:underline">← Back to home</a></div>|html} (escape_html message)) ()
-(* Force update *)
-(* Force update *)
+
+(* Re-export common functions for external access *)
+let players_table = players_table
+
+(* Re-export from Views_team *)
+let team_profile_page = Views_team.team_profile_page
+
+(* Re-export from Views_tools *)
+let qa_dashboard_page = Views_tools.qa_dashboard_page
+let transactions_page = Views_tools.transactions_page
+
+(* Re-export from Views_history *)
+let history_page = Views_history.history_page
+let legends_page = Views_history.legends_page
+let coaches_page = Views_history.coaches_page

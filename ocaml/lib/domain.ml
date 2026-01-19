@@ -231,6 +231,86 @@ type pbp_event = {
   pe_clock: string;
 }
 
+(** Score flow point for game flow chart visualization *)
+type score_flow_point = {
+  sfp_clock: string;       (** Time remaining in period, e.g. "09:30" *)
+  sfp_period: string;      (** Period code, e.g. "Q1", "Q2", "X1" *)
+  sfp_home_score: int;     (** Home team cumulative score *)
+  sfp_away_score: int;     (** Away team cumulative score *)
+  sfp_diff: int;           (** Score difference: home - away *)
+  sfp_elapsed_seconds: int; (** Total elapsed seconds from game start *)
+}
+
+(** Convert period code to period number (1-4 for Q1-Q4, 5+ for OT) *)
+let period_to_number = function
+  | "Q1" -> 1 | "Q2" -> 2 | "Q3" -> 3 | "Q4" -> 4
+  | "X1" -> 5 | "X2" -> 6 | "X3" -> 7 | "X4" -> 8
+  | _ -> 0
+
+(** Parse clock string "MM:SS" to seconds remaining in period *)
+let parse_clock_to_seconds clock =
+  try
+    let parts = String.split_on_char ':' clock in
+    match parts with
+    | [min_str; sec_str] ->
+        let mins = int_of_string (String.trim min_str) in
+        let secs = int_of_string (String.trim sec_str) in
+        mins * 60 + secs
+    | _ -> 600 (* Default to 10 minutes if parse fails *)
+  with _ -> 600
+
+(** Calculate total elapsed seconds from game start *)
+let calculate_elapsed_seconds ~period_code ~clock =
+  let period_num = period_to_number period_code in
+  let period_length = if period_num <= 4 then 600 else 300 in (* 10 min quarters, 5 min OT *)
+  let seconds_remaining = parse_clock_to_seconds clock in
+  let completed_periods =
+    if period_num <= 4 then (period_num - 1) * 600
+    else (4 * 600) + ((period_num - 5) * 300)
+  in
+  completed_periods + (period_length - seconds_remaining)
+
+(** Extract score flow points from PBP events for chart visualization.
+    Returns a list of points where scores changed, sorted by elapsed time. *)
+let extract_score_flow (events: pbp_event list) : score_flow_point list =
+  let score_changes =
+    events
+    |> List.filter_map (fun e ->
+        match (e.pe_team1_score, e.pe_team2_score) with
+        | (Some home, Some away) ->
+            let elapsed = calculate_elapsed_seconds ~period_code:e.pe_period_code ~clock:e.pe_clock in
+            Some {
+              sfp_clock = e.pe_clock;
+              sfp_period = e.pe_period_code;
+              sfp_home_score = home;
+              sfp_away_score = away;
+              sfp_diff = home - away;
+              sfp_elapsed_seconds = elapsed;
+            }
+        | _ -> None)
+  in
+  (* Sort by elapsed time and deduplicate consecutive same scores *)
+  let sorted = List.sort (fun a b -> compare a.sfp_elapsed_seconds b.sfp_elapsed_seconds) score_changes in
+  let rec dedup acc = function
+    | [] -> List.rev acc
+    | [x] -> List.rev (x :: acc)
+    | x :: (y :: _ as rest) ->
+        if x.sfp_home_score = y.sfp_home_score && x.sfp_away_score = y.sfp_away_score
+        then dedup acc rest
+        else dedup (x :: acc) rest
+  in
+  (* Add starting point at 0-0 if not present *)
+  let with_start =
+    match sorted with
+    | [] -> []
+    | first :: _ as pts ->
+        if first.sfp_elapsed_seconds > 0 then
+          { sfp_clock = "10:00"; sfp_period = "Q1"; sfp_home_score = 0; sfp_away_score = 0;
+            sfp_diff = 0; sfp_elapsed_seconds = 0 } :: pts
+        else pts
+  in
+  dedup [] with_start
+
 type leader_entry = {
   le_player_id: string;
   le_player_name: string;
@@ -384,6 +464,48 @@ type h2h_game = {
   winner_team: string;
   score_diff: int;
 }
+
+(** H2H Advanced Summary - computed from h2h_game list *)
+type h2h_summary = {
+  h2h_total_games: int;
+  h2h_p1_wins: int;
+  h2h_p2_wins: int;
+  h2h_p1_avg_pts: float;
+  h2h_p1_avg_reb: float;
+  h2h_p1_avg_ast: float;
+  h2h_p2_avg_pts: float;
+  h2h_p2_avg_reb: float;
+  h2h_p2_avg_ast: float;
+}
+
+(** Calculate H2H summary from a list of h2h_games *)
+let calculate_h2h_summary ~p1_team (games: h2h_game list) : h2h_summary =
+  let total = List.length games in
+  if total = 0 then
+    { h2h_total_games = 0;
+      h2h_p1_wins = 0; h2h_p2_wins = 0;
+      h2h_p1_avg_pts = 0.0; h2h_p1_avg_reb = 0.0; h2h_p1_avg_ast = 0.0;
+      h2h_p2_avg_pts = 0.0; h2h_p2_avg_reb = 0.0; h2h_p2_avg_ast = 0.0 }
+  else
+    let p1_wins = List.length (List.filter (fun g -> g.player1_team = g.winner_team) games) in
+    let p2_wins = total - p1_wins in
+    let sum_p1_pts = List.fold_left (fun acc g -> acc + g.player1_pts) 0 games in
+    let sum_p1_reb = List.fold_left (fun acc g -> acc + g.player1_reb) 0 games in
+    let sum_p1_ast = List.fold_left (fun acc g -> acc + g.player1_ast) 0 games in
+    let sum_p2_pts = List.fold_left (fun acc g -> acc + g.player2_pts) 0 games in
+    let sum_p2_reb = List.fold_left (fun acc g -> acc + g.player2_reb) 0 games in
+    let sum_p2_ast = List.fold_left (fun acc g -> acc + g.player2_ast) 0 games in
+    let n = float_of_int total in
+    let _ = p1_team in (* suppress unused warning *)
+    { h2h_total_games = total;
+      h2h_p1_wins = p1_wins;
+      h2h_p2_wins = p2_wins;
+      h2h_p1_avg_pts = float_of_int sum_p1_pts /. n;
+      h2h_p1_avg_reb = float_of_int sum_p1_reb /. n;
+      h2h_p1_avg_ast = float_of_int sum_p1_ast /. n;
+      h2h_p2_avg_pts = float_of_int sum_p2_pts /. n;
+      h2h_p2_avg_reb = float_of_int sum_p2_reb /. n;
+      h2h_p2_avg_ast = float_of_int sum_p2_ast /. n }
 
 (** Prediction types *)
 type team_prediction_stats = {
@@ -657,3 +779,236 @@ let calculate_mvp_score ~ppg ~rpg ~apg ~spg ~bpg ~efficiency ~win_pct =
   let base_score = (ppg *. 2.0) +. (rpg *. 1.2) +. (apg *. 1.5) +. (spg *. 2.0) +. (bpg *. 2.0) +. (efficiency *. 0.5) in
   let win_bonus = win_pct *. 20.0 in
   (base_score, win_bonus, base_score +. win_bonus)
+
+(** Fantasy scoring types and functions *)
+type fantasy_scoring_rule = {
+  fsr_points: float;      (** Points per point scored *)
+  fsr_rebounds: float;    (** Points per rebound *)
+  fsr_assists: float;     (** Points per assist *)
+  fsr_steals: float;      (** Points per steal *)
+  fsr_blocks: float;      (** Points per block *)
+  fsr_turnovers: float;   (** Points per turnover (usually negative) *)
+}
+
+(** Default fantasy scoring rules based on standard fantasy basketball *)
+let default_fantasy_rules = {
+  fsr_points = 1.0;
+  fsr_rebounds = 1.2;
+  fsr_assists = 1.5;
+  fsr_steals = 2.0;
+  fsr_blocks = 2.0;
+  fsr_turnovers = -1.0;
+}
+
+(** Fantasy player score result *)
+type fantasy_player_score = {
+  fps_player_id: string;
+  fps_player_name: string;
+  fps_team_name: string;
+  fps_games_played: int;
+  fps_total_score: float;
+  fps_avg_score: float;
+  fps_pts_contrib: float;
+  fps_reb_contrib: float;
+  fps_ast_contrib: float;
+  fps_stl_contrib: float;
+  fps_blk_contrib: float;
+  fps_tov_contrib: float;
+}
+
+(** Calculate fantasy score for a single game or totals *)
+let calculate_fantasy_score
+    ~(rules: fantasy_scoring_rule)
+    ~pts ~reb ~ast ~stl ~blk ~tov =
+  let pts_contrib = (Float.of_int pts) *. rules.fsr_points in
+  let reb_contrib = (Float.of_int reb) *. rules.fsr_rebounds in
+  let ast_contrib = (Float.of_int ast) *. rules.fsr_assists in
+  let stl_contrib = (Float.of_int stl) *. rules.fsr_steals in
+  let blk_contrib = (Float.of_int blk) *. rules.fsr_blocks in
+  let tov_contrib = (Float.of_int tov) *. rules.fsr_turnovers in
+  let total = pts_contrib +. reb_contrib +. ast_contrib +. stl_contrib +. blk_contrib +. tov_contrib in
+  (total, pts_contrib, reb_contrib, ast_contrib, stl_contrib, blk_contrib, tov_contrib)
+
+(** Calculate fantasy score from player_aggregate *)
+let fantasy_score_of_aggregate
+    ~(rules: fantasy_scoring_rule)
+    (p: player_aggregate) : fantasy_player_score =
+  let (total, pts_c, reb_c, ast_c, stl_c, blk_c, tov_c) =
+    calculate_fantasy_score
+      ~rules
+      ~pts:p.total_points
+      ~reb:p.total_rebounds
+      ~ast:p.total_assists
+      ~stl:p.total_steals
+      ~blk:p.total_blocks
+      ~tov:p.total_turnovers
+  in
+  let avg_score =
+    if p.games_played > 0 then total /. (Float.of_int p.games_played)
+    else 0.0
+  in
+  {
+    fps_player_id = p.player_id;
+    fps_player_name = p.name;
+    fps_team_name = p.team_name;
+    fps_games_played = p.games_played;
+    fps_total_score = total;
+    fps_avg_score = avg_score;
+    fps_pts_contrib = pts_c;
+    fps_reb_contrib = reb_c;
+    fps_ast_contrib = ast_c;
+    fps_stl_contrib = stl_c;
+    fps_blk_contrib = blk_c;
+    fps_tov_contrib = tov_c;
+  }
+
+(** Hot Streaks Types *)
+type streak_type =
+  | WinStreak           (** Team consecutive wins *)
+  | Points20Plus        (** 20+ points in consecutive games *)
+  | DoubleDouble        (** Double-double in consecutive games *)
+  | TripleDouble        (** Triple-double in consecutive games *)
+  | Rebounds10Plus      (** 10+ rebounds in consecutive games *)
+  | Assists7Plus        (** 7+ assists in consecutive games *)
+  | Blocks3Plus         (** 3+ blocks in consecutive games *)
+  | Steals3Plus         (** 3+ steals in consecutive games *)
+
+let streak_type_to_string = function
+  | WinStreak -> "win_streak"
+  | Points20Plus -> "pts_20plus"
+  | DoubleDouble -> "double_double"
+  | TripleDouble -> "triple_double"
+  | Rebounds10Plus -> "reb_10plus"
+  | Assists7Plus -> "ast_7plus"
+  | Blocks3Plus -> "blk_3plus"
+  | Steals3Plus -> "stl_3plus"
+
+let streak_type_to_label = function
+  | WinStreak -> "연승"
+  | Points20Plus -> "20+ 득점"
+  | DoubleDouble -> "더블더블"
+  | TripleDouble -> "트리플더블"
+  | Rebounds10Plus -> "10+ 리바운드"
+  | Assists7Plus -> "7+ 어시스트"
+  | Blocks3Plus -> "3+ 블록"
+  | Steals3Plus -> "3+ 스틸"
+
+let streak_type_to_emoji = function
+  | WinStreak -> "W"
+  | Points20Plus -> "P"
+  | DoubleDouble -> "DD"
+  | TripleDouble -> "TD"
+  | Rebounds10Plus -> "R"
+  | Assists7Plus -> "A"
+  | Blocks3Plus -> "B"
+  | Steals3Plus -> "S"
+
+type player_streak = {
+  ps_player_id: string;
+  ps_player_name: string;
+  ps_team_name: string;
+  ps_streak_type: streak_type;
+  ps_current_count: int;
+  ps_is_active: bool;  (** True if streak is ongoing *)
+  ps_start_date: string;
+  ps_end_date: string option;  (** None if still active *)
+  ps_games: player_game_stat list;  (** Games in the streak *)
+}
+
+type team_streak = {
+  ts_team_name: string;
+  ts_streak_type: streak_type;
+  ts_current_count: int;
+  ts_is_active: bool;
+  ts_start_date: string;
+  ts_end_date: string option;
+  ts_game_ids: string list;
+}
+
+type streak_record = {
+  sr_holder_name: string;      (** Player or team name *)
+  sr_holder_id: string option; (** Player ID if player streak *)
+  sr_team_name: string option; (** Team name for player streaks *)
+  sr_streak_type: streak_type;
+  sr_count: int;
+  sr_start_date: string;
+  sr_end_date: string;
+  sr_season: string;
+}
+
+(** Clutch Time Statistics
+    Clutch time = Q4 remaining 5 minutes + score diff <= 5 points *)
+type clutch_stats = {
+  cs_player_id: string;
+  cs_player_name: string;
+  cs_team_name: string;
+  cs_clutch_games: int;
+  cs_clutch_points: int;
+  cs_clutch_fg_made: int;
+  cs_clutch_fg_att: int;
+  cs_clutch_fg_pct: float;
+  cs_clutch_ft_made: int;
+  cs_clutch_ft_att: int;
+  cs_clutch_3p_made: int;
+}
+
+(** Parse clock string "MM:SS" to seconds remaining *)
+let parse_clock (clock: string) : int =
+  try
+    match String.split_on_char ':' clock with
+    | [min; sec] ->
+      let m = int_of_string (String.trim min) in
+      let s = int_of_string (String.trim sec) in
+      m * 60 + s
+    | _ -> 0
+  with _ -> 0
+
+(** Check if event is in clutch time
+    Clutch time = Q4 + remaining <= 5 min + score diff <= 5 points *)
+let is_clutch_time ~period_code ~clock ~score_diff : bool =
+  period_code = "Q4" &&
+  parse_clock clock <= 300 &&  (* 5 minutes = 300 seconds *)
+  abs score_diff <= 5
+
+(** Extract clutch time events from PBP data *)
+let extract_clutch_events (events: pbp_event list) : pbp_event list =
+  List.filter (fun e ->
+    let score_diff = match e.pe_team1_score, e.pe_team2_score with
+      | Some s1, Some s2 -> s1 - s2
+      | _ -> 999  (* No score info = not clutch *)
+    in
+    is_clutch_time ~period_code:e.pe_period_code ~clock:e.pe_clock ~score_diff
+  ) events
+
+(** Parse points from PBP description
+    Returns (points, is_made, is_3pt, is_ft) *)
+let parse_scoring_from_description (desc: string) : (int * bool * bool * bool) option =
+  let desc_lower = String.lowercase_ascii desc in
+  (* Korean basketball PBP patterns *)
+  if String.length desc_lower = 0 then None
+  else if String.sub desc_lower 0 (min 4 (String.length desc_lower)) = "자유투" ||
+          (try String.sub desc_lower 0 2 = "ft" with _ -> false) then
+    if String.sub desc_lower (String.length desc_lower - 2) 2 = "성공" ||
+       (try String.sub desc_lower (String.length desc_lower - 4) 4 = "made" with _ -> false) then
+      Some (1, true, false, true)
+    else
+      Some (0, false, false, true)
+  else if (try String.sub desc_lower 0 3 = "3점" with _ -> false) ||
+          (try String.sub desc_lower 0 2 = "3p" with _ -> false) then
+    if String.sub desc_lower (String.length desc_lower - 2) 2 = "성공" ||
+       (try String.sub desc_lower (String.length desc_lower - 4) 4 = "made" with _ -> false) then
+      Some (3, true, true, false)
+    else
+      Some (0, false, true, false)
+  else if (try String.sub desc_lower 0 2 = "2점" with _ -> false) ||
+          (try String.sub desc_lower 0 2 = "2p" with _ -> false) ||
+          (try String.sub desc_lower 0 3 = "슛" with _ -> false) ||
+          (try String.sub desc_lower 0 6 = "layup" with _ -> false) ||
+          (try String.sub desc_lower 0 4 = "dunk" with _ -> false) then
+    if String.sub desc_lower (String.length desc_lower - 2) 2 = "성공" ||
+       (try String.sub desc_lower (String.length desc_lower - 4) 4 = "made" with _ -> false) then
+      Some (2, true, false, false)
+    else
+      Some (0, false, false, false)
+  else
+    None
