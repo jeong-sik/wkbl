@@ -4,7 +4,6 @@
 
 open Wkbl
 open Wkbl.Domain
-open Wkbl.Views_mvp
 
 let has_prefix ~prefix s =
   let prefix_len = String.length prefix in
@@ -371,6 +370,33 @@ Sitemap: https://wkbl.win/sitemap.xml
               | Error e -> Dream.html (Views.error_page (Db.show_db_error e)))
     );
 
+    (* Game Flow Chart *)
+    Dream.get "/boxscore/:id/flow" (fun request ->
+      let game_id = Dream.param request "id" in
+      let open Lwt.Syntax in
+      let* boxscore_res = Db.get_boxscore ~game_id () in
+      match boxscore_res with
+      | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+      | Ok bs ->
+          (* Get all periods for this game *)
+          let* periods_res = Db.get_pbp_periods ~game_id () in
+          (match periods_res with
+          | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+          | Ok periods ->
+              (* Fetch PBP events for all periods *)
+              let* all_events =
+                Lwt_list.fold_left_s (fun acc period_code ->
+                  let* events_res = Db.get_pbp_events ~game_id ~period_code () in
+                  match events_res with
+                  | Ok events -> Lwt.return (acc @ events)
+                  | Error _ -> Lwt.return acc
+                ) [] periods
+              in
+              (* Extract score flow and render chart *)
+              let flow_points = Domain.extract_score_flow all_events in
+              Dream.html (Views_tools.game_flow_page ~game:bs.boxscore_game flow_points))
+    );
+
     (* Leaders *)
     Dream.get "/leaders" (fun request ->
       let open Lwt.Syntax in
@@ -401,6 +427,29 @@ Sitemap: https://wkbl.win/sitemap.xml
           match leaders_res with
           | Ok leaders_by_category ->
               Dream.html (Views.leaders_page ~season ~seasons ~scope leaders_by_category)
+          | Error e ->
+              Dream.html (Views.error_page (Db.show_db_error e))
+    );
+
+    (* Clutch Time Leaders *)
+    Dream.get "/clutch" (fun request ->
+      let open Lwt.Syntax in
+      let* seasons_res = Db.get_seasons () in
+      match seasons_res with
+      | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+      | Ok seasons ->
+          let season = query_season_or_latest request seasons in
+          (* Get clutch stats from DB - aggregated from PBP data *)
+          let* clutch_res = Db.get_clutch_stats ~season () in
+          match clutch_res with
+          | Ok stats ->
+              (* Sort by clutch points descending *)
+              let sorted_stats = List.sort
+                (fun (a: clutch_stats) (b: clutch_stats) ->
+                  compare b.cs_clutch_points a.cs_clutch_points)
+                stats
+              in
+              Dream.html (Views.clutch_page ~season ~seasons sorted_stats)
           | Error e ->
               Dream.html (Views.error_page (Db.show_db_error e))
     );
@@ -469,6 +518,66 @@ Sitemap: https://wkbl.win/sitemap.xml
           match candidates_res with
           | Ok candidates -> Dream.html (Views_mvp.mvp_race_table candidates)
           | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+    );
+
+    (* Fantasy Calculator - Full Page *)
+    Dream.get "/fantasy" (fun request ->
+      let open Lwt.Syntax in
+      let* seasons_res = Db.get_seasons () in
+      match seasons_res with
+      | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+      | Ok seasons ->
+          let season = query_season_or_latest request seasons in
+          let pts = Option.bind (Dream.query request "pts") float_of_string_opt |> Option.value ~default:1.0 in
+          let reb = Option.bind (Dream.query request "reb") float_of_string_opt |> Option.value ~default:1.2 in
+          let ast = Option.bind (Dream.query request "ast") float_of_string_opt |> Option.value ~default:1.5 in
+          let stl = Option.bind (Dream.query request "stl") float_of_string_opt |> Option.value ~default:2.0 in
+          let blk = Option.bind (Dream.query request "blk") float_of_string_opt |> Option.value ~default:2.0 in
+          let tov = Option.bind (Dream.query request "tov") float_of_string_opt |> Option.value ~default:(-1.0) in
+          let rules : Domain.fantasy_scoring_rule = {
+            fsr_points = pts;
+            fsr_rebounds = reb;
+            fsr_assists = ast;
+            fsr_steals = stl;
+            fsr_blocks = blk;
+            fsr_turnovers = tov;
+          } in
+          let* players_res = Db.get_players ~season ~search:"" ~sort:ByMinutes () in
+          match players_res with
+          | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+          | Ok players ->
+              let scores = List.map (Domain.fantasy_score_of_aggregate ~rules) players in
+              Dream.html (Views_tools.fantasy_calculator_page ~season ~seasons ~rules ~scores)
+    );
+
+    (* Fantasy Calculator - HTMX Calculate Endpoint *)
+    Dream.get "/fantasy/calculate" (fun request ->
+      let open Lwt.Syntax in
+      let* seasons_res = Db.get_seasons () in
+      match seasons_res with
+      | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+      | Ok seasons ->
+          let season = query_season_or_latest request seasons in
+          let pts = Option.bind (Dream.query request "pts") float_of_string_opt |> Option.value ~default:1.0 in
+          let reb = Option.bind (Dream.query request "reb") float_of_string_opt |> Option.value ~default:1.2 in
+          let ast = Option.bind (Dream.query request "ast") float_of_string_opt |> Option.value ~default:1.5 in
+          let stl = Option.bind (Dream.query request "stl") float_of_string_opt |> Option.value ~default:2.0 in
+          let blk = Option.bind (Dream.query request "blk") float_of_string_opt |> Option.value ~default:2.0 in
+          let tov = Option.bind (Dream.query request "tov") float_of_string_opt |> Option.value ~default:(-1.0) in
+          let rules : Domain.fantasy_scoring_rule = {
+            fsr_points = pts;
+            fsr_rebounds = reb;
+            fsr_assists = ast;
+            fsr_steals = stl;
+            fsr_blocks = blk;
+            fsr_turnovers = tov;
+          } in
+          let* players_res = Db.get_players ~season ~search:"" ~sort:ByMinutes () in
+          match players_res with
+          | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+          | Ok players ->
+              let scores = List.map (Domain.fantasy_score_of_aggregate ~rules) players in
+              Dream.html (Views_tools.fantasy_results_table scores)
     );
 
     (* Compare *)
@@ -853,7 +962,7 @@ Sitemap: https://wkbl.win/sitemap.xml
             | Error _ ->
                 None
           in
-          Dream.html (Views.player_profile_page ~leaderboards final_profile ~scope ~seasons_catalog)
+          Dream.html (Views_player.player_profile_page ~leaderboards final_profile ~scope ~seasons_catalog)
       | Ok None -> Dream.html (Views.error_page "Player not found")
       | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
     );
@@ -872,7 +981,7 @@ Sitemap: https://wkbl.win/sitemap.xml
           let season = query_season_or_latest request seasons in
           let* games_res = Db.get_player_game_logs ~player_id ~season ~include_mismatch () in
           (match games_res with
-          | Ok games -> Dream.html (Views.player_game_logs_page profile ~season ~seasons ~include_mismatch games)
+          | Ok games -> Dream.html (Views_player.player_game_logs_page profile ~season ~seasons ~include_mismatch games)
           | Error e -> Dream.html (Views.error_page (Db.show_db_error e)))
     );
 
@@ -883,7 +992,7 @@ Sitemap: https://wkbl.win/sitemap.xml
       let open Lwt.Syntax in
       let* stats_res = Db.get_player_season_stats ~player_id ~scope () in
       match stats_res with
-      | Ok stats -> Dream.html (Views.player_season_stats_component ~player_id ~scope stats)
+      | Ok stats -> Dream.html (Views_common.player_season_stats_component ~player_id ~scope stats)
       | Error e -> Dream.html (Views.error_page (Db.show_db_error e)) (* Or minimal error snippet *)
     );
 
@@ -898,7 +1007,7 @@ Sitemap: https://wkbl.win/sitemap.xml
           let season = query_season_or_latest request seasons in
           let* detail_res = Db.get_team_full_detail ~team_name ~season () in
           (match detail_res with
-          | Ok detail -> Dream.html (Views.team_profile_page detail ~season ~seasons)
+          | Ok detail -> Dream.html (Views_team.team_profile_page detail ~season ~seasons)
           | Error e -> Dream.html (Views.error_page (Db.show_db_error e)))
     );
 
@@ -950,7 +1059,7 @@ Sitemap: https://wkbl.win/sitemap.xml
             | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
             | Ok events ->
                 Dream.html
-                  (Views.transactions_page
+                  (Views_tools.transactions_page
                      ~tab
                      ~year
                      ~q
@@ -964,7 +1073,7 @@ Sitemap: https://wkbl.win/sitemap.xml
             | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
             | Ok picks ->
                 Dream.html
-                  (Views.transactions_page
+                  (Views_tools.transactions_page
                      ~tab:"draft"
                      ~year
                      ~q
@@ -975,13 +1084,79 @@ Sitemap: https://wkbl.win/sitemap.xml
           )
     );
 
+    (* Hot Streaks *)
+    Dream.get "/streaks" (fun request ->
+      let open Lwt.Syntax in
+      let* seasons_res = Db.get_seasons () in
+      match seasons_res with
+      | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+      | Ok seasons ->
+          let season = query_season_or_latest request seasons in
+          (* Get all players with their game logs *)
+          let* players_res = Db.get_players ~season ~search:"" ~sort:ByEfficiency () in
+          let* teams_res = Db.get_all_teams () in
+          match players_res, teams_res with
+          | Error e, _ | _, Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+          | Ok players, Ok teams ->
+              (* Fetch game logs for top players and calculate streaks *)
+              let* player_streaks =
+                Lwt_list.filter_map_s (fun (p: player_aggregate) ->
+                  let* games_res = Db.get_player_game_logs ~player_id:p.player_id ~season ~include_mismatch:false () in
+                  match games_res with
+                  | Ok games when List.length games >= 2 ->
+                      let streaks = Streaks.analyze_player_streaks
+                        ~player_id:p.player_id
+                        ~player_name:p.name
+                        ~team_name:p.team_name
+                        games
+                      in
+                      Lwt.return (Some streaks)
+                  | _ -> Lwt.return None
+                ) (List.filteri (fun i _ -> i < 30) players)
+              in
+              let all_player_streaks = List.concat player_streaks in
+              let active_player_streaks = Streaks.get_active_streaks all_player_streaks in
+
+              (* Calculate team win streaks *)
+              let* team_streaks =
+                Lwt_list.filter_map_s (fun (t: team_info) ->
+                  let* detail_res = Db.get_team_full_detail ~team_name:t.team_name ~season () in
+                  match detail_res with
+                  | Ok detail ->
+                      let streaks = Streaks.calculate_team_win_streaks ~team_name:t.team_name detail.tfd_game_results in
+                      Lwt.return (Some streaks)
+                  | Error _ -> Lwt.return None
+                ) teams
+              in
+              let all_team_streaks = List.concat team_streaks in
+              let active_team_streaks = all_team_streaks |> List.filter (fun s -> s.ts_is_active) in
+
+              (* Build all-time records from best streaks *)
+              let best_player_streaks = Streaks.get_best_streaks all_player_streaks in
+              let player_records = List.map (Streaks.player_streak_to_record ~season) best_player_streaks in
+              let team_records = List.map (Streaks.team_streak_to_record ~season) all_team_streaks in
+              let all_time_records =
+                (player_records @ team_records)
+                |> List.sort (fun a b -> compare b.sr_count a.sr_count)
+                |> List.filteri (fun i _ -> i < 20)
+              in
+
+              Dream.html (Views_streaks.streaks_page
+                ~season
+                ~seasons
+                ~active_player_streaks
+                ~active_team_streaks
+                ~all_time_records
+                ())
+    );
+
     (* QA & System *)
     Dream.get "/qa" (fun _ ->
       let open Lwt.Syntax in
       let markdown = Qa.read_markdown_if_exists () in
       let* report_res = Db.get_db_quality_report () in
       match report_res with
-      | Ok report -> Dream.html (Views.qa_dashboard_page report ~markdown ())
+      | Ok report -> Dream.html (Views_tools.qa_dashboard_page report ~markdown ())
       | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
     );
     Dream.get "/health" (fun _ -> Dream.json "{\"status\": \"ok\", \"engine\": \"OCaml/Dream\"}");
@@ -991,21 +1166,21 @@ Sitemap: https://wkbl.win/sitemap.xml
       let open Lwt.Syntax in
       let* result = Db.get_historical_seasons () in
       match result with
-      | Ok seasons -> Dream.html (Views.history_page seasons)
+      | Ok seasons -> Dream.html (Views_history.history_page seasons)
       | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
     );
     Dream.get "/legends" (fun _ ->
       let open Lwt.Syntax in
       let* result = Db.get_legend_players () in
       match result with
-      | Ok legends -> Dream.html (Views.legends_page legends)
+      | Ok legends -> Dream.html (Views_history.legends_page legends)
       | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
     );
     Dream.get "/coaches" (fun _ ->
       let open Lwt.Syntax in
       let* result = Db.get_coaches () in
       match result with
-      | Ok coaches -> Dream.html (Views.coaches_page coaches)
+      | Ok coaches -> Dream.html (Views_history.coaches_page coaches)
       | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
     );
     Dream.get "/player/:id/career" (fun request ->
@@ -1013,7 +1188,7 @@ Sitemap: https://wkbl.win/sitemap.xml
       let player_name = Dream.param request "id" |> Uri.pct_decode in
       let* result = Db.get_player_career ~player_name () in
       match result with
-      | Ok entries -> Dream.html (Views.player_career_page ~player_name entries)
+      | Ok entries -> Dream.html (Views_history.player_career_page ~player_name entries)
       | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
     );
   ]

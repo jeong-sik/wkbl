@@ -2964,6 +2964,28 @@ module Queries = struct
          END) DESC
     LIMIT 20
   |}
+
+  (** Get all Q4 PBP events for clutch time analysis
+      Clutch time = Q4 + clock <= 5:00 + score diff <= 5 *)
+  let clutch_pbp_events = (string ->* Types.pbp_event) {|
+    SELECT
+      period_code, event_index, team_side, description,
+      team1_score, team2_score, clock
+    FROM play_by_play_events p
+    JOIN games g ON p.game_id = g.id
+    WHERE period_code = 'Q4'
+      AND (
+        CASE
+          WHEN clock ~ '^\d+:\d+$' THEN
+            CAST(SPLIT_PART(clock, ':', 1) AS INTEGER) * 60 +
+            CAST(SPLIT_PART(clock, ':', 2) AS INTEGER)
+          ELSE 600
+        END
+      ) <= 300
+      AND ABS(COALESCE(team1_score, 0) - COALESCE(team2_score, 0)) <= 5
+      AND ($1 = 'ALL' OR g.season_code = $1)
+    ORDER BY p.game_id, event_index
+  |}
 end
 
 (** Database operations *)
@@ -3946,3 +3968,15 @@ let get_mvp_race ?(season="ALL") ?(min_games=5) () =
       let ranked = candidates |> List.mapi (fun i c -> { c with mvp_rank = i + 1 }) in
       Lwt.return (Ok ranked)
   | Error e -> Lwt.return (Error e)
+
+(* ===== Clutch Time Stats Public API ===== *)
+
+(** Get clutch time stats for a season.
+    TODO: Full implementation requires PBP data with player_id field.
+    Currently returns empty list as PBP description parsing is complex.
+    Clutch time = Q4 remaining 5 min + score diff <= 5 points *)
+let get_clutch_stats ~season () =
+  let _ = season in (* Suppress unused warning *)
+  (* TODO: Implement when PBP data model includes player_id
+     For now, return empty list to show the page structure works *)
+  Lwt.return (Ok ([] : Domain.clutch_stats list))

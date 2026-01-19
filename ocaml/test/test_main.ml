@@ -260,6 +260,575 @@ let career_trajectory_tests = [
 ]
 
 (* ============================================= *)
+(* Fantasy Score Calculation Tests               *)
+(* ============================================= *)
+
+let test_fantasy_score_default_rules () =
+  (* Test with default rules:
+     pts=1.0, reb=1.2, ast=1.5, stl=2.0, blk=2.0, tov=-1.0 *)
+  let rules = default_fantasy_rules in
+  let (total, pts_c, reb_c, ast_c, stl_c, blk_c, tov_c) =
+    calculate_fantasy_score ~rules ~pts:20 ~reb:10 ~ast:5 ~stl:2 ~blk:1 ~tov:3
+  in
+  (* pts: 20*1.0=20, reb: 10*1.2=12, ast: 5*1.5=7.5, stl: 2*2=4, blk: 1*2=2, tov: 3*(-1)=-3 *)
+  Alcotest.(check float_testable) "pts contribution" 20.0 pts_c;
+  Alcotest.(check float_testable) "reb contribution" 12.0 reb_c;
+  Alcotest.(check float_testable) "ast contribution" 7.5 ast_c;
+  Alcotest.(check float_testable) "stl contribution" 4.0 stl_c;
+  Alcotest.(check float_testable) "blk contribution" 2.0 blk_c;
+  Alcotest.(check float_testable) "tov contribution" (-3.0) tov_c;
+  Alcotest.(check float_testable) "total score" 42.5 total
+
+let test_fantasy_score_custom_rules () =
+  (* Test with custom rules: double points value, zero turnover penalty *)
+  let rules = {
+    fsr_points = 2.0;
+    fsr_rebounds = 1.0;
+    fsr_assists = 1.0;
+    fsr_steals = 1.0;
+    fsr_blocks = 1.0;
+    fsr_turnovers = 0.0;
+  } in
+  let (total, pts_c, reb_c, ast_c, stl_c, blk_c, tov_c) =
+    calculate_fantasy_score ~rules ~pts:15 ~reb:8 ~ast:4 ~stl:1 ~blk:1 ~tov:5
+  in
+  (* pts: 15*2=30, reb: 8*1=8, ast: 4*1=4, stl: 1*1=1, blk: 1*1=1, tov: 5*0=0 *)
+  Alcotest.(check float_testable) "pts custom" 30.0 pts_c;
+  Alcotest.(check float_testable) "reb custom" 8.0 reb_c;
+  Alcotest.(check float_testable) "ast custom" 4.0 ast_c;
+  Alcotest.(check float_testable) "stl custom" 1.0 stl_c;
+  Alcotest.(check float_testable) "blk custom" 1.0 blk_c;
+  Alcotest.(check float_testable) "tov custom" 0.0 tov_c;
+  Alcotest.(check float_testable) "total custom" 44.0 total
+
+let test_fantasy_score_zero_stats () =
+  let rules = default_fantasy_rules in
+  let (total, _, _, _, _, _, _) =
+    calculate_fantasy_score ~rules ~pts:0 ~reb:0 ~ast:0 ~stl:0 ~blk:0 ~tov:0
+  in
+  Alcotest.(check float_testable) "zero total" 0.0 total
+
+let test_fantasy_score_high_turnovers () =
+  (* Test that high turnovers significantly reduce score *)
+  let rules = default_fantasy_rules in
+  let (total, _, _, _, _, _, _) =
+    calculate_fantasy_score ~rules ~pts:10 ~reb:5 ~ast:2 ~stl:0 ~blk:0 ~tov:10
+  in
+  (* pts: 10*1=10, reb: 5*1.2=6, ast: 2*1.5=3, stl: 0, blk: 0, tov: 10*(-1)=-10 *)
+  (* Total = 10 + 6 + 3 + 0 + 0 - 10 = 9 *)
+  Alcotest.(check float_testable) "high turnover score" 9.0 total
+
+let test_fantasy_aggregate () =
+  (* Test fantasy_score_of_aggregate function *)
+  let rules = default_fantasy_rules in
+  let player : player_aggregate = {
+    player_id = "TEST001";
+    name = "Test Player";
+    team_name = "Test Team";
+    games_played = 10;
+    total_minutes = 300.0;
+    total_points = 200;
+    total_rebounds = 100;
+    total_assists = 50;
+    total_steals = 20;
+    total_blocks = 10;
+    total_turnovers = 30;
+    avg_points = 20.0;
+    avg_margin = 0.0;
+    avg_rebounds = 10.0;
+    avg_assists = 5.0;
+    avg_steals = 2.0;
+    avg_blocks = 1.0;
+    avg_turnovers = 3.0;
+    efficiency = 25.0;
+  } in
+  let score = fantasy_score_of_aggregate ~rules player in
+  (* Total: 200*1 + 100*1.2 + 50*1.5 + 20*2 + 10*2 + 30*(-1) = 200+120+75+40+20-30 = 425 *)
+  (* Avg: 425 / 10 = 42.5 *)
+  Alcotest.(check float_testable) "aggregate total" 425.0 score.fps_total_score;
+  Alcotest.(check float_testable) "aggregate avg" 42.5 score.fps_avg_score;
+  Alcotest.(check string) "aggregate player_id" "TEST001" score.fps_player_id;
+  Alcotest.(check int) "aggregate games" 10 score.fps_games_played
+
+let fantasy_score_tests = [
+  Alcotest.test_case "Default rules calculation" `Quick test_fantasy_score_default_rules;
+  Alcotest.test_case "Custom rules calculation" `Quick test_fantasy_score_custom_rules;
+  Alcotest.test_case "Zero stats" `Quick test_fantasy_score_zero_stats;
+  Alcotest.test_case "High turnovers penalty" `Quick test_fantasy_score_high_turnovers;
+  Alcotest.test_case "Aggregate calculation" `Quick test_fantasy_aggregate;
+]
+
+(* ============================================= *)
+(* H2H Summary Calculation Tests                 *)
+(* ============================================= *)
+
+let make_h2h_game ~game_id ~game_date ~p1_team ~p2_team ~p1_pts ~p1_reb ~p1_ast
+    ~p2_pts ~p2_reb ~p2_ast ~winner_team ~score_diff : h2h_game =
+  { game_id; game_date; player1_team = p1_team; player2_team = p2_team;
+    player1_pts = p1_pts; player1_reb = p1_reb; player1_ast = p1_ast;
+    player2_pts = p2_pts; player2_reb = p2_reb; player2_ast = p2_ast;
+    winner_team; score_diff }
+
+let test_h2h_summary_empty () =
+  (* Empty games list should return zero summary *)
+  let summary = calculate_h2h_summary ~p1_team:"TeamA" [] in
+  Alcotest.(check int) "total games" 0 summary.h2h_total_games;
+  Alcotest.(check int) "p1 wins" 0 summary.h2h_p1_wins;
+  Alcotest.(check int) "p2 wins" 0 summary.h2h_p2_wins;
+  Alcotest.(check float_testable) "p1 avg pts" 0.0 summary.h2h_p1_avg_pts;
+  Alcotest.(check float_testable) "p2 avg pts" 0.0 summary.h2h_p2_avg_pts
+
+let test_h2h_summary_single_game () =
+  (* Single game where P1's team wins *)
+  let games = [
+    make_h2h_game ~game_id:"G1" ~game_date:"2024-01-15"
+      ~p1_team:"KB" ~p2_team:"SH"
+      ~p1_pts:25 ~p1_reb:10 ~p1_ast:5
+      ~p2_pts:18 ~p2_reb:8 ~p2_ast:3
+      ~winner_team:"KB" ~score_diff:12
+  ] in
+  let summary = calculate_h2h_summary ~p1_team:"KB" games in
+  Alcotest.(check int) "total games" 1 summary.h2h_total_games;
+  Alcotest.(check int) "p1 wins" 1 summary.h2h_p1_wins;
+  Alcotest.(check int) "p2 wins" 0 summary.h2h_p2_wins;
+  Alcotest.(check float_testable) "p1 avg pts" 25.0 summary.h2h_p1_avg_pts;
+  Alcotest.(check float_testable) "p1 avg reb" 10.0 summary.h2h_p1_avg_reb;
+  Alcotest.(check float_testable) "p1 avg ast" 5.0 summary.h2h_p1_avg_ast;
+  Alcotest.(check float_testable) "p2 avg pts" 18.0 summary.h2h_p2_avg_pts;
+  Alcotest.(check float_testable) "p2 avg reb" 8.0 summary.h2h_p2_avg_reb;
+  Alcotest.(check float_testable) "p2 avg ast" 3.0 summary.h2h_p2_avg_ast
+
+let test_h2h_summary_multiple_games () =
+  (* Three games: P1 team wins 2, P2 team wins 1 *)
+  let games = [
+    make_h2h_game ~game_id:"G1" ~game_date:"2024-01-10"
+      ~p1_team:"KB" ~p2_team:"SH"
+      ~p1_pts:20 ~p1_reb:8 ~p1_ast:6
+      ~p2_pts:22 ~p2_reb:10 ~p2_ast:4
+      ~winner_team:"KB" ~score_diff:5;
+    make_h2h_game ~game_id:"G2" ~game_date:"2024-01-20"
+      ~p1_team:"KB" ~p2_team:"SH"
+      ~p1_pts:15 ~p1_reb:6 ~p1_ast:3
+      ~p2_pts:28 ~p2_reb:12 ~p2_ast:8
+      ~winner_team:"SH" ~score_diff:(-10);
+    make_h2h_game ~game_id:"G3" ~game_date:"2024-01-30"
+      ~p1_team:"KB" ~p2_team:"SH"
+      ~p1_pts:30 ~p1_reb:7 ~p1_ast:9
+      ~p2_pts:20 ~p2_reb:5 ~p2_ast:3
+      ~winner_team:"KB" ~score_diff:15;
+  ] in
+  let summary = calculate_h2h_summary ~p1_team:"KB" games in
+  Alcotest.(check int) "total games" 3 summary.h2h_total_games;
+  Alcotest.(check int) "p1 wins" 2 summary.h2h_p1_wins;
+  Alcotest.(check int) "p2 wins" 1 summary.h2h_p2_wins;
+  (* P1 avg: (20+15+30)/3 = 65/3 = 21.667, reb: (8+6+7)/3 = 7, ast: (6+3+9)/3 = 6 *)
+  Alcotest.(check float_testable) "p1 avg pts" 21.667 summary.h2h_p1_avg_pts;
+  Alcotest.(check float_testable) "p1 avg reb" 7.0 summary.h2h_p1_avg_reb;
+  Alcotest.(check float_testable) "p1 avg ast" 6.0 summary.h2h_p1_avg_ast;
+  (* P2 avg: (22+28+20)/3 = 70/3 = 23.333, reb: (10+12+5)/3 = 9, ast: (4+8+3)/3 = 5 *)
+  Alcotest.(check float_testable) "p2 avg pts" 23.333 summary.h2h_p2_avg_pts;
+  Alcotest.(check float_testable) "p2 avg reb" 9.0 summary.h2h_p2_avg_reb;
+  Alcotest.(check float_testable) "p2 avg ast" 5.0 summary.h2h_p2_avg_ast
+
+let test_h2h_summary_all_p2_wins () =
+  (* Two games where P2's team wins both *)
+  let games = [
+    make_h2h_game ~game_id:"G1" ~game_date:"2024-02-01"
+      ~p1_team:"WO" ~p2_team:"BN"
+      ~p1_pts:12 ~p1_reb:5 ~p1_ast:2
+      ~p2_pts:25 ~p2_reb:11 ~p2_ast:7
+      ~winner_team:"BN" ~score_diff:(-20);
+    make_h2h_game ~game_id:"G2" ~game_date:"2024-02-15"
+      ~p1_team:"WO" ~p2_team:"BN"
+      ~p1_pts:18 ~p1_reb:7 ~p1_ast:4
+      ~p2_pts:21 ~p2_reb:9 ~p2_ast:5
+      ~winner_team:"BN" ~score_diff:(-8);
+  ] in
+  let summary = calculate_h2h_summary ~p1_team:"WO" games in
+  Alcotest.(check int) "total games" 2 summary.h2h_total_games;
+  Alcotest.(check int) "p1 wins" 0 summary.h2h_p1_wins;
+  Alcotest.(check int) "p2 wins" 2 summary.h2h_p2_wins;
+  (* P1 avg: (12+18)/2 = 15, reb: (5+7)/2 = 6, ast: (2+4)/2 = 3 *)
+  Alcotest.(check float_testable) "p1 avg pts" 15.0 summary.h2h_p1_avg_pts;
+  Alcotest.(check float_testable) "p1 avg reb" 6.0 summary.h2h_p1_avg_reb;
+  Alcotest.(check float_testable) "p1 avg ast" 3.0 summary.h2h_p1_avg_ast
+
+let h2h_summary_tests = [
+  Alcotest.test_case "Empty games list" `Quick test_h2h_summary_empty;
+  Alcotest.test_case "Single game" `Quick test_h2h_summary_single_game;
+  Alcotest.test_case "Multiple games" `Quick test_h2h_summary_multiple_games;
+  Alcotest.test_case "All P2 wins" `Quick test_h2h_summary_all_p2_wins;
+]
+
+(* ============================================= *)
+(* Hot Streaks Analysis Tests                    *)
+(* ============================================= *)
+
+(** Helper to create a mock player_game_stat for streaks testing *)
+let make_streak_game ~game_id ~game_date ~pts ~reb ~ast ~stl ~blk ?team_score ?opponent_score () : player_game_stat =
+  {
+    game_id;
+    game_date;
+    opponent = "Opponent";
+    is_home = true;
+    team_score;
+    opponent_score;
+    score_quality = Verified;
+    min = 30.0;
+    pts; reb; ast; stl; blk;
+    tov = 2;
+    plus_minus = Some 5;
+  }
+
+let test_streak_20plus_points () =
+  (* Create 5 consecutive games with 20+ points *)
+  let games = [
+    make_streak_game ~game_id:"G5" ~game_date:"2024-01-15" ~pts:22 ~reb:5 ~ast:3 ~stl:1 ~blk:0 ();
+    make_streak_game ~game_id:"G4" ~game_date:"2024-01-12" ~pts:25 ~reb:6 ~ast:4 ~stl:2 ~blk:1 ();
+    make_streak_game ~game_id:"G3" ~game_date:"2024-01-09" ~pts:21 ~reb:4 ~ast:5 ~stl:1 ~blk:0 ();
+    make_streak_game ~game_id:"G2" ~game_date:"2024-01-06" ~pts:28 ~reb:7 ~ast:3 ~stl:0 ~blk:1 ();
+    make_streak_game ~game_id:"G1" ~game_date:"2024-01-03" ~pts:20 ~reb:5 ~ast:2 ~stl:1 ~blk:0 ();
+  ] in
+  let streaks = Wkbl.Streaks.analyze_player_streaks
+    ~player_id:"P001"
+    ~player_name:"Test Player"
+    ~team_name:"Test Team"
+    games
+  in
+  (* Should find a 5-game 20+ points streak *)
+  let pts_streaks = List.filter (fun (s: player_streak) -> s.ps_streak_type = Points20Plus) streaks in
+  Alcotest.(check bool) "has pts streak" true (List.length pts_streaks > 0);
+  let best = List.hd pts_streaks in
+  Alcotest.(check int) "5-game streak" 5 best.ps_current_count;
+  Alcotest.(check bool) "is active" true best.ps_is_active
+
+let test_streak_broken () =
+  (* Games with a broken streak *)
+  let games = [
+    make_streak_game ~game_id:"G5" ~game_date:"2024-01-15" ~pts:22 ~reb:5 ~ast:3 ~stl:1 ~blk:0 ();
+    make_streak_game ~game_id:"G4" ~game_date:"2024-01-12" ~pts:25 ~reb:6 ~ast:4 ~stl:2 ~blk:1 ();
+    make_streak_game ~game_id:"G3" ~game_date:"2024-01-09" ~pts:15 ~reb:4 ~ast:5 ~stl:1 ~blk:0 ();  (* Break: 15 pts *)
+    make_streak_game ~game_id:"G2" ~game_date:"2024-01-06" ~pts:28 ~reb:7 ~ast:3 ~stl:0 ~blk:1 ();
+    make_streak_game ~game_id:"G1" ~game_date:"2024-01-03" ~pts:20 ~reb:5 ~ast:2 ~stl:1 ~blk:0 ();
+  ] in
+  let streaks = Wkbl.Streaks.analyze_player_streaks
+    ~player_id:"P001"
+    ~player_name:"Test Player"
+    ~team_name:"Test Team"
+    games
+  in
+  let pts_streaks = List.filter (fun (s: player_streak) -> s.ps_streak_type = Points20Plus) streaks in
+  (* The most recent streak should be 2 games (G5, G4) *)
+  let active = List.filter (fun s -> s.ps_is_active) pts_streaks in
+  Alcotest.(check bool) "has active streak" true (List.length active > 0);
+  let best_active = List.hd active in
+  Alcotest.(check int) "2-game active streak" 2 best_active.ps_current_count
+
+let test_streak_double_double () =
+  (* Create games with double-doubles (10+ in 2 categories) *)
+  let games = [
+    make_streak_game ~game_id:"G4" ~game_date:"2024-01-12" ~pts:15 ~reb:12 ~ast:5 ~stl:1 ~blk:0 ();  (* DD: pts+reb *)
+    make_streak_game ~game_id:"G3" ~game_date:"2024-01-09" ~pts:18 ~reb:10 ~ast:3 ~stl:2 ~blk:1 ();  (* DD: pts+reb *)
+    make_streak_game ~game_id:"G2" ~game_date:"2024-01-06" ~pts:12 ~reb:11 ~ast:4 ~stl:0 ~blk:0 ();  (* DD: pts+reb *)
+    make_streak_game ~game_id:"G1" ~game_date:"2024-01-03" ~pts:8 ~reb:5 ~ast:2 ~stl:1 ~blk:0 ();    (* No DD *)
+  ] in
+  let streaks = Wkbl.Streaks.analyze_player_streaks
+    ~player_id:"P001"
+    ~player_name:"Test Player"
+    ~team_name:"Test Team"
+    games
+  in
+  let dd_streaks = List.filter (fun (s: player_streak) -> s.ps_streak_type = DoubleDouble) streaks in
+  Alcotest.(check bool) "has DD streak" true (List.length dd_streaks > 0);
+  let best = List.hd dd_streaks in
+  Alcotest.(check int) "3-game DD streak" 3 best.ps_current_count
+
+let test_streak_10plus_rebounds () =
+  (* Create games with 10+ rebounds *)
+  let games = [
+    make_streak_game ~game_id:"G3" ~game_date:"2024-01-09" ~pts:10 ~reb:12 ~ast:3 ~stl:1 ~blk:0 ();
+    make_streak_game ~game_id:"G2" ~game_date:"2024-01-06" ~pts:8 ~reb:15 ~ast:2 ~stl:0 ~blk:1 ();
+    make_streak_game ~game_id:"G1" ~game_date:"2024-01-03" ~pts:12 ~reb:11 ~ast:4 ~stl:1 ~blk:0 ();
+  ] in
+  let streaks = Wkbl.Streaks.analyze_player_streaks
+    ~player_id:"P001"
+    ~player_name:"Test Player"
+    ~team_name:"Test Team"
+    games
+  in
+  let reb_streaks = List.filter (fun (s: player_streak) -> s.ps_streak_type = Rebounds10Plus) streaks in
+  Alcotest.(check bool) "has reb streak" true (List.length reb_streaks > 0);
+  let best = List.hd reb_streaks in
+  Alcotest.(check int) "3-game reb streak" 3 best.ps_current_count
+
+let test_streak_get_best () =
+  (* Test get_best_streaks function *)
+  let games = [
+    make_streak_game ~game_id:"G5" ~game_date:"2024-01-15" ~pts:22 ~reb:5 ~ast:3 ~stl:1 ~blk:0 ();
+    make_streak_game ~game_id:"G4" ~game_date:"2024-01-12" ~pts:25 ~reb:12 ~ast:4 ~stl:2 ~blk:1 ();
+    make_streak_game ~game_id:"G3" ~game_date:"2024-01-09" ~pts:21 ~reb:10 ~ast:5 ~stl:1 ~blk:0 ();
+    make_streak_game ~game_id:"G2" ~game_date:"2024-01-06" ~pts:28 ~reb:11 ~ast:3 ~stl:0 ~blk:1 ();
+    make_streak_game ~game_id:"G1" ~game_date:"2024-01-03" ~pts:20 ~reb:13 ~ast:2 ~stl:1 ~blk:0 ();
+  ] in
+  let all_streaks = Wkbl.Streaks.analyze_player_streaks
+    ~player_id:"P001"
+    ~player_name:"Test Player"
+    ~team_name:"Test Team"
+    games
+  in
+  let best = Wkbl.Streaks.get_best_streaks all_streaks in
+  (* Should return one best streak per type *)
+  let pts_best = List.filter (fun (s: player_streak) -> s.ps_streak_type = Points20Plus) best in
+  let reb_best = List.filter (fun (s: player_streak) -> s.ps_streak_type = Rebounds10Plus) best in
+  Alcotest.(check int) "one best pts streak" 1 (List.length pts_best);
+  Alcotest.(check int) "one best reb streak" 1 (List.length reb_best)
+
+let test_streak_get_active () =
+  (* Test get_active_streaks function *)
+  let games = [
+    make_streak_game ~game_id:"G4" ~game_date:"2024-01-12" ~pts:22 ~reb:5 ~ast:3 ~stl:1 ~blk:0 ();
+    make_streak_game ~game_id:"G3" ~game_date:"2024-01-09" ~pts:25 ~reb:4 ~ast:4 ~stl:2 ~blk:1 ();
+    make_streak_game ~game_id:"G2" ~game_date:"2024-01-06" ~pts:10 ~reb:3 ~ast:5 ~stl:1 ~blk:0 (); (* Break *)
+    make_streak_game ~game_id:"G1" ~game_date:"2024-01-03" ~pts:21 ~reb:5 ~ast:2 ~stl:1 ~blk:0 ();
+  ] in
+  let all_streaks = Wkbl.Streaks.analyze_player_streaks
+    ~player_id:"P001"
+    ~player_name:"Test Player"
+    ~team_name:"Test Team"
+    games
+  in
+  let active = Wkbl.Streaks.get_active_streaks all_streaks in
+  (* Only the most recent 2-game streak should be active *)
+  let active_pts = List.filter (fun (s: player_streak) -> s.ps_streak_type = Points20Plus) active in
+  Alcotest.(check bool) "has active pts streak" true (List.length active_pts > 0);
+  let active_one = List.hd active_pts in
+  Alcotest.(check int) "active 2-game" 2 active_one.ps_current_count;
+  Alcotest.(check bool) "is active" true active_one.ps_is_active
+
+let test_streak_minimum_length () =
+  (* Streaks require minimum 2 games *)
+  let games = [
+    make_streak_game ~game_id:"G2" ~game_date:"2024-01-06" ~pts:22 ~reb:5 ~ast:3 ~stl:1 ~blk:0 ();
+    make_streak_game ~game_id:"G1" ~game_date:"2024-01-03" ~pts:10 ~reb:4 ~ast:2 ~stl:1 ~blk:0 ();  (* Not 20+ *)
+  ] in
+  let streaks = Wkbl.Streaks.analyze_player_streaks
+    ~player_id:"P001"
+    ~player_name:"Test Player"
+    ~team_name:"Test Team"
+    games
+  in
+  (* Single game with 20+ pts should not create a streak (min 2 required) *)
+  let pts_streaks = List.filter (fun (s: player_streak) -> s.ps_streak_type = Points20Plus) streaks in
+  Alcotest.(check int) "no streak for single game" 0 (List.length pts_streaks)
+
+let test_streak_type_labels () =
+  Alcotest.(check string) "WinStreak" "win_streak" (streak_type_to_string WinStreak);
+  Alcotest.(check string) "Points20Plus" "pts_20plus" (streak_type_to_string Points20Plus);
+  Alcotest.(check string) "DoubleDouble" "double_double" (streak_type_to_string DoubleDouble);
+  Alcotest.(check string) "TripleDouble" "triple_double" (streak_type_to_string TripleDouble);
+  Alcotest.(check string) "Rebounds10Plus" "reb_10plus" (streak_type_to_string Rebounds10Plus);
+  Alcotest.(check string) "Assists7Plus" "ast_7plus" (streak_type_to_string Assists7Plus);
+  Alcotest.(check string) "Blocks3Plus" "blk_3plus" (streak_type_to_string Blocks3Plus);
+  Alcotest.(check string) "Steals3Plus" "stl_3plus" (streak_type_to_string Steals3Plus)
+
+let streaks_tests = [
+  Alcotest.test_case "20+ points streak" `Quick test_streak_20plus_points;
+  Alcotest.test_case "Broken streak" `Quick test_streak_broken;
+  Alcotest.test_case "Double-double streak" `Quick test_streak_double_double;
+  Alcotest.test_case "10+ rebounds streak" `Quick test_streak_10plus_rebounds;
+  Alcotest.test_case "Get best streaks" `Quick test_streak_get_best;
+  Alcotest.test_case "Get active streaks" `Quick test_streak_get_active;
+  Alcotest.test_case "Minimum streak length" `Quick test_streak_minimum_length;
+  Alcotest.test_case "Streak type labels" `Quick test_streak_type_labels;
+]
+
+(* ============================================= *)
+(* Clutch Time Tests                             *)
+(* ============================================= *)
+
+let test_parse_clock_normal () =
+  Alcotest.(check int) "5:00 = 300 seconds" 300 (parse_clock "5:00");
+  Alcotest.(check int) "4:30 = 270 seconds" 270 (parse_clock "4:30");
+  Alcotest.(check int) "0:30 = 30 seconds" 30 (parse_clock "0:30");
+  Alcotest.(check int) "10:00 = 600 seconds" 600 (parse_clock "10:00")
+
+let test_parse_clock_edge_cases () =
+  Alcotest.(check int) "0:00 = 0 seconds" 0 (parse_clock "0:00");
+  Alcotest.(check int) "invalid = 0" 0 (parse_clock "invalid");
+  Alcotest.(check int) "empty = 0" 0 (parse_clock "")
+
+let test_is_clutch_time_true () =
+  (* Q4, 4:30 remaining, score diff = 3 -> clutch *)
+  Alcotest.(check bool) "Q4 4:30 diff=3" true
+    (is_clutch_time ~period_code:"Q4" ~clock:"4:30" ~score_diff:3);
+  (* Q4, 0:30 remaining, score diff = 5 -> clutch *)
+  Alcotest.(check bool) "Q4 0:30 diff=5" true
+    (is_clutch_time ~period_code:"Q4" ~clock:"0:30" ~score_diff:5);
+  (* Q4, 5:00 remaining, score diff = 0 -> clutch *)
+  Alcotest.(check bool) "Q4 5:00 diff=0" true
+    (is_clutch_time ~period_code:"Q4" ~clock:"5:00" ~score_diff:0);
+  (* Q4, negative score diff within range -> clutch *)
+  Alcotest.(check bool) "Q4 3:00 diff=-4" true
+    (is_clutch_time ~period_code:"Q4" ~clock:"3:00" ~score_diff:(-4))
+
+let test_is_clutch_time_false () =
+  (* Q3 is not clutch time *)
+  Alcotest.(check bool) "Q3 not clutch" false
+    (is_clutch_time ~period_code:"Q3" ~clock:"4:00" ~score_diff:2);
+  (* Q4 but more than 5 minutes remaining *)
+  Alcotest.(check bool) "Q4 6:00 not clutch" false
+    (is_clutch_time ~period_code:"Q4" ~clock:"6:00" ~score_diff:3);
+  (* Q4 but score diff > 5 *)
+  Alcotest.(check bool) "Q4 diff=6 not clutch" false
+    (is_clutch_time ~period_code:"Q4" ~clock:"4:00" ~score_diff:6);
+  (* Q4 but score diff < -5 *)
+  Alcotest.(check bool) "Q4 diff=-6 not clutch" false
+    (is_clutch_time ~period_code:"Q4" ~clock:"4:00" ~score_diff:(-6))
+
+let test_extract_clutch_events () =
+  let events = [
+    { pe_period_code = "Q4"; pe_event_index = 1; pe_team_side = 1;
+      pe_description = "2점 성공"; pe_team1_score = Some 70; pe_team2_score = Some 68;
+      pe_clock = "4:00" };
+    { pe_period_code = "Q4"; pe_event_index = 2; pe_team_side = 2;
+      pe_description = "3점 성공"; pe_team1_score = Some 70; pe_team2_score = Some 71;
+      pe_clock = "3:30" };
+    { pe_period_code = "Q4"; pe_event_index = 3; pe_team_side = 1;
+      pe_description = "2점 실패"; pe_team1_score = Some 70; pe_team2_score = Some 71;
+      pe_clock = "6:00" };  (* Not clutch - too early *)
+    { pe_period_code = "Q3"; pe_event_index = 4; pe_team_side = 1;
+      pe_description = "2점 성공"; pe_team1_score = Some 50; pe_team2_score = Some 52;
+      pe_clock = "4:00" };  (* Not clutch - wrong period *)
+    { pe_period_code = "Q4"; pe_event_index = 5; pe_team_side = 2;
+      pe_description = "자유투 성공"; pe_team1_score = Some 70; pe_team2_score = Some 80;
+      pe_clock = "2:00" };  (* Not clutch - score diff > 5 *)
+  ] in
+  let clutch = extract_clutch_events events in
+  Alcotest.(check int) "2 clutch events" 2 (List.length clutch);
+  Alcotest.(check int) "first clutch event index" 1 (List.hd clutch).pe_event_index;
+  Alcotest.(check int) "second clutch event index" 2 (List.nth clutch 1).pe_event_index
+
+let test_extract_clutch_events_empty () =
+  let events = [
+    { pe_period_code = "Q1"; pe_event_index = 1; pe_team_side = 1;
+      pe_description = "2점 성공"; pe_team1_score = Some 10; pe_team2_score = Some 8;
+      pe_clock = "8:00" };
+  ] in
+  let clutch = extract_clutch_events events in
+  Alcotest.(check int) "no clutch events" 0 (List.length clutch)
+
+let test_extract_clutch_events_no_score () =
+  let events = [
+    { pe_period_code = "Q4"; pe_event_index = 1; pe_team_side = 1;
+      pe_description = "2점 성공"; pe_team1_score = None; pe_team2_score = None;
+      pe_clock = "4:00" };
+  ] in
+  let clutch = extract_clutch_events events in
+  Alcotest.(check int) "no clutch (no score)" 0 (List.length clutch)
+
+let clutch_tests = [
+  Alcotest.test_case "Parse clock normal" `Quick test_parse_clock_normal;
+  Alcotest.test_case "Parse clock edge cases" `Quick test_parse_clock_edge_cases;
+  Alcotest.test_case "Is clutch time (true cases)" `Quick test_is_clutch_time_true;
+  Alcotest.test_case "Is clutch time (false cases)" `Quick test_is_clutch_time_false;
+  Alcotest.test_case "Extract clutch events" `Quick test_extract_clutch_events;
+  Alcotest.test_case "Extract clutch events (empty)" `Quick test_extract_clutch_events_empty;
+  Alcotest.test_case "Extract clutch events (no score)" `Quick test_extract_clutch_events_no_score;
+]
+
+(* ============================================= *)
+(* Score Flow Tests                              *)
+(* ============================================= *)
+
+let make_pbp_event ~period_code ~clock ~home_score ~away_score =
+  { pe_period_code = period_code;
+    pe_event_index = 0;
+    pe_team_side = 1;
+    pe_description = "Test event";
+    pe_team1_score = home_score;
+    pe_team2_score = away_score;
+    pe_clock = clock }
+
+let test_period_to_number () =
+  Alcotest.(check int) "Q1 -> 1" 1 (period_to_number "Q1");
+  Alcotest.(check int) "Q2 -> 2" 2 (period_to_number "Q2");
+  Alcotest.(check int) "Q3 -> 3" 3 (period_to_number "Q3");
+  Alcotest.(check int) "Q4 -> 4" 4 (period_to_number "Q4");
+  Alcotest.(check int) "X1 -> 5" 5 (period_to_number "X1");
+  Alcotest.(check int) "X2 -> 6" 6 (period_to_number "X2");
+  Alcotest.(check int) "unknown -> 0" 0 (period_to_number "unknown")
+
+let test_parse_clock_to_seconds () =
+  Alcotest.(check int) "10:00 = 600" 600 (parse_clock_to_seconds "10:00");
+  Alcotest.(check int) "05:30 = 330" 330 (parse_clock_to_seconds "05:30");
+  Alcotest.(check int) "00:15 = 15" 15 (parse_clock_to_seconds "00:15");
+  Alcotest.(check int) "invalid = 600" 600 (parse_clock_to_seconds "invalid")
+
+let test_calculate_elapsed_seconds () =
+  (* Q1 at 10:00 -> 0 seconds elapsed *)
+  Alcotest.(check int) "Q1 10:00 -> 0" 0
+    (calculate_elapsed_seconds ~period_code:"Q1" ~clock:"10:00");
+  (* Q1 at 5:00 -> 300 seconds elapsed *)
+  Alcotest.(check int) "Q1 05:00 -> 300" 300
+    (calculate_elapsed_seconds ~period_code:"Q1" ~clock:"05:00");
+  (* Q2 at 10:00 -> 600 seconds elapsed (Q1 complete) *)
+  Alcotest.(check int) "Q2 10:00 -> 600" 600
+    (calculate_elapsed_seconds ~period_code:"Q2" ~clock:"10:00");
+  (* Q4 at 0:00 -> 2400 seconds elapsed (game over) *)
+  Alcotest.(check int) "Q4 00:00 -> 2400" 2400
+    (calculate_elapsed_seconds ~period_code:"Q4" ~clock:"00:00");
+  (* OT1 at 5:00 -> 2400 seconds (4 quarters complete) *)
+  Alcotest.(check int) "X1 05:00 -> 2400" 2400
+    (calculate_elapsed_seconds ~period_code:"X1" ~clock:"05:00")
+
+let test_extract_score_flow_basic () =
+  let events = [
+    make_pbp_event ~period_code:"Q1" ~clock:"09:30" ~home_score:(Some 2) ~away_score:(Some 0);
+    make_pbp_event ~period_code:"Q1" ~clock:"08:00" ~home_score:(Some 2) ~away_score:(Some 3);
+    make_pbp_event ~period_code:"Q1" ~clock:"06:00" ~home_score:(Some 5) ~away_score:(Some 3);
+  ] in
+  let flow = extract_score_flow events in
+  (* Should have starting point + 3 score changes *)
+  Alcotest.(check int) "4 flow points (start + 3 changes)" 4 (List.length flow);
+  (* First point should be 0-0 at start *)
+  let first = List.hd flow in
+  Alcotest.(check int) "First home score = 0" 0 first.sfp_home_score;
+  Alcotest.(check int) "First away score = 0" 0 first.sfp_away_score;
+  Alcotest.(check int) "First diff = 0" 0 first.sfp_diff
+
+let test_extract_score_flow_empty () =
+  let flow = extract_score_flow [] in
+  Alcotest.(check int) "Empty events -> empty flow" 0 (List.length flow)
+
+let test_extract_score_flow_no_scores () =
+  let events = [
+    make_pbp_event ~period_code:"Q1" ~clock:"09:30" ~home_score:None ~away_score:None;
+    make_pbp_event ~period_code:"Q1" ~clock:"08:00" ~home_score:(Some 2) ~away_score:None;
+  ] in
+  let flow = extract_score_flow events in
+  Alcotest.(check int) "No complete scores -> empty flow" 0 (List.length flow)
+
+let test_extract_score_flow_dedup () =
+  let events = [
+    make_pbp_event ~period_code:"Q1" ~clock:"09:30" ~home_score:(Some 2) ~away_score:(Some 0);
+    make_pbp_event ~period_code:"Q1" ~clock:"09:00" ~home_score:(Some 2) ~away_score:(Some 0);  (* Same score, should be deduped *)
+    make_pbp_event ~period_code:"Q1" ~clock:"08:00" ~home_score:(Some 4) ~away_score:(Some 0);
+  ] in
+  let flow = extract_score_flow events in
+  (* Should have: start (0-0), first 2-0, and 4-0 (deduped the duplicate 2-0) *)
+  Alcotest.(check int) "Deduped flow = 3 points" 3 (List.length flow)
+
+let score_flow_tests = [
+  Alcotest.test_case "Period to number conversion" `Quick test_period_to_number;
+  Alcotest.test_case "Parse clock to seconds" `Quick test_parse_clock_to_seconds;
+  Alcotest.test_case "Calculate elapsed seconds" `Quick test_calculate_elapsed_seconds;
+  Alcotest.test_case "Extract score flow basic" `Quick test_extract_score_flow_basic;
+  Alcotest.test_case "Extract score flow empty" `Quick test_extract_score_flow_empty;
+  Alcotest.test_case "Extract score flow no scores" `Quick test_extract_score_flow_no_scores;
+  Alcotest.test_case "Extract score flow dedup" `Quick test_extract_score_flow_dedup;
+]
+
+(* ============================================= *)
 (* Main Test Runner                              *)
 (* ============================================= *)
 
@@ -272,4 +841,9 @@ let () =
     "Game Quality", game_quality_tests;
     "Milestones", milestone_tests;
     "Career Trajectory", career_trajectory_tests;
+    "Fantasy Score", fantasy_score_tests;
+    "H2H Summary", h2h_summary_tests;
+    "Hot Streaks", streaks_tests;
+    "Clutch Time", clutch_tests;
+    "Score Flow", score_flow_tests;
   ]

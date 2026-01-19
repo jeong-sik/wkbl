@@ -1010,3 +1010,6 @@ let player_game_logs_page (profile: player_profile) ~(season: string) ~(seasons:
       quality_chips
       rows) ()
 
+(* Re-export from Views_history for convenient access *)
+let player_career_page = Views_history.player_career_page
+
