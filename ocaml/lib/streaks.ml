@@ -88,14 +88,19 @@ let calculate_streaks_for_player ~player_id ~player_name ~team_name ~streak_type
   (* Mark the most recent streak as active if it includes the most recent game *)
   match sorted_games with
   | latest_game :: _ when game_qualifies_for_streak latest_game streak_type ->
-      (* Find the streak that contains the latest game and mark it as active *)
+      (* Find the streak that contains the latest game and mark it as active - O(n) single pass *)
       let contains_latest (s: player_streak) =
         List.exists (fun (g: player_game_stat) -> g.game_id = latest_game.game_id) s.ps_games
       in
-      List.map (fun s ->
-        if contains_latest s then { s with ps_is_active = true; ps_end_date = None }
-        else s
-      ) streaks
+      let updated_streaks, _ =
+        List.fold_left (fun (acc, found) s ->
+          if not found && contains_latest s then
+            ({ s with ps_is_active = true; ps_end_date = None } :: acc, true)
+          else
+            (s :: acc, found)
+        ) ([], false) streaks
+      in
+      List.rev updated_streaks
   | _ -> streaks
 
 (** Get all streak types for analysis *)
