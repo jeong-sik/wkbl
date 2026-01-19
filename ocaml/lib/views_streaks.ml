@@ -3,20 +3,27 @@
 open Domain
 open Views_common
 
+(** Common helpers to reduce code duplication *)
+
+let status_badge ~is_active =
+  if is_active then
+    {html|<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">진행중</span>|html}
+  else
+    {html|<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">종료</span>|html}
+
+let format_date_range ~start_date ~end_date =
+  match end_date with
+  | None -> Printf.sprintf "%s ~" start_date
+  | Some ed -> Printf.sprintf "%s ~ %s" start_date ed
+
+let team_logo ~size team_name =
+  let team_code = team_code_of_string team_name |> Option.value ~default:"" in
+  team_logo_tag ~class_name:size team_code
+
 (** Render a single player streak card *)
 let streak_card (streak: player_streak) =
-  let status_badge =
-    if streak.ps_is_active then
-      {html|<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">진행중</span>|html}
-    else
-      {html|<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">종료</span>|html}
-  in
-  let date_range =
-    match streak.ps_end_date with
-    | None -> Printf.sprintf "%s ~" streak.ps_start_date
-    | Some end_date -> Printf.sprintf "%s ~ %s" streak.ps_start_date end_date
-  in
-  let team_code = team_code_of_string streak.ps_team_name |> Option.value ~default:"" in
+  let badge = status_badge ~is_active:streak.ps_is_active in
+  let date_range = format_date_range ~start_date:streak.ps_start_date ~end_date:streak.ps_end_date in
   Printf.sprintf
     {html|<div class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-4 hover:border-orange-300 dark:hover:border-orange-600 transition-colors">
       <div class="flex items-start justify-between gap-2 mb-3">
@@ -37,29 +44,19 @@ let streak_card (streak: player_streak) =
         <div class="text-right text-xs text-slate-400 dark:text-slate-500">%s</div>
       </div>
     </div>|html}
-    (team_logo_tag ~class_name:"w-8 h-8" team_code)
+    (team_logo ~size:"w-8 h-8" streak.ps_team_name)
     (Uri.pct_encode streak.ps_player_id)
     (escape_html streak.ps_player_name)
     (escape_html streak.ps_team_name)
-    status_badge
+    badge
     (escape_html (streak_type_to_label streak.ps_streak_type))
     streak.ps_current_count
     (escape_html date_range)
 
 (** Render team streak card *)
 let team_streak_card (streak: team_streak) =
-  let status_badge =
-    if streak.ts_is_active then
-      {html|<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">진행중</span>|html}
-    else
-      {html|<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">종료</span>|html}
-  in
-  let date_range =
-    match streak.ts_end_date with
-    | None -> Printf.sprintf "%s ~" streak.ts_start_date
-    | Some end_date -> Printf.sprintf "%s ~ %s" streak.ts_start_date end_date
-  in
-  let team_code = team_code_of_string streak.ts_team_name |> Option.value ~default:"" in
+  let badge = status_badge ~is_active:streak.ts_is_active in
+  let date_range = format_date_range ~start_date:streak.ts_start_date ~end_date:streak.ts_end_date in
   Printf.sprintf
     {html|<div class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-4 hover:border-orange-300 dark:hover:border-orange-600 transition-colors">
       <div class="flex items-start justify-between gap-2 mb-3">
@@ -79,10 +76,10 @@ let team_streak_card (streak: team_streak) =
         <div class="text-right text-xs text-slate-400 dark:text-slate-500">%s</div>
       </div>
     </div>|html}
-    (team_logo_tag ~class_name:"w-8 h-8" team_code)
+    (team_logo ~size:"w-8 h-8" streak.ts_team_name)
     (Uri.pct_encode streak.ts_team_name)
     (escape_html streak.ts_team_name)
-    status_badge
+    badge
     (escape_html (streak_type_to_label streak.ts_streak_type))
     streak.ts_current_count
     (escape_html date_range)
@@ -92,25 +89,23 @@ let streak_record_row (record: streak_record) =
   let holder_cell =
     match record.sr_holder_id with
     | Some pid ->
-        let team_code = Option.bind record.sr_team_name team_code_of_string |> Option.value ~default:"" in
         Printf.sprintf {html|<td class="px-3 py-2 font-medium text-slate-900 dark:text-slate-200 whitespace-nowrap">
           <div class="flex items-center gap-2">
             %s
             <a href="/player/%s" class="hover:text-orange-600 dark:hover:text-orange-400">%s</a>
           </div>
         </td>|html}
-          (team_logo_tag ~class_name:"w-5 h-5" team_code)
+          (team_logo ~size:"w-5 h-5" (Option.value ~default:"" record.sr_team_name))
           (Uri.pct_encode pid)
           (escape_html record.sr_holder_name)
     | None ->
-        let team_code = team_code_of_string record.sr_holder_name |> Option.value ~default:"" in
         Printf.sprintf {html|<td class="px-3 py-2 font-medium text-slate-900 dark:text-slate-200 whitespace-nowrap">
           <div class="flex items-center gap-2">
             %s
             <a href="/team/%s" class="hover:text-orange-600 dark:hover:text-orange-400">%s</a>
           </div>
         </td>|html}
-          (team_logo_tag ~class_name:"w-5 h-5" team_code)
+          (team_logo ~size:"w-5 h-5" record.sr_holder_name)
           (Uri.pct_encode record.sr_holder_name)
           (escape_html record.sr_holder_name)
   in

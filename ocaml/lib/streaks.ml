@@ -3,6 +3,9 @@
 
 open Domain
 
+(** Minimum number of games required to count as a streak *)
+let minimum_streak_length = 2
+
 (** Check if a game qualifies for a specific streak type *)
 let game_qualifies_for_streak (game: player_game_stat) streak_type =
   match streak_type with
@@ -36,7 +39,7 @@ let calculate_streaks_for_player ~player_id ~player_name ~team_name ~streak_type
   let rec find_streaks acc (current_streak: player_game_stat list) = function
     | [] ->
         (* End of games - finalize any ongoing streak *)
-        if List.length current_streak >= 2 then
+        if List.length current_streak >= minimum_streak_length then
           let games_rev = List.rev current_streak in
           let first_game = List.hd games_rev in
           let last_game = List.hd current_streak in
@@ -60,7 +63,7 @@ let calculate_streaks_for_player ~player_id ~player_name ~team_name ~streak_type
           find_streaks acc (game :: current_streak) rest
         else
           (* Streak broken *)
-          if List.length current_streak >= 2 then
+          if List.length current_streak >= minimum_streak_length then
             let games_rev = List.rev current_streak in
             let first_game = List.hd games_rev in
             let last_game = List.hd current_streak in
@@ -147,7 +150,7 @@ let calculate_team_win_streaks ~team_name (results: team_game_result list) : tea
 
   let rec find_streaks acc current_streak = function
     | [] ->
-        if List.length current_streak >= 2 then
+        if List.length current_streak >= minimum_streak_length then
           let games_rev = List.rev current_streak in
           let first = List.hd games_rev in
           let last = List.hd current_streak in
@@ -167,7 +170,7 @@ let calculate_team_win_streaks ~team_name (results: team_game_result list) : tea
         if game.tgr_is_win then
           find_streaks acc (game :: current_streak) rest
         else
-          if List.length current_streak >= 2 then
+          if List.length current_streak >= minimum_streak_length then
             let games_rev = List.rev current_streak in
             let first = List.hd games_rev in
             let last = List.hd current_streak in

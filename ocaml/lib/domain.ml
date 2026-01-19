@@ -632,58 +632,30 @@ type player_career_entry = {
   pce_awards: string option;
 }
 
+(** Detect UTF-8 whitespace/invisible chars. Returns Some skip_bytes or None. *)
+let is_utf8_whitespace s i len =
+  let c0 = s.[i] in
+  if c0 = ' ' || c0 = '\t' || c0 = '\n' || c0 = '\r' || c0 = '"' || c0 = '\\' then Some 1
+  else if c0 = '\xC2' && i + 1 < len && s.[i + 1] = '\xA0' then Some 2  (* NBSP *)
+  else if i + 2 < len then
+    let c1, c2 = s.[i + 1], s.[i + 2] in
+    match c0, c1 with
+    | '\xEF', '\xBB' when c2 = '\xBF' -> Some 3  (* UTF-8 BOM *)
+    | '\xE2', '\x80' when c2 >= '\x89' && c2 <= '\x8F' || c2 = '\xAF' -> Some 3
+    | '\xE2', '\x81' when c2 = '\xA0' -> Some 3  (* WORD JOINER *)
+    | '\xE3', '\x80' when c2 = '\x80' -> Some 3  (* IDEOGRAPHIC SPACE *)
+    | _ -> None
+  else None
+
 (** Helper to map team names to codes *)
 let normalize_label (s: string) =
   let len = String.length s in
-  let is_ascii_space = function
-    | ' ' | '\t' | '\n' | '\r' -> true
-    | _ -> false
-  in
   let buf = Buffer.create len in
-  let add_space prev_space =
-    if prev_space then () else Buffer.add_char buf ' '
-  in
   let rec loop i prev_space =
     if i >= len then ()
-    else
-      let c0 = s.[i] in
-      if c0 = '"' || c0 = '\\' then (
-        add_space prev_space;
-        loop (i + 1) true
-      ) else if is_ascii_space c0 then (
-        add_space prev_space;
-        loop (i + 1) true
-      ) else if c0 = '\xC2' && i + 1 < len && s.[i + 1] = '\xA0' then (
-        (* NBSP in UTF-8 is 0xC2 0xA0. Avoid corrupting multi-byte UTF-8 chars. *)
-        add_space prev_space;
-        loop (i + 2) true
-      ) else if c0 = '\xEF' && i + 2 < len && s.[i + 1] = '\xBB' && s.[i + 2] = '\xBF' then (
-        (* UTF-8 BOM (zero width no-break space): 0xEF 0xBB 0xBF *)
-        add_space prev_space;
-        loop (i + 3) true
-      ) else if c0 = '\xE2' && i + 2 < len && s.[i + 1] = '\x80' &&
-                (s.[i + 2] = '\x8A' (* HAIR SPACE *)
-                 || s.[i + 2] = '\x8B' (* ZWSP *)
-                 || s.[i + 2] = '\x8C' (* ZWNJ *)
-                 || s.[i + 2] = '\x8D' (* ZWJ *)
-                 || s.[i + 2] = '\x8E' (* LRM *)
-                 || s.[i + 2] = '\x8F' (* RLM *)
-                 || s.[i + 2] = '\x89' (* THIN SPACE *)
-                 || s.[i + 2] = '\xAF' (* NARROW NBSP *)) then (
-        add_space prev_space;
-        loop (i + 3) true
-      ) else if c0 = '\xE2' && i + 2 < len && s.[i + 1] = '\x81' && s.[i + 2] = '\xA0' then (
-        (* WORD JOINER (U+2060): 0xE2 0x81 0xA0 *)
-        add_space prev_space;
-        loop (i + 3) true
-      ) else if c0 = '\xE3' && i + 2 < len && s.[i + 1] = '\x80' && s.[i + 2] = '\x80' then (
-        (* IDEOGRAPHIC SPACE (U+3000): 0xE3 0x80 0x80 *)
-        add_space prev_space;
-        loop (i + 3) true
-      ) else (
-        Buffer.add_char buf c0;
-        loop (i + 1) false
-      )
+    else match is_utf8_whitespace s i len with
+      | Some skip -> if not prev_space then Buffer.add_char buf ' '; loop (i + skip) true
+      | None -> Buffer.add_char buf s.[i]; loop (i + 1) false
   in
   loop 0 true;
   Buffer.contents buf |> String.trim
@@ -972,6 +944,23 @@ type clutch_stats = {
   cs_clutch_3p_made: int;
 }
 
+(** Safe string prefix extraction *)
+let safe_prefix s len =
+  if String.length s >= len then Some (String.sub s 0 len) else None
+
+(** Safe string suffix extraction *)
+let safe_suffix s len =
+  let slen = String.length s in
+  if slen >= len then Some (String.sub s (slen - len) len) else None
+
+(** Check if string starts with prefix *)
+let starts_with s prefix =
+  safe_prefix s (String.length prefix) = Some prefix
+
+(** Check if string ends with suffix *)
+let ends_with s suffix =
+  safe_suffix s (String.length suffix) = Some suffix
+
 (** Parse clock string "MM:SS" to seconds remaining *)
 let parse_clock (clock: string) : int =
   try
@@ -1004,32 +993,21 @@ let extract_clutch_events (events: pbp_event list) : pbp_event list =
     Returns (points, is_made, is_3pt, is_ft) *)
 let parse_scoring_from_description (desc: string) : (int * bool * bool * bool) option =
   let desc_lower = String.lowercase_ascii desc in
+  (* Helper to check if shot was made *)
+  let is_made d = ends_with d "성공" || ends_with d "made" in
   (* Korean basketball PBP patterns *)
   if String.length desc_lower = 0 then None
-  else if String.sub desc_lower 0 (min 4 (String.length desc_lower)) = "자유투" ||
-          (try String.sub desc_lower 0 2 = "ft" with _ -> false) then
-    if String.sub desc_lower (String.length desc_lower - 2) 2 = "성공" ||
-       (try String.sub desc_lower (String.length desc_lower - 4) 4 = "made" with _ -> false) then
-      Some (1, true, false, true)
-    else
-      Some (0, false, false, true)
-  else if (try String.sub desc_lower 0 3 = "3점" with _ -> false) ||
-          (try String.sub desc_lower 0 2 = "3p" with _ -> false) then
-    if String.sub desc_lower (String.length desc_lower - 2) 2 = "성공" ||
-       (try String.sub desc_lower (String.length desc_lower - 4) 4 = "made" with _ -> false) then
-      Some (3, true, true, false)
-    else
-      Some (0, false, true, false)
-  else if (try String.sub desc_lower 0 2 = "2점" with _ -> false) ||
-          (try String.sub desc_lower 0 2 = "2p" with _ -> false) ||
-          (try String.sub desc_lower 0 3 = "슛" with _ -> false) ||
-          (try String.sub desc_lower 0 6 = "layup" with _ -> false) ||
-          (try String.sub desc_lower 0 4 = "dunk" with _ -> false) then
-    if String.sub desc_lower (String.length desc_lower - 2) 2 = "성공" ||
-       (try String.sub desc_lower (String.length desc_lower - 4) 4 = "made" with _ -> false) then
-      Some (2, true, false, false)
-    else
-      Some (0, false, false, false)
+  else if starts_with desc_lower "자유투" || starts_with desc_lower "ft" then
+    if is_made desc_lower then Some (1, true, false, true)
+    else Some (0, false, false, true)
+  else if starts_with desc_lower "3점" || starts_with desc_lower "3p" then
+    if is_made desc_lower then Some (3, true, true, false)
+    else Some (0, false, true, false)
+  else if starts_with desc_lower "2점" || starts_with desc_lower "2p" ||
+          starts_with desc_lower "슛" || starts_with desc_lower "layup" ||
+          starts_with desc_lower "dunk" then
+    if is_made desc_lower then Some (2, true, false, false)
+    else Some (0, false, false, false)
   else
     None
 
