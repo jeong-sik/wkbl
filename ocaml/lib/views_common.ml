@@ -751,7 +751,8 @@ let players_table (players: player_aggregate list) =
     rows
 
 (** Main layout *)
-let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="") ~content () =
+let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="")
+    ?og_title ?og_description ?og_image ~content () =
   let v = escape_html asset_version in
   let cf_wa_script =
     match Sys.getenv_opt "CF_WEB_ANALYTICS_TOKEN" |> Option.map String.trim with
@@ -767,6 +768,10 @@ let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="") ~content
   let short_desc = if description = "" then "WKBL 여자농구 통계 분석 - 선수별 효율, 팀 순위, 박스스코어 정보" else description in
   (* SEO: Canonical URL 동적 생성 *)
   let canonical_url = Printf.sprintf "https://wkbl.win%s" canonical_path in
+  (* OG 태그: 페이지별 커스터마이징 또는 기본값 사용 *)
+  let og_title_val = Option.value og_title ~default:title in
+  let og_desc_val = Option.value og_description ~default:short_desc in
+  let og_image_val = Option.value og_image ~default:"https://wkbl.win/static/images/og-image.jpeg" in
   (* SEO: JSON-LD 구조화 데이터 - 기본 WebSite 스키마 또는 페이지별 커스텀 *)
   let default_json_ld = Printf.sprintf {|{
   "@context": "https://schema.org",
@@ -791,19 +796,22 @@ let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="") ~content
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="author" content="WKBL Analytics">
+  <meta name="robots" content="index, follow">
   <title>%s</title>
   <meta name="description" content="%s">
-  <meta name="keywords" content="WKBL, 여자농구, 한국여자농구, 통계, 분석, 선수, 팀, 박스스코어">
+  <meta name="keywords" content="WKBL, 여자농구, 여자프로농구, 한국여자농구, 통계, 분석, 선수통계, MVP, 팀, 박스스코어, 농구분석">
   <meta property="og:title" content="%s">
   <meta property="og:description" content="%s">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="WKBL Analytics">
   <meta property="og:locale" content="ko_KR">
-  <meta property="og:image" content="https://wkbl.win/static/images/og-image.jpeg">
+  <meta property="og:image" content="%s">
+  <meta property="og:url" content="%s">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="%s">
   <meta name="twitter:description" content="%s">
-  <meta name="twitter:image" content="https://wkbl.win/static/images/og-image.jpeg">
+  <meta name="twitter:image" content="%s">
   <link rel="canonical" href="%s">
   <link rel="icon" type="image/png" sizes="32x32" href="/static/images/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="/static/images/favicon-16.png">
@@ -862,6 +870,6 @@ let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="") ~content
   </footer>
 </body>
 </html>|html}
-    (escape_html title) (escape_html meta_desc) (escape_html title) (escape_html short_desc) (escape_html title) (escape_html short_desc) (escape_html canonical_url) v v v v v json_ld_script cf_wa_script content
+    (escape_html title) (escape_html meta_desc) (escape_html og_title_val) (escape_html og_desc_val) (escape_html og_image_val) (escape_html canonical_url) (escape_html og_title_val) (escape_html og_desc_val) (escape_html og_image_val) (escape_html canonical_url) v v v v v json_ld_script cf_wa_script content
 
 (** Home page *)
