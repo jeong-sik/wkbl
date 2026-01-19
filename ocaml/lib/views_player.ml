@@ -179,7 +179,7 @@ let player_profile_page ?(leaderboards=None) (profile: player_profile) ~scope ~(
   let pos = match p.position with Some s -> s | None -> "-" in
   let height_text =
     match p.height with
-    | Some h when h > 0 -> Printf.sprintf "%dcm" h
+    | Some h when h > 0 && h < 200 -> Printf.sprintf "%dcm" h  (* 200+ = invalid placeholder *)
     | _ -> "-"
   in
   let info_text = Printf.sprintf "%s | %s" pos height_text in

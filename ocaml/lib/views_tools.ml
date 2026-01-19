@@ -471,7 +471,7 @@ function resetRules() {
     </select>
   </div>
   %s
-  <div id="fantasy-results">
+  <div id="fantasy-results" data-skeleton="stats" data-skeleton-count="4">
     %s
   </div>
 </div>|html}
@@ -1198,7 +1198,7 @@ let lineup_chemistry_page
           <span class="text-sm text-slate-500 dark:text-slate-400">5-Player Lineup Analysis</span>
         </div>
         %s
-        <div id="lineup-content" class="space-y-6">
+        <div id="lineup-content" class="space-y-6" data-skeleton="cards" data-skeleton-count="3">
           %s
           %s
           %s
