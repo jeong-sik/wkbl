@@ -3,6 +3,7 @@ __pycache__/
 .env
 .venv/
 venv/
+_opam/
 .DS_Store
 *.log
 data/wkbl/

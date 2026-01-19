@@ -7,7 +7,6 @@
 (source (github yousleepwhen/wkbl))
 (authors "Vincent")
 (maintainers "Vincent")
-(license MIT)
 
 (package
  (name wkbl)

@@ -5,7 +5,6 @@ synopsis: "WKBL Analytics - Korean Women's Basketball Stats"
 description: "Web application for analyzing WKBL player and team statistics"
 maintainer: ["Vincent"]
 authors: ["Vincent"]
-license: "MIT"
 homepage: "https://github.com/yousleepwhen/wkbl"
 bug-reports: "https://github.com/yousleepwhen/wkbl/issues"
 depends: [

@@ -1990,6 +1990,7 @@ let awards_page ~(season: string) ~(seasons: season_info list) ~(include_mismatc
       mvp_card
       mip_card
       disclaimer_html)
+    ()
 
 let player_profile_page ?(leaderboards=None) (profile: player_profile) ~scope ~(seasons_catalog: season_info list) =
   let _ = leaderboards in (* suppress unused warning *)

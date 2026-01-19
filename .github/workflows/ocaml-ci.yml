@@ -1,0 +1,53 @@
+name: OCaml CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'ocaml/**'
+      - '.github/workflows/ocaml-ci.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'ocaml/**'
+      - '.github/workflows/ocaml-ci.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ocaml
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsqlite3-dev libpq-dev
+
+      - name: Setup OCaml
+        uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: 5.2.x
+          dune-cache: true
+
+      - name: Install dependencies
+        run: |
+          opam install . --deps-only --with-test --yes
+          opam install ocamlformat.0.26.1 --yes
+
+      - name: Build
+        run: opam exec -- dune build
+
+      - name: Run tests
+        run: opam exec -- dune runtest
+
+      - name: Check formatting
+        run: |
+          opam exec -- dune fmt
+          git diff --exit-code
