@@ -659,6 +659,26 @@ module Types = struct
                            (t float
                               (t int (t int (t int (t int (t int (t int (option int)))))))))))))))
 
+  let player_game_stat_with_id =
+    let encode _ = assert false in
+    let decode (player_id, (game_id, (game_date, (opponent, (is_home_int, (team_score, (opponent_score, (score_quality_int, (min, (pts, (reb, (ast, (stl, (blk, (tov, plus_minus))))))))))))))) =
+      let is_home = is_home_int = 1 in
+      let stat = { game_id; game_date; opponent; is_home; team_score; opponent_score; score_quality = game_score_quality_of_int score_quality_int; min; pts; reb; ast; stl; blk; tov; plus_minus } in
+      Ok { pgs_player_id = player_id; pgs_stat = stat }
+    in
+    let t = t2 in
+    custom ~encode ~decode
+      (t string
+         (t string
+            (t string
+               (t string
+                  (t int
+                     (t (option int)
+                        (t (option int)
+                           (t int
+                              (t float
+                                 (t int (t int (t int (t int (t int (t int (option int))))))))))))))))
+
   let team_game_result =
     let encode _ = assert false in
     let decode (game_id, (game_date, (opponent, (is_home_int, (team_score, (opp_score, is_win_int)))))) =
@@ -2568,6 +2588,58 @@ module Queries = struct
 		      AND (? = 1 OR g.game_id NOT IN (SELECT game_id FROM score_mismatch_games))
 		    ORDER BY g.game_date DESC
 		  |}
+		  (** Batch query for multiple players - returns player_id with each row *)
+		  let batch_player_game_logs = (t2 string (t2 string string) ->* Types.player_game_stat_with_id) {|
+		    WITH sums AS (
+		      SELECT game_id, team_code, SUM(pts) AS pts_sum
+		      FROM game_stats
+		      GROUP BY game_id, team_code
+		    )
+		    SELECT
+		      s.player_id,
+		      g.game_id,
+		      g.game_date,
+		      CASE WHEN g.home_team_code = s.team_code THEN t2.team_name_kr ELSE t1.team_name_kr END as opponent,
+		      CASE WHEN g.home_team_code = s.team_code THEN 1 ELSE 0 END as is_home,
+		      CASE WHEN g.home_team_code = s.team_code THEN COALESCE(g.home_score, sh.pts_sum) ELSE COALESCE(g.away_score, sa.pts_sum) END as team_score,
+		      CASE WHEN g.home_team_code = s.team_code THEN COALESCE(g.away_score, sa.pts_sum) ELSE COALESCE(g.home_score, sh.pts_sum) END as opponent_score,
+		      CASE
+		        WHEN g.home_score IS NOT NULL
+		          AND g.away_score IS NOT NULL
+		          AND sh.pts_sum IS NOT NULL
+		          AND sa.pts_sum IS NOT NULL
+		          AND g.home_score = sh.pts_sum
+		          AND g.away_score = sa.pts_sum
+		          THEN 2
+		        WHEN g.home_score IS NOT NULL
+		          AND g.away_score IS NOT NULL
+		          AND sh.pts_sum IS NOT NULL
+		          AND sa.pts_sum IS NOT NULL
+		          AND (g.home_score != sh.pts_sum OR g.away_score != sa.pts_sum)
+		          THEN 0
+		        ELSE 1
+		      END as score_quality,
+		      s.min_seconds / 60.0,
+		      s.pts,
+		      s.reb_tot,
+		      s.ast,
+		      s.stl,
+		      s.blk,
+		      s.tov,
+		      pm.plus_minus
+		    FROM game_stats s
+		    JOIN games g ON g.game_id = s.game_id
+		    JOIN teams t1 ON t1.team_code = g.home_team_code
+		    JOIN teams t2 ON t2.team_code = g.away_team_code
+		    LEFT JOIN sums sh ON sh.game_id = g.game_id AND sh.team_code = g.home_team_code
+		    LEFT JOIN sums sa ON sa.game_id = g.game_id AND sa.team_code = g.away_team_code
+		    LEFT JOIN player_plus_minus pm ON pm.game_id = s.game_id AND pm.player_id = s.player_id
+		    WHERE s.player_id = ANY(string_to_array(?, ','))
+		      AND (? = 'ALL' OR g.season_code = ?)
+		      AND g.game_type != '10'
+		      AND g.game_id NOT IN (SELECT game_id FROM score_mismatch_games)
+		    ORDER BY s.player_id, g.game_date DESC
+		  |}
 		  let player_all_star_games = (string ->* Types.player_game_stat) {|
 		    WITH sums AS (
 		      SELECT game_id, team_code, SUM(pts) AS pts_sum
@@ -3325,6 +3397,10 @@ end
     let include_int = if include_mismatch then 1 else 0 in
     let s = if String.trim season = "" then "ALL" else season in
     Db.collect_list Queries.player_game_logs (player_id, (s, (s, include_int)))
+  let get_batch_player_game_logs ~player_ids ~season (module Db : Caqti_lwt.CONNECTION) =
+    let ids_csv = String.concat "," player_ids in
+    let s = if String.trim season = "" then "ALL" else season in
+    Db.collect_list Queries.batch_player_game_logs (ids_csv, (s, s))
 	  let get_team_recent_games ~team_name ~season (module Db : Caqti_lwt.CONNECTION) =
 	    let s = if String.trim season = "" then "ALL" else season in
 	    let t =
@@ -3901,6 +3977,27 @@ let get_player_game_logs ~player_id ?(season="ALL") ?(include_mismatch=false) ()
   let key = Printf.sprintf "player_id=%s|season=%s|mismatch=%b" player_id season include_mismatch in
   cached player_game_logs_cache key (fun () ->
     with_db (fun db -> Repo.get_player_game_logs ~player_id ~season ~include_mismatch db))
+
+(** Batch fetch game logs for multiple players in single query.
+    Returns a Hashtbl mapping player_id -> player_game_stat list *)
+let get_batch_player_game_logs ~player_ids ?(season="ALL") () =
+  let open Lwt.Syntax in
+  let* result = with_db (fun db -> Repo.get_batch_player_game_logs ~player_ids ~season db) in
+  match result with
+  | Error e -> Lwt.return (Error e)
+  | Ok rows ->
+      let tbl = Hashtbl.create (List.length player_ids) in
+      List.iter (fun (row: player_game_stat_with_id) ->
+        let existing = match Hashtbl.find_opt tbl row.pgs_player_id with
+          | Some lst -> lst
+          | None -> []
+        in
+        Hashtbl.replace tbl row.pgs_player_id (row.pgs_stat :: existing)
+      ) rows;
+      (* Reverse lists since we iterated in DESC order but appended to front *)
+      Hashtbl.iter (fun k v -> Hashtbl.replace tbl k (List.rev v)) tbl;
+      Lwt.return (Ok tbl)
+
 let get_team_full_detail ~team_name ?(season="ALL") () =
   let key = Printf.sprintf "team=%s|season=%s" (cache_key_text team_name) season in
   cached team_detail_cache key (fun () ->

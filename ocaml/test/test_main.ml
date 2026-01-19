@@ -65,12 +65,39 @@ let test_mvp_score_perfect_record () =
     ~efficiency:18.0 ~win_pct:1.0 in
   Alcotest.(check float_testable) "perfect record bonus" 20.0 bonus
 
+let test_mvp_score_nan_input () =
+  (* Test with NaN input - should return zeros *)
+  let (base, bonus, final) = calculate_mvp_score
+    ~ppg:Float.nan ~rpg:8.0 ~apg:5.0 ~spg:1.5 ~bpg:1.0
+    ~efficiency:25.0 ~win_pct:0.75 in
+  Alcotest.(check float_testable) "nan input base" 0.0 base;
+  Alcotest.(check float_testable) "nan input bonus" 0.0 bonus;
+  Alcotest.(check float_testable) "nan input final" 0.0 final
+
+let test_mvp_score_win_pct_out_of_range () =
+  (* Test with win_pct > 1.0 - should return zeros *)
+  let (base, bonus, final) = calculate_mvp_score
+    ~ppg:20.0 ~rpg:8.0 ~apg:5.0 ~spg:1.5 ~bpg:1.0
+    ~efficiency:25.0 ~win_pct:1.5 in
+  Alcotest.(check float_testable) "win_pct > 1.0 base" 0.0 base;
+  Alcotest.(check float_testable) "win_pct > 1.0 bonus" 0.0 bonus;
+  Alcotest.(check float_testable) "win_pct > 1.0 final" 0.0 final;
+  (* Test with win_pct < 0.0 - should also return zeros *)
+  let (base2, bonus2, final2) = calculate_mvp_score
+    ~ppg:20.0 ~rpg:8.0 ~apg:5.0 ~spg:1.5 ~bpg:1.0
+    ~efficiency:25.0 ~win_pct:(-0.5) in
+  Alcotest.(check float_testable) "win_pct < 0.0 base" 0.0 base2;
+  Alcotest.(check float_testable) "win_pct < 0.0 bonus" 0.0 bonus2;
+  Alcotest.(check float_testable) "win_pct < 0.0 final" 0.0 final2
+
 let mvp_score_tests = [
   Alcotest.test_case "Basic MVP score calculation" `Quick test_mvp_score_basic;
   Alcotest.test_case "Zero stats" `Quick test_mvp_score_zero_stats;
   Alcotest.test_case "Elite player stats" `Quick test_mvp_score_elite_player;
   Alcotest.test_case "Losing team scenario" `Quick test_mvp_score_losing_team;
   Alcotest.test_case "Perfect record bonus" `Quick test_mvp_score_perfect_record;
+  Alcotest.test_case "NaN input handling" `Quick test_mvp_score_nan_input;
+  Alcotest.test_case "win_pct out of range" `Quick test_mvp_score_win_pct_out_of_range;
 ]
 
 (* ============================================= *)
@@ -140,9 +167,52 @@ let test_team_code_unknown () =
   Alcotest.(check string) "empty for unknown" "" (team_code_to_city_en "XX");
   Alcotest.(check string) "empty for blank" "" (team_code_to_city_en "")
 
+(* team_code_of_string tests *)
+let team_code_opt_testable =
+  Alcotest.testable
+    (fun fmt opt -> match opt with
+      | None -> Fmt.string fmt "None"
+      | Some s -> Fmt.pf fmt "Some %s" s)
+    (=)
+
+let test_team_code_of_string_exact_match () =
+  (* Exact matches should work *)
+  Alcotest.(check team_code_opt_testable) "우리은행" (Some "WO") (team_code_of_string "우리은행");
+  Alcotest.(check team_code_opt_testable) "WO" (Some "WO") (team_code_of_string "WO");
+  Alcotest.(check team_code_opt_testable) "삼성생명" (Some "SS") (team_code_of_string "삼성생명");
+  Alcotest.(check team_code_opt_testable) "SS" (Some "SS") (team_code_of_string "SS");
+  Alcotest.(check team_code_opt_testable) "신한은행" (Some "SH") (team_code_of_string "신한은행");
+  Alcotest.(check team_code_opt_testable) "KB스타즈" (Some "KB") (team_code_of_string "KB스타즈");
+  Alcotest.(check team_code_opt_testable) "하나은행" (Some "HN") (team_code_of_string "하나은행");
+  Alcotest.(check team_code_opt_testable) "BNK" (Some "BN") (team_code_of_string "BNK")
+
+let test_team_code_of_string_contains () =
+  (* Short strings with team name should match via contains *)
+  Alcotest.(check team_code_opt_testable) "우리은행 경기" (Some "WO") (team_code_of_string "우리은행 경기");
+  Alcotest.(check team_code_opt_testable) "오늘의 KB 경기" (Some "KB") (team_code_of_string "오늘의 KB 경기")
+
+let test_team_code_of_string_long_string_rejected () =
+  (* Long strings (>30 chars) should be rejected even if they contain team name *)
+  let long_text = "이것은 매우 긴 텍스트입니다. 우리은행이 포함되어 있지만 너무 길어서 매칭되면 안됩니다." in
+  Alcotest.(check team_code_opt_testable) "Long string with 우리은행" None (team_code_of_string long_text);
+  let another_long = "악의적인 우리은행 텍스트가 포함된 아주 긴 문자열입니다" in
+  Alcotest.(check team_code_opt_testable) "Another long string" None (team_code_of_string another_long)
+
+let test_team_code_of_string_edge_cases () =
+  (* Empty and unknown strings *)
+  Alcotest.(check team_code_opt_testable) "empty" None (team_code_of_string "");
+  Alcotest.(check team_code_opt_testable) "random" None (team_code_of_string "random text");
+  (* Exactly 30 chars with team name should still work *)
+  let exactly_30 = "AB우리은행CD" in  (* This is short, should work *)
+  Alcotest.(check team_code_opt_testable) "Short with 우리은행" (Some "WO") (team_code_of_string exactly_30)
+
 let team_code_tests = [
   Alcotest.test_case "Known team codes" `Quick test_team_code_known;
   Alcotest.test_case "Unknown team codes" `Quick test_team_code_unknown;
+  Alcotest.test_case "team_code_of_string exact match" `Quick test_team_code_of_string_exact_match;
+  Alcotest.test_case "team_code_of_string contains" `Quick test_team_code_of_string_contains;
+  Alcotest.test_case "team_code_of_string long string rejected" `Quick test_team_code_of_string_long_string_rejected;
+  Alcotest.test_case "team_code_of_string edge cases" `Quick test_team_code_of_string_edge_cases;
 ]
 
 (* ============================================= *)

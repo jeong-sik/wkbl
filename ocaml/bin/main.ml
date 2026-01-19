@@ -1132,21 +1132,23 @@ Sitemap: https://wkbl.win/sitemap.xml
           match players_res, teams_res with
           | Error e, _ | _, Error e -> Dream.html (Views.error_page (Db.show_db_error e))
           | Ok players, Ok teams ->
-              (* Fetch game logs for top players and calculate streaks *)
-              let* player_streaks =
-                Lwt_list.filter_map_s (fun (p: player_aggregate) ->
-                  let* games_res = Db.get_player_game_logs ~player_id:p.player_id ~season ~include_mismatch:false () in
-                  match games_res with
-                  | Ok games when List.length games >= 2 ->
-                      let streaks = Streaks.analyze_player_streaks
-                        ~player_id:p.player_id
-                        ~player_name:p.name
-                        ~team_name:p.team_name
-                        games
-                      in
-                      Lwt.return (Some streaks)
-                  | _ -> Lwt.return None
-                ) (List.filteri (fun i _ -> i < 30) players)
+              (* Fetch game logs for top 30 players using batch query (single DB call) *)
+              let top_players = List.filteri (fun i _ -> i < 30) players in
+              let player_ids = List.map (fun (p: player_aggregate) -> p.player_id) top_players in
+              let* batch_res = Db.get_batch_player_game_logs ~player_ids ~season () in
+              let player_streaks = match batch_res with
+                | Error _ -> []
+                | Ok games_tbl ->
+                    List.filter_map (fun (p: player_aggregate) ->
+                      match Hashtbl.find_opt games_tbl p.player_id with
+                      | Some games when List.length games >= 2 ->
+                          Some (Streaks.analyze_player_streaks
+                            ~player_id:p.player_id
+                            ~player_name:p.name
+                            ~team_name:p.team_name
+                            games)
+                      | _ -> None
+                    ) top_players
               in
               let all_player_streaks = List.concat player_streaks in
               let active_player_streaks = Streaks.get_active_streaks all_player_streaks in
