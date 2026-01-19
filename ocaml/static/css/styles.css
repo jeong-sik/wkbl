@@ -376,3 +376,52 @@ select:focus-visible {
   align-items: center;
   gap: 0.5rem;
 }
+
+/* ===========================================
+   10. Mobile Navigation
+   =========================================== */
+
+/* iOS Safe Area support for bottom navigation */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+/* Mobile menu slide animation enhancement */
+#mobile-menu-overlay {
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+}
+
+#mobile-menu-panel {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* Bottom nav active state - JS adds these classes */
+[data-bottom-nav] a.active {
+  color: #f97316;
+}
+
+.dark [data-bottom-nav] a.active {
+  color: #fb923c;
+}
+
+/* Prevent body scroll when menu open */
+body.menu-open {
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
+}
+
+/* Smooth menu transition on Safari */
+@supports (-webkit-touch-callout: none) {
+  #mobile-menu-panel {
+    -webkit-transform: translateX(100%);
+    transform: translateX(100%);
+  }
+
+  #mobile-menu-panel:not(.translate-x-full) {
+    -webkit-transform: translateX(0);
+    transform: translateX(0);
+  }
+}
