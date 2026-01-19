@@ -2,11 +2,8 @@
 (** This module contains page-specific rendering functions. *)
 (** Common helpers are in Views_common module. *)
 
+open Domain
 open Views_common
-open Views_tools
-open Views_history
-open Views_team
-open Views_player
 
 let home_page ~season ~seasons players =
   let season_options =

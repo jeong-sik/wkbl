@@ -128,16 +128,17 @@ let player_sort_tests = [
 (* ============================================= *)
 
 let test_team_code_known () =
-  Alcotest.(check string) "Shinhan" "Shinhan" (team_code_to_english "SH");
-  Alcotest.(check string) "KB" "KB" (team_code_to_english "KB");
-  Alcotest.(check string) "Woori" "Woori" (team_code_to_english "WR");
-  Alcotest.(check string) "Samsung" "Samsung" (team_code_to_english "SS");
-  Alcotest.(check string) "Hana" "Hana" (team_code_to_english "HN");
-  Alcotest.(check string) "Busan" "Busan" (team_code_to_english "BN")
+  (* team_code_to_city_en returns city names *)
+  Alcotest.(check string) "SH -> Incheon" "Incheon" (team_code_to_city_en "SH");
+  Alcotest.(check string) "KB -> Cheongju" "Cheongju" (team_code_to_city_en "KB");
+  Alcotest.(check string) "WO -> Asan" "Asan" (team_code_to_city_en "WO");
+  Alcotest.(check string) "SS -> Yongin" "Yongin" (team_code_to_city_en "SS");
+  Alcotest.(check string) "HN -> Bucheon" "Bucheon" (team_code_to_city_en "HN");
+  Alcotest.(check string) "BN -> Busan" "Busan" (team_code_to_city_en "BN")
 
 let test_team_code_unknown () =
-  Alcotest.(check string) "empty for unknown" "" (team_code_to_english "XX");
-  Alcotest.(check string) "empty for blank" "" (team_code_to_english "")
+  Alcotest.(check string) "empty for unknown" "" (team_code_to_city_en "XX");
+  Alcotest.(check string) "empty for blank" "" (team_code_to_city_en "")
 
 let team_code_tests = [
   Alcotest.test_case "Known team codes" `Quick test_team_code_known;
