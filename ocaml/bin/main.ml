@@ -647,8 +647,9 @@ Sitemap: https://wkbl.win/sitemap.xml
       | Error e, _ | _, Error e -> Dream.html (Views.error_page (Db.show_db_error e))
       | Ok seasons, Ok teams ->
           let season = query_season_or_latest request seasons in
+          let team_names = teams |> List.map (fun (t : team_info) -> t.team_name) in
           let render result error =
-            Dream.html (Views.predict_page ~season ~seasons ~teams ~home ~away ~is_neutral ~context_enabled ~include_mismatch result error)
+            Dream.html (Views.predict_page ~season ~seasons ~teams:team_names ~home ~away ~is_neutral ~context_enabled ~include_mismatch result error)
           in
 
           if String.trim home = "" || String.trim away = "" then
