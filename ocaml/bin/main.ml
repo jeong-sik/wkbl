@@ -873,11 +873,12 @@ Sitemap: https://wkbl.win/sitemap.xml
                   let* active_res = Db.get_team_active_player_ids ~team_name ~game_id () in
                   match core_res, active_res with
                   | Ok core_ids, Ok active_ids ->
-                      let present =
-                        core_ids
-                        |> List.filter (fun pid -> List.mem pid active_ids)
-                        |> List.length
-                      in
+                      (* Use Hashtbl for O(1) lookup instead of List.mem O(n) *)
+                      let active_set = Hashtbl.create (List.length active_ids) in
+                      List.iter (fun pid -> Hashtbl.replace active_set pid ()) active_ids;
+                      let present = List.fold_left (fun acc pid ->
+                        if Hashtbl.mem active_set pid then acc + 1 else acc
+                      ) 0 core_ids in
                       Lwt.return (Some { rcs_present = present; rcs_total = List.length core_ids })
                   | _ -> Lwt.return None
                 in
