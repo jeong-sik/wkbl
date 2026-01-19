@@ -4,6 +4,174 @@
 open Domain
 open Views_common
 
+(** Milestone Tracker - Career milestones for players *)
+
+(** Milestone thresholds for each stat category *)
+let points_milestones = [1000; 2000; 3000; 5000; 7000; 10000]
+let rebounds_milestones = [500; 1000; 2000; 3000; 5000]
+let assists_milestones = [300; 500; 1000; 2000; 3000]
+let games_milestones = [100; 200; 300; 500]
+
+type milestone_status = {
+  ms_category: string;
+  ms_label: string;
+  ms_icon: string;
+  ms_current: int;
+  ms_achieved: int list;  (* milestones already achieved *)
+  ms_next: int option;    (* next milestone to reach *)
+  ms_progress: float;     (* progress towards next milestone (0.0-1.0) *)
+}
+
+(** Calculate milestone status for a stat *)
+let calc_milestone_status ~category ~label ~icon ~current ~milestones : milestone_status =
+  let achieved = List.filter (fun m -> current >= m) milestones in
+  let next = List.find_opt (fun m -> current < m) milestones in
+  let progress =
+    match next with
+    | None -> 1.0 (* All milestones achieved *)
+    | Some target ->
+        let prev = match List.rev achieved with [] -> 0 | h :: _ -> h in
+        let range = float_of_int (target - prev) in
+        let current_in_range = float_of_int (current - prev) in
+        if range > 0.0 then current_in_range /. range else 0.0
+  in
+  { ms_category = category;
+    ms_label = label;
+    ms_icon = icon;
+    ms_current = current;
+    ms_achieved = achieved;
+    ms_next = next;
+    ms_progress = progress;
+  }
+
+(** Format milestone number with commas *)
+let format_milestone n =
+  if n >= 1000 then
+    Printf.sprintf "%dk" (n / 1000)
+  else
+    string_of_int n
+
+(** Generate a single milestone progress bar *)
+let milestone_progress_bar (ms: milestone_status) =
+  let achieved_badges =
+    ms.ms_achieved
+    |> List.map (fun m ->
+        Printf.sprintf
+          {html|<span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-400/20 border border-amber-400/50 text-amber-500 text-[9px] font-bold shadow-sm" title="%s %s 달성">🏅</span>|html}
+          (escape_html ms.ms_label)
+          (format_int_commas m))
+    |> String.concat ""
+  in
+  let progress_pct = int_of_float (ms.ms_progress *. 100.0) in
+  let progress_bar_html =
+    match ms.ms_next with
+    | None ->
+        (* All milestones achieved - show completion bar *)
+        {html|<div class="relative w-full h-2 bg-amber-400/20 rounded-full overflow-hidden"><div class="absolute inset-0 bg-gradient-to-r from-amber-400 to-amber-500 rounded-full"></div></div>|html}
+    | Some target ->
+        let prev = match List.rev ms.ms_achieved with [] -> 0 | h :: _ -> h in
+        Printf.sprintf
+          {html|<div class="relative w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden"><div class="absolute inset-0 bg-gradient-to-r from-orange-400 to-amber-400 rounded-full transition-all duration-500" style="width: %d%%"></div></div><div class="flex justify-between text-[10px] font-mono text-slate-500 dark:text-slate-400 mt-1"><span>%s</span><span class="text-orange-500 font-bold">%s</span></div>|html}
+          progress_pct
+          (format_int_commas prev)
+          (format_int_commas target)
+  in
+  let remaining_html =
+    match ms.ms_next with
+    | None ->
+        {html|<span class="text-amber-500 font-bold text-xs">완료!</span>|html}
+    | Some target ->
+        let remaining = target - ms.ms_current in
+        Printf.sprintf
+          {html|<span class="text-slate-500 dark:text-slate-400 text-xs font-mono">%s 남음</span>|html}
+          (format_int_commas remaining)
+  in
+  Printf.sprintf
+    {html|<div class="space-y-2">
+      <div class="flex items-center justify-between gap-2">
+        <div class="flex items-center gap-2">
+          <span class="text-lg">%s</span>
+          <span class="text-slate-700 dark:text-slate-300 font-bold text-sm">%s</span>
+        </div>
+        <div class="flex items-center gap-1">
+          %s
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <span class="text-orange-500 font-black text-xl font-mono min-w-[60px]">%s</span>
+        <div class="flex-1 space-y-0">
+          %s
+        </div>
+        %s
+      </div>
+    </div>|html}
+    (escape_html ms.ms_icon)
+    (escape_html ms.ms_label)
+    achieved_badges
+    (format_int_commas ms.ms_current)
+    progress_bar_html
+    remaining_html
+
+(** Generate the full milestone tracker card *)
+let milestone_tracker_card (avg: player_aggregate) =
+  if avg.games_played <= 0 then
+    "" (* No games played, don't show milestones *)
+  else
+    let points_ms = calc_milestone_status
+      ~category:"points" ~label:"득점" ~icon:"🏀"
+      ~current:avg.total_points ~milestones:points_milestones in
+    let rebounds_ms = calc_milestone_status
+      ~category:"rebounds" ~label:"리바운드" ~icon:"📊"
+      ~current:avg.total_rebounds ~milestones:rebounds_milestones in
+    let assists_ms = calc_milestone_status
+      ~category:"assists" ~label:"어시스트" ~icon:"🎯"
+      ~current:avg.total_assists ~milestones:assists_milestones in
+    let games_ms = calc_milestone_status
+      ~category:"games" ~label:"출전 경기" ~icon:"📅"
+      ~current:avg.games_played ~milestones:games_milestones in
+    let total_achieved =
+      List.length points_ms.ms_achieved +
+      List.length rebounds_ms.ms_achieved +
+      List.length assists_ms.ms_achieved +
+      List.length games_ms.ms_achieved
+    in
+    let total_milestones =
+      List.length points_milestones +
+      List.length rebounds_milestones +
+      List.length assists_milestones +
+      List.length games_milestones
+    in
+    Printf.sprintf
+      {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 sm:p-6 shadow-lg">
+        <div class="flex items-start justify-between gap-4 mb-4">
+          <div class="min-w-0">
+            <h3 class="text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-xs flex items-center gap-2">
+              <span class="text-lg">🎖️</span> Career Milestones
+            </h3>
+            <div class="mt-1 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+              커리어 누적 기록 마일스톤 달성 현황
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 text-[10px] font-mono text-amber-700 dark:text-amber-400 whitespace-nowrap">
+              🏅 %d/%d
+            </span>
+          </div>
+        </div>
+        <div class="space-y-5">
+          %s
+          %s
+          %s
+          %s
+        </div>
+      </div>|html}
+      total_achieved
+      total_milestones
+      (milestone_progress_bar points_ms)
+      (milestone_progress_bar rebounds_ms)
+      (milestone_progress_bar assists_ms)
+      (milestone_progress_bar games_ms)
+
 let player_profile_page ?(leaderboards=None) (profile: player_profile) ~scope ~(seasons_catalog: season_info list) =
   let _ = leaderboards in (* suppress unused warning *)
   let _ = seasons_catalog in
@@ -700,6 +868,7 @@ let player_profile_page ?(leaderboards=None) (profile: player_profile) ~scope ~(
             %s
             %s
             %s
+            %s
           </div>
         </div>
       </div>
@@ -722,6 +891,7 @@ let player_profile_page ?(leaderboards=None) (profile: player_profile) ~scope ~(
           team_movement_html
           leaderboards_html
           (career_highs_card profile.career_highs)
+          (milestone_tracker_card profile.averages)
           missing_data_html
           data_notes_html) ()
 let player_game_logs_page (profile: player_profile) ~(season: string) ~(seasons: season_info list) ~(include_mismatch: bool) (games: player_game_stat list) =
