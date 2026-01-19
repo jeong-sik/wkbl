@@ -1204,6 +1204,33 @@ Sitemap: https://wkbl.win/sitemap.xml
     );
     Dream.get "/health" (fun _ -> Dream.json "{\"status\": \"ok\", \"engine\": \"OCaml/Dream\"}");
 
+    (* Player Search API for Command Palette *)
+    Dream.get "/api/search/players" (fun request ->
+      let open Lwt.Syntax in
+      let q = Dream.query request "q" |> Option.value ~default:"" in
+      if String.length q < 1 then
+        Dream.json "[]"
+      else begin
+        let* seasons_res = Db.get_seasons () in
+        match seasons_res with
+        | Error _ -> Dream.json "[]"
+        | Ok seasons ->
+            let season = query_season_or_latest request seasons in
+            let* players_res = Db.get_players ~season ~search:q ~limit:8 () in
+            match players_res with
+            | Error _ -> Dream.json "[]"
+            | Ok players ->
+                let json_items = List.map (fun p ->
+                  Printf.sprintf {|{"id":"%s","name":"%s","team":"%s","pts":%.1f}|}
+                    (Views_common.escape_html p.player_id)
+                    (Views_common.escape_html p.name)
+                    (Views_common.escape_html p.team_name)
+                    p.avg_points
+                ) players in
+                Dream.json (Printf.sprintf "[%s]" (String.concat "," json_items))
+      end
+    );
+
     (* History & Legends *)
     Dream.get "/history" (fun _ ->
       let open Lwt.Syntax in
