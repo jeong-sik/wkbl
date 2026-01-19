@@ -18,7 +18,7 @@ let qa_dashboard_page (report: Db.qa_db_report) ?(markdown=None) () =
       value_html
       hint_html
   in
-  let score_or_dash = function | None -> "-" | Some v -> string_of_int v in
+  let score_or_dash = Option.fold ~none:"-" ~some:string_of_int in
   let delta_or_dash a b =
     match (a, b) with
     | Some stored, Some summed -> Printf.sprintf "%+d" (summed - stored)
