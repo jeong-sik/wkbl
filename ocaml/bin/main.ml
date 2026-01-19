@@ -4,6 +4,7 @@
 
 open Wkbl
 open Wkbl.Domain
+open Wkbl.Views_mvp
 
 let has_prefix ~prefix s =
   let prefix_len = String.length prefix in
@@ -440,6 +441,34 @@ Sitemap: https://wkbl.win/sitemap.xml
           match mvp_res, mip_res with
           | Ok mvp, Ok mip -> Dream.html (Views.awards_page ~season ~seasons ~include_mismatch ~prev_season_name ~mvp ~mip ())
           | Error e, _ | _, Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+    );
+
+    (* MVP Race - Full Page *)
+    Dream.get "/mvp-race" (fun request ->
+      let open Lwt.Syntax in
+      let* seasons_res = Db.get_seasons () in
+      match seasons_res with
+      | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+      | Ok seasons ->
+          let season = query_season_or_latest request seasons in
+          let* candidates_res = Db.get_mvp_race ~season () in
+          match candidates_res with
+          | Ok candidates -> Dream.html (Views_mvp.mvp_race_page ~season ~seasons candidates)
+          | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+    );
+
+    (* MVP Race - Table HTMX *)
+    Dream.get "/mvp-race/table" (fun request ->
+      let open Lwt.Syntax in
+      let* seasons_res = Db.get_seasons () in
+      match seasons_res with
+      | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+      | Ok seasons ->
+          let season = query_season_or_latest request seasons in
+          let* candidates_res = Db.get_mvp_race ~season () in
+          match candidates_res with
+          | Ok candidates -> Dream.html (Views_mvp.mvp_race_table candidates)
+          | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
     );
 
     (* Compare *)

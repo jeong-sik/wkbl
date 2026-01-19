@@ -624,3 +624,36 @@ let team_code_to_city_en = function
   | "HN" -> "Bucheon"
   | "BN" -> "Busan"
   | _ -> ""
+
+(** MVP Race types *)
+type mvp_candidate = {
+  mvp_rank: int;
+  mvp_player_id: string;
+  mvp_player_name: string;
+  mvp_team_name: string;
+  mvp_team_code: string option;
+  mvp_games_played: int;
+  mvp_ppg: float;
+  mvp_rpg: float;
+  mvp_apg: float;
+  mvp_spg: float;
+  mvp_bpg: float;
+  mvp_efficiency: float;
+  mvp_team_wins: int;
+  mvp_team_losses: int;
+  mvp_team_win_pct: float;
+  mvp_base_score: float;
+  mvp_win_bonus: float;
+  mvp_final_score: float;
+}
+
+(** Calculate MVP score from stats
+    Formula:
+    - Base Score = (PPG * 2) + (RPG * 1.2) + (APG * 1.5) + (SPG * 2) + (BPG * 2) + (EFF * 0.5)
+    - Win Bonus = Team Win% * 20
+    - Final Score = Base Score + Win Bonus
+*)
+let calculate_mvp_score ~ppg ~rpg ~apg ~spg ~bpg ~efficiency ~win_pct =
+  let base_score = (ppg *. 2.0) +. (rpg *. 1.2) +. (apg *. 1.5) +. (spg *. 2.0) +. (bpg *. 2.0) +. (efficiency *. 0.5) in
+  let win_bonus = win_pct *. 20.0 in
+  (base_score, win_bonus, base_score +. win_bonus)

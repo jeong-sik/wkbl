@@ -812,6 +812,48 @@ module Types = struct
     let t = t2 in
     custom ~encode ~decode
       (t string (t string (t string (t (option int) (t (option int) (t (option float) (t (option float) (t (option float) (t bool (option string))))))))))
+
+  (** MVP candidate type for MVP Race feature *)
+  let mvp_candidate =
+    let encode _ = assert false in
+    let decode (player_id, rest) =
+      let (player_name, rest) = rest in
+      let (team_name, rest) = rest in
+      let (games_played, rest) = rest in
+      let (ppg, rest) = rest in
+      let (rpg, rest) = rest in
+      let (apg, rest) = rest in
+      let (spg, rest) = rest in
+      let (bpg, rest) = rest in
+      let (efficiency, rest) = rest in
+      let (team_wins, rest) = rest in
+      let (team_losses, team_win_pct) = rest in
+      let team_code = team_code_of_string team_name in
+      let (base_score, win_bonus, final_score) = calculate_mvp_score ~ppg ~rpg ~apg ~spg ~bpg ~efficiency ~win_pct:team_win_pct in
+      Ok {
+        mvp_rank = 0;  (* Will be set during list processing *)
+        mvp_player_id = player_id;
+        mvp_player_name = player_name;
+        mvp_team_name = team_name;
+        mvp_team_code = team_code;
+        mvp_games_played = games_played;
+        mvp_ppg = ppg;
+        mvp_rpg = rpg;
+        mvp_apg = apg;
+        mvp_spg = spg;
+        mvp_bpg = bpg;
+        mvp_efficiency = efficiency;
+        mvp_team_wins = team_wins;
+        mvp_team_losses = team_losses;
+        mvp_team_win_pct = team_win_pct;
+        mvp_base_score = base_score;
+        mvp_win_bonus = win_bonus;
+        mvp_final_score = final_score;
+      }
+    in
+    let t = t2 in
+    custom ~encode ~decode
+      (t string (t string (t string (t int (t float (t float (t float (t float (t float (t float (t int (t int float))))))))))))
 end
 
 (** Use oneshot queries to avoid prepared-statement conflicts with PgBouncer. *)
@@ -2827,6 +2869,101 @@ module Queries = struct
       AND (? = 'ALL' OR s.status = ?)
     ORDER BY s.game_date ASC, s.game_time ASC
   |}
+
+  (** MVP Race query - combines player stats with team standings *)
+  let mvp_race_candidates =
+    let params = t2 string string in
+    (params ->* Types.mvp_candidate)
+    {|
+    WITH params AS (
+      SELECT ? AS season
+    ),
+    team_records AS (
+      SELECT
+        CASE
+          WHEN g.home_score > g.away_score THEN t_home.team_name_kr
+          ELSE t_away.team_name_kr
+        END AS winner,
+        CASE
+          WHEN g.home_score < g.away_score THEN t_home.team_name_kr
+          ELSE t_away.team_name_kr
+        END AS loser
+      FROM games g
+      JOIN teams t_home ON g.home_team_code = t_home.team_code
+      JOIN teams t_away ON g.away_team_code = t_away.team_code
+      CROSS JOIN params p
+      WHERE g.home_score IS NOT NULL AND g.away_score IS NOT NULL
+        AND (p.season = 'ALL' OR g.season_code = p.season)
+    ),
+    team_standings AS (
+      SELECT
+        team_name,
+        SUM(CASE WHEN is_win THEN 1 ELSE 0 END) AS wins,
+        SUM(CASE WHEN NOT is_win THEN 1 ELSE 0 END) AS losses
+      FROM (
+        SELECT winner AS team_name, TRUE AS is_win FROM team_records
+        UNION ALL
+        SELECT loser AS team_name, FALSE AS is_win FROM team_records
+      ) combined
+      GROUP BY team_name
+    ),
+    player_aggs AS (
+      SELECT
+        gs.player_id,
+        p.player_name,
+        t.team_name_kr AS team_name,
+        COUNT(DISTINCT gs.game_id) AS gp,
+        ROUND(CAST(SUM(gs.pts) AS FLOAT) / NULLIF(COUNT(DISTINCT gs.game_id), 0), 1) AS ppg,
+        ROUND(CAST(SUM(gs.reb_tot) AS FLOAT) / NULLIF(COUNT(DISTINCT gs.game_id), 0), 1) AS rpg,
+        ROUND(CAST(SUM(gs.ast) AS FLOAT) / NULLIF(COUNT(DISTINCT gs.game_id), 0), 1) AS apg,
+        ROUND(CAST(SUM(gs.stl) AS FLOAT) / NULLIF(COUNT(DISTINCT gs.game_id), 0), 1) AS spg,
+        ROUND(CAST(SUM(gs.blk) AS FLOAT) / NULLIF(COUNT(DISTINCT gs.game_id), 0), 1) AS bpg,
+        ROUND(
+          CAST(SUM(gs.pts + gs.reb_tot + gs.ast + gs.stl + gs.blk - (gs.fg_2p_a + gs.fg_3p_a - gs.fg_2p_m - gs.fg_3p_m) - (gs.ft_a - gs.ft_m) - gs.tov) AS FLOAT)
+          / NULLIF(COUNT(DISTINCT gs.game_id), 0),
+          1
+        ) AS efficiency
+      FROM game_stats gs
+      JOIN players p ON gs.player_id = p.player_id
+      JOIN teams t ON gs.team_code = t.team_code
+      JOIN games g ON gs.game_id = g.game_id
+      CROSS JOIN params pp
+      WHERE (pp.season = 'ALL' OR g.season_code = pp.season)
+        AND gs.min_seconds > 0
+      GROUP BY gs.player_id, p.player_name, t.team_name_kr
+      HAVING COUNT(DISTINCT gs.game_id) >= 5
+    )
+    SELECT
+      pa.player_id,
+      pa.player_name,
+      pa.team_name,
+      pa.gp,
+      pa.ppg,
+      pa.rpg,
+      pa.apg,
+      pa.spg,
+      pa.bpg,
+      pa.efficiency,
+      COALESCE(ts.wins, 0) AS team_wins,
+      COALESCE(ts.losses, 0) AS team_losses,
+      ROUND(
+        CASE WHEN (COALESCE(ts.wins, 0) + COALESCE(ts.losses, 0)) > 0
+          THEN CAST(COALESCE(ts.wins, 0) AS FLOAT) / (COALESCE(ts.wins, 0) + COALESCE(ts.losses, 0))
+          ELSE 0
+        END,
+        3
+      ) AS team_win_pct
+    FROM player_aggs pa
+    LEFT JOIN team_standings ts ON pa.team_name = ts.team_name
+    WHERE pa.gp >= ?
+    ORDER BY
+      (pa.ppg * 2 + pa.rpg * 1.2 + pa.apg * 1.5 + pa.spg * 2 + pa.bpg * 2 + pa.efficiency * 0.5
+       + CASE WHEN (COALESCE(ts.wins, 0) + COALESCE(ts.losses, 0)) > 0
+           THEN (CAST(COALESCE(ts.wins, 0) AS FLOAT) / (COALESCE(ts.wins, 0) + COALESCE(ts.losses, 0))) * 20
+           ELSE 0
+         END) DESC
+    LIMIT 20
+  |}
 end
 
 (** Database operations *)
@@ -3145,6 +3282,11 @@ end
 	    in
 	    Db.collect_list Queries.team_games t
 	  let get_player_h2h ~p1_id ~p2_id ~season (module Db : Caqti_lwt.CONNECTION) = let s = if season = "" then "ALL" else season in Db.collect_list Queries.player_h2h_games ((p1_id, p2_id), (s, s))
+
+    (** Get MVP race candidates for a season *)
+    let get_mvp_race_candidates ~season ~min_games (module Db : Caqti_lwt.CONNECTION) =
+      let s = if String.trim season = "" then "ALL" else season in
+      Db.collect_list Queries.mvp_race_candidates (s, min_games)
 	end
 
 (** Connection pool *)
@@ -3787,3 +3929,20 @@ let get_schedule_by_date_range ~start_date ~end_date ?(status="ALL") () =
   let key = Printf.sprintf "start=%s,end=%s,status=%s" start_date end_date status in
   cached schedule_cache key (fun () ->
     with_db (fun db -> Repo.get_schedule_by_date_range ~start_date ~end_date ~status db))
+
+(* ===== MVP Race Public API ===== *)
+
+let mvp_race_cache = Cache.create ~ttl:120.0 ~max_entries:16
+
+let get_mvp_race ?(season="ALL") ?(min_games=5) () =
+  let key = Printf.sprintf "season=%s,min_games=%d" season min_games in
+  let min_games_str = string_of_int min_games in
+  let open Lwt.Syntax in
+  let* result = cached mvp_race_cache key (fun () ->
+    with_db (fun db -> Repo.get_mvp_race_candidates ~season ~min_games:min_games_str db)) in
+  match result with
+  | Ok candidates ->
+      (* Add rank to each candidate *)
+      let ranked = candidates |> List.mapi (fun i c -> { c with mvp_rank = i + 1 }) in
+      Lwt.return (Ok ranked)
+  | Error e -> Lwt.return (Error e)
