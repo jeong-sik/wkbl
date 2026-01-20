@@ -874,6 +874,38 @@ module Types = struct
     let t = t2 in
     custom ~encode ~decode
       (t string (t string (t string (t int (t float (t float (t float (t float (t float (t float (t int (t int float))))))))))))
+
+  (** Clutch time statistics type
+      Aggregates scoring events from Q4 last 5 minutes with score diff <= 5 *)
+  let clutch_stats =
+    let encode _ = Error "Encode not supported: read-only type" in
+    let decode (player_id, rest) =
+      let (player_name, rest) = rest in
+      let (team_name, rest) = rest in
+      let (clutch_games, rest) = rest in
+      let (clutch_points, rest) = rest in
+      let (clutch_fg_made, rest) = rest in
+      let (clutch_fg_att, rest) = rest in
+      let (clutch_fg_pct, rest) = rest in
+      let (clutch_ft_made, rest) = rest in
+      let (clutch_ft_att, clutch_3p_made) = rest in
+      Ok {
+        cs_player_id = player_id;
+        cs_player_name = player_name;
+        cs_team_name = team_name;
+        cs_clutch_games = clutch_games;
+        cs_clutch_points = clutch_points;
+        cs_clutch_fg_made = clutch_fg_made;
+        cs_clutch_fg_att = clutch_fg_att;
+        cs_clutch_fg_pct = clutch_fg_pct;
+        cs_clutch_ft_made = clutch_ft_made;
+        cs_clutch_ft_att = clutch_ft_att;
+        cs_clutch_3p_made = clutch_3p_made;
+      }
+    in
+    let t = t2 in
+    custom ~encode ~decode
+      (t string (t string (t string (t int (t int (t int (t int (t float (t int (t int int))))))))))
 end
 
 (** Use oneshot queries to avoid prepared-statement conflicts with PgBouncer. *)
@@ -916,14 +948,23 @@ module Queries = struct
       team1_score INTEGER,
       team2_score INTEGER,
       clock TEXT NOT NULL,
+      player_id TEXT,
       UNIQUE (game_id, period_code, event_index)
     )
+  |}
+
+  (* Migration: Add player_id column if missing (for existing databases) *)
+  let ensure_play_by_play_events_player_id_column = (unit ->. unit) {|
+    ALTER TABLE play_by_play_events ADD COLUMN IF NOT EXISTS player_id TEXT
   |}
   let ensure_play_by_play_events_index_game = (unit ->. unit) {|
     CREATE INDEX IF NOT EXISTS idx_pbp_game_id ON play_by_play_events(game_id)
   |}
   let ensure_play_by_play_events_index_game_period = (unit ->. unit) {|
     CREATE INDEX IF NOT EXISTS idx_pbp_game_period ON play_by_play_events(game_id, period_code)
+  |}
+  let ensure_play_by_play_events_index_player = (unit ->. unit) {|
+    CREATE INDEX IF NOT EXISTS idx_pbp_player_id ON play_by_play_events(player_id) WHERE player_id IS NOT NULL
   |}
   let ensure_player_drafts_table = (unit ->. unit) {|
     CREATE TABLE IF NOT EXISTS player_drafts (
@@ -3044,7 +3085,7 @@ module Queries = struct
       period_code, event_index, team_side, description,
       team1_score, team2_score, clock
     FROM play_by_play_events p
-    JOIN games g ON p.game_id = g.id
+    JOIN games g ON p.game_id = g.game_id
     WHERE period_code = 'Q4'
       AND (
         CASE
@@ -3057,6 +3098,78 @@ module Queries = struct
       AND ABS(COALESCE(team1_score, 0) - COALESCE(team2_score, 0)) <= 5
       AND ($1 = 'ALL' OR g.season_code = $1)
     ORDER BY p.game_id, event_index
+  |}
+
+  (** Aggregated clutch time statistics per player
+      Parses description for scoring events:
+      - "N점슛성공" = field goal made (N=2 or 3)
+      - "N점슛실패" = field goal attempted but missed
+      - "자유투성공" = free throw made
+      - "자유투실패" = free throw missed *)
+  let clutch_stats_by_season = (string ->* Types.clutch_stats) {|
+    WITH clutch_events AS (
+      SELECT
+        p.player_id,
+        p.game_id,
+        p.description,
+        CASE
+          WHEN p.description ~ '2점슛성공' THEN 2
+          WHEN p.description ~ '3점슛성공' THEN 3
+          WHEN p.description ~ '자유투성공' THEN 1
+          ELSE 0
+        END AS points_scored,
+        CASE WHEN p.description ~ '[23]점슛성공' THEN 1 ELSE 0 END AS fg_made,
+        CASE WHEN p.description ~ '[23]점슛' THEN 1 ELSE 0 END AS fg_att,
+        CASE WHEN p.description ~ '3점슛성공' THEN 1 ELSE 0 END AS three_made,
+        CASE WHEN p.description ~ '자유투성공' THEN 1 ELSE 0 END AS ft_made,
+        CASE WHEN p.description ~ '자유투' THEN 1 ELSE 0 END AS ft_att
+      FROM play_by_play_events p
+      JOIN games g ON p.game_id = g.game_id
+      WHERE p.period_code = 'Q4'
+        AND p.player_id IS NOT NULL
+        AND (
+          CASE
+            WHEN p.clock ~ '^\d+:\d+$' THEN
+              CAST(SPLIT_PART(p.clock, ':', 1) AS INTEGER) * 60 +
+              CAST(SPLIT_PART(p.clock, ':', 2) AS INTEGER)
+            ELSE 600
+          END
+        ) <= 300
+        AND ABS(COALESCE(p.team1_score, 0) - COALESCE(p.team2_score, 0)) <= 5
+        AND ($1 = 'ALL' OR g.season_code = $1)
+        AND g.game_type != '10'
+    )
+    SELECT
+      ce.player_id,
+      pl.player_name,
+      COALESCE(t.team_name_kr, 'Unknown') AS team_name,
+      COUNT(DISTINCT ce.game_id) AS clutch_games,
+      SUM(ce.points_scored) AS clutch_points,
+      SUM(ce.fg_made) AS clutch_fg_made,
+      SUM(ce.fg_att) AS clutch_fg_att,
+      CASE
+        WHEN SUM(ce.fg_att) > 0
+        THEN CAST(SUM(ce.fg_made) AS FLOAT) / SUM(ce.fg_att)
+        ELSE 0.0
+      END AS clutch_fg_pct,
+      SUM(ce.ft_made) AS clutch_ft_made,
+      SUM(ce.ft_att) AS clutch_ft_att,
+      SUM(ce.three_made) AS clutch_3p_made
+    FROM clutch_events ce
+    JOIN players pl ON ce.player_id = pl.player_id
+    LEFT JOIN (
+      SELECT DISTINCT ON (gs.player_id)
+        gs.player_id, gs.team_code
+      FROM game_stats gs
+      JOIN games g2 ON gs.game_id = g2.game_id
+      WHERE ($1 = 'ALL' OR g2.season_code = $1)
+      ORDER BY gs.player_id, g2.game_date DESC
+    ) latest_team ON ce.player_id = latest_team.player_id
+    LEFT JOIN teams t ON latest_team.team_code = t.team_code
+    GROUP BY ce.player_id, pl.player_name, t.team_name_kr
+    HAVING SUM(ce.points_scored) > 0 OR SUM(ce.fg_att) > 0 OR SUM(ce.ft_att) > 0
+    ORDER BY SUM(ce.points_scored) DESC, clutch_fg_pct DESC
+    LIMIT 50
   |}
 
   (* On/Off Impact Queries *)
@@ -3117,8 +3230,10 @@ end
       let* () = Db.exec Queries.ensure_player_plus_minus_table () in
       let* () = Db.exec Queries.ensure_player_plus_minus_index () in
       let* () = Db.exec Queries.ensure_play_by_play_events_table () in
+      let* () = Db.exec Queries.ensure_play_by_play_events_player_id_column () in
       let* () = Db.exec Queries.ensure_play_by_play_events_index_game () in
       let* () = Db.exec Queries.ensure_play_by_play_events_index_game_period () in
+      let* () = Db.exec Queries.ensure_play_by_play_events_index_player () in
       let* () = Db.exec Queries.ensure_player_drafts_table () in
       let* () = Db.exec Queries.ensure_player_drafts_index_year () in
 	      let* () = Db.exec Queries.ensure_official_trade_events_table () in
@@ -4129,14 +4244,17 @@ let get_mvp_race ?(season="ALL") ?(min_games=5) () =
 (* ===== Clutch Time Stats Public API ===== *)
 
 (** Get clutch time stats for a season.
-    TODO: Full implementation requires PBP data with player_id field.
-    Currently returns empty list as PBP description parsing is complex.
-    Clutch time = Q4 remaining 5 min + score diff <= 5 points *)
+    Clutch time = Q4 remaining 5 min + score diff <= 5 points.
+    Uses play_by_play_events with player_id to aggregate scoring stats. *)
 let get_clutch_stats ~season () =
-  let _ = season in (* Suppress unused warning *)
-  (* TODO: Implement when PBP data model includes player_id
-     For now, return empty list to show the page structure works *)
-  Lwt.return (Ok ([] : Domain.clutch_stats list))
+  let open Lwt.Syntax in
+  let s = if String.trim season = "" then "ALL" else season in
+  let* result = with_db (fun (module Db : Caqti_lwt.CONNECTION) ->
+    Db.collect_list Queries.clutch_stats_by_season s
+  ) in
+  match result with
+  | Ok rows -> Lwt.return (Ok rows)
+  | Error e -> Lwt.return (Error e)
 
 (* ===== On/Off Impact Public API ===== *)
 

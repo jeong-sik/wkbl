@@ -228,6 +228,11 @@
           }
         }
         break;
+
+      case 'Tab':
+        // Trap focus in modal - keep focus on input
+        e.preventDefault();
+        break;
     }
   }
 
