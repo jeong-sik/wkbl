@@ -3,6 +3,7 @@
  * - Hamburger menu toggle with slide-in overlay
  * - Bottom navigation active state
  * - Keyboard accessibility (Escape to close)
+ * - Focus trap for accessibility (Tab cycles within modal)
  */
 (function() {
   'use strict';
@@ -12,6 +13,9 @@
   let menuPanel = null;
   let menuBtn = null;
   let lastFocusedElement = null;
+
+  // Focusable elements selector
+  const FOCUSABLE_SELECTOR = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
   function init() {
     menuOverlay = document.getElementById('mobile-menu-overlay');
@@ -28,8 +32,16 @@
 
     // Keyboard accessibility
     document.addEventListener('keydown', function(e) {
-      if (e.key === 'Escape' && menuOpen) {
+      if (!menuOpen) return;
+
+      if (e.key === 'Escape') {
         closeMenu();
+        return;
+      }
+
+      // Focus trap: Tab cycles within modal
+      if (e.key === 'Tab') {
+        handleFocusTrap(e);
       }
     });
 
@@ -88,6 +100,28 @@
 
     // Restore focus
     if (lastFocusedElement) lastFocusedElement.focus();
+  }
+
+  function handleFocusTrap(e) {
+    const focusableElements = menuPanel.querySelectorAll(FOCUSABLE_SELECTOR);
+    if (focusableElements.length === 0) return;
+
+    const firstElement = focusableElements[0];
+    const lastElement = focusableElements[focusableElements.length - 1];
+
+    if (e.shiftKey) {
+      // Shift + Tab: if on first element, wrap to last
+      if (document.activeElement === firstElement) {
+        e.preventDefault();
+        lastElement.focus();
+      }
+    } else {
+      // Tab: if on last element, wrap to first
+      if (document.activeElement === lastElement) {
+        e.preventDefault();
+        firstElement.focus();
+      }
+    }
   }
 
   function setActiveBottomNav() {
