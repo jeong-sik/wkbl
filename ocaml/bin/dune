@@ -2,3 +2,8 @@
  (name main)
  (public_name wkbl)
  (libraries wkbl dream caqti-driver-sqlite3 caqti-driver-postgresql))
+
+(executable
+ (name scraper_tool)
+ (public_name wkbl-scraper)
+ (libraries wkbl))
