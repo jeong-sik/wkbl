@@ -1240,7 +1240,7 @@ let fetch_allstar_history () =
 let print_championship_csv records =
   Printf.printf "edition,season,champion,runner_up,finals_result,regular_champion\n";
   records |> List.iter (fun r ->
-    Printf.printf "%d,%s,\"%s\",\"%s\",\"%s\",\"%s\"\n"
+    Printf.printf "%d,\"%s\",\"%s\",\"%s\",\"%s\",\"%s\"\n"
       r.champ_edition
       r.champ_season
       r.champion_team
@@ -1253,7 +1253,7 @@ let print_championship_csv records =
 let print_allstar_csv records =
   Printf.printf "edition,season,date,venue,mvp\n";
   records |> List.iter (fun r ->
-    Printf.printf "%d,%s,\"%s\",\"%s\",\"%s\"\n"
+    Printf.printf "%d,\"%s\",\"%s\",\"%s\",\"%s\"\n"
       r.as_edition
       r.as_season
       r.as_date
