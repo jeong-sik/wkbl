@@ -25,4 +25,6 @@
   (yojson (>= 2.1))
   (ppx_deriving (>= 5.2))
   (ppx_deriving_yojson (>= 3.7))
+  (cohttp-lwt-unix (>= 5.0))
+  (lambdasoup (>= 1.0))
   (alcotest (>= 1.7.0))))
