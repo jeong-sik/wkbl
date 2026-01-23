@@ -804,6 +804,16 @@ let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2 w-[120px] sm
       ""
   in
   let display_name = normalize_name p.name in
+  (* PER calculation inline - (EFF / MIN) * 48 * pace_factor, normalized *)
+  let per =
+    if p.total_minutes <= 0.0 then 0.0
+    else
+      let per_min = p.efficiency /. p.total_minutes in
+      let per_48 = per_min *. 48.0 in
+      let pace_factor = 40.0 /. 48.0 in
+      let normalized = per_48 *. pace_factor *. 1.2 in
+      max 0.0 (min 40.0 normalized)
+  in
   let team_cell =
     if include_team then
       Printf.sprintf {html|<td class="%s">%s</td>|html} (escape_html team_cell_class) (team_badge p.team_name)
@@ -824,7 +834,7 @@ let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2 w-[120px] sm
       </td>
       %s
       <td class="px-3 py-2 text-right text-slate-500 dark:text-slate-400 whitespace-nowrap hidden sm:table-cell">%d</td>
-      %s%s%s%s%s%s%s%s
+      %s%s%s%s%s%s%s%s%s
     </tr>|html}
     rank
     (player_img_tag ~class_name:"w-8 h-8 shrink-0" p.player_id p.name)
@@ -842,6 +852,7 @@ let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2 w-[120px] sm
     (stat_total_cell ~extra_classes:"hidden lg:table-cell" p.avg_blocks p.total_blocks)
     (stat_total_cell ~extra_classes:"hidden lg:table-cell" p.avg_turnovers p.total_turnovers)
     (stat_cell ~highlight:true p.efficiency)
+    (stat_cell ~extra_classes:"hidden sm:table-cell" per)
 
 (** Players table - HTMX partial *)
 let players_table (players: player_aggregate list) =
@@ -880,6 +891,7 @@ let players_table (players: player_aggregate list) =
           <th class="px-3 py-3 text-right w-[72px] hidden lg:table-cell">BLK</th>
           <th class="px-3 py-3 text-right w-[72px] hidden lg:table-cell">TO</th>
           <th class="px-3 py-3 text-right w-[72px] cursor-pointer hover:text-orange-600 dark:text-orange-400" hx-get="/players/table?sort=eff" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter">EFF</th>
+          <th class="px-3 py-3 text-right w-[72px] hidden sm:table-cell" title="Player Efficiency Rating (분당 효율 정규화)">PER</th>
         </tr>
       </thead>
       <tbody id="players-body">%s</tbody>
