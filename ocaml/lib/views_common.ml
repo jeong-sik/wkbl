@@ -145,7 +145,7 @@ let player_img_tag ?(class_name="w-12 h-12") player_id _player_name =
   in
   let src = if has_local_player_image then local_src else remote_src in
   Printf.sprintf
-    {html|<img src="%s" alt="" aria-hidden="true" class="%s rounded-full object-cover bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 shadow-sm" loading="lazy" data-placeholder="%s" onerror="if(!this.dataset.placeholderApplied){this.dataset.placeholderApplied='1';this.src=this.dataset.placeholder;}">|html}
+    {html|<img src="%s" alt="" aria-hidden="true" class="%s rounded-full object-cover bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 shadow-sm" loading="lazy" decoding="async" data-placeholder="%s" onerror="if(!this.dataset.placeholderApplied){this.dataset.placeholderApplied='1';this.src=this.dataset.placeholder;}">|html}
     (escape_html src)
     (escape_html class_name)
     (escape_html placeholder_src)
@@ -158,7 +158,7 @@ let team_logo_tag ?(class_name="w-8 h-8") team_name =
     | None -> None
   in
   match logo_file with
-  | Some f -> Printf.sprintf {html|<img src="/static/images/%s" alt="" aria-hidden="true" class="%s object-contain">|html} f class_name
+  | Some f -> Printf.sprintf {html|<img src="/static/images/%s" alt="" aria-hidden="true" class="%s object-contain" loading="lazy" decoding="async">|html} f class_name
   | None ->
       Printf.sprintf
         {html|<div class="%s bg-slate-100 dark:bg-slate-800 rounded flex items-center justify-center text-xs">🏀</div>|html}
