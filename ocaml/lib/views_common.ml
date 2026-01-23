@@ -967,6 +967,7 @@ let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="")
   <script src="/static/js/skeleton-loader.js?v=%s" defer data-cfasync="false"></script>
   <script src="/static/js/share-utils.js?v=%s" defer data-cfasync="false"></script>
   <script src="/static/js/table-sort.js?v=%s" defer data-cfasync="false"></script>
+  <script src="/static/js/a11y-utils.js?v=%s" defer data-cfasync="false"></script>
   <script src="https://cdn.tailwindcss.com" data-cfasync="false"></script>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/css/styles.css?v=%s">
@@ -1115,6 +1116,6 @@ let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="")
   </nav>
 </body>
 </html>|html}
-    (escape_html title) (escape_html meta_desc) (escape_html og_title_val) (escape_html og_desc_val) (escape_html og_image_val) (escape_html canonical_url) (escape_html og_title_val) (escape_html og_desc_val) (escape_html og_image_val) (escape_html canonical_url) v v v v v v v v v v json_ld_script cf_wa_script content
+    (escape_html title) (escape_html meta_desc) (escape_html og_title_val) (escape_html og_desc_val) (escape_html og_image_val) (escape_html canonical_url) (escape_html og_title_val) (escape_html og_desc_val) (escape_html og_image_val) (escape_html canonical_url) v v v v v v v v v v v json_ld_script cf_wa_script content
 
 (** Home page *)
