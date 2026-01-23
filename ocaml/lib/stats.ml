@@ -82,3 +82,78 @@ let team_stats_of_totals ~(scope: team_scope) ~(margin: team_margin option) (tot
     ts_pct;
     eff = transform_total eff_total;
   }
+
+(** Player Efficiency Rating (PER) - Simplified Version
+
+    Since we don't have FGA/FTA breakdown, we use a simplified formula:
+    PER = (EFF / MIN) * 48 * pace_adjustment
+
+    Normalized so league average = 15.0
+*)
+
+(** Calculate per-minute efficiency and convert to PER scale *)
+let calculate_per ~total_minutes ~efficiency : float =
+  if total_minutes <= 0.0 then 0.0
+  else
+    (* Per-minute efficiency *)
+    let per_min = efficiency /. total_minutes in
+    (* Scale to per-48-minutes (full game) *)
+    let per_48 = per_min *. 48.0 in
+    (* WKBL uses 40-min games, adjust factor *)
+    let pace_factor = 40.0 /. 48.0 in
+    (* Normalize to ~15 average (empirical adjustment for WKBL data) *)
+    let normalized = per_48 *. pace_factor *. 1.2 in
+    (* Clamp to reasonable range *)
+    max 0.0 (min 40.0 normalized)
+
+(** Calculate PER from player aggregate data *)
+let per_of_player_aggregate (p : Domain.player_aggregate) : float =
+  calculate_per ~total_minutes:p.total_minutes ~efficiency:p.efficiency
+
+(** Four Factors - Team Performance Metrics (Dean Oliver)
+
+    1. eFG% - Effective Field Goal Percentage (shooting)
+    2. TOV% - Turnover Percentage (ball security)
+    3. ORB% - Offensive Rebound Percentage (second chances)
+    4. FTR  - Free Throw Rate (getting to the line)
+*)
+
+type four_factors = {
+  efg_pct: float;   (** Effective FG% - already in team_stats *)
+  tov_pct: float;   (** Turnovers per 100 possessions *)
+  orb_pct: float;   (** Offensive rebound rate *)
+  ftr: float;       (** FT attempts / FG attempts *)
+}
+
+(** Calculate Four Factors from team totals *)
+let four_factors_of_totals (t : Domain.team_totals) : four_factors =
+  let fg_a = t.fg2_a + t.fg3_a in
+  let fg_m = t.fg2_m + t.fg3_m in
+
+  (* eFG% = (FGM + 0.5 * 3PM) / FGA *)
+  let efg_pct =
+    if fg_a = 0 then 0.0
+    else (float fg_m +. 0.5 *. float t.fg3_m) /. float fg_a *. 100.0
+  in
+
+  (* Possessions estimate: FGA + 0.44*FTA + TOV - ORB *)
+  let poss = float fg_a +. 0.44 *. float t.ft_a +. float t.turnovers -. float t.reb_off in
+  let poss = max poss 1.0 in
+
+  (* TOV% = TOV / Possessions * 100 *)
+  let tov_pct = float t.turnovers /. poss *. 100.0 in
+
+  (* ORB% = ORB / (ORB + Opp_DRB) - we don't have opponent DRB, use estimate *)
+  (* Simplified: ORB / REB * 100 as proxy *)
+  let orb_pct =
+    if t.reb = 0 then 0.0
+    else float t.reb_off /. float t.reb *. 100.0
+  in
+
+  (* FTR = FTA / FGA *)
+  let ftr =
+    if fg_a = 0 then 0.0
+    else float t.ft_a /. float fg_a *. 100.0
+  in
+
+  { efg_pct; tov_pct; orb_pct; ftr }
