@@ -849,8 +849,48 @@ let compare_page
                 let h2h_advanced = Views_tools.h2h_advanced_section ~p1_name:p1_n ~p2_name:p2_n h2h in
                 match_history ^ h2h_advanced
         in
+        (* Radar chart for visual stat comparison *)
+        let radar_chart_html =
+          let labels = ["PTS"; "REB"; "AST"; "STL"; "BLK"; "EFF"] in
+          let values_a = [
+            normalize_stat_for_radar `Points a.avg_points;
+            normalize_stat_for_radar `Rebounds a.avg_rebounds;
+            normalize_stat_for_radar `Assists a.avg_assists;
+            normalize_stat_for_radar `Steals a.avg_steals;
+            normalize_stat_for_radar `Blocks a.avg_blocks;
+            normalize_stat_for_radar `Efficiency a.efficiency;
+          ] in
+          let values_b = [
+            normalize_stat_for_radar `Points b.avg_points;
+            normalize_stat_for_radar `Rebounds b.avg_rebounds;
+            normalize_stat_for_radar `Assists b.avg_assists;
+            normalize_stat_for_radar `Steals b.avg_steals;
+            normalize_stat_for_radar `Blocks b.avg_blocks;
+            normalize_stat_for_radar `Efficiency b.efficiency;
+          ] in
+          Printf.sprintf
+            {html|<div class="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
+              <div class="text-center mb-4">
+                <h3 class="text-slate-500 dark:text-slate-400 text-sm font-bold uppercase">Visual Comparison</h3>
+                <div class="flex justify-center gap-6 mt-2 text-xs">
+                  <div class="flex items-center gap-2">
+                    <span class="w-3 h-3 rounded-full bg-orange-500"></span>
+                    <span class="text-slate-600 dark:text-slate-400">%s</span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <span class="w-3 h-3 rounded-full bg-sky-500"></span>
+                    <span class="text-slate-600 dark:text-slate-400">%s</span>
+                  </div>
+                </div>
+              </div>
+              %s
+            </div>|html}
+            (escape_html (normalize_name a.name))
+            (escape_html (normalize_name b.name))
+            (radar_chart ~labels ~values_a ~values_b ~color_a:"#f97316" ~color_b:"#0ea5e9")
+        in
         Printf.sprintf
-          {html|<div class="space-y-8 animate-fade-in"><div class="grid grid-cols-1 md:grid-cols-3 gap-8 items-start"><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 flex flex-col items-center gap-4 shadow-xl border-t-4 border-t-orange-500">%s<div class="text-center space-y-2"><div class="text-2xl font-black text-slate-900 dark:text-slate-200 hover:text-orange-600 dark:text-orange-400"><a href="/player/%s">%s</a></div><div class="text-slate-500 dark:text-slate-400">%s</div>%s</div></div><div class="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 p-6 space-y-6"><div class="text-center space-y-2"><h3 class="text-slate-500 dark:text-slate-400 text-sm font-bold uppercase">Average Stats</h3><p class="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed"><span class="font-mono">MG</span>는 팀 득실마진(출전시간 가중)이며, 개인 +/-는 문자중계(PBP) 기반으로 일부 경기에서만 제공됩니다. (데이터가 없으면 -)</p></div>%s%s%s%s%s%s%s%s</div><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 flex flex-col items-center gap-4 shadow-xl border-t-4 border-t-sky-500">%s<div class="text-center space-y-2"><div class="text-2xl font-black text-slate-900 dark:text-slate-200 hover:text-sky-600 dark:text-sky-400"><a href="/player/%s">%s</a></div><div class="text-slate-500 dark:text-slate-400">%s</div>%s</div></div></div>%s</div>|html}
+          {html|<div class="space-y-8 animate-fade-in"><div class="grid grid-cols-1 md:grid-cols-3 gap-8 items-start"><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 flex flex-col items-center gap-4 shadow-xl border-t-4 border-t-orange-500">%s<div class="text-center space-y-2"><div class="text-2xl font-black text-slate-900 dark:text-slate-200 hover:text-orange-600 dark:text-orange-400"><a href="/player/%s">%s</a></div><div class="text-slate-500 dark:text-slate-400">%s</div>%s</div></div><div class="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 p-6 space-y-6"><div class="text-center space-y-2"><h3 class="text-slate-500 dark:text-slate-400 text-sm font-bold uppercase">Average Stats</h3><p class="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed"><span class="font-mono">MG</span>는 팀 득실마진(출전시간 가중)이며, 개인 +/-는 문자중계(PBP) 기반으로 일부 경기에서만 제공됩니다. (데이터가 없으면 -)</p></div>%s%s%s%s%s%s%s%s</div><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 flex flex-col items-center gap-4 shadow-xl border-t-4 border-t-sky-500">%s<div class="text-center space-y-2"><div class="text-2xl font-black text-slate-900 dark:text-slate-200 hover:text-sky-600 dark:text-sky-400"><a href="/player/%s">%s</a></div><div class="text-slate-500 dark:text-slate-400">%s</div>%s</div></div></div>%s%s</div>|html}
           (player_img_tag ~class_name:"w-32 h-32" a.player_id a.name)
           a.player_id
           (escape_html (normalize_name a.name))
@@ -869,6 +909,7 @@ let compare_page
           (escape_html (normalize_name b.name))
           (escape_html b.team_name)
           (season_badge p2_season)
+          radar_chart_html
           h2h_html
     | _ -> ""
   in
@@ -881,6 +922,10 @@ let compare_page
             <p class="text-slate-500 dark:text-slate-400 text-sm">동명이인/표기 이슈를 피하기 위해 <span class="font-mono text-slate-900 dark:text-slate-200">player_id</span>를 선택해 비교합니다.</p>
             <p class="text-slate-500 dark:text-slate-400 text-xs mt-1">Player 1/2는 시즌을 각각 선택할 수 있습니다. 시즌이 다르면 Match History는 표시하지 않습니다.</p>
           </div>
+          <button id="share-compare-btn" type="button" onclick="shareCompareUrl()" class="hidden md:flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition text-sm font-medium" aria-label="비교 URL 복사">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path></svg>
+            <span>Share</span>
+          </button>
         </div>
 
         <form action="/compare" method="get" class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
