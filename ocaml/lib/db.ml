@@ -131,7 +131,7 @@ module Types = struct
 
   (** Custom type for player_aggregate *)
   let player_aggregate =
-    let encode _ = assert false in  (* We only decode *)
+    let encode _ = Error "Encode not supported: read-only type" in
     let decode (player_id, rest) =
       let (name, rest) = rest in
       let (team_name, rest) = rest in
@@ -194,7 +194,7 @@ module Types = struct
                                           (t float float))))))))))))))))))
 
   let player_base =
-    let encode _ = assert false in  (* We only decode *)
+    let encode _ = Error "Encode not supported: read-only type" in
     let decode (player_id, rest) =
       let (name, rest) = rest in
       let (team_name, rest) = rest in
@@ -260,17 +260,17 @@ module Types = struct
                                           (t float int)))))))))))))))))))
 
   let season_info =
-    let encode _ = assert false in
+    let encode _ = Error "Encode not supported: read-only type" in
     let decode (code, name) = Ok { code; name } in
     custom ~encode ~decode (t2 string string)
 
   let team_info =
-    let encode _ = assert false in
+    let encode _ = Error "Encode not supported: read-only type" in
     let decode (team_code, team_name) = Ok { team_code; team_name } in
     custom ~encode ~decode (t2 string string)
 
   let team_totals =
-    let encode _ = assert false in
+    let encode _ = Error "Encode not supported: read-only type" in
     let decode
         ( season,
           ( team,
@@ -302,14 +302,14 @@ module Types = struct
       (t string (t string (t int (t float (t int (t int (t int (t int (t int (t int (t int (t int (t int (t int (t int (t int (t int int)))))))))))))))))
 
   let team_margin =
-    let encode _ = assert false in
+    let encode _ = Error "Encode not supported: read-only type" in
     let decode (season, (team, (gp, (pts_for, pts_against)))) =
       Ok { season; team; gp; pts_for; pts_against }
     in
     custom ~encode ~decode (t2 string (t2 string (t2 int (t2 int int))))
 
   let team_standing =
-    let encode _ = assert false in
+    let encode _ = Error "Encode not supported: read-only type" in
     let decode (team_name, (games_played, (wins, (losses, (avg_pts, avg_opp_pts))))) =
       let win_pct = if games_played = 0 then 0.0 else Stdlib.float wins /. Stdlib.float games_played in
       let diff = avg_pts -. avg_opp_pts in
@@ -318,7 +318,7 @@ module Types = struct
     custom ~encode ~decode (t2 string (t2 int (t2 int (t2 int (t2 float float)))))
 
   let game_summary =
-    let encode _ = assert false in
+    let encode _ = Error "Encode not supported: read-only type" in
     let decode (game_id, (game_date, (home_team, (away_team, (home_score, (away_score, game_type)))))) =
       Ok { game_id; game_date; home_team; away_team; home_score; away_score; game_type }
     in
@@ -326,7 +326,7 @@ module Types = struct
       (t2 string (t2 string (t2 string (t2 string (t2 (option int) (t2 (option int) string))))))
 
   let qa_score_mismatch =
-    let encode _ = assert false in
+    let encode _ = Error "Encode not supported: read-only type" in
     let decode (game_id, (game_date, (home_team, (away_team, (home_score, (away_score, (home_sum, away_sum))))))) =
       Ok { qsm_game_id = game_id;
            qsm_game_date = game_date;
@@ -349,12 +349,12 @@ module Types = struct
                         (t (option int) (option int))))))))
 
   let qa_team_count_anomaly =
-    let encode _ = assert false in
+    let encode _ = Error "Encode not supported: read-only type" in
     let decode (game_id, team_count) = Ok { qtca_game_id = game_id; qtca_team_count = team_count } in
     custom ~encode ~decode (t2 string int)
 
   let qa_duplicate_player_row =
-    let encode _ = assert false in
+    let encode _ = Error "Encode not supported: read-only type" in
     let decode (game_id, (team_code, (team_name, (player_id, (player_name, row_count))))) =
       Ok { qdpr_game_id = game_id;
            qdpr_team_code = team_code;
@@ -368,14 +368,14 @@ module Types = struct
     custom ~encode ~decode (t string (t string (t string (t string (t string int)))))
 
   let qa_duplicate_player_name_row =
-    let encode _ = assert false in
+    let encode _ = Error "Encode not supported: read-only type" in
     let decode (player_name, (id_count, player_ids_csv)) =
       Ok (player_name, id_count, player_ids_csv)
     in
     custom ~encode ~decode (t2 string (t2 int string))
 
   let boxscore_player_stat =
-    let encode _ = assert false in
+    let encode _ = Error "Encode not supported: read-only type" in
     let decode (player_id, (player_name, (position, (team_code, (team_name, (min_seconds, (pts, (plus_minus, (reb, (ast, (stl, (blk, (tov, (fg2_m, (fg2_a, (fg3_m, (fg3_a, (ft_m, ft_a)))))))))))))))))) =
       let min = Stdlib.float min_seconds /. 60.0 in
       let fg_m = fg2_m + fg3_m in
@@ -417,7 +417,7 @@ module Types = struct
                            (t (option int) stats_tail))))))))
 
   let game_info =
-    let encode _ = assert false in
+    let encode _ = Error "Encode not supported: read-only type" in
     let decode (game_id, (game_date, (home_code, (home_name, (away_code, (away_name, (home_score, (away_score, score_quality_int)))))))) =
       Ok {
         gi_game_id = game_id; gi_game_date = game_date;
@@ -433,14 +433,14 @@ module Types = struct
       (t string (t string (t string (t string (t string (t string (t int (t int int))))))))
 
   let leader_entry =
-    let encode _ = assert false in
+    let encode _ = Error "Encode not supported: read-only type" in
     let decode (player_id, (player_name, (team_name, stat_value))) =
       Ok { le_player_id = player_id; le_player_name = player_name; le_team_name = team_name; le_stat_value = stat_value }
     in
     custom ~encode ~decode (t2 string (t2 string (t2 string float)))
 
   let leader_base =
-    let encode _ = assert false in
+    let encode _ = Error "Encode not supported: read-only type" in
     let decode (player_id, rest) =
       let (player_name, rest) = rest in
       let (team_name, rest) = rest in
@@ -500,7 +500,7 @@ module Types = struct
                      (t int int)))))))))))))))))
 
   let player_info =
-    let encode _ = assert false in
+    let encode _ = Error "Encode not supported: read-only type" in
     let decode (id, (name, (position, (birth_date, (height, weight))))) =
       Ok { id; name; position; birth_date; height; weight }
     in
@@ -508,7 +508,7 @@ module Types = struct
     custom ~encode ~decode (t string (t string (t (option string) (t (option string) (t (option int) (option int))))))
 
   let player_draft =
-    let encode _ = assert false in
+    let encode _ = Error "Encode not supported: read-only type" in
     let decode (player_id, rest) =
       let (draft_year, rest) = rest in
       let (draft_round, rest) = rest in
@@ -539,7 +539,7 @@ module Types = struct
                      (t (option string) (t string (t string string))))))))
 
   let draft_pick_row =
-    let encode _ = assert false in
+    let encode _ = Error "Encode not supported: read-only type" in
     let decode (player_id, rest) =
       let (player_name, rest) = rest in
       let (draft_year, rest) = rest in
@@ -573,7 +573,7 @@ module Types = struct
                         (t (option string) (t string (t string string)))))))))
 
 	  let official_trade_event =
-	    let encode _ = assert false in
+	    let encode _ = Error "Encode not supported: read-only type" in
 	    let decode (event_date, rest) =
 	      let (event_year, rest) = rest in
 	      let (event_text, rest) = rest in
@@ -590,7 +590,7 @@ module Types = struct
 	    custom ~encode ~decode (t string (t int (t string (t string string))))
 
 	  let player_external_link =
-	    let encode _ = assert false in
+	    let encode _ = Error "Encode not supported: read-only type" in
 	    let decode (player_id, rest) =
 	      let (link_type, rest) = rest in
 	      let (url, rest) = rest in
@@ -607,7 +607,7 @@ module Types = struct
 	    custom ~encode ~decode (t string (t string (t string (t (option string) string))))
 
 	  let season_stats =
-	    let encode _ = assert false in
+	    let encode _ = Error "Encode not supported: read-only type" in
 	    let decode (season_code, rest) =
 	      let (season_name, rest) = rest in
       let (gp, rest) = rest in
@@ -642,7 +642,7 @@ module Types = struct
       (t string (t string (t int (t float (t float (t float (t float (t float (t float (t float (t float (t float (t float float)))))))))))))
 
   let player_game_stat =
-    let encode _ = assert false in
+    let encode _ = Error "Encode not supported: read-only type" in
     let decode (game_id, (game_date, (opponent, (is_home_int, (team_score, (opponent_score, (score_quality_int, (min, (pts, (reb, (ast, (stl, (blk, (tov, plus_minus)))))))))))))) =
       let is_home = is_home_int = 1 in
       Ok { game_id; game_date; opponent; is_home; team_score; opponent_score; score_quality = game_score_quality_of_int score_quality_int; min; pts; reb; ast; stl; blk; tov; plus_minus }
@@ -659,8 +659,28 @@ module Types = struct
                            (t float
                               (t int (t int (t int (t int (t int (t int (option int)))))))))))))))
 
+  let player_game_stat_with_id =
+    let encode _ = Error "Encode not supported: read-only type" in
+    let decode (player_id, (game_id, (game_date, (opponent, (is_home_int, (team_score, (opponent_score, (score_quality_int, (min, (pts, (reb, (ast, (stl, (blk, (tov, plus_minus))))))))))))))) =
+      let is_home = is_home_int = 1 in
+      let stat = { game_id; game_date; opponent; is_home; team_score; opponent_score; score_quality = game_score_quality_of_int score_quality_int; min; pts; reb; ast; stl; blk; tov; plus_minus } in
+      Ok { pgs_player_id = player_id; pgs_stat = stat }
+    in
+    let t = t2 in
+    custom ~encode ~decode
+      (t string
+         (t string
+            (t string
+               (t string
+                  (t int
+                     (t (option int)
+                        (t (option int)
+                           (t int
+                              (t float
+                                 (t int (t int (t int (t int (t int (t int (option int))))))))))))))))
+
   let team_game_result =
-    let encode _ = assert false in
+    let encode _ = Error "Encode not supported: read-only type" in
     let decode (game_id, (game_date, (opponent, (is_home_int, (team_score, (opp_score, is_win_int)))))) =
       Ok { tgr_game_id = game_id; tgr_game_date = game_date; tgr_opponent = opponent; tgr_is_home = is_home_int = 1; tgr_team_score = team_score; tgr_opponent_score = opp_score; tgr_is_win = is_win_int = 1 }
     in
@@ -668,18 +688,38 @@ module Types = struct
     custom ~encode ~decode (t string (t string (t string (t int (t int (t int int))))))
 
   let h2h_game =
-    let encode _ = assert false in
+    let encode _ = Error "Encode not supported: read-only type" in
     let decode (game_id, (game_date, (p1_team, (p2_team, (p1_pts, (p1_reb, (p1_ast, (p2_pts, (p2_reb, (p2_ast, (winner, score_diff))))))))))) =
       Ok { game_id; game_date; player1_team = p1_team; player2_team = p2_team; player1_pts = p1_pts; player1_reb = p1_reb; player1_ast = p1_ast; player2_pts = p2_pts; player2_reb = p2_reb; player2_ast = p2_ast; winner_team = winner; score_diff }
     in
     let t = t2 in
     custom ~encode ~decode (t string (t string (t string (t string (t int (t int (t int (t int (t int (t int (t string int)))))))))))
 
-
+  let pbp_event =
+    let encode _ = Error "Encode not supported: read-only type" in
+    let decode (period_code, rest) =
+      let (event_index, rest) = rest in
+      let (team_side, rest) = rest in
+      let (description, rest) = rest in
+      let (team1_score, rest) = rest in
+      let (team2_score, clock) = rest in
+      Ok {
+        pe_period_code = period_code;
+        pe_event_index = event_index;
+        pe_team_side = team_side;
+        pe_description = description;
+        pe_team1_score = team1_score;
+        pe_team2_score = team2_score;
+        pe_clock = clock;
+      }
+    in
+    let t = t2 in
+    custom ~encode ~decode
+      (t string (t int (t int (t string (t (option int) (t (option int) string))))))
 
   (** Historical season type *)
   let historical_season =
-    let encode _ = assert false in
+    let encode _ = Error "Encode not supported: read-only type" in
     let decode (season_id, rest) =
       let (season_name, rest) = rest in
       let (champion_team, rest) = rest in
@@ -706,7 +746,7 @@ module Types = struct
 
   (** Legend player type *)
   let legend_player =
-    let encode _ = assert false in
+    let encode _ = Error "Encode not supported: read-only type" in
     let decode (player_name, rest) =
       let (career_years, rest) = rest in
       let (teams, rest) = rest in
@@ -737,7 +777,7 @@ module Types = struct
 
   (** Coach type *)
   let coach =
-    let encode _ = assert false in
+    let encode _ = Error "Encode not supported: read-only type" in
     let decode (coach_name, rest) =
       let (team, rest) = rest in
       let (tenure_start, rest) = rest in
@@ -766,7 +806,7 @@ module Types = struct
 
   (** Player career entry type *)
   let player_career_entry =
-    let encode _ = assert false in
+    let encode _ = Error "Encode not supported: read-only type" in
     let decode (player_name, rest) =
       let (season_id, rest) = rest in
       let (team, rest) = rest in
@@ -793,27 +833,79 @@ module Types = struct
     custom ~encode ~decode
       (t string (t string (t string (t (option int) (t (option int) (t (option float) (t (option float) (t (option float) (t bool (option string))))))))))
 
-  let pbp_event =
-    let encode _ = assert false in
-    let decode (period_code, (event_index, (team_side, (description, (team1_score, (team2_score, clock)))))) =
+  (** MVP candidate type for MVP Race feature *)
+  let mvp_candidate =
+    let encode _ = Error "Encode not supported: read-only type" in
+    let decode (player_id, rest) =
+      let (player_name, rest) = rest in
+      let (team_name, rest) = rest in
+      let (games_played, rest) = rest in
+      let (ppg, rest) = rest in
+      let (rpg, rest) = rest in
+      let (apg, rest) = rest in
+      let (spg, rest) = rest in
+      let (bpg, rest) = rest in
+      let (efficiency, rest) = rest in
+      let (team_wins, rest) = rest in
+      let (team_losses, team_win_pct) = rest in
+      let team_code = team_code_of_string team_name in
+      let (base_score, win_bonus, final_score) = calculate_mvp_score ~ppg ~rpg ~apg ~spg ~bpg ~efficiency ~win_pct:team_win_pct in
       Ok {
-        pe_period_code = period_code;
-        pe_event_index = event_index;
-        pe_team_side = team_side;
-        pe_description = description;
-        pe_team1_score = team1_score;
-        pe_team2_score = team2_score;
-        pe_clock = clock;
+        mvp_rank = 0;  (* Will be set during list processing *)
+        mvp_player_id = player_id;
+        mvp_player_name = player_name;
+        mvp_team_name = team_name;
+        mvp_team_code = team_code;
+        mvp_games_played = games_played;
+        mvp_ppg = ppg;
+        mvp_rpg = rpg;
+        mvp_apg = apg;
+        mvp_spg = spg;
+        mvp_bpg = bpg;
+        mvp_efficiency = efficiency;
+        mvp_team_wins = team_wins;
+        mvp_team_losses = team_losses;
+        mvp_team_win_pct = team_win_pct;
+        mvp_base_score = base_score;
+        mvp_win_bonus = win_bonus;
+        mvp_final_score = final_score;
       }
     in
     let t = t2 in
     custom ~encode ~decode
-      (t string
-        (t int
-          (t int
-            (t string
-              (t (option int)
-                (t (option int) string))))))
+      (t string (t string (t string (t int (t float (t float (t float (t float (t float (t float (t int (t int float))))))))))))
+
+  (** Clutch time statistics type
+      Aggregates scoring events from Q4 last 5 minutes with score diff <= 5 *)
+  let clutch_stats =
+    let encode _ = Error "Encode not supported: read-only type" in
+    let decode (player_id, rest) =
+      let (player_name, rest) = rest in
+      let (team_name, rest) = rest in
+      let (clutch_games, rest) = rest in
+      let (clutch_points, rest) = rest in
+      let (clutch_fg_made, rest) = rest in
+      let (clutch_fg_att, rest) = rest in
+      let (clutch_fg_pct, rest) = rest in
+      let (clutch_ft_made, rest) = rest in
+      let (clutch_ft_att, clutch_3p_made) = rest in
+      Ok {
+        cs_player_id = player_id;
+        cs_player_name = player_name;
+        cs_team_name = team_name;
+        cs_clutch_games = clutch_games;
+        cs_clutch_points = clutch_points;
+        cs_clutch_fg_made = clutch_fg_made;
+        cs_clutch_fg_att = clutch_fg_att;
+        cs_clutch_fg_pct = clutch_fg_pct;
+        cs_clutch_ft_made = clutch_ft_made;
+        cs_clutch_ft_att = clutch_ft_att;
+        cs_clutch_3p_made = clutch_3p_made;
+      }
+    in
+    let t = t2 in
+    custom ~encode ~decode
+      (t string (t string (t string (t int (t int (t int (t int (t float (t int (t int int))))))))))
 end
 
 (** Use oneshot queries to avoid prepared-statement conflicts with PgBouncer. *)
@@ -856,8 +948,14 @@ module Queries = struct
       team1_score INTEGER,
       team2_score INTEGER,
       clock TEXT NOT NULL,
+      player_id TEXT,
       UNIQUE (game_id, period_code, event_index)
     )
+  |}
+
+  (* Migration: Add player_id column if missing (for existing databases) *)
+  let ensure_play_by_play_events_player_id_column = (unit ->. unit) {|
+    ALTER TABLE play_by_play_events ADD COLUMN IF NOT EXISTS player_id TEXT
   |}
   let ensure_play_by_play_events_index_game = (unit ->. unit) {|
     CREATE INDEX IF NOT EXISTS idx_pbp_game_id ON play_by_play_events(game_id)
@@ -865,14 +963,9 @@ module Queries = struct
   let ensure_play_by_play_events_index_game_period = (unit ->. unit) {|
     CREATE INDEX IF NOT EXISTS idx_pbp_game_period ON play_by_play_events(game_id, period_code)
   |}
-
-  let fetch_play_by_play_events = (string ->* Types.pbp_event) {|
-    SELECT period_code, event_index, team_side, description, team1_score, team2_score, clock
-    FROM play_by_play_events
-    WHERE game_id = ?
-    ORDER BY event_index ASC
+  let ensure_play_by_play_events_index_player = (unit ->. unit) {|
+    CREATE INDEX IF NOT EXISTS idx_pbp_player_id ON play_by_play_events(player_id) WHERE player_id IS NOT NULL
   |}
-
   let ensure_player_drafts_table = (unit ->. unit) {|
     CREATE TABLE IF NOT EXISTS player_drafts (
       player_id TEXT PRIMARY KEY,
@@ -2536,6 +2629,58 @@ module Queries = struct
 		      AND (? = 1 OR g.game_id NOT IN (SELECT game_id FROM score_mismatch_games))
 		    ORDER BY g.game_date DESC
 		  |}
+		  (** Batch query for multiple players - returns player_id with each row *)
+		  let batch_player_game_logs = (t2 string (t2 string string) ->* Types.player_game_stat_with_id) {|
+		    WITH sums AS (
+		      SELECT game_id, team_code, SUM(pts) AS pts_sum
+		      FROM game_stats
+		      GROUP BY game_id, team_code
+		    )
+		    SELECT
+		      s.player_id,
+		      g.game_id,
+		      g.game_date,
+		      CASE WHEN g.home_team_code = s.team_code THEN t2.team_name_kr ELSE t1.team_name_kr END as opponent,
+		      CASE WHEN g.home_team_code = s.team_code THEN 1 ELSE 0 END as is_home,
+		      CASE WHEN g.home_team_code = s.team_code THEN COALESCE(g.home_score, sh.pts_sum) ELSE COALESCE(g.away_score, sa.pts_sum) END as team_score,
+		      CASE WHEN g.home_team_code = s.team_code THEN COALESCE(g.away_score, sa.pts_sum) ELSE COALESCE(g.home_score, sh.pts_sum) END as opponent_score,
+		      CASE
+		        WHEN g.home_score IS NOT NULL
+		          AND g.away_score IS NOT NULL
+		          AND sh.pts_sum IS NOT NULL
+		          AND sa.pts_sum IS NOT NULL
+		          AND g.home_score = sh.pts_sum
+		          AND g.away_score = sa.pts_sum
+		          THEN 2
+		        WHEN g.home_score IS NOT NULL
+		          AND g.away_score IS NOT NULL
+		          AND sh.pts_sum IS NOT NULL
+		          AND sa.pts_sum IS NOT NULL
+		          AND (g.home_score != sh.pts_sum OR g.away_score != sa.pts_sum)
+		          THEN 0
+		        ELSE 1
+		      END as score_quality,
+		      s.min_seconds / 60.0,
+		      s.pts,
+		      s.reb_tot,
+		      s.ast,
+		      s.stl,
+		      s.blk,
+		      s.tov,
+		      pm.plus_minus
+		    FROM game_stats s
+		    JOIN games g ON g.game_id = s.game_id
+		    JOIN teams t1 ON t1.team_code = g.home_team_code
+		    JOIN teams t2 ON t2.team_code = g.away_team_code
+		    LEFT JOIN sums sh ON sh.game_id = g.game_id AND sh.team_code = g.home_team_code
+		    LEFT JOIN sums sa ON sa.game_id = g.game_id AND sa.team_code = g.away_team_code
+		    LEFT JOIN player_plus_minus pm ON pm.game_id = s.game_id AND pm.player_id = s.player_id
+		    WHERE s.player_id = ANY(string_to_array(?, ','))
+		      AND (? = 'ALL' OR g.season_code = ?)
+		      AND g.game_type != '10'
+		      AND g.game_id NOT IN (SELECT game_id FROM score_mismatch_games)
+		    ORDER BY s.player_id, g.game_date DESC
+		  |}
 		  let player_all_star_games = (string ->* Types.player_game_stat) {|
 		    WITH sums AS (
 		      SELECT game_id, team_code, SUM(pts) AS pts_sum
@@ -2737,6 +2882,345 @@ module Queries = struct
       AND g.away_score_calc IS NOT NULL
     ORDER BY g.game_date DESC
   |}
+
+  (* ===== Schedule Table Queries ===== *)
+  let ensure_schedule_table = (unit ->. unit) {|
+    CREATE TABLE IF NOT EXISTS schedule (
+      schedule_id SERIAL PRIMARY KEY,
+      game_date TEXT NOT NULL,
+      game_time TEXT,
+      season_code TEXT NOT NULL,
+      home_team_code TEXT NOT NULL,
+      away_team_code TEXT NOT NULL,
+      venue TEXT,
+      status TEXT DEFAULT 'scheduled',
+      game_id INTEGER,
+      UNIQUE(game_date, home_team_code, away_team_code)
+    )
+  |}
+  let ensure_schedule_index_date = (unit ->. unit) {|
+    CREATE INDEX IF NOT EXISTS idx_schedule_date ON schedule(game_date)
+  |}
+  let ensure_schedule_index_status = (unit ->. unit) {|
+    CREATE INDEX IF NOT EXISTS idx_schedule_status ON schedule(status)
+  |}
+  let ensure_schedule_index_season = (unit ->. unit) {|
+    CREATE INDEX IF NOT EXISTS idx_schedule_season ON schedule(season_code)
+  |}
+
+  let schedule_entry_row =
+    let encode _ = Error "Encode not supported: read-only type" in
+    let decode (schedule_id, (game_date, (game_time, (season_code, (home_team_code, (away_team_code, (home_team_name, (away_team_name, (venue, status))))))))) =
+      Ok {
+        Domain.sch_id = schedule_id;
+        sch_game_date = game_date;
+        sch_game_time = game_time;
+        sch_season_code = season_code;
+        sch_home_team_code = home_team_code;
+        sch_away_team_code = away_team_code;
+        sch_home_team_name = home_team_name;
+        sch_away_team_name = away_team_name;
+        sch_venue = venue;
+        sch_status = status;
+      }
+    in
+    let t = t2 in
+    custom ~encode ~decode
+      (t int
+        (t string
+          (t (option string)
+            (t string
+              (t string
+                (t string
+                  (t (option string)
+                    (t (option string)
+                      (t (option string) string)))))))))
+
+  let get_upcoming_schedule =
+    (t2 string int ->* schedule_entry_row)
+    {|
+    SELECT
+      s.schedule_id,
+      s.game_date,
+      s.game_time,
+      s.season_code,
+      s.home_team_code,
+      s.away_team_code,
+      th.team_name_kr AS home_team_name,
+      ta.team_name_kr AS away_team_name,
+      s.venue,
+      s.status
+    FROM schedule s
+    LEFT JOIN teams th ON s.home_team_code = th.team_code
+    LEFT JOIN teams ta ON s.away_team_code = ta.team_code
+    WHERE s.status = ?
+      AND s.game_date >= to_char(CURRENT_DATE, 'YYYY-MM-DD')
+    ORDER BY s.game_date ASC, s.game_time ASC
+    LIMIT ?
+  |}
+
+  let get_schedule_by_date_range =
+    let params = t2 string (t2 string (t2 string string)) in
+    (params ->* schedule_entry_row)
+    {|
+    SELECT
+      s.schedule_id,
+      s.game_date,
+      s.game_time,
+      s.season_code,
+      s.home_team_code,
+      s.away_team_code,
+      th.team_name_kr AS home_team_name,
+      ta.team_name_kr AS away_team_name,
+      s.venue,
+      s.status
+    FROM schedule s
+    LEFT JOIN teams th ON s.home_team_code = th.team_code
+    LEFT JOIN teams ta ON s.away_team_code = ta.team_code
+    WHERE s.game_date >= ?
+      AND s.game_date <= ?
+      AND (? = 'ALL' OR s.status = ?)
+    ORDER BY s.game_date ASC, s.game_time ASC
+  |}
+
+  (** MVP Race query - combines player stats with team standings *)
+  let mvp_race_candidates =
+    let params = t2 string string in
+    (params ->* Types.mvp_candidate)
+    {|
+    WITH params AS (
+      SELECT ? AS season
+    ),
+    team_records AS (
+      SELECT
+        CASE
+          WHEN g.home_score > g.away_score THEN t_home.team_name_kr
+          ELSE t_away.team_name_kr
+        END AS winner,
+        CASE
+          WHEN g.home_score < g.away_score THEN t_home.team_name_kr
+          ELSE t_away.team_name_kr
+        END AS loser
+      FROM games g
+      JOIN teams t_home ON g.home_team_code = t_home.team_code
+      JOIN teams t_away ON g.away_team_code = t_away.team_code
+      CROSS JOIN params p
+      WHERE g.home_score IS NOT NULL AND g.away_score IS NOT NULL
+        AND (p.season = 'ALL' OR g.season_code = p.season)
+    ),
+    team_standings AS (
+      SELECT
+        team_name,
+        SUM(CASE WHEN is_win THEN 1 ELSE 0 END) AS wins,
+        SUM(CASE WHEN NOT is_win THEN 1 ELSE 0 END) AS losses
+      FROM (
+        SELECT winner AS team_name, TRUE AS is_win FROM team_records
+        UNION ALL
+        SELECT loser AS team_name, FALSE AS is_win FROM team_records
+      ) combined
+      GROUP BY team_name
+    ),
+    player_aggs AS (
+      SELECT
+        gs.player_id,
+        p.player_name,
+        t.team_name_kr AS team_name,
+        COUNT(DISTINCT gs.game_id) AS gp,
+        ROUND(CAST(SUM(gs.pts) AS FLOAT) / NULLIF(COUNT(DISTINCT gs.game_id), 0), 1) AS ppg,
+        ROUND(CAST(SUM(gs.reb_tot) AS FLOAT) / NULLIF(COUNT(DISTINCT gs.game_id), 0), 1) AS rpg,
+        ROUND(CAST(SUM(gs.ast) AS FLOAT) / NULLIF(COUNT(DISTINCT gs.game_id), 0), 1) AS apg,
+        ROUND(CAST(SUM(gs.stl) AS FLOAT) / NULLIF(COUNT(DISTINCT gs.game_id), 0), 1) AS spg,
+        ROUND(CAST(SUM(gs.blk) AS FLOAT) / NULLIF(COUNT(DISTINCT gs.game_id), 0), 1) AS bpg,
+        ROUND(
+          CAST(SUM(gs.pts + gs.reb_tot + gs.ast + gs.stl + gs.blk - (gs.fg_2p_a + gs.fg_3p_a - gs.fg_2p_m - gs.fg_3p_m) - (gs.ft_a - gs.ft_m) - gs.tov) AS FLOAT)
+          / NULLIF(COUNT(DISTINCT gs.game_id), 0),
+          1
+        ) AS efficiency
+      FROM game_stats gs
+      JOIN players p ON gs.player_id = p.player_id
+      JOIN teams t ON gs.team_code = t.team_code
+      JOIN games g ON gs.game_id = g.game_id
+      CROSS JOIN params pp
+      WHERE (pp.season = 'ALL' OR g.season_code = pp.season)
+        AND gs.min_seconds > 0
+      GROUP BY gs.player_id, p.player_name, t.team_name_kr
+      HAVING COUNT(DISTINCT gs.game_id) >= 5
+    )
+    SELECT
+      pa.player_id,
+      pa.player_name,
+      pa.team_name,
+      pa.gp,
+      pa.ppg,
+      pa.rpg,
+      pa.apg,
+      pa.spg,
+      pa.bpg,
+      pa.efficiency,
+      COALESCE(ts.wins, 0) AS team_wins,
+      COALESCE(ts.losses, 0) AS team_losses,
+      ROUND(
+        CASE WHEN (COALESCE(ts.wins, 0) + COALESCE(ts.losses, 0)) > 0
+          THEN CAST(COALESCE(ts.wins, 0) AS FLOAT) / (COALESCE(ts.wins, 0) + COALESCE(ts.losses, 0))
+          ELSE 0
+        END,
+        3
+      ) AS team_win_pct
+    FROM player_aggs pa
+    LEFT JOIN team_standings ts ON pa.team_name = ts.team_name
+    WHERE pa.gp >= ?
+    ORDER BY
+      (pa.ppg * 2 + pa.rpg * 1.2 + pa.apg * 1.5 + pa.spg * 2 + pa.bpg * 2 + pa.efficiency * 0.5
+       + CASE WHEN (COALESCE(ts.wins, 0) + COALESCE(ts.losses, 0)) > 0
+           THEN (CAST(COALESCE(ts.wins, 0) AS FLOAT) / (COALESCE(ts.wins, 0) + COALESCE(ts.losses, 0))) * 20
+           ELSE 0
+         END) DESC
+    LIMIT 20
+  |}
+
+  (** Get all Q4 PBP events for clutch time analysis
+      Clutch time = Q4 + clock <= 5:00 + score diff <= 5 *)
+  let clutch_pbp_events = (string ->* Types.pbp_event) {|
+    SELECT
+      period_code, event_index, team_side, description,
+      team1_score, team2_score, clock
+    FROM play_by_play_events p
+    JOIN games g ON p.game_id = g.game_id
+    WHERE period_code = 'Q4'
+      AND (
+        CASE
+          WHEN clock ~ '^\d+:\d+$' THEN
+            CAST(SPLIT_PART(clock, ':', 1) AS INTEGER) * 60 +
+            CAST(SPLIT_PART(clock, ':', 2) AS INTEGER)
+          ELSE 600
+        END
+      ) <= 300
+      AND ABS(COALESCE(team1_score, 0) - COALESCE(team2_score, 0)) <= 5
+      AND ($1 = 'ALL' OR g.season_code = $1)
+    ORDER BY p.game_id, event_index
+  |}
+
+  (** Aggregated clutch time statistics per player
+      Parses description for scoring events:
+      - "N점슛성공" = field goal made (N=2 or 3)
+      - "N점슛실패" = field goal attempted but missed
+      - "자유투성공" = free throw made
+      - "자유투실패" = free throw missed *)
+  let clutch_stats_by_season = (string ->* Types.clutch_stats) {|
+    WITH clutch_events AS (
+      SELECT
+        p.player_id,
+        p.game_id,
+        p.description,
+        CASE
+          WHEN p.description ~ '2점슛성공' THEN 2
+          WHEN p.description ~ '3점슛성공' THEN 3
+          WHEN p.description ~ '자유투성공' THEN 1
+          ELSE 0
+        END AS points_scored,
+        CASE WHEN p.description ~ '[23]점슛성공' THEN 1 ELSE 0 END AS fg_made,
+        CASE WHEN p.description ~ '[23]점슛' THEN 1 ELSE 0 END AS fg_att,
+        CASE WHEN p.description ~ '3점슛성공' THEN 1 ELSE 0 END AS three_made,
+        CASE WHEN p.description ~ '자유투성공' THEN 1 ELSE 0 END AS ft_made,
+        CASE WHEN p.description ~ '자유투' THEN 1 ELSE 0 END AS ft_att
+      FROM play_by_play_events p
+      JOIN games g ON p.game_id = g.game_id
+      WHERE p.period_code = 'Q4'
+        AND p.player_id IS NOT NULL
+        AND (
+          CASE
+            WHEN p.clock ~ '^\d+:\d+$' THEN
+              CAST(SPLIT_PART(p.clock, ':', 1) AS INTEGER) * 60 +
+              CAST(SPLIT_PART(p.clock, ':', 2) AS INTEGER)
+            ELSE 600
+          END
+        ) <= 300
+        AND ABS(COALESCE(p.team1_score, 0) - COALESCE(p.team2_score, 0)) <= 5
+        AND ($1 = 'ALL' OR g.season_code = $1)
+        AND g.game_type != '10'
+    )
+    SELECT
+      ce.player_id,
+      pl.player_name,
+      COALESCE(t.team_name_kr, 'Unknown') AS team_name,
+      COUNT(DISTINCT ce.game_id) AS clutch_games,
+      SUM(ce.points_scored) AS clutch_points,
+      SUM(ce.fg_made) AS clutch_fg_made,
+      SUM(ce.fg_att) AS clutch_fg_att,
+      CASE
+        WHEN SUM(ce.fg_att) > 0
+        THEN CAST(SUM(ce.fg_made) AS FLOAT) / SUM(ce.fg_att)
+        ELSE 0.0
+      END AS clutch_fg_pct,
+      SUM(ce.ft_made) AS clutch_ft_made,
+      SUM(ce.ft_att) AS clutch_ft_att,
+      SUM(ce.three_made) AS clutch_3p_made
+    FROM clutch_events ce
+    JOIN players pl ON ce.player_id = pl.player_id
+    LEFT JOIN (
+      SELECT DISTINCT ON (gs.player_id)
+        gs.player_id, gs.team_code
+      FROM game_stats gs
+      JOIN games g2 ON gs.game_id = g2.game_id
+      WHERE ($1 = 'ALL' OR g2.season_code = $1)
+      ORDER BY gs.player_id, g2.game_date DESC
+    ) latest_team ON ce.player_id = latest_team.player_id
+    LEFT JOIN teams t ON latest_team.team_code = t.team_code
+    GROUP BY ce.player_id, pl.player_name, t.team_name_kr
+    HAVING SUM(ce.points_scored) > 0 OR SUM(ce.fg_att) > 0 OR SUM(ce.ft_att) > 0
+    ORDER BY SUM(ce.points_scored) DESC, clutch_fg_pct DESC
+    LIMIT 50
+  |}
+
+  (* On/Off Impact Queries *)
+  let on_off_impact_stats = (t2 string string ->* (t2 string (t2 string (t2 string (t2 int (t2 int (t2 int int))))))) {|
+    SELECT
+      p.player_id,
+      p.player_name,
+      t.team_name_kr,
+      COUNT(DISTINCT s.game_id) as games_played,
+      COALESCE(SUM(s.min_seconds), 0) as total_min_seconds,
+      COALESCE(SUM(pm.plus_minus), 0) as total_plus_minus,
+      COUNT(pm.plus_minus) as games_with_pm
+    FROM game_stats s
+    JOIN players p ON s.player_id = p.player_id
+    JOIN teams t ON s.team_code = t.team_code
+    JOIN games g ON g.game_id = s.game_id
+    LEFT JOIN player_plus_minus pm ON pm.game_id = s.game_id AND pm.player_id = s.player_id
+    WHERE ($1 = 'ALL' OR g.season_code = $1)
+      AND g.game_type != '10'
+      AND s.min_seconds > 0
+    GROUP BY p.player_id, p.player_name, t.team_name_kr
+    HAVING COUNT(DISTINCT s.game_id) >= 5
+      AND COALESCE(SUM(s.min_seconds), 0) / 60.0 >= 50
+    ORDER BY
+      CASE WHEN COUNT(pm.plus_minus) > 0
+        THEN CAST(COALESCE(SUM(pm.plus_minus), 0) AS FLOAT) / COUNT(pm.plus_minus)
+        ELSE -999
+      END DESC
+    LIMIT CASE WHEN $2 = '' THEN 50 ELSE CAST($2 AS INTEGER) END
+  |}
+
+  let on_off_impact_for_player = (t2 string string ->? (t2 string (t2 string (t2 string (t2 int (t2 int (t2 int int))))))) {|
+    SELECT
+      p.player_id,
+      p.player_name,
+      t.team_name_kr,
+      COUNT(DISTINCT s.game_id) as games_played,
+      COALESCE(SUM(s.min_seconds), 0) as total_min_seconds,
+      COALESCE(SUM(pm.plus_minus), 0) as total_plus_minus,
+      COUNT(pm.plus_minus) as games_with_pm
+    FROM game_stats s
+    JOIN players p ON s.player_id = p.player_id
+    JOIN teams t ON s.team_code = t.team_code
+    JOIN games g ON g.game_id = s.game_id
+    LEFT JOIN player_plus_minus pm ON pm.game_id = s.game_id AND pm.player_id = s.player_id
+    WHERE s.player_id = $1
+      AND ($2 = 'ALL' OR g.season_code = $2)
+      AND g.game_type != '10'
+      AND s.min_seconds > 0
+    GROUP BY p.player_id, p.player_name, t.team_name_kr
+  |}
 end
 
 (** Database operations *)
@@ -2746,8 +3230,10 @@ end
       let* () = Db.exec Queries.ensure_player_plus_minus_table () in
       let* () = Db.exec Queries.ensure_player_plus_minus_index () in
       let* () = Db.exec Queries.ensure_play_by_play_events_table () in
+      let* () = Db.exec Queries.ensure_play_by_play_events_player_id_column () in
       let* () = Db.exec Queries.ensure_play_by_play_events_index_game () in
       let* () = Db.exec Queries.ensure_play_by_play_events_index_game_period () in
+      let* () = Db.exec Queries.ensure_play_by_play_events_index_player () in
       let* () = Db.exec Queries.ensure_player_drafts_table () in
       let* () = Db.exec Queries.ensure_player_drafts_index_year () in
 	      let* () = Db.exec Queries.ensure_official_trade_events_table () in
@@ -2762,6 +3248,11 @@ end
       let* () = Db.exec Queries.ensure_game_stats_index_game_team () in
       let* () = Db.exec Queries.ensure_games_index_season_type () in
       let* () = Db.exec Queries.ensure_games_index_season_date () in
+      (* Schedule table for upcoming games *)
+      let* () = Db.exec Queries.ensure_schedule_table () in
+      let* () = Db.exec Queries.ensure_schedule_index_date () in
+      let* () = Db.exec Queries.ensure_schedule_index_status () in
+      let* () = Db.exec Queries.ensure_schedule_index_season () in
       (* Leaders base cache MATERIALIZED VIEW - drop first to update schema *)
       let* () = Db.exec Queries.drop_leaders_base_cache () in
       let* () = Db.exec Queries.ensure_leaders_base_cache_view () in
@@ -2808,6 +3299,14 @@ end
   let get_official_trade_events ~year ~search (module Db : Caqti_lwt.CONNECTION) =
     let pattern = normalize_search_pattern (normalize_label search) in
     Db.collect_list Queries.official_trade_events_filtered ((year, year), pattern)
+
+  (* Schedule queries *)
+  let get_upcoming_schedule ~status ~limit (module Db : Caqti_lwt.CONNECTION) =
+    Db.collect_list Queries.get_upcoming_schedule (status, limit)
+
+  let get_schedule_by_date_range ~start_date ~end_date ~status (module Db : Caqti_lwt.CONNECTION) =
+    Db.collect_list Queries.get_schedule_by_date_range (start_date, (end_date, (status, status)))
+
   let get_players_base ~season ~include_mismatch (module Db : Caqti_lwt.CONNECTION) =
     let s = if String.trim season = "" then "ALL" else season in
     let include_int = if include_mismatch then 1 else 0 in
@@ -3013,6 +3512,10 @@ end
     let include_int = if include_mismatch then 1 else 0 in
     let s = if String.trim season = "" then "ALL" else season in
     Db.collect_list Queries.player_game_logs (player_id, (s, (s, include_int)))
+  let get_batch_player_game_logs ~player_ids ~season (module Db : Caqti_lwt.CONNECTION) =
+    let ids_csv = String.concat "," player_ids in
+    let s = if String.trim season = "" then "ALL" else season in
+    Db.collect_list Queries.batch_player_game_logs (ids_csv, (s, s))
 	  let get_team_recent_games ~team_name ~season (module Db : Caqti_lwt.CONNECTION) =
 	    let s = if String.trim season = "" then "ALL" else season in
 	    let t =
@@ -3026,12 +3529,9 @@ end
 	             (team_name,
 	              (s, s)))))))))
 	    in
-	                Db.collect_list Queries.team_recent_games t
-	    
-	              let get_play_by_play ~game_id (module Db : Caqti_lwt.CONNECTION) =
-	                Db.collect_list Queries.fetch_play_by_play_events game_id
-	    
-	              let get_team_games ~team_name ~season (module Db : Caqti_lwt.CONNECTION) =	    let s = if String.trim season = "" then "ALL" else season in
+	    Db.collect_list Queries.team_recent_games t
+	  let get_team_games ~team_name ~season (module Db : Caqti_lwt.CONNECTION) =
+	    let s = if String.trim season = "" then "ALL" else season in
 	    let t =
 	      (team_name,
 	       (team_name,
@@ -3045,6 +3545,11 @@ end
 	    in
 	    Db.collect_list Queries.team_games t
 	  let get_player_h2h ~p1_id ~p2_id ~season (module Db : Caqti_lwt.CONNECTION) = let s = if season = "" then "ALL" else season in Db.collect_list Queries.player_h2h_games ((p1_id, p2_id), (s, s))
+
+    (** Get MVP race candidates for a season *)
+    let get_mvp_race_candidates ~season ~min_games (module Db : Caqti_lwt.CONNECTION) =
+      let s = if String.trim season = "" then "ALL" else season in
+      Db.collect_list Queries.mvp_race_candidates (s, min_games)
 	end
 
 (** Connection pool *)
@@ -3098,10 +3603,27 @@ module Cache = struct
         None
     | None -> None
 
+  (** Evict expired entries first, then oldest 25% if still over capacity *)
+  let evict t =
+    let current = now () in
+    (* Phase 1: Remove expired entries *)
+    let expired_keys = Hashtbl.fold (fun k entry acc ->
+      if entry.expires_at <= current then k :: acc else acc
+    ) t.store [] in
+    List.iter (Hashtbl.remove t.store) expired_keys;
+    (* Phase 2: If still over capacity, remove oldest 25% *)
+    if Hashtbl.length t.store > t.max_entries then begin
+      let entries = Hashtbl.fold (fun k e acc -> (k, e.expires_at) :: acc) t.store [] in
+      let sorted = List.sort (fun (_, t1) (_, t2) -> Float.compare t1 t2) entries in
+      let to_remove = max 1 (List.length sorted / 4) in
+      List.iteri (fun i (k, _) ->
+        if i < to_remove then Hashtbl.remove t.store k
+      ) sorted
+    end
+
   let set t key value =
     Hashtbl.replace t.store key { value; expires_at = now () +. t.ttl };
-    if Hashtbl.length t.store > t.max_entries then
-      Hashtbl.clear t.store
+    if Hashtbl.length t.store > t.max_entries then evict t
 end
 
 let cached cache key f =
@@ -3166,6 +3688,7 @@ let history_cache = Cache.create ~ttl:(60.0 *. 60.0 *. 6.0) ~max_entries:16  (* 
 let legends_cache = Cache.create ~ttl:(60.0 *. 60.0 *. 6.0) ~max_entries:16
 let coaches_cache = Cache.create ~ttl:(60.0 *. 60.0 *. 6.0) ~max_entries:16
 let player_career_cache = Cache.create ~ttl:300.0 ~max_entries:128
+let schedule_cache = Cache.create ~ttl:60.0 ~max_entries:16  (* 1 min TTL - schedule changes frequently *)
 
 let take n items =
   let rec loop acc count = function
@@ -3586,6 +4109,27 @@ let get_player_game_logs ~player_id ?(season="ALL") ?(include_mismatch=false) ()
   let key = Printf.sprintf "player_id=%s|season=%s|mismatch=%b" player_id season include_mismatch in
   cached player_game_logs_cache key (fun () ->
     with_db (fun db -> Repo.get_player_game_logs ~player_id ~season ~include_mismatch db))
+
+(** Batch fetch game logs for multiple players in single query.
+    Returns a Hashtbl mapping player_id -> player_game_stat list *)
+let get_batch_player_game_logs ~player_ids ?(season="ALL") () =
+  let open Lwt.Syntax in
+  let* result = with_db (fun db -> Repo.get_batch_player_game_logs ~player_ids ~season db) in
+  match result with
+  | Error e -> Lwt.return (Error e)
+  | Ok rows ->
+      let tbl = Hashtbl.create (List.length player_ids) in
+      List.iter (fun (row: player_game_stat_with_id) ->
+        let existing = match Hashtbl.find_opt tbl row.pgs_player_id with
+          | Some lst -> lst
+          | None -> []
+        in
+        Hashtbl.replace tbl row.pgs_player_id (row.pgs_stat :: existing)
+      ) rows;
+      (* Reverse lists since we iterated in DESC order but appended to front *)
+      Hashtbl.iter (fun k v -> Hashtbl.replace tbl k (List.rev v)) tbl;
+      Lwt.return (Ok tbl)
+
 let get_team_full_detail ~team_name ?(season="ALL") () =
   let key = Printf.sprintf "team=%s|season=%s" (cache_key_text team_name) season in
   cached team_detail_cache key (fun () ->
@@ -3605,7 +4149,7 @@ let get_player_h2h_data ~p1_id ~p2_id ?(season="ALL") () =
 let get_db_quality_report () : qa_db_report db_result =
   cached qa_report_cache "qa_report" (fun () ->
     let open Lwt_result.Syntax in
-    let int_or_zero = function | None -> 0 | Some v -> v in
+    let int_or_zero = Option.value ~default:0 in
     let round1 v = Float.round (v *. 10.0) /. 10.0 in
     let* games_total_opt = with_db (fun db -> Repo.qa_games_total db) in
     let* games_with_stats_opt = with_db (fun db -> Repo.qa_games_with_stats db) in
@@ -3668,6 +4212,363 @@ let get_player_career ~player_name () =
   cached player_career_cache key (fun () ->
     with_db (fun db -> Repo.get_player_career ~player_name db))
 
-let get_play_by_play ~game_id () =
-  with_db (fun db -> Repo.get_play_by_play ~game_id db)
+(* ===== Schedule Public API ===== *)
 
+let get_upcoming_schedule ?(status="scheduled") ?(limit=10) () =
+  let key = Printf.sprintf "status=%s,limit=%d" status limit in
+  cached schedule_cache key (fun () ->
+    with_db (fun db -> Repo.get_upcoming_schedule ~status ~limit db))
+
+let get_schedule_by_date_range ~start_date ~end_date ?(status="ALL") () =
+  let key = Printf.sprintf "start=%s,end=%s,status=%s" start_date end_date status in
+  cached schedule_cache key (fun () ->
+    with_db (fun db -> Repo.get_schedule_by_date_range ~start_date ~end_date ~status db))
+
+(* ===== MVP Race Public API ===== *)
+
+let mvp_race_cache = Cache.create ~ttl:120.0 ~max_entries:16
+
+let get_mvp_race ?(season="ALL") ?(min_games=5) () =
+  let key = Printf.sprintf "season=%s,min_games=%d" season min_games in
+  let min_games_str = string_of_int min_games in
+  let open Lwt.Syntax in
+  let* result = cached mvp_race_cache key (fun () ->
+    with_db (fun db -> Repo.get_mvp_race_candidates ~season ~min_games:min_games_str db)) in
+  match result with
+  | Ok candidates ->
+      (* Add rank to each candidate *)
+      let ranked = candidates |> List.mapi (fun i c -> { c with mvp_rank = i + 1 }) in
+      Lwt.return (Ok ranked)
+  | Error e -> Lwt.return (Error e)
+
+(* ===== Clutch Time Stats Public API ===== *)
+
+(** Get clutch time stats for a season.
+    Clutch time = Q4 remaining 5 min + score diff <= 5 points.
+    Uses play_by_play_events with player_id to aggregate scoring stats. *)
+let get_clutch_stats ~season () =
+  let open Lwt.Syntax in
+  let s = if String.trim season = "" then "ALL" else season in
+  let* result = with_db (fun (module Db : Caqti_lwt.CONNECTION) ->
+    Db.collect_list Queries.clutch_stats_by_season s
+  ) in
+  match result with
+  | Ok rows -> Lwt.return (Ok rows)
+  | Error e -> Lwt.return (Error e)
+
+(* ===== On/Off Impact Public API ===== *)
+
+(** Convert DB row to on_off_impact *)
+let row_to_on_off_impact (player_id, (player_name, (team_name, (games_played, (total_min_seconds, (total_plus_minus, games_with_pm)))))) : Domain.on_off_impact =
+  let total_minutes = float_of_int total_min_seconds /. 60.0 in
+  let avg_pm = if games_with_pm > 0 then float_of_int total_plus_minus /. float_of_int games_with_pm else 0.0 in
+  {
+    ooi_player_id = player_id;
+    ooi_player_name = player_name;
+    ooi_team_name = team_name;
+    ooi_games_played = games_played;
+    ooi_total_minutes = total_minutes;
+    ooi_on_court = {
+      ocs_games = games_with_pm;
+      ocs_minutes = total_minutes;
+      ocs_team_pts = 0;
+      ocs_opp_pts = 0;
+      ocs_possessions = 0.0;
+    };
+    ooi_off_court = {
+      ofcs_games = 0;
+      ofcs_minutes = 0.0;
+      ofcs_team_pts = 0;
+      ofcs_opp_pts = 0;
+      ofcs_possessions = 0.0;
+    };
+    ooi_net_rating_on = 0.0;
+    ooi_net_rating_off = 0.0;
+    ooi_net_rating_diff = 0.0;
+    ooi_plus_minus_total = total_plus_minus;
+    ooi_plus_minus_avg = avg_pm;
+  }
+
+(** Get on/off impact stats for all qualifying players in a season *)
+let get_on_off_impact_stats ~season ?(limit=50) () =
+  let open Lwt.Syntax in
+  let limit_str = string_of_int limit in
+  let* result = with_db (fun (module Db : Caqti_lwt.CONNECTION) ->
+    Db.collect_list Queries.on_off_impact_stats (season, limit_str)
+  ) in
+  match result with
+  | Ok rows -> Lwt.return (Ok (List.map row_to_on_off_impact rows))
+  | Error e -> Lwt.return (Error e)
+
+(** Get on/off impact for a specific player *)
+let get_on_off_impact_for_player ~player_id ~season () =
+  let open Lwt.Syntax in
+  let* result = with_db (fun (module Db : Caqti_lwt.CONNECTION) ->
+    Db.find_opt Queries.on_off_impact_for_player (player_id, season)
+  ) in
+  match result with
+  | Ok (Some row) -> Lwt.return (Ok (Some (row_to_on_off_impact row)))
+  | Ok None -> Lwt.return (Ok None)
+  | Error e -> Lwt.return (Error e)
+
+(* ===== Lineup Chemistry Public API ===== *)
+
+(** Lineup analysis data - player stats per game for lineup analysis *)
+type lineup_game_data = {
+  lgd_game_id: string;
+  lgd_player_id: string;
+  lgd_player_name: string;
+  lgd_team_code: string;
+  lgd_team_name: string;
+  lgd_minutes: float;
+  lgd_pts: int;
+  lgd_plus_minus: int option;
+}
+
+let lineup_cache = Cache.create ~ttl:300.0 ~max_entries:32
+
+(** Get all player game stats for lineup analysis *)
+let get_lineup_data ~season ~team_name () =
+  let key = Printf.sprintf "season=%s,team=%s" season team_name in
+  cached lineup_cache key (fun () ->
+    with_db (fun (module Db : Caqti_lwt.CONNECTION) ->
+      let open Caqti_type in
+      let open Lwt_result.Syntax in
+      let query = Request_oneshot.(
+        t2 string (t2 string (t2 string string)) ->*
+        (t2 string (t2 string (t2 string (t2 string (t2 string (t2 int (t2 int (option int))))))))
+      ) {|
+        SELECT
+          s.game_id,
+          s.player_id,
+          p.player_name,
+          s.team_code,
+          t.team_name,
+          s.min_seconds,
+          s.pts,
+          s.plus_minus
+        FROM game_stats s
+        JOIN games g ON g.game_id = s.game_id
+        JOIN players p ON p.player_id = s.player_id
+        JOIN teams t ON t.team_code = s.team_code
+        WHERE g.game_type != '10'
+          AND (g.season_id = ? OR ? = 'ALL')
+          AND (s.team_code = ? OR ? = 'ALL')
+          AND s.min_seconds > 0
+        ORDER BY s.game_id, s.team_code, s.min_seconds DESC
+      |} in
+      let* data = Db.collect_list query (season, (season, (team_name, team_name))) in
+      let parsed = data |> List.map (fun (game_id, (player_id, (player_name, (team_code, (team_name, (min_secs, (pts, plus_minus))))))) ->
+        { lgd_game_id = game_id;
+          lgd_player_id = player_id;
+          lgd_player_name = player_name;
+          lgd_team_code = team_code;
+          lgd_team_name = team_name;
+          lgd_minutes = float_of_int min_secs /. 60.0;
+          lgd_pts = pts;
+          lgd_plus_minus = plus_minus;
+        })
+      in
+      Lwt_result.return parsed))
+
+(** Module for lineup analysis calculations *)
+module LineupAnalysis = struct
+  open Domain
+
+  (** Group game data by (game_id, team_code) *)
+  let group_by_game_team (data: lineup_game_data list)
+      : (string * string, lineup_game_data list) Hashtbl.t =
+    let tbl = Hashtbl.create 256 in
+    List.iter (fun d ->
+      let key = (d.lgd_game_id, d.lgd_team_code) in
+      let existing = try Hashtbl.find tbl key with Not_found -> [] in
+      Hashtbl.replace tbl key (d :: existing)
+    ) data;
+    tbl
+
+  (** Get top 5 players by minutes in a game-team combo *)
+  let get_starting_five (players: lineup_game_data list) : lineup_game_data list =
+    players
+    |> List.sort (fun a b -> compare b.lgd_minutes a.lgd_minutes)
+    |> (fun l ->
+        let rec take n acc = function
+          | [] -> List.rev acc
+          | x :: xs -> if n <= 0 then List.rev acc else take (n-1) (x::acc) xs
+        in take 5 [] l)
+
+  (** Create lineup key from players *)
+  let players_to_key (players: lineup_game_data list) : string =
+    players
+    |> List.map (fun p -> p.lgd_player_id)
+    |> List.sort String.compare
+    |> String.concat ","
+
+  (** Analyze lineups from game data *)
+  let analyze_lineups ~team_name (data: lineup_game_data list) : lineup_stats list =
+    let grouped = group_by_game_team data in
+    (* Collect lineup stats *)
+    let lineup_tbl : (string, lineup_stats * lineup_game_data list) Hashtbl.t =
+      Hashtbl.create 128 in
+
+    Hashtbl.iter (fun (_game_id, team_code) players ->
+      if team_name = "ALL" || team_code = team_name then begin
+        let top5 = get_starting_five players in
+        if List.length top5 >= 5 then begin
+          let key = players_to_key top5 in
+          let team = (List.hd top5).lgd_team_name in
+          let total_min = List.fold_left (fun acc p -> acc +. p.lgd_minutes) 0.0 top5 in
+          let total_pts = List.fold_left (fun acc p -> acc + p.lgd_pts) 0 top5 in
+          let total_pm = List.fold_left (fun acc p ->
+            acc + (match p.lgd_plus_minus with Some pm -> pm | None -> 0)
+          ) 0 top5 in
+
+          let (existing, players_ref) =
+            try Hashtbl.find lineup_tbl key
+            with Not_found -> (empty_lineup_stats ~team_name:team, []) in
+
+          let updated = {
+            existing with
+            ls_games_together = existing.ls_games_together + 1;
+            ls_total_minutes = existing.ls_total_minutes +. total_min;
+            ls_total_pts = existing.ls_total_pts + total_pts;
+            ls_plus_minus = existing.ls_plus_minus + total_pm;
+          } in
+          Hashtbl.replace lineup_tbl key (updated, top5 @ players_ref)
+        end
+      end
+    ) grouped;
+
+    (* Convert to list and calculate averages *)
+    Hashtbl.fold (fun _key (stats, players_sample) acc ->
+      let player_infos =
+        players_sample
+        |> List.sort_uniq (fun a b -> String.compare a.lgd_player_id b.lgd_player_id)
+        |> (fun l ->
+            let rec take n acc = function
+              | [] -> List.rev acc
+              | x :: xs -> if n <= 0 then List.rev acc else take (n-1) (x::acc) xs
+            in take 5 [] l)
+        |> List.map (fun p -> {
+            lp_player_id = p.lgd_player_id;
+            lp_player_name = p.lgd_player_name;
+            lp_position = None;
+          })
+      in
+      let avg_pts_per_min =
+        if stats.ls_total_minutes > 0.0
+        then float_of_int stats.ls_total_pts /. stats.ls_total_minutes
+        else 0.0 in
+      let avg_margin_per_min =
+        if stats.ls_total_minutes > 0.0
+        then float_of_int stats.ls_plus_minus /. stats.ls_total_minutes
+        else 0.0 in
+      { stats with
+        ls_players = player_infos;
+        ls_avg_pts_per_min = avg_pts_per_min;
+        ls_avg_margin_per_min = avg_margin_per_min;
+      } :: acc
+    ) lineup_tbl []
+
+  (** Calculate player pair synergies *)
+  let analyze_synergies (lineups: lineup_stats list) : lineup_synergy list =
+    let pair_tbl : (string * string, int * float * int) Hashtbl.t = Hashtbl.create 256 in
+
+    (* Collect pair data from lineups *)
+    List.iter (fun lineup ->
+      let players = lineup.ls_players in
+      (* Generate all pairs *)
+      let rec pairs acc = function
+        | [] -> acc
+        | p1 :: rest ->
+          let new_pairs = List.map (fun p2 -> (p1, p2)) rest in
+          pairs (new_pairs @ acc) rest
+      in
+      let all_pairs = pairs [] players in
+      List.iter (fun (p1, p2) ->
+        let (id1, id2) =
+          if p1.lp_player_id < p2.lp_player_id
+          then (p1.lp_player_id, p2.lp_player_id)
+          else (p2.lp_player_id, p1.lp_player_id) in
+        let key = (id1, id2) in
+        let (games, mins, pm) =
+          try Hashtbl.find pair_tbl key
+          with Not_found -> (0, 0.0, 0) in
+        Hashtbl.replace pair_tbl key
+          (games + lineup.ls_games_together,
+           mins +. lineup.ls_total_minutes,
+           pm + lineup.ls_plus_minus)
+      ) all_pairs
+    ) lineups;
+
+    (* Build player name lookup *)
+    let name_tbl = Hashtbl.create 64 in
+    List.iter (fun lineup ->
+      List.iter (fun p ->
+        Hashtbl.replace name_tbl p.lp_player_id p.lp_player_name
+      ) lineup.ls_players
+    ) lineups;
+
+    (* Convert to synergy list *)
+    Hashtbl.fold (fun (id1, id2) (games, mins, pm) acc ->
+      let avg_pm = if mins > 0.0 then float_of_int pm /. mins else 0.0 in
+      let score = calculate_synergy_score
+        ~games_together:games ~total_minutes:mins ~avg_plus_minus:avg_pm in
+      let name1 = try Hashtbl.find name_tbl id1 with Not_found -> id1 in
+      let name2 = try Hashtbl.find name_tbl id2 with Not_found -> id2 in
+      { syn_player1_id = id1;
+        syn_player1_name = name1;
+        syn_player2_id = id2;
+        syn_player2_name = name2;
+        syn_games_together = games;
+        syn_total_minutes = mins;
+        syn_avg_plus_minus = avg_pm;
+        syn_synergy_score = score;
+      } :: acc
+    ) pair_tbl []
+    |> List.sort (fun a b -> compare b.syn_synergy_score a.syn_synergy_score)
+end
+
+(** Get full lineup chemistry analysis for a team *)
+let get_lineup_chemistry ~season ~team_name () : (Domain.lineup_chemistry, db_error) result Lwt.t =
+  let open Lwt.Syntax in
+  let open Domain in
+  let* data_result = get_lineup_data ~season ~team_name () in
+  match data_result with
+  | Error e -> Lwt.return (Error e)
+  | Ok data ->
+    let lineups = LineupAnalysis.analyze_lineups ~team_name data in
+    let synergies = LineupAnalysis.analyze_synergies lineups in
+
+    (* Sort lineups by different criteria *)
+    let by_minutes =
+      lineups
+      |> List.sort (compare_lineup_stats LineupByMinutes)
+      |> (fun l -> let rec take n acc = function
+          | [] -> List.rev acc
+          | x :: xs -> if n <= 0 then List.rev acc else take (n-1) (x::acc) xs
+        in take 10 [] l) in
+
+    let by_plus_minus =
+      lineups
+      |> List.filter (fun l -> l.ls_total_minutes >= 20.0)  (* Min 20 min filter *)
+      |> List.sort (compare_lineup_stats LineupByPlusMinus)
+      |> (fun l -> let rec take n acc = function
+          | [] -> List.rev acc
+          | x :: xs -> if n <= 0 then List.rev acc else take (n-1) (x::acc) xs
+        in take 10 [] l) in
+
+    let top_synergies =
+      synergies
+      |> List.filter (fun s -> s.syn_games_together >= 2)
+      |> (fun l -> let rec take n acc = function
+          | [] -> List.rev acc
+          | x :: xs -> if n <= 0 then List.rev acc else take (n-1) (x::acc) xs
+        in take 20 [] l) in
+
+    Lwt.return (Ok {
+      lc_team_name = team_name;
+      lc_season = season;
+      lc_top_lineups = by_plus_minus;
+      lc_frequent_lineups = by_minutes;
+      lc_synergies = top_synergies;
+    })

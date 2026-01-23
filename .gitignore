@@ -1,10 +1,31 @@
+# Python
 __pycache__/
 *.pyc
 .env
 .venv/
 venv/
+
+# macOS
 .DS_Store
+
+# Logs
 *.log
+
+# Data
 data/wkbl/
 data/wkbl.db*
+
+# OCaml
+ocaml/_opam/
+ocaml/_build/
+*.byte
+*.native
+*.install
+.merlin
+
+# Assets
 ocaml/static/images/originals/
+
+# Git worktrees (managed separately)
+.worktree/
+.worktrees/

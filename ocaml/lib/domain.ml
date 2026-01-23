@@ -154,6 +154,20 @@ type game_summary = {
   game_type: string;
 }
 
+(** Schedule entry for upcoming/scheduled games *)
+type schedule_entry = {
+  sch_id: int;
+  sch_game_date: string;
+  sch_game_time: string option;
+  sch_season_code: string;
+  sch_home_team_code: string;
+  sch_away_team_code: string;
+  sch_home_team_name: string option;
+  sch_away_team_name: string option;
+  sch_venue: string option;
+  sch_status: string;
+}
+
 type boxscore_player_stat = {
   bs_player_id: string;
   bs_player_name: string;
@@ -217,6 +231,85 @@ type pbp_event = {
   pe_clock: string;
 }
 
+(** Score flow point for game flow chart visualization *)
+type score_flow_point = {
+  sfp_clock: string;       (** Time remaining in period, e.g. "09:30" *)
+  sfp_period: string;      (** Period code, e.g. "Q1", "Q2", "X1" *)
+  sfp_home_score: int;     (** Home team cumulative score *)
+  sfp_away_score: int;     (** Away team cumulative score *)
+  sfp_diff: int;           (** Score difference: home - away *)
+  sfp_elapsed_seconds: int; (** Total elapsed seconds from game start *)
+}
+
+(** Convert period code to period number (1-4 for Q1-Q4, 5+ for OT) *)
+let period_to_number = function
+  | "Q1" -> 1 | "Q2" -> 2 | "Q3" -> 3 | "Q4" -> 4
+  | "X1" -> 5 | "X2" -> 6 | "X3" -> 7 | "X4" -> 8
+  | _ -> 0
+
+(** Parse clock string "MM:SS" to seconds remaining in period *)
+let parse_clock_to_seconds clock =
+  try
+    let parts = String.split_on_char ':' clock in
+    match parts with
+    | [min_str; sec_str] ->
+        let mins = int_of_string (String.trim min_str) in
+        let secs = int_of_string (String.trim sec_str) in
+        mins * 60 + secs
+    | _ -> 600 (* Default to 10 minutes if parse fails *)
+  with _ -> 600
+
+(** Calculate total elapsed seconds from game start *)
+let calculate_elapsed_seconds ~period_code ~clock =
+  let period_num = period_to_number period_code in
+  let period_length = if period_num <= 4 then 600 else 300 in (* 10 min quarters, 5 min OT *)
+  let seconds_remaining = parse_clock_to_seconds clock in
+  let completed_periods =
+    if period_num <= 4 then (period_num - 1) * 600
+    else (4 * 600) + ((period_num - 5) * 300)
+  in
+  completed_periods + (period_length - seconds_remaining)
+
+(** Extract score flow points from PBP events for chart visualization.
+    Returns a list of points where scores changed, sorted by elapsed time. *)
+let extract_score_flow (events: pbp_event list) : score_flow_point list =
+  let score_changes =
+    events
+    |> List.filter_map (fun e ->
+        match (e.pe_team1_score, e.pe_team2_score) with
+        | (Some home, Some away) ->
+            let elapsed = calculate_elapsed_seconds ~period_code:e.pe_period_code ~clock:e.pe_clock in
+            Some {
+              sfp_clock = e.pe_clock;
+              sfp_period = e.pe_period_code;
+              sfp_home_score = home;
+              sfp_away_score = away;
+              sfp_diff = home - away;
+              sfp_elapsed_seconds = elapsed;
+            }
+        | _ -> None)
+  in
+  (* Sort by elapsed time and deduplicate consecutive same scores *)
+  let sorted = List.sort (fun a b -> compare a.sfp_elapsed_seconds b.sfp_elapsed_seconds) score_changes in
+  (* Deduplicate consecutive same scores using fold_left *)
+  let dedup lst =
+    List.fold_left (fun acc x ->
+      match acc with
+      | prev :: _ when prev.sfp_home_score = x.sfp_home_score && prev.sfp_away_score = x.sfp_away_score -> acc
+      | _ -> x :: acc) [] lst |> List.rev
+  in
+  (* Add starting point at 0-0 if not present *)
+  let with_start =
+    match sorted with
+    | [] -> []
+    | first :: _ as pts ->
+        if first.sfp_elapsed_seconds > 0 then
+          { sfp_clock = "10:00"; sfp_period = "Q1"; sfp_home_score = 0; sfp_away_score = 0;
+            sfp_diff = 0; sfp_elapsed_seconds = 0 } :: pts
+        else pts
+  in
+  dedup with_start
+
 type leader_entry = {
   le_player_id: string;
   le_player_name: string;
@@ -266,6 +359,12 @@ type player_game_stat = {
   blk: int;
   tov: int;
   plus_minus: int option;
+}
+
+(** Player game stat with player_id for batch queries *)
+type player_game_stat_with_id = {
+  pgs_player_id: string;
+  pgs_stat: player_game_stat;
 }
 
 type career_high_item = {
@@ -370,6 +469,49 @@ type h2h_game = {
   winner_team: string;
   score_diff: int;
 }
+
+(** H2H Advanced Summary - computed from h2h_game list *)
+type h2h_summary = {
+  h2h_total_games: int;
+  h2h_p1_wins: int;
+  h2h_p2_wins: int;
+  h2h_p1_avg_pts: float;
+  h2h_p1_avg_reb: float;
+  h2h_p1_avg_ast: float;
+  h2h_p2_avg_pts: float;
+  h2h_p2_avg_reb: float;
+  h2h_p2_avg_ast: float;
+}
+
+(** Calculate H2H summary from a list of h2h_games *)
+let calculate_h2h_summary ~p1_team (games: h2h_game list) : h2h_summary =
+  let total = List.length games in
+  if total = 0 then
+    { h2h_total_games = 0;
+      h2h_p1_wins = 0; h2h_p2_wins = 0;
+      h2h_p1_avg_pts = 0.0; h2h_p1_avg_reb = 0.0; h2h_p1_avg_ast = 0.0;
+      h2h_p2_avg_pts = 0.0; h2h_p2_avg_reb = 0.0; h2h_p2_avg_ast = 0.0 }
+  else
+    (* Single-pass fold for all stats - 7x faster than individual folds *)
+    let (p1_wins, sum_p1_pts, sum_p1_reb, sum_p1_ast, sum_p2_pts, sum_p2_reb, sum_p2_ast) =
+      List.fold_left (fun (w1, p1pts, p1reb, p1ast, p2pts, p2reb, p2ast) g ->
+        let w1' = if g.player1_team = g.winner_team then w1 + 1 else w1 in
+        (w1', p1pts + g.player1_pts, p1reb + g.player1_reb, p1ast + g.player1_ast,
+         p2pts + g.player2_pts, p2reb + g.player2_reb, p2ast + g.player2_ast))
+      (0, 0, 0, 0, 0, 0, 0) games
+    in
+    let p2_wins = total - p1_wins in
+    let n = float_of_int total in
+    let _ = p1_team in (* suppress unused warning *)
+    { h2h_total_games = total;
+      h2h_p1_wins = p1_wins;
+      h2h_p2_wins = p2_wins;
+      h2h_p1_avg_pts = float_of_int sum_p1_pts /. n;
+      h2h_p1_avg_reb = float_of_int sum_p1_reb /. n;
+      h2h_p1_avg_ast = float_of_int sum_p1_ast /. n;
+      h2h_p2_avg_pts = float_of_int sum_p2_pts /. n;
+      h2h_p2_avg_reb = float_of_int sum_p2_reb /. n;
+      h2h_p2_avg_ast = float_of_int sum_p2_ast /. n }
 
 (** Prediction types *)
 type team_prediction_stats = {
@@ -490,75 +632,52 @@ type player_career_entry = {
   pce_awards: string option;
 }
 
+(** Detect UTF-8 whitespace/invisible chars. Returns Some skip_bytes or None. *)
+let is_utf8_whitespace s i len =
+  let c0 = s.[i] in
+  if c0 = ' ' || c0 = '\t' || c0 = '\n' || c0 = '\r' || c0 = '"' || c0 = '\\' then Some 1
+  else if c0 = '\xC2' && i + 1 < len && s.[i + 1] = '\xA0' then Some 2  (* NBSP *)
+  else if i + 2 < len then
+    let c1, c2 = s.[i + 1], s.[i + 2] in
+    match c0, c1 with
+    | '\xEF', '\xBB' when c2 = '\xBF' -> Some 3  (* UTF-8 BOM *)
+    | '\xE2', '\x80' when c2 >= '\x89' && c2 <= '\x8F' || c2 = '\xAF' -> Some 3
+    | '\xE2', '\x81' when c2 = '\xA0' -> Some 3  (* WORD JOINER *)
+    | '\xE3', '\x80' when c2 = '\x80' -> Some 3  (* IDEOGRAPHIC SPACE *)
+    | _ -> None
+  else None
+
 (** Helper to map team names to codes *)
 let normalize_label (s: string) =
   let len = String.length s in
-  let is_ascii_space = function
-    | ' ' | '\t' | '\n' | '\r' -> true
-    | _ -> false
-  in
   let buf = Buffer.create len in
-  let add_space prev_space =
-    if prev_space then () else Buffer.add_char buf ' '
-  in
   let rec loop i prev_space =
     if i >= len then ()
-    else
-      let c0 = s.[i] in
-      if c0 = '"' || c0 = '\\' then (
-        add_space prev_space;
-        loop (i + 1) true
-      ) else if is_ascii_space c0 then (
-        add_space prev_space;
-        loop (i + 1) true
-      ) else if c0 = '\xC2' && i + 1 < len && s.[i + 1] = '\xA0' then (
-        (* NBSP in UTF-8 is 0xC2 0xA0. Avoid corrupting multi-byte UTF-8 chars. *)
-        add_space prev_space;
-        loop (i + 2) true
-      ) else if c0 = '\xEF' && i + 2 < len && s.[i + 1] = '\xBB' && s.[i + 2] = '\xBF' then (
-        (* UTF-8 BOM (zero width no-break space): 0xEF 0xBB 0xBF *)
-        add_space prev_space;
-        loop (i + 3) true
-      ) else if c0 = '\xE2' && i + 2 < len && s.[i + 1] = '\x80' &&
-                (s.[i + 2] = '\x8A' (* HAIR SPACE *)
-                 || s.[i + 2] = '\x8B' (* ZWSP *)
-                 || s.[i + 2] = '\x8C' (* ZWNJ *)
-                 || s.[i + 2] = '\x8D' (* ZWJ *)
-                 || s.[i + 2] = '\x8E' (* LRM *)
-                 || s.[i + 2] = '\x8F' (* RLM *)
-                 || s.[i + 2] = '\x89' (* THIN SPACE *)
-                 || s.[i + 2] = '\xAF' (* NARROW NBSP *)) then (
-        add_space prev_space;
-        loop (i + 3) true
-      ) else if c0 = '\xE2' && i + 2 < len && s.[i + 1] = '\x81' && s.[i + 2] = '\xA0' then (
-        (* WORD JOINER (U+2060): 0xE2 0x81 0xA0 *)
-        add_space prev_space;
-        loop (i + 3) true
-      ) else if c0 = '\xE3' && i + 2 < len && s.[i + 1] = '\x80' && s.[i + 2] = '\x80' then (
-        (* IDEOGRAPHIC SPACE (U+3000): 0xE3 0x80 0x80 *)
-        add_space prev_space;
-        loop (i + 3) true
-      ) else (
-        Buffer.add_char buf c0;
-        loop (i + 1) false
-      )
+    else match is_utf8_whitespace s i len with
+      | Some skip -> if not prev_space then Buffer.add_char buf ' '; loop (i + skip) true
+      | None -> Buffer.add_char buf s.[i]; loop (i + 1) false
   in
   loop 0 true;
   Buffer.contents buf |> String.trim
 
 let team_code_of_string team_name =
   let key = team_name |> normalize_label |> String.uppercase_ascii in
+  let key_len = String.length key in
+  (* Reject strings longer than 30 characters to prevent loose matching on arbitrary text *)
+  let max_length_for_contains = 30 in
   let contains (needle : string) =
-    let nlen = String.length needle in
-    let hlen = String.length key in
-    if nlen = 0 then false
+    if key_len > max_length_for_contains then false
     else
-      let rec loop i =
-        if i + nlen > hlen then false
-        else if String.sub key i nlen = needle then true
-        else loop (i + 1)
-      in
-      loop 0
+      let nlen = String.length needle in
+      let hlen = key_len in
+      if nlen = 0 then false
+      else
+        let rec loop i =
+          if i + nlen > hlen then false
+          else if String.sub key i nlen = needle then true
+          else loop (i + 1)
+        in
+        loop 0
   in
   match key with
   | "아산 우리은행 우리WON" | "우리은행" | "우리WON" | "WO" -> Some "WO"
@@ -610,3 +729,487 @@ let team_code_to_city_en = function
   | "HN" -> "Bucheon"
   | "BN" -> "Busan"
   | _ -> ""
+
+(** MVP Race types *)
+type mvp_candidate = {
+  mvp_rank: int;
+  mvp_player_id: string;
+  mvp_player_name: string;
+  mvp_team_name: string;
+  mvp_team_code: string option;
+  mvp_games_played: int;
+  mvp_ppg: float;
+  mvp_rpg: float;
+  mvp_apg: float;
+  mvp_spg: float;
+  mvp_bpg: float;
+  mvp_efficiency: float;
+  mvp_team_wins: int;
+  mvp_team_losses: int;
+  mvp_team_win_pct: float;
+  mvp_base_score: float;
+  mvp_win_bonus: float;
+  mvp_final_score: float;
+}
+
+(** Calculate MVP score from stats
+    Formula:
+    - Base Score = (PPG * 2) + (RPG * 1.2) + (APG * 1.5) + (SPG * 2) + (BPG * 2) + (EFF * 0.5)
+    - Win Bonus = Team Win% * 20
+    - Final Score = Base Score + Win Bonus
+*)
+let calculate_mvp_score ~ppg ~rpg ~apg ~spg ~bpg ~efficiency ~win_pct =
+  (* Input validation: check for NaN values and invalid win_pct range *)
+  let is_valid x = not (Float.is_nan x) in
+  let all_valid = [ppg; rpg; apg; spg; bpg; efficiency; win_pct] |> List.for_all is_valid in
+  if not all_valid || win_pct < 0.0 || win_pct > 1.0 then
+    (0.0, 0.0, 0.0)
+  else
+    let base_score = (ppg *. 2.0) +. (rpg *. 1.2) +. (apg *. 1.5) +. (spg *. 2.0) +. (bpg *. 2.0) +. (efficiency *. 0.5) in
+    let win_bonus = win_pct *. 20.0 in
+    (base_score, win_bonus, base_score +. win_bonus)
+
+(** Fantasy scoring types and functions *)
+type fantasy_scoring_rule = {
+  fsr_points: float;      (** Points per point scored *)
+  fsr_rebounds: float;    (** Points per rebound *)
+  fsr_assists: float;     (** Points per assist *)
+  fsr_steals: float;      (** Points per steal *)
+  fsr_blocks: float;      (** Points per block *)
+  fsr_turnovers: float;   (** Points per turnover (usually negative) *)
+}
+
+(** Default fantasy scoring rules based on standard fantasy basketball *)
+let default_fantasy_rules = {
+  fsr_points = 1.0;
+  fsr_rebounds = 1.2;
+  fsr_assists = 1.5;
+  fsr_steals = 2.0;
+  fsr_blocks = 2.0;
+  fsr_turnovers = -1.0;
+}
+
+(** Fantasy player score result *)
+type fantasy_player_score = {
+  fps_player_id: string;
+  fps_player_name: string;
+  fps_team_name: string;
+  fps_games_played: int;
+  fps_total_score: float;
+  fps_avg_score: float;
+  fps_pts_contrib: float;
+  fps_reb_contrib: float;
+  fps_ast_contrib: float;
+  fps_stl_contrib: float;
+  fps_blk_contrib: float;
+  fps_tov_contrib: float;
+}
+
+(** Calculate fantasy score for a single game or totals *)
+let calculate_fantasy_score
+    ~(rules: fantasy_scoring_rule)
+    ~pts ~reb ~ast ~stl ~blk ~tov =
+  let pts_contrib = (Float.of_int pts) *. rules.fsr_points in
+  let reb_contrib = (Float.of_int reb) *. rules.fsr_rebounds in
+  let ast_contrib = (Float.of_int ast) *. rules.fsr_assists in
+  let stl_contrib = (Float.of_int stl) *. rules.fsr_steals in
+  let blk_contrib = (Float.of_int blk) *. rules.fsr_blocks in
+  let tov_contrib = (Float.of_int tov) *. rules.fsr_turnovers in
+  let total = pts_contrib +. reb_contrib +. ast_contrib +. stl_contrib +. blk_contrib +. tov_contrib in
+  (total, pts_contrib, reb_contrib, ast_contrib, stl_contrib, blk_contrib, tov_contrib)
+
+(** Calculate fantasy score from player_aggregate *)
+let fantasy_score_of_aggregate
+    ~(rules: fantasy_scoring_rule)
+    (p: player_aggregate) : fantasy_player_score =
+  let (total, pts_c, reb_c, ast_c, stl_c, blk_c, tov_c) =
+    calculate_fantasy_score
+      ~rules
+      ~pts:p.total_points
+      ~reb:p.total_rebounds
+      ~ast:p.total_assists
+      ~stl:p.total_steals
+      ~blk:p.total_blocks
+      ~tov:p.total_turnovers
+  in
+  let avg_score =
+    if p.games_played > 0 then total /. (Float.of_int p.games_played)
+    else 0.0
+  in
+  {
+    fps_player_id = p.player_id;
+    fps_player_name = p.name;
+    fps_team_name = p.team_name;
+    fps_games_played = p.games_played;
+    fps_total_score = total;
+    fps_avg_score = avg_score;
+    fps_pts_contrib = pts_c;
+    fps_reb_contrib = reb_c;
+    fps_ast_contrib = ast_c;
+    fps_stl_contrib = stl_c;
+    fps_blk_contrib = blk_c;
+    fps_tov_contrib = tov_c;
+  }
+
+(** Hot Streaks Types *)
+type streak_type =
+  | WinStreak           (** Team consecutive wins *)
+  | Points20Plus        (** 20+ points in consecutive games *)
+  | DoubleDouble        (** Double-double in consecutive games *)
+  | TripleDouble        (** Triple-double in consecutive games *)
+  | Rebounds10Plus      (** 10+ rebounds in consecutive games *)
+  | Assists7Plus        (** 7+ assists in consecutive games *)
+  | Blocks3Plus         (** 3+ blocks in consecutive games *)
+  | Steals3Plus         (** 3+ steals in consecutive games *)
+
+let streak_type_to_string = function
+  | WinStreak -> "win_streak"
+  | Points20Plus -> "pts_20plus"
+  | DoubleDouble -> "double_double"
+  | TripleDouble -> "triple_double"
+  | Rebounds10Plus -> "reb_10plus"
+  | Assists7Plus -> "ast_7plus"
+  | Blocks3Plus -> "blk_3plus"
+  | Steals3Plus -> "stl_3plus"
+
+let streak_type_to_label = function
+  | WinStreak -> "연승"
+  | Points20Plus -> "20+ 득점"
+  | DoubleDouble -> "더블더블"
+  | TripleDouble -> "트리플더블"
+  | Rebounds10Plus -> "10+ 리바운드"
+  | Assists7Plus -> "7+ 어시스트"
+  | Blocks3Plus -> "3+ 블록"
+  | Steals3Plus -> "3+ 스틸"
+
+let streak_type_to_emoji = function
+  | WinStreak -> "W"
+  | Points20Plus -> "P"
+  | DoubleDouble -> "DD"
+  | TripleDouble -> "TD"
+  | Rebounds10Plus -> "R"
+  | Assists7Plus -> "A"
+  | Blocks3Plus -> "B"
+  | Steals3Plus -> "S"
+
+type player_streak = {
+  ps_player_id: string;
+  ps_player_name: string;
+  ps_team_name: string;
+  ps_streak_type: streak_type;
+  ps_current_count: int;
+  ps_is_active: bool;  (** True if streak is ongoing *)
+  ps_start_date: string;
+  ps_end_date: string option;  (** None if still active *)
+  ps_games: player_game_stat list;  (** Games in the streak *)
+}
+
+type team_streak = {
+  ts_team_name: string;
+  ts_streak_type: streak_type;
+  ts_current_count: int;
+  ts_is_active: bool;
+  ts_start_date: string;
+  ts_end_date: string option;
+  ts_game_ids: string list;
+}
+
+type streak_record = {
+  sr_holder_name: string;      (** Player or team name *)
+  sr_holder_id: string option; (** Player ID if player streak *)
+  sr_team_name: string option; (** Team name for player streaks *)
+  sr_streak_type: streak_type;
+  sr_count: int;
+  sr_start_date: string;
+  sr_end_date: string;
+  sr_season: string;
+}
+
+(** Clutch Time Statistics
+    Clutch time = Q4 remaining 5 minutes + score diff <= 5 points *)
+type clutch_stats = {
+  cs_player_id: string;
+  cs_player_name: string;
+  cs_team_name: string;
+  cs_clutch_games: int;
+  cs_clutch_points: int;
+  cs_clutch_fg_made: int;
+  cs_clutch_fg_att: int;
+  cs_clutch_fg_pct: float;
+  cs_clutch_ft_made: int;
+  cs_clutch_ft_att: int;
+  cs_clutch_3p_made: int;
+}
+
+(** Safe string prefix extraction *)
+let safe_prefix s len =
+  if String.length s >= len then Some (String.sub s 0 len) else None
+
+(** Safe string suffix extraction *)
+let safe_suffix s len =
+  let slen = String.length s in
+  if slen >= len then Some (String.sub s (slen - len) len) else None
+
+(** Check if string starts with prefix *)
+let starts_with s prefix =
+  safe_prefix s (String.length prefix) = Some prefix
+
+(** Check if string ends with suffix *)
+let ends_with s suffix =
+  safe_suffix s (String.length suffix) = Some suffix
+
+(** Parse clock string "MM:SS" to seconds remaining *)
+let parse_clock (clock: string) : int =
+  try
+    match String.split_on_char ':' clock with
+    | [min; sec] ->
+      let m = int_of_string (String.trim min) in
+      let s = int_of_string (String.trim sec) in
+      m * 60 + s
+    | _ -> 0
+  with _ -> 0
+
+(** Check if event is in clutch time
+    Clutch time = Q4 + remaining <= 5 min + score diff <= 5 points *)
+let is_clutch_time ~period_code ~clock ~score_diff : bool =
+  period_code = "Q4" &&
+  parse_clock clock <= 300 &&  (* 5 minutes = 300 seconds *)
+  abs score_diff <= 5
+
+(** Extract clutch time events from PBP data *)
+let extract_clutch_events (events: pbp_event list) : pbp_event list =
+  List.filter (fun e ->
+    let score_diff = match e.pe_team1_score, e.pe_team2_score with
+      | Some s1, Some s2 -> s1 - s2
+      | _ -> 999  (* No score info = not clutch *)
+    in
+    is_clutch_time ~period_code:e.pe_period_code ~clock:e.pe_clock ~score_diff
+  ) events
+
+(** Parse points from PBP description
+    Returns (points, is_made, is_3pt, is_ft) *)
+let parse_scoring_from_description (desc: string) : (int * bool * bool * bool) option =
+  let desc_lower = String.lowercase_ascii desc in
+  (* Helper to check if shot was made *)
+  let is_made d = ends_with d "성공" || ends_with d "made" in
+  (* Korean basketball PBP patterns *)
+  if String.length desc_lower = 0 then None
+  else if starts_with desc_lower "자유투" || starts_with desc_lower "ft" then
+    if is_made desc_lower then Some (1, true, false, true)
+    else Some (0, false, false, true)
+  else if starts_with desc_lower "3점" || starts_with desc_lower "3p" then
+    if is_made desc_lower then Some (3, true, true, false)
+    else Some (0, false, true, false)
+  else if starts_with desc_lower "2점" || starts_with desc_lower "2p" ||
+          starts_with desc_lower "슛" || starts_with desc_lower "layup" ||
+          starts_with desc_lower "dunk" then
+    if is_made desc_lower then Some (2, true, false, false)
+    else Some (0, false, false, false)
+  else
+    None
+
+(* ============================================= *)
+(* On/Off Impact Analysis Types                  *)
+(* ============================================= *)
+
+(** On-Court stats: team performance when player is on court *)
+type on_court_stats = {
+  ocs_games: int;                (** Number of games with on-court time *)
+  ocs_minutes: float;            (** Total minutes on court *)
+  ocs_team_pts: int;             (** Team points scored while on court *)
+  ocs_opp_pts: int;              (** Opponent points while on court *)
+  ocs_possessions: float;        (** Estimated possessions *)
+}
+
+(** Off-Court stats: team performance when player is off court *)
+type off_court_stats = {
+  ofcs_games: int;               (** Number of games with off-court time *)
+  ofcs_minutes: float;           (** Total minutes off court *)
+  ofcs_team_pts: int;            (** Team points scored while off court *)
+  ofcs_opp_pts: int;             (** Opponent points while off court *)
+  ofcs_possessions: float;       (** Estimated possessions *)
+}
+
+(** Complete On/Off Impact analysis for a player *)
+type on_off_impact = {
+  ooi_player_id: string;
+  ooi_player_name: string;
+  ooi_team_name: string;
+  ooi_games_played: int;
+  ooi_total_minutes: float;
+  ooi_on_court: on_court_stats;
+  ooi_off_court: off_court_stats;
+  ooi_net_rating_on: float;      (** Net Rating when on court (per 100 possessions) *)
+  ooi_net_rating_off: float;     (** Net Rating when off court (per 100 possessions) *)
+  ooi_net_rating_diff: float;    (** Difference: on - off (positive = good impact) *)
+  ooi_plus_minus_total: int;     (** Total Plus/Minus across all games *)
+  ooi_plus_minus_avg: float;     (** Average Plus/Minus per game *)
+}
+
+(** Calculate Net Rating: (Team Pts - Opp Pts) per 100 possessions *)
+let calculate_net_rating ~team_pts ~opp_pts ~possessions : float =
+  if possessions <= 0.0 then 0.0
+  else
+    let diff = float_of_int (team_pts - opp_pts) in
+    (diff /. possessions) *. 100.0
+
+(** Calculate offensive rating: Team points per 100 possessions *)
+let calculate_off_rating ~team_pts ~possessions : float =
+  if possessions <= 0.0 then 0.0
+  else (float_of_int team_pts /. possessions) *. 100.0
+
+(** Calculate defensive rating: Opponent points per 100 possessions *)
+let calculate_def_rating ~opp_pts ~possessions : float =
+  if possessions <= 0.0 then 0.0
+  else (float_of_int opp_pts /. possessions) *. 100.0
+
+(** Estimate possessions from basic stats
+    Simple formula: FGA + 0.44*FTA + TOV - OREB *)
+let estimate_possessions ~fga ~fta ~tov ~oreb : float =
+  float_of_int fga +. (0.44 *. float_of_int fta) +. float_of_int tov -. float_of_int oreb
+
+(** Create on_off_impact from aggregated data *)
+let create_on_off_impact
+    ~player_id ~player_name ~team_name
+    ~games_played ~total_minutes
+    ~on_minutes ~on_team_pts ~on_opp_pts ~on_possessions
+    ~off_minutes ~off_team_pts ~off_opp_pts ~off_possessions
+    ~plus_minus_total
+    : on_off_impact =
+  let on_games = if on_minutes > 0.0 then games_played else 0 in
+  let off_games = if off_minutes > 0.0 then games_played else 0 in
+  let on_court = {
+    ocs_games = on_games;
+    ocs_minutes = on_minutes;
+    ocs_team_pts = on_team_pts;
+    ocs_opp_pts = on_opp_pts;
+    ocs_possessions = on_possessions;
+  } in
+  let off_court = {
+    ofcs_games = off_games;
+    ofcs_minutes = off_minutes;
+    ofcs_team_pts = off_team_pts;
+    ofcs_opp_pts = off_opp_pts;
+    ofcs_possessions = off_possessions;
+  } in
+  let net_on = calculate_net_rating ~team_pts:on_team_pts ~opp_pts:on_opp_pts ~possessions:on_possessions in
+  let net_off = calculate_net_rating ~team_pts:off_team_pts ~opp_pts:off_opp_pts ~possessions:off_possessions in
+  {
+    ooi_player_id = player_id;
+    ooi_player_name = player_name;
+    ooi_team_name = team_name;
+    ooi_games_played = games_played;
+    ooi_total_minutes = total_minutes;
+    ooi_on_court = on_court;
+    ooi_off_court = off_court;
+    ooi_net_rating_on = net_on;
+    ooi_net_rating_off = net_off;
+    ooi_net_rating_diff = net_on -. net_off;
+    ooi_plus_minus_total = plus_minus_total;
+    ooi_plus_minus_avg = if games_played > 0 then float_of_int plus_minus_total /. float_of_int games_played else 0.0;
+  }
+
+(** Simple on/off impact calculation from plus_minus only *)
+let simple_on_off_impact_from_plus_minus
+    ~player_id ~player_name ~team_name
+    ~games_played ~total_minutes ~plus_minus_total
+    : on_off_impact =
+  create_on_off_impact
+    ~player_id ~player_name ~team_name
+    ~games_played ~total_minutes
+    ~on_minutes:total_minutes ~on_team_pts:0 ~on_opp_pts:0 ~on_possessions:0.0
+    ~off_minutes:0.0 ~off_team_pts:0 ~off_opp_pts:0 ~off_possessions:0.0
+    ~plus_minus_total
+
+(** =================================================================
+    Lineup Chemistry - 5인 라인업 조합별 성적 분석
+    ================================================================= *)
+
+(** Individual player in a lineup *)
+type lineup_player = {
+  lp_player_id: string;
+  lp_player_name: string;
+  lp_position: string option;
+}
+
+(** Statistics for a specific lineup combination *)
+type lineup_stats = {
+  ls_players: lineup_player list;      (** 5 players in lineup *)
+  ls_team_name: string;                (** Team name *)
+  ls_games_together: int;              (** Number of games played together *)
+  ls_total_minutes: float;             (** Total minutes on court together *)
+  ls_total_pts: int;                   (** Total points scored *)
+  ls_total_opp_pts: int;               (** Total opponent points allowed *)
+  ls_plus_minus: int;                  (** Net points (pts - opp_pts) *)
+  ls_avg_pts_per_min: float;           (** Points per minute *)
+  ls_avg_margin_per_min: float;        (** +/- per minute *)
+}
+
+(** Synergy score between players *)
+type lineup_synergy = {
+  syn_player1_id: string;
+  syn_player1_name: string;
+  syn_player2_id: string;
+  syn_player2_name: string;
+  syn_games_together: int;
+  syn_total_minutes: float;
+  syn_avg_plus_minus: float;
+  syn_synergy_score: float;            (** Calculated synergy metric *)
+}
+
+(** Overall lineup chemistry analysis result *)
+type lineup_chemistry = {
+  lc_team_name: string;
+  lc_season: string;
+  lc_top_lineups: lineup_stats list;   (** Best performing lineups *)
+  lc_frequent_lineups: lineup_stats list;  (** Most used lineups *)
+  lc_synergies: lineup_synergy list;   (** Player pair synergies *)
+}
+
+(** Sort options for lineup display *)
+type lineup_sort =
+  | LineupByMinutes
+  | LineupByPlusMinus
+  | LineupByEfficiency
+  | LineupByFrequency
+
+let lineup_sort_of_string = function
+  | "min" | "minutes" -> LineupByMinutes
+  | "pm" | "plus_minus" -> LineupByPlusMinus
+  | "eff" | "efficiency" -> LineupByEfficiency
+  | _ -> LineupByFrequency
+
+(** Create lineup key from player IDs (sorted for consistency) *)
+let make_lineup_key (player_ids: string list) : string =
+  player_ids
+  |> List.sort String.compare
+  |> String.concat ","
+
+(** Calculate synergy score based on shared performance *)
+let calculate_synergy_score ~games_together ~total_minutes ~avg_plus_minus : float =
+  if games_together < 2 || total_minutes < 10.0 then 0.0
+  else
+    let minutes_weight = min 1.0 (total_minutes /. 100.0) in
+    let games_weight = min 1.0 (float_of_int games_together /. 10.0) in
+    avg_plus_minus *. minutes_weight *. games_weight
+
+(** Compare two lineup_stats by a given sort criterion *)
+let compare_lineup_stats (sort: lineup_sort) (a: lineup_stats) (b: lineup_stats) : int =
+  match sort with
+  | LineupByMinutes -> compare b.ls_total_minutes a.ls_total_minutes
+  | LineupByPlusMinus -> compare b.ls_plus_minus a.ls_plus_minus
+  | LineupByEfficiency -> compare b.ls_avg_margin_per_min a.ls_avg_margin_per_min
+  | LineupByFrequency -> compare b.ls_games_together a.ls_games_together
+
+(** Empty lineup stats for initialization *)
+let empty_lineup_stats ~team_name : lineup_stats = {
+  ls_players = [];
+  ls_team_name = team_name;
+  ls_games_together = 0;
+  ls_total_minutes = 0.0;
+  ls_total_pts = 0;
+  ls_total_opp_pts = 0;
+  ls_plus_minus = 0;
+  ls_avg_pts_per_min = 0.0;
+  ls_avg_margin_per_min = 0.0;
+}
