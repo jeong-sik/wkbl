@@ -123,6 +123,112 @@ let empty_state ?(icon=SearchIcon) ?(action="") title description =
     (escape_html description)
     (if action = "" then "" else Printf.sprintf {html|<div class="empty-state-action">%s</div>|html} action)
 
+(** Radar chart component for player stat comparison
+
+    Creates a hexagonal radar chart SVG with two overlapping polygons.
+    Each axis represents a stat category (PTS, REB, AST, STL, BLK, EFF).
+    Values are normalized to 0-100 scale for display.
+
+    @param labels List of 6 stat labels
+    @param values_a Player A's normalized values (0-100 each)
+    @param values_b Player B's normalized values (0-100 each)
+    @param color_a Player A's color (hex)
+    @param color_b Player B's color (hex)
+*)
+let radar_chart ~labels ~values_a ~values_b ~color_a ~color_b =
+  (* SVG viewBox dimensions *)
+  let cx, cy = 150.0, 150.0 in
+  let radius = 100.0 in
+  let n = 6 in (* 6 axes for hexagon *)
+  let pi = Float.pi in
+
+  (* Calculate point coordinates on the radar *)
+  let point_at_radius r i =
+    let angle = (float_of_int i *. 2.0 *. pi /. float_of_int n) -. (pi /. 2.0) in
+    let x = cx +. r *. Float.cos angle in
+    let y = cy +. r *. Float.sin angle in
+    (x, y)
+  in
+
+  (* Generate grid lines (concentric hexagons) *)
+  let grid_levels = [0.25; 0.5; 0.75; 1.0] in
+  let grid_paths = List.map (fun level ->
+    let points = List.init n (fun i ->
+      let (x, y) = point_at_radius (radius *. level) i in
+      Printf.sprintf "%.1f,%.1f" x y
+    ) in
+    Printf.sprintf {svg|<polygon points="%s" fill="none" stroke="currentColor" stroke-width="0.5" class="text-slate-300 dark:text-slate-600" opacity="%.1f"/>|svg}
+      (String.concat " " points)
+      (if level = 1.0 then 1.0 else 0.5)
+  ) grid_levels in
+
+  (* Generate axis lines from center *)
+  let axis_lines = List.init n (fun i ->
+    let (x, y) = point_at_radius radius i in
+    Printf.sprintf {svg|<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="currentColor" stroke-width="0.5" class="text-slate-300 dark:text-slate-600"/>|svg}
+      cx cy x y
+  ) in
+
+  (* Generate axis labels *)
+  let axis_labels = List.mapi (fun i label ->
+    let (x, y) = point_at_radius (radius +. 20.0) i in
+    let anchor =
+      if Float.abs (x -. cx) < 5.0 then "middle"
+      else if x < cx then "end"
+      else "start"
+    in
+    Printf.sprintf {svg|<text x="%.1f" y="%.1f" text-anchor="%s" dominant-baseline="middle" class="text-xs fill-slate-500 dark:fill-slate-400 font-medium">%s</text>|svg}
+      x (y +. 4.0) anchor label
+  ) labels in
+
+  (* Generate data polygon for player A *)
+  let points_a = List.mapi (fun i v ->
+    let normalized = Float.min 100.0 (Float.max 0.0 v) /. 100.0 in
+    let (x, y) = point_at_radius (radius *. normalized) i in
+    Printf.sprintf "%.1f,%.1f" x y
+  ) values_a in
+
+  (* Generate data polygon for player B *)
+  let points_b = List.mapi (fun i v ->
+    let normalized = Float.min 100.0 (Float.max 0.0 v) /. 100.0 in
+    let (x, y) = point_at_radius (radius *. normalized) i in
+    Printf.sprintf "%.1f,%.1f" x y
+  ) values_b in
+
+  (* Assemble the SVG *)
+  Printf.sprintf
+    {svg|<svg viewBox="0 0 300 300" class="w-full max-w-xs mx-auto" role="img" aria-label="선수 스탯 비교 레이더 차트">
+  <title>선수 스탯 비교</title>
+  <!-- Grid -->
+  %s
+  <!-- Axes -->
+  %s
+  <!-- Player B polygon (back) -->
+  <polygon points="%s" fill="%s" fill-opacity="0.2" stroke="%s" stroke-width="2"/>
+  <!-- Player A polygon (front) -->
+  <polygon points="%s" fill="%s" fill-opacity="0.2" stroke="%s" stroke-width="2"/>
+  <!-- Labels -->
+  %s
+</svg>|svg}
+    (String.concat "\n  " grid_paths)
+    (String.concat "\n  " axis_lines)
+    (String.concat " " points_b) color_b color_b
+    (String.concat " " points_a) color_a color_a
+    (String.concat "\n  " axis_labels)
+
+(** Normalize stats to 0-100 scale for radar chart display.
+    Uses typical WKBL max values as reference points. *)
+let normalize_stat_for_radar stat_type value =
+  let max_val = match stat_type with
+    | `Points -> 25.0      (* ~25 ppg is elite *)
+    | `Rebounds -> 12.0    (* ~12 rpg is elite *)
+    | `Assists -> 8.0      (* ~8 apg is elite *)
+    | `Steals -> 3.0       (* ~3 spg is elite *)
+    | `Blocks -> 2.0       (* ~2 bpg is elite *)
+    | `Efficiency -> 25.0  (* ~25 EFF is elite *)
+  in
+  Float.min 100.0 (value /. max_val *. 100.0)
+
 (** Player image component with fallback *)
 let player_img_tag ?(class_name="w-12 h-12") player_id _player_name =
   let local_src = Printf.sprintf "/static/images/player_%s.png" player_id in
@@ -859,6 +965,7 @@ let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="")
   <script src="/static/js/mobile-nav.js?v=%s" defer data-cfasync="false"></script>
   <script src="/static/js/search-modal.js?v=%s" defer data-cfasync="false"></script>
   <script src="/static/js/skeleton-loader.js?v=%s" defer data-cfasync="false"></script>
+  <script src="/static/js/share-utils.js?v=%s" defer data-cfasync="false"></script>
   <script src="https://cdn.tailwindcss.com" data-cfasync="false"></script>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/css/styles.css?v=%s">
@@ -1007,6 +1114,6 @@ let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="")
   </nav>
 </body>
 </html>|html}
-    (escape_html title) (escape_html meta_desc) (escape_html og_title_val) (escape_html og_desc_val) (escape_html og_image_val) (escape_html canonical_url) (escape_html og_title_val) (escape_html og_desc_val) (escape_html og_image_val) (escape_html canonical_url) v v v v v v v v json_ld_script cf_wa_script content
+    (escape_html title) (escape_html meta_desc) (escape_html og_title_val) (escape_html og_desc_val) (escape_html og_image_val) (escape_html canonical_url) (escape_html og_title_val) (escape_html og_desc_val) (escape_html og_image_val) (escape_html canonical_url) v v v v v v v v v json_ld_script cf_wa_script content
 
 (** Home page *)
