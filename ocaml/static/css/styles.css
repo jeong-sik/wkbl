@@ -47,9 +47,34 @@
   transition: opacity 150ms ease-out, transform 150ms ease-out;
 }
 
-/* Table row hover enhancement */
+/* Table row hover enhancement with left accent bar */
 tbody tr {
+  transition: background-color 150ms ease, box-shadow 150ms ease;
+  position: relative;
+}
+
+tbody tr::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: transparent;
   transition: background-color 150ms ease;
+}
+
+tbody tr:hover::before {
+  background: #f97316;
+}
+
+/* Enhanced row hover for data tables */
+.data-table tbody tr:hover {
+  background-color: rgba(249, 115, 22, 0.05);
+}
+
+.dark .data-table tbody tr:hover {
+  background-color: rgba(249, 115, 22, 0.08);
 }
 
 /* Roster table: keep layout stable even if Tailwind is delayed/blocked */
@@ -528,4 +553,274 @@ body.menu-open {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+}
+
+/* ===========================================
+   13. Empty State Component
+   =========================================== */
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1.5rem;
+  text-align: center;
+  min-height: 200px;
+}
+
+.empty-state-icon {
+  width: 64px;
+  height: 64px;
+  margin-bottom: 1rem;
+  color: #94a3b8;
+  opacity: 0.6;
+}
+
+.dark .empty-state-icon {
+  color: #475569;
+}
+
+.empty-state-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #475569;
+  margin-bottom: 0.5rem;
+}
+
+.dark .empty-state-title {
+  color: #94a3b8;
+}
+
+.empty-state-description {
+  font-size: 0.875rem;
+  color: #64748b;
+  max-width: 320px;
+  line-height: 1.5;
+}
+
+.dark .empty-state-description {
+  color: #64748b;
+}
+
+.empty-state-action {
+  margin-top: 1rem;
+}
+
+/* ===========================================
+   14. Data Formatting Utilities
+   =========================================== */
+
+/* Tabular numbers for consistent stat alignment */
+.stat-value {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+/* Positive/negative value indicators */
+.stat-positive {
+  color: #16a34a;
+}
+
+.dark .stat-positive {
+  color: #4ade80;
+}
+
+.stat-negative {
+  color: #dc2626;
+}
+
+.dark .stat-negative {
+  color: #f87171;
+}
+
+/* ===========================================
+   15. Performance Optimization Classes
+   =========================================== */
+
+/* GPU acceleration hint for animated elements */
+.will-animate {
+  will-change: transform, opacity;
+}
+
+/* Content visibility optimization for off-screen content */
+.content-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 500px;
+}
+
+/* Image optimization */
+.img-optimized {
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+}
+
+/* Prevent text rendering jank */
+.text-optimized {
+  text-rendering: optimizeSpeed;
+}
+
+/* ===========================================
+   16. Sortable Tables
+   =========================================== */
+
+/* Sticky table header for long tables */
+.table-sticky thead {
+  position: sticky;
+  top: 64px; /* Header height */
+  z-index: 20;
+  background: inherit;
+}
+
+.table-sticky thead th {
+  background: inherit;
+}
+
+/* Dark mode sticky header */
+.dark .table-sticky thead {
+  background-color: #0f172a; /* slate-900 */
+}
+
+/* Sortable column header */
+th[data-sortable] {
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 150ms ease;
+}
+
+th[data-sortable]:hover {
+  background-color: rgba(249, 115, 22, 0.05);
+}
+
+.dark th[data-sortable]:hover {
+  background-color: rgba(249, 115, 22, 0.1);
+}
+
+/* Sort indicator */
+.sort-indicator {
+  vertical-align: middle;
+  transition: opacity 150ms ease;
+}
+
+th[data-sortable]:hover .sort-indicator {
+  opacity: 1 !important;
+}
+
+/* Active sort column */
+th[data-sortable][aria-sort] {
+  background-color: rgba(249, 115, 22, 0.03);
+}
+
+.dark th[data-sortable][aria-sort] {
+  background-color: rgba(249, 115, 22, 0.05);
+}
+
+/* ===========================================
+   17. Accessibility Enhancements (WCAG AA)
+   =========================================== */
+
+/* Enhanced focus ring for keyboard users */
+*:focus-visible {
+  outline: 2px solid #f97316;
+  outline-offset: 2px;
+}
+
+/* High contrast orange for WCAG AA (4.5:1 on white) */
+.text-orange-wcag {
+  color: #c2410c; /* orange-700, 5.11:1 contrast on white */
+}
+
+.dark .text-orange-wcag {
+  color: #fb923c; /* orange-400, 5.74:1 contrast on #0b0e14 */
+}
+
+/* Link underline for better visibility */
+.link-underline {
+  text-decoration-line: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+/* Skip to content link (already in HTML, styling enhancement) */
+.skip-link:focus {
+  position: fixed !important;
+  top: 1rem;
+  left: 1rem;
+  z-index: 9999;
+  width: auto;
+  height: auto;
+  padding: 1rem 1.5rem;
+  clip: auto;
+  white-space: normal;
+  background: #f97316;
+  color: white;
+  font-weight: 600;
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+}
+
+/* Screen reader announcements */
+.sr-announce {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Reduced motion - minimize distractions */
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in,
+  .htmx-settling,
+  .htmx-added {
+    animation: none !important;
+    opacity: 1;
+    transform: none;
+  }
+
+  .page-loader-bar {
+    animation: none;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: more) {
+  a:hover,
+  button:hover {
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+  }
+
+  th[data-sortable]:hover {
+    outline: 2px solid currentColor;
+    outline-offset: -2px;
+  }
+
+  tbody tr:hover {
+    outline: 2px solid #f97316;
+    outline-offset: -2px;
+  }
+}
+
+/* Ensure minimum touch target size (44x44px) */
+@media (pointer: coarse) {
+  button,
+  a,
+  [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Except for inline links in text */
+  p a,
+  li a,
+  td a {
+    min-height: auto;
+    min-width: auto;
+    padding: 0.25rem 0;
+  }
 }

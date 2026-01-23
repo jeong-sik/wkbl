@@ -93,6 +93,142 @@ let player_id_badge player_id =
     (escape_html player_id)
     (escape_html short)
 
+(** Empty state component with icon - consistent UX for no-data scenarios *)
+type empty_state_icon =
+  | SearchIcon
+  | ChartIcon
+  | UsersIcon
+  | CalendarIcon
+  | TableIcon
+  | BasketballIcon
+
+let empty_state_svg = function
+  | SearchIcon -> {svg|<svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>|svg}
+  | ChartIcon -> {svg|<svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>|svg}
+  | UsersIcon -> {svg|<svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>|svg}
+  | CalendarIcon -> {svg|<svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>|svg}
+  | TableIcon -> {svg|<svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>|svg}
+  | BasketballIcon -> {svg|<svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke-width="1.5"/><path stroke-width="1.5" d="M12 2v20M2 12h20M4.93 4.93l14.14 14.14M19.07 4.93L4.93 19.07"/></svg>|svg}
+
+let empty_state ?(icon=SearchIcon) ?(action="") title description =
+  Printf.sprintf
+    {html|<div class="empty-state" role="status" aria-live="polite">
+  %s
+  <h3 class="empty-state-title">%s</h3>
+  <p class="empty-state-description">%s</p>
+  %s
+</div>|html}
+    (empty_state_svg icon)
+    (escape_html title)
+    (escape_html description)
+    (if action = "" then "" else Printf.sprintf {html|<div class="empty-state-action">%s</div>|html} action)
+
+(** Radar chart component for player stat comparison
+
+    Creates a hexagonal radar chart SVG with two overlapping polygons.
+    Each axis represents a stat category (PTS, REB, AST, STL, BLK, EFF).
+    Values are normalized to 0-100 scale for display.
+
+    @param labels List of 6 stat labels
+    @param values_a Player A's normalized values (0-100 each)
+    @param values_b Player B's normalized values (0-100 each)
+    @param color_a Player A's color (hex)
+    @param color_b Player B's color (hex)
+*)
+let radar_chart ~labels ~values_a ~values_b ~color_a ~color_b =
+  (* SVG viewBox dimensions *)
+  let cx, cy = 150.0, 150.0 in
+  let radius = 100.0 in
+  let n = 6 in (* 6 axes for hexagon *)
+  let pi = Float.pi in
+
+  (* Calculate point coordinates on the radar *)
+  let point_at_radius r i =
+    let angle = (float_of_int i *. 2.0 *. pi /. float_of_int n) -. (pi /. 2.0) in
+    let x = cx +. r *. Float.cos angle in
+    let y = cy +. r *. Float.sin angle in
+    (x, y)
+  in
+
+  (* Generate grid lines (concentric hexagons) *)
+  let grid_levels = [0.25; 0.5; 0.75; 1.0] in
+  let grid_paths = List.map (fun level ->
+    let points = List.init n (fun i ->
+      let (x, y) = point_at_radius (radius *. level) i in
+      Printf.sprintf "%.1f,%.1f" x y
+    ) in
+    Printf.sprintf {svg|<polygon points="%s" fill="none" stroke="currentColor" stroke-width="0.5" class="text-slate-300 dark:text-slate-600" opacity="%.1f"/>|svg}
+      (String.concat " " points)
+      (if level = 1.0 then 1.0 else 0.5)
+  ) grid_levels in
+
+  (* Generate axis lines from center *)
+  let axis_lines = List.init n (fun i ->
+    let (x, y) = point_at_radius radius i in
+    Printf.sprintf {svg|<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="currentColor" stroke-width="0.5" class="text-slate-300 dark:text-slate-600"/>|svg}
+      cx cy x y
+  ) in
+
+  (* Generate axis labels *)
+  let axis_labels = List.mapi (fun i label ->
+    let (x, y) = point_at_radius (radius +. 20.0) i in
+    let anchor =
+      if Float.abs (x -. cx) < 5.0 then "middle"
+      else if x < cx then "end"
+      else "start"
+    in
+    Printf.sprintf {svg|<text x="%.1f" y="%.1f" text-anchor="%s" dominant-baseline="middle" class="text-xs fill-slate-500 dark:fill-slate-400 font-medium">%s</text>|svg}
+      x (y +. 4.0) anchor label
+  ) labels in
+
+  (* Generate data polygon for player A *)
+  let points_a = List.mapi (fun i v ->
+    let normalized = Float.min 100.0 (Float.max 0.0 v) /. 100.0 in
+    let (x, y) = point_at_radius (radius *. normalized) i in
+    Printf.sprintf "%.1f,%.1f" x y
+  ) values_a in
+
+  (* Generate data polygon for player B *)
+  let points_b = List.mapi (fun i v ->
+    let normalized = Float.min 100.0 (Float.max 0.0 v) /. 100.0 in
+    let (x, y) = point_at_radius (radius *. normalized) i in
+    Printf.sprintf "%.1f,%.1f" x y
+  ) values_b in
+
+  (* Assemble the SVG *)
+  Printf.sprintf
+    {svg|<svg viewBox="0 0 300 300" class="w-full max-w-xs mx-auto" role="img" aria-label="선수 스탯 비교 레이더 차트">
+  <title>선수 스탯 비교</title>
+  <!-- Grid -->
+  %s
+  <!-- Axes -->
+  %s
+  <!-- Player B polygon (back) -->
+  <polygon points="%s" fill="%s" fill-opacity="0.2" stroke="%s" stroke-width="2"/>
+  <!-- Player A polygon (front) -->
+  <polygon points="%s" fill="%s" fill-opacity="0.2" stroke="%s" stroke-width="2"/>
+  <!-- Labels -->
+  %s
+</svg>|svg}
+    (String.concat "\n  " grid_paths)
+    (String.concat "\n  " axis_lines)
+    (String.concat " " points_b) color_b color_b
+    (String.concat " " points_a) color_a color_a
+    (String.concat "\n  " axis_labels)
+
+(** Normalize stats to 0-100 scale for radar chart display.
+    Uses typical WKBL max values as reference points. *)
+let normalize_stat_for_radar stat_type value =
+  let max_val = match stat_type with
+    | `Points -> 25.0      (* ~25 ppg is elite *)
+    | `Rebounds -> 12.0    (* ~12 rpg is elite *)
+    | `Assists -> 8.0      (* ~8 apg is elite *)
+    | `Steals -> 3.0       (* ~3 spg is elite *)
+    | `Blocks -> 2.0       (* ~2 bpg is elite *)
+    | `Efficiency -> 25.0  (* ~25 EFF is elite *)
+  in
+  Float.min 100.0 (value /. max_val *. 100.0)
+
 (** Player image component with fallback *)
 let player_img_tag ?(class_name="w-12 h-12") player_id _player_name =
   let local_src = Printf.sprintf "/static/images/player_%s.png" player_id in
@@ -115,7 +251,7 @@ let player_img_tag ?(class_name="w-12 h-12") player_id _player_name =
   in
   let src = if has_local_player_image then local_src else remote_src in
   Printf.sprintf
-    {html|<img src="%s" alt="" aria-hidden="true" class="%s rounded-full object-cover bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 shadow-sm" loading="lazy" data-placeholder="%s" onerror="if(!this.dataset.placeholderApplied){this.dataset.placeholderApplied='1';this.src=this.dataset.placeholder;}">|html}
+    {html|<img src="%s" alt="" aria-hidden="true" class="%s rounded-full object-cover bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 shadow-sm" loading="lazy" decoding="async" data-placeholder="%s" onerror="if(!this.dataset.placeholderApplied){this.dataset.placeholderApplied='1';this.src=this.dataset.placeholder;}">|html}
     (escape_html src)
     (escape_html class_name)
     (escape_html placeholder_src)
@@ -128,7 +264,7 @@ let team_logo_tag ?(class_name="w-8 h-8") team_name =
     | None -> None
   in
   match logo_file with
-  | Some f -> Printf.sprintf {html|<img src="/static/images/%s" alt="" aria-hidden="true" class="%s object-contain">|html} f class_name
+  | Some f -> Printf.sprintf {html|<img src="/static/images/%s" alt="" aria-hidden="true" class="%s object-contain" loading="lazy" decoding="async">|html} f class_name
   | None ->
       Printf.sprintf
         {html|<div class="%s bg-slate-100 dark:bg-slate-800 rounded flex items-center justify-center text-xs">🏀</div>|html}
@@ -813,6 +949,12 @@ let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="")
   <meta name="twitter:description" content="%s">
   <meta name="twitter:image" content="%s">
   <link rel="canonical" href="%s">
+  <!-- Preconnect hints for performance -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.tailwindcss.com">
+  <link rel="preconnect" href="https://www.wkbl.or.kr">
+  <link rel="dns-prefetch" href="https://www.wkbl.or.kr">
   <link rel="icon" type="image/png" sizes="32x32" href="/static/images/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="/static/images/favicon-16.png">
   <link rel="apple-touch-icon" sizes="180x180" href="/static/images/apple-touch-icon.png">
@@ -823,6 +965,9 @@ let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="")
   <script src="/static/js/mobile-nav.js?v=%s" defer data-cfasync="false"></script>
   <script src="/static/js/search-modal.js?v=%s" defer data-cfasync="false"></script>
   <script src="/static/js/skeleton-loader.js?v=%s" defer data-cfasync="false"></script>
+  <script src="/static/js/share-utils.js?v=%s" defer data-cfasync="false"></script>
+  <script src="/static/js/table-sort.js?v=%s" defer data-cfasync="false"></script>
+  <script src="/static/js/a11y-utils.js?v=%s" defer data-cfasync="false"></script>
   <script src="https://cdn.tailwindcss.com" data-cfasync="false"></script>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/css/styles.css?v=%s">
@@ -971,6 +1116,6 @@ let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="")
   </nav>
 </body>
 </html>|html}
-    (escape_html title) (escape_html meta_desc) (escape_html og_title_val) (escape_html og_desc_val) (escape_html og_image_val) (escape_html canonical_url) (escape_html og_title_val) (escape_html og_desc_val) (escape_html og_image_val) (escape_html canonical_url) v v v v v v v v json_ld_script cf_wa_script content
+    (escape_html title) (escape_html meta_desc) (escape_html og_title_val) (escape_html og_desc_val) (escape_html og_image_val) (escape_html canonical_url) (escape_html og_title_val) (escape_html og_desc_val) (escape_html og_image_val) (escape_html canonical_url) v v v v v v v v v v v json_ld_script cf_wa_script content
 
 (** Home page *)
