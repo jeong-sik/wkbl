@@ -1,0 +1,1262 @@
+(** WKBL Official Site Scraper
+
+    Scrapes data from https://www.wkbl.or.kr:
+    - Draft history: /history/draft.asp
+    - Awards: /history/awards.asp (TODO)
+    - FA results: /history/fa_result.asp (TODO)
+*)
+
+open Lwt.Syntax
+
+let base_url = "https://www.wkbl.or.kr"
+
+(** HTTP fetch with User-Agent *)
+let fetch_url url =
+  let headers = Cohttp.Header.of_list [
+    ("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) WKBL-Stats-Bot/1.0");
+    ("Accept", "text/html,application/xhtml+xml");
+    ("Accept-Language", "ko-KR,ko;q=0.9");
+  ] in
+  let uri = Uri.of_string url in
+  let* (resp, body) = Cohttp_lwt_unix.Client.get ~headers uri in
+  let code = resp |> Cohttp.Response.status |> Cohttp.Code.code_of_status in
+  if code >= 200 && code < 300 then
+    Cohttp_lwt.Body.to_string body
+  else begin
+    Printf.eprintf "HTTP %d for %s\n" code url;
+    Lwt.return ""
+  end
+
+(** Draft entry type *)
+type draft_entry = {
+  season_code: string;      (* e.g., "044" for 2025-2026 *)
+  season_name: string;      (* e.g., "2025-2026" *)
+  pick_order: int;          (* 1, 2, 3, ... *)
+  team_name: string;        (* 신한은행, BNK 썸, etc. *)
+  player_name: string;
+  birth_date: string option;
+  school: string option;
+}
+
+(** Parse draft table from HTML *)
+let parse_draft_html ~season_code ~season_name html =
+  let soup = Soup.parse html in
+  (* Find table rows in .info_table01 tbody *)
+  let rows = soup |> Soup.select ".info_table01 tbody tr" |> Soup.to_list in
+  rows |> List.filter_map (fun row ->
+    let cells = row |> Soup.select "td" |> Soup.to_list in
+    match cells with
+    | pick :: team :: name :: birth :: school :: _ ->
+        let get_text node =
+          Soup.leaf_text node
+          |> Option.map String.trim
+          |> Option.value ~default:""
+        in
+        let pick_order = get_text pick |> int_of_string_opt |> Option.value ~default:0 in
+        let player_name = get_text name in
+        if pick_order > 0 && String.length player_name > 0 then
+          Some {
+            season_code;
+            season_name;
+            pick_order;
+            team_name = get_text team;
+            player_name;
+            birth_date = (let b = get_text birth in if b = "" then None else Some b);
+            school = (let s = get_text school in if s = "" then None else Some s);
+          }
+        else None
+    | _ -> None
+  )
+
+(** Fetch draft data for a specific season *)
+let fetch_draft_season ~season_code ~season_name =
+  let url = Printf.sprintf "%s/history/draft.asp?season_gu=%s" base_url season_code in
+  Printf.printf "Fetching draft season %s (%s)...\n%!" season_name season_code;
+  let* html = fetch_url url in
+  if String.length html = 0 then
+    Lwt.return []
+  else
+    Lwt.return (parse_draft_html ~season_code ~season_name html)
+
+(** Season codes mapping (recent seasons) *)
+let season_codes = [
+  ("044", "2025-2026");
+  ("043", "2024-2025");
+  ("042", "2023-2024");
+  ("041", "2022-2023");
+  ("040", "2021-2022");
+  ("039", "2020-2021");
+  ("038", "2019-2020");
+  ("037", "2018-2019");
+  ("036", "2017-2018");
+  ("035", "2016-2017");
+  ("034", "2015-2016");
+  ("033", "2014-2015");
+  ("032", "2013-2014");
+  ("031", "2012-2013");
+  ("030", "2011-2012");
+]
+
+(** Fetch all draft history *)
+let fetch_all_drafts () =
+  let rec fetch_all acc = function
+    | [] -> Lwt.return (List.rev acc)
+    | (code, name) :: rest ->
+        let* entries = fetch_draft_season ~season_code:code ~season_name:name in
+        (* Rate limiting: 500ms delay between requests *)
+        let* () = Lwt_unix.sleep 0.5 in
+        fetch_all (entries @ acc) rest
+  in
+  fetch_all [] season_codes
+
+(** Print draft entries as CSV *)
+let print_draft_csv entries =
+  Printf.printf "season_code,season_name,pick_order,team_name,player_name,birth_date,school\n";
+  entries |> List.iter (fun e ->
+    Printf.printf "%s,%s,%d,%s,%s,%s,%s\n"
+      e.season_code
+      e.season_name
+      e.pick_order
+      e.team_name
+      e.player_name
+      (Option.value ~default:"" e.birth_date)
+      (Option.value ~default:"" e.school)
+  )
+
+(** Insert draft entries to database *)
+let insert_drafts_to_db pool entries =
+  let open Caqti_request.Infix in
+  let insert_query =
+    (Caqti_type.(t6 string string int string string (option string)) ->. Caqti_type.unit)
+    {|INSERT INTO player_drafts
+      (season_code, season_name, pick_order, team_name, player_name, birth_date)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      ON CONFLICT (season_code, pick_order) DO UPDATE SET
+        team_name = EXCLUDED.team_name,
+        player_name = EXCLUDED.player_name,
+        birth_date = EXCLUDED.birth_date|}
+  in
+  let* () = entries |> Lwt_list.iter_s (fun e ->
+    Caqti_lwt_unix.Pool.use (fun (module Db : Caqti_lwt.CONNECTION) ->
+      Db.exec insert_query (e.season_code, e.season_name, e.pick_order, e.team_name, e.player_name, e.birth_date)
+    ) pool |> Lwt.map (function Ok () -> () | Error _ -> ())
+  ) in
+  Lwt.return ()
+
+(* ======== AWARDS SCRAPER ======== *)
+
+(** Award category type *)
+type award_category =
+  | Scoring          (* 득점상 *)
+  | ThreePointScoring (* 3점 득점상 *)
+  | ThreePointPct    (* 3점 야투상 *)
+  | TwoPointPct      (* 2점 야투상 *)
+  | FreeThrowPct     (* 자유투상 *)
+  | Rebounding       (* 리바운드상 *)
+  | Assists          (* 어시스트상 *)
+  | Steals           (* 스틸상 *)
+  | Blocks           (* 블록상 *)
+  | MVP              (* MVP/윤덕주상 *)
+  | Best5            (* BEST5 *)
+  | Rookie           (* 신인상 *)
+
+(** Statistical award entry *)
+type stat_award = {
+  season_name: string;
+  category: award_category;
+  player_name: string;
+  stat_value: string option;  (* e.g., "21.10점", "64개", "37.50%" *)
+}
+
+(** BEST5 award entry *)
+type best5_award = {
+  b5_season_name: string;
+  players: string list;  (* 5 players *)
+}
+
+let award_category_to_string = function
+  | Scoring -> "scoring"
+  | ThreePointScoring -> "three_point_scoring"
+  | ThreePointPct -> "three_point_pct"
+  | TwoPointPct -> "two_point_pct"
+  | FreeThrowPct -> "free_throw_pct"
+  | Rebounding -> "rebounding"
+  | Assists -> "assists"
+  | Steals -> "steals"
+  | Blocks -> "blocks"
+  | MVP -> "mvp"
+  | Best5 -> "best5"
+  | Rookie -> "rookie"
+
+(** Get all text content from a node (handles <br> tags) *)
+let get_all_text node =
+  node
+  |> Soup.texts
+  |> List.map String.trim
+  |> List.filter (fun s -> String.length s > 0)
+  |> String.concat " "
+
+(** Parse player name and stat from cell text like "김단비 (21.10점)" *)
+let parse_stat_cell text =
+  let text = String.trim text in
+  (* Try to split name and stat by parenthesis *)
+  match String.index_opt text '(' with
+  | Some idx when idx > 0 ->
+      let name = String.trim (String.sub text 0 idx) in
+      let rest = String.sub text idx (String.length text - idx) in
+      let stat =
+        if String.length rest > 2 && rest.[0] = '(' then
+          let end_idx = String.rindex_opt rest ')' |> Option.value ~default:(String.length rest) in
+          Some (String.sub rest 1 (end_idx - 1))
+        else
+          Some rest
+      in
+      (name, stat)
+  | _ -> (text, None)
+
+(** Parse statistics awards table *)
+let parse_stat_awards_html html =
+  let soup = Soup.parse html in
+  let rows = soup |> Soup.select ".info_table01 tbody tr" |> Soup.to_list in
+  let categories = [|
+    Scoring; ThreePointScoring; ThreePointPct; TwoPointPct;
+    FreeThrowPct; Rebounding; Assists; Steals; Blocks; MVP
+  |] in
+  rows |> List.concat_map (fun row ->
+    let cells = row |> Soup.select "td" |> Soup.to_list in
+    match cells with
+    | season_cell :: award_cells when List.length award_cells >= 10 ->
+        let season_name = get_all_text season_cell in
+        if String.length season_name > 0 then
+          award_cells |> List.mapi (fun i cell ->
+            if i < 10 then
+              let text = get_all_text cell in
+              let (player_name, stat_value) = parse_stat_cell text in
+              Some {
+                season_name;
+                category = categories.(i);
+                player_name;
+                stat_value;
+              }
+            else None
+          ) |> List.filter_map Fun.id
+        else []
+    | _ -> []
+  )
+
+(** Parse BEST5 awards table *)
+let parse_best5_html html =
+  let soup = Soup.parse html in
+  let rows = soup |> Soup.select ".info_table01 tbody tr" |> Soup.to_list in
+  rows |> List.filter_map (fun row ->
+    let cells = row |> Soup.select "td" |> Soup.to_list in
+    match cells with
+    | season_cell :: players_cell :: _ ->
+        let season_name = get_all_text season_cell in
+        let players =
+          players_cell |> Soup.select "p" |> Soup.to_list
+          |> List.map get_all_text
+          |> List.filter (fun s -> String.length s > 0)
+        in
+        if String.length season_name > 0 && List.length players > 0 then
+          Some { b5_season_name = season_name; players }
+        else None
+    | _ -> None
+  )
+
+(** Fetch statistical awards *)
+let fetch_stat_awards () =
+  let url = Printf.sprintf "%s/history/awards_statistics.asp" base_url in
+  Printf.printf "Fetching statistical awards...\n%!";
+  let* html = fetch_url url in
+  if String.length html = 0 then
+    Lwt.return []
+  else
+    Lwt.return (parse_stat_awards_html html)
+
+(** Fetch BEST5 awards *)
+let fetch_best5_awards () =
+  let url = Printf.sprintf "%s/history/awards.asp" base_url in
+  Printf.printf "Fetching BEST5 awards...\n%!";
+  let* html = fetch_url url in
+  if String.length html = 0 then
+    Lwt.return []
+  else
+    Lwt.return (parse_best5_html html)
+
+(** Print stat awards as CSV *)
+let print_stat_awards_csv entries =
+  Printf.printf "season_name,category,player_name,stat_value\n";
+  entries |> List.iter (fun e ->
+    Printf.printf "%s,%s,%s,%s\n"
+      e.season_name
+      (award_category_to_string e.category)
+      e.player_name
+      (Option.value ~default:"" e.stat_value)
+  )
+
+(** Print BEST5 awards as CSV *)
+let print_best5_csv entries =
+  Printf.printf "season_name,rank,player_name\n";
+  entries |> List.iter (fun e ->
+    e.players |> List.iteri (fun i player ->
+      Printf.printf "%s,%d,%s\n" e.b5_season_name (i + 1) player
+    )
+  )
+
+(* ======== FA RESULTS SCRAPER ======== *)
+
+(** FA result entry *)
+type fa_entry = {
+  year: string;              (* 2025, 2024, ... *)
+  round: string;             (* 1차, 2차 *)
+  original_team: string;     (* 소속구단 *)
+  acquiring_team: string;    (* 영입구단 *)
+  fa_player_name: string;
+  contract_period: string;   (* 계약기간: 4년, 3년, ... *)
+  salary: string;            (* 연봉 *)
+  bonus: string option;      (* 수당 *)
+  total_salary: string;      (* 연봉 총액 *)
+}
+
+(** Parse FA results table for a specific year tab *)
+let parse_fa_year_table year_tab =
+  let year =
+    Soup.attribute "id" year_tab
+    |> Option.map (fun s -> String.sub s 3 4)  (* tab2025 -> 2025 *)
+    |> Option.value ~default:"unknown"
+  in
+  let rows = year_tab |> Soup.select "tbody tr" |> Soup.to_list in
+  let current_round = ref "" in
+  rows |> List.filter_map (fun row ->
+    let cells = row |> Soup.select "td" |> Soup.to_list in
+    match cells with
+    (* Header row for round: "1차 협상결과 (2025.04.04)" *)
+    | [cell] when Soup.attribute "colspan" cell |> Option.is_some ->
+        let text = get_all_text cell in
+        if String.length text > 0 && (String.sub text 0 2 = "1차" || String.sub text 0 2 = "2차") then
+          current_round := String.sub text 0 2;
+        None
+    (* Data row: round, original_team, acquiring_team, name, period, salary, bonus, total *)
+    | round_cell :: orig :: acq :: name :: period :: salary :: bonus :: total :: _ ->
+        let round_text = get_all_text round_cell in
+        let round = if String.length round_text > 0 then round_text else !current_round in
+        let player_name = get_all_text name in
+        if String.length player_name > 0 then
+          Some {
+            year;
+            round;
+            original_team = get_all_text orig;
+            acquiring_team = get_all_text acq;
+            fa_player_name = player_name;
+            contract_period = get_all_text period;
+            salary = get_all_text salary;
+            bonus = (let b = get_all_text bonus in if b = "" then None else Some b);
+            total_salary = get_all_text total;
+          }
+        else None
+    | _ -> None
+  )
+
+(** Parse all FA results from the page *)
+let parse_fa_html html =
+  let soup = Soup.parse html in
+  (* Find all year tabs *)
+  let tabs = soup |> Soup.select ".info_table01[id^='tab']" |> Soup.to_list in
+  tabs |> List.concat_map parse_fa_year_table
+
+(** Fetch FA results *)
+let fetch_fa_results () =
+  let url = Printf.sprintf "%s/history/fa_result.asp" base_url in
+  Printf.printf "Fetching FA results...\n%!";
+  let* html = fetch_url url in
+  if String.length html = 0 then
+    Lwt.return []
+  else
+    Lwt.return (parse_fa_html html)
+
+(** Print FA results as CSV *)
+let print_fa_csv entries =
+  Printf.printf "year,round,original_team,acquiring_team,player_name,contract_period,salary,bonus,total_salary\n";
+  entries |> List.iter (fun e ->
+    Printf.printf "%s,%s,%s,%s,%s,%s,%s,%s,%s\n"
+      e.year
+      e.round
+      e.original_team
+      e.acquiring_team
+      e.fa_player_name
+      e.contract_period
+      e.salary
+      (Option.value ~default:"" e.bonus)
+      e.total_salary
+  )
+
+(* ======== SALARY SCRAPER ======== *)
+
+(** Salary entry type *)
+type salary_entry = {
+  season: string;           (* 2025-2026 *)
+  rank: int;
+  sal_player_name: string;
+  sal_team_name: string;
+  base_salary: string;      (* 연봉 *)
+  bonus: string option;     (* 수당 *)
+  total: string;            (* 총액 *)
+  note: string option;      (* 비고 *)
+}
+
+(** Parse salary table for a specific season tab *)
+let parse_salary_year_table year_tab =
+  let season =
+    Soup.attribute "id" year_tab
+    |> Option.map (fun s ->
+        (* tab2025 -> 2025-2026 *)
+        let year = String.sub s 3 4 in
+        let year_int = int_of_string year in
+        Printf.sprintf "%d-%d" year_int (year_int + 1)
+      )
+    |> Option.value ~default:"unknown"
+  in
+  let rows = year_tab |> Soup.select "tbody tr" |> Soup.to_list in
+  let current_rank = ref 0 in
+  rows |> List.filter_map (fun row ->
+    let cells = row |> Soup.select "td" |> Soup.to_list in
+    match cells with
+    (* 6 or 7 cells depending on rowspan *)
+    | rank_cell :: rest when List.length cells >= 6 ->
+        let rank_text = get_all_text rank_cell in
+        (* Update rank if present, otherwise use previous *)
+        (match int_of_string_opt rank_text with
+         | Some r -> current_rank := r
+         | None -> ());
+        (* Handle different cell counts due to rowspan *)
+        let (name_cell, team_cell, base_cell, bonus_cell, total_cell, note_cell) =
+          if String.length rank_text > 0 && int_of_string_opt rank_text |> Option.is_some then
+            (* First row of rank group: 6 data cells *)
+            match rest with
+            | n :: t :: b :: bn :: tot :: note :: _ -> (n, t, b, bn, tot, Some note)
+            | n :: t :: b :: bn :: tot :: [] -> (n, t, b, bn, tot, None)
+            | _ -> (rank_cell, rank_cell, rank_cell, rank_cell, rank_cell, None)
+          else
+            (* Continuation row: rank is rowspanned, so cells shift *)
+            match cells with
+            | n :: t :: b :: bn :: tot :: note :: _ -> (n, t, b, bn, tot, Some note)
+            | n :: t :: b :: bn :: tot :: [] -> (n, t, b, bn, tot, None)
+            | _ -> (rank_cell, rank_cell, rank_cell, rank_cell, rank_cell, None)
+        in
+        let player_name = get_all_text name_cell in
+        if String.length player_name > 0 && !current_rank > 0 then
+          Some {
+            season;
+            rank = !current_rank;
+            sal_player_name = player_name;
+            sal_team_name = get_all_text team_cell;
+            base_salary = get_all_text base_cell;
+            bonus = (let b = get_all_text bonus_cell in if b = "" then None else Some b);
+            total = get_all_text total_cell;
+            note = Option.bind note_cell (fun c ->
+              let n = get_all_text c in if n = "" then None else Some n);
+          }
+        else None
+    | _ -> None
+  )
+
+(** Parse all salary data from the page *)
+let parse_salary_html html =
+  let soup = Soup.parse html in
+  (* Find all year tabs - they have id like "tab2025" *)
+  let tabs = soup |> Soup.select ".info_table01[id^='tab']" |> Soup.to_list in
+  tabs |> List.concat_map parse_salary_year_table
+
+(** Fetch salary data *)
+let fetch_salary () =
+  let url = Printf.sprintf "%s/history/salary.asp" base_url in
+  Printf.printf "Fetching salary data...\n%!";
+  let* html = fetch_url url in
+  if String.length html = 0 then
+    Lwt.return []
+  else
+    Lwt.return (parse_salary_html html)
+
+(** Print salary as CSV *)
+let print_salary_csv entries =
+  Printf.printf "season,rank,player_name,team_name,base_salary,bonus,total,note\n";
+  entries |> List.iter (fun e ->
+    Printf.printf "%s,%d,%s,%s,\"%s\",\"%s\",\"%s\",%s\n"
+      e.season
+      e.rank
+      e.sal_player_name
+      e.sal_team_name
+      e.base_salary
+      (Option.value ~default:"" e.bonus)
+      e.total
+      (Option.value ~default:"" e.note)
+  )
+
+(* ======== CROWD SCRAPER ======== *)
+
+(** Crowd (attendance) entry type *)
+type crowd_entry = {
+  crowd_season: string;
+  samsung_life: string;
+  shinhan_bank: string;
+  woori_bank: string;
+  hana_bank: string;
+  bnk_sum: string;
+  kb_stars: string;
+  neutral: string;
+  total: string;
+}
+
+(** Parse crowd tables from HTML *)
+let parse_crowd_html html =
+  let soup = Soup.parse html in
+  (* Find all table rows with class table_body *)
+  let rows = soup |> Soup.select ".table_body" |> Soup.to_list in
+  rows |> List.filter_map (fun row ->
+    let cells = row |> Soup.select "td" |> Soup.to_list in
+    match cells with
+    | season :: sam :: shin :: woori :: hana :: bnk :: kb :: neutral :: total :: _ ->
+        let season_name = get_all_text season in
+        if String.length season_name > 0 then
+          Some {
+            crowd_season = season_name;
+            samsung_life = get_all_text sam;
+            shinhan_bank = get_all_text shin;
+            woori_bank = get_all_text woori;
+            hana_bank = get_all_text hana;
+            bnk_sum = get_all_text bnk;
+            kb_stars = get_all_text kb;
+            neutral = get_all_text neutral;
+            total = get_all_text total;
+          }
+        else None
+    | _ -> None
+  )
+
+(** Fetch crowd data *)
+let fetch_crowd () =
+  let url = Printf.sprintf "%s/history/crowd.asp" base_url in
+  Printf.printf "Fetching crowd (attendance) data...\n%!";
+  let* html = fetch_url url in
+  if String.length html = 0 then
+    Lwt.return []
+  else
+    Lwt.return (parse_crowd_html html)
+
+(** Print crowd as CSV *)
+let print_crowd_csv entries =
+  Printf.printf "season,samsung_life,shinhan_bank,woori_bank,hana_bank,bnk_sum,kb_stars,neutral,total\n";
+  entries |> List.iter (fun e ->
+    Printf.printf "%s,\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\"\n"
+      e.crowd_season
+      e.samsung_life
+      e.shinhan_bank
+      e.woori_bank
+      e.hana_bank
+      e.bnk_sum
+      e.kb_stars
+      e.neutral
+      e.total
+  )
+
+(* ======== MAJOR RECORDS SCRAPER ======== *)
+
+(** Major team record entry *)
+type major_record = {
+  category: string;         (* 정규리그 한 경기 팀 최다 득점 *)
+  league_name: string;      (* 대회명 *)
+  date: string;             (* 날짜 *)
+  record_value: string;     (* 기록 *)
+  team1: string;            (* 팀1 *)
+  team2: string;            (* 팀2 *)
+}
+
+(** Check if element has a specific class *)
+let has_class cls node =
+  Soup.attribute "class" node
+  |> Option.map (fun s -> String.split_on_char ' ' s |> List.mem cls)
+  |> Option.value ~default:false
+
+(** Parse major records table *)
+let parse_major_records_html html =
+  let soup = Soup.parse html in
+  let rows = soup |> Soup.select "tbody tr" |> Soup.to_list in
+  let current_category = ref "" in
+  rows |> List.filter_map (fun row ->
+    let cells = row |> Soup.select "td" |> Soup.to_list in
+    match cells with
+    (* Row with category (has rowspan or bg_gray class) *)
+    | cat :: league :: date :: record :: team1 :: team2 :: _
+      when Soup.has_attribute "rowspan" cat || has_class "bg_gray" cat ->
+        let cat_text = get_all_text cat in
+        current_category := cat_text;
+        Some {
+          category = cat_text;
+          league_name = get_all_text league;
+          date = get_all_text date;
+          record_value = get_all_text record;
+          team1 = get_all_text team1;
+          team2 = get_all_text team2;
+        }
+    (* Continuation row (no category cell due to rowspan) *)
+    | league :: date :: record :: team1 :: team2 :: _
+      when String.length !current_category > 0 ->
+        Some {
+          category = !current_category;
+          league_name = get_all_text league;
+          date = get_all_text date;
+          record_value = get_all_text record;
+          team1 = get_all_text team1;
+          team2 = get_all_text team2;
+        }
+    | _ -> None
+  )
+
+(** Fetch major records *)
+let fetch_major_records () =
+  let url = Printf.sprintf "%s/history/major_team.asp" base_url in
+  Printf.printf "Fetching major records...\n%!";
+  let* html = fetch_url url in
+  if String.length html = 0 then
+    Lwt.return []
+  else
+    Lwt.return (parse_major_records_html html)
+
+(** Print major records as CSV *)
+let print_major_records_csv entries =
+  Printf.printf "category,league_name,date,record_value,team1,team2\n";
+  entries |> List.iter (fun e ->
+    Printf.printf "\"%s\",\"%s\",%s,\"%s\",\"%s\",\"%s\"\n"
+      e.category
+      e.league_name
+      e.date
+      e.record_value
+      e.team1
+      e.team2
+  )
+
+(* ======== DATALAB SCRAPER ======== *)
+
+(** DataLab base URL *)
+let datalab_url = "https://datalab.wkbl.or.kr"
+
+(** Matchup indices to try when scraping DataLab.
+    The DataLab uses URL format: {season}01{index}1
+    - "01" is fixed (analysis type)
+    - index ranges from 01-15 (tested: 01-08 return data, 09+ return HTTP 500)
+    - Actual team codes come from the JSON response, not URL
+    - 15 indices covers 6 teams × 5 opponents / 2 = 15 unique matchups
+*)
+let max_matchup_index = 15
+
+(** Team codes in DataLab JSON response
+    These are DIFFERENT from URL codes!
+    Discovered through winnerTeamCode/winnerTeamName matching.
+*)
+let team_codes_json = [
+  ("01", "KB스타즈");
+  ("03", "삼성생명");
+  ("05", "우리은행");
+  ("07", "신한은행");
+  ("09", "하나은행");
+  ("10", "하나원큐");  (* Alias for 하나은행 *)
+  ("11", "BNK썸");
+]
+
+(** Get team name from JSON code *)
+let team_name_from_code code =
+  List.assoc_opt code team_codes_json |> Option.value ~default:code
+
+(** DataLab uses different season codes (offset by +2 from main site)
+    Main site: 044 = 2025-2026
+    DataLab:   046 = 2025-2026
+*)
+let datalab_season_codes = [
+  ("046", "2025-2026");
+  ("045", "2024-2025");
+  ("044", "2023-2024");
+  ("043", "2022-2023");
+  ("042", "2021-2022");
+  ("041", "2020-2021");
+  ("040", "2019-2020");
+  ("039", "2018-2019");
+  ("038", "2017-2018");
+  ("037", "2016-2017");
+  ("036", "2015-2016");
+  ("035", "2014-2015");
+  ("034", "2013-2014");
+  ("033", "2012-2013");
+  ("032", "2011-2012");
+]
+
+(** Game record from matchRecordList *)
+type game_record = {
+  game_id: string;
+  game_season: string;
+  game_date: string;
+  court_name: string;
+  home_team_name: string;
+  away_team_name: string;
+  home_team_score: int;
+  away_team_score: int;
+  home_q1: int;
+  home_q2: int;
+  home_q3: int;
+  home_q4: int;
+  home_ext: int;
+  away_q1: int;
+  away_q2: int;
+  away_q3: int;
+  away_q4: int;
+  away_ext: int;
+  winner_team_name: string;
+}
+
+(** Team statistics from homeTeamStatistics/awayTeamStatistics *)
+type team_stat = {
+  ts_season: string;
+  ts_team_name: string;
+  opponent_team_name: string;
+  score_avg: float;
+  reb_avg: float;
+  ast_avg: float;
+  stl_avg: float;
+  blk_avg: float;
+  fg_pct: float;
+  three_pct: float;
+  ft_pct: float;
+}
+
+(** Head-to-head versus record from versusList *)
+type versus_record = {
+  vs_season: string;
+  vs_season_name: string;
+  vs_home_team: string;
+  vs_away_team: string;
+  home_win: int;
+  home_lose: int;
+}
+
+(** Safe JSON field extraction helpers *)
+let json_string_opt json key =
+  try
+    match Yojson.Safe.Util.member key json with
+    | `String s -> Some s
+    | `Null -> None
+    | _ -> None
+  with _ -> None
+
+let json_string json key =
+  json_string_opt json key |> Option.value ~default:""
+
+let json_int json key =
+  try
+    match Yojson.Safe.Util.member key json with
+    | `Int i -> i
+    | `String s -> int_of_string_opt s |> Option.value ~default:0
+    | _ -> 0
+  with _ -> 0
+
+let json_float json key =
+  try
+    match Yojson.Safe.Util.member key json with
+    | `Float f -> f
+    | `Int i -> float_of_int i
+    | `String s -> float_of_string_opt s |> Option.value ~default:0.0
+    | _ -> 0.0
+  with _ -> 0.0
+
+(** Extract JSON data from DataLab page HTML *)
+let extract_datalab_json html =
+  (* Look for pattern: var dataString = JSON.parse('...'); *)
+  let pattern = Str.regexp {|JSON\.parse('\([^']*\)')|} in
+  try
+    let _ = Str.search_forward pattern html 0 in
+    let json_str = Str.matched_group 1 html in
+    (* Unescape the JSON string *)
+    let unescaped =
+      json_str
+      |> Str.global_replace (Str.regexp {|\\"|}) "\""
+      |> Str.global_replace (Str.regexp {|\\'|}) "'"
+      |> Str.global_replace (Str.regexp {|\\\\|}) "\\"
+    in
+    Some (Yojson.Safe.from_string unescaped)
+  with
+  | Not_found -> None
+  | Yojson.Json_error msg ->
+      Printf.eprintf "JSON parse error: %s\n" msg;
+      None
+
+(** Parse game records from matchRecordList JSON array *)
+let parse_game_records json =
+  try
+    let records = Yojson.Safe.Util.member "matchRecordList" json in
+    match records with
+    | `List items ->
+        items |> List.filter_map (fun item ->
+          let game_id = json_string item "gameID" in
+          if String.length game_id > 0 then
+            let home_code = json_string item "homeTeamCode" in
+            let away_code = json_string item "awayTeamCode" in
+            Some {
+              game_id;
+              game_season = json_string item "season";
+              game_date = json_string item "gameDate";
+              court_name = json_string item "courtName";
+              home_team_name = team_name_from_code home_code;
+              away_team_name = team_name_from_code away_code;
+              home_team_score = json_int item "homeTeamScore";
+              away_team_score = json_int item "awayTeamScore";
+              home_q1 = json_int item "homeTeamScoreQ1";
+              home_q2 = json_int item "homeTeamScoreQ2";
+              home_q3 = json_int item "homeTeamScoreQ3";
+              home_q4 = json_int item "homeTeamScoreQ4";
+              home_ext = json_int item "homeTeamScoreEQ";  (* EQ not Ext in JSON *)
+              away_q1 = json_int item "awayTeamScoreQ1";
+              away_q2 = json_int item "awayTeamScoreQ2";
+              away_q3 = json_int item "awayTeamScoreQ3";
+              away_q4 = json_int item "awayTeamScoreQ4";
+              away_ext = json_int item "awayTeamScoreEQ";  (* EQ not Ext in JSON *)
+              winner_team_name = json_string item "winnerTeamName";
+            }
+          else None
+        )
+    | _ -> []
+  with _ -> []
+
+(** Extract home and away team names from DataLab JSON
+    Returns (home_team_name, away_team_name) option
+*)
+let extract_team_names json =
+  try
+    let home_stats = Yojson.Safe.Util.member "homeTeamWholeStatistics" json in
+    let away_stats = Yojson.Safe.Util.member "awayTeamWholeStatistics" json in
+    let home_code = json_string home_stats "teamCode" in
+    let away_code = json_string away_stats "teamCode" in
+    if String.length home_code > 0 && String.length away_code > 0 then
+      let home_name = List.assoc_opt home_code team_codes_json
+        |> Option.value ~default:home_code in
+      let away_name = List.assoc_opt away_code team_codes_json
+        |> Option.value ~default:away_code in
+      Some (home_name, away_name)
+    else
+      None
+  with _ -> None
+
+(** Parse team statistics from JSON *)
+let parse_team_stats ~season ~home_team ~away_team json =
+  let parse_stat_obj key team opponent =
+    try
+      let obj = Yojson.Safe.Util.member key json in
+      match obj with
+      | `Assoc _ ->
+          Some {
+            ts_season = season;
+            ts_team_name = team;
+            opponent_team_name = opponent;
+            score_avg = json_float obj "scoreAvg";
+            reb_avg = json_float obj "rebAvg";
+            ast_avg = json_float obj "astAvg";
+            stl_avg = json_float obj "stlAvg";
+            blk_avg = json_float obj "blkAvg";
+            fg_pct = json_float obj "fgPct";
+            three_pct = json_float obj "threePct";
+            ft_pct = json_float obj "ftPct";
+          }
+      | _ -> None
+    with _ -> None
+  in
+  let home_stats = parse_stat_obj "homeTeamStatistics" home_team away_team in
+  let away_stats = parse_stat_obj "awayTeamStatistics" away_team home_team in
+  List.filter_map Fun.id [home_stats; away_stats]
+
+(** Parse versus records from versusList *)
+let parse_versus_records ~home_team ~away_team json =
+  try
+    let records = Yojson.Safe.Util.member "versusList" json in
+    match records with
+    | `List items ->
+        items |> List.filter_map (fun item ->
+          let season = json_string item "season" in
+          if String.length season > 0 then
+            Some {
+              vs_season = season;
+              vs_season_name = json_string item "seasonName";
+              vs_home_team = home_team;
+              vs_away_team = away_team;
+              home_win = json_int item "homeWin";
+              home_lose = json_int item "homeLose";
+            }
+          else None
+        )
+    | _ -> []
+  with _ -> []
+
+(** Fetch DataLab team analysis page by matchup index
+    URL format: teamAnalysis?id={season}01{index}1
+    - season = 3-digit season code (e.g., 046)
+    - "01" = fixed analysis type
+    - index = 2-digit matchup index (01-30)
+    - "1" = trailing digit (always 1)
+    Example: 04601031 = season 046, matchup index 03
+*)
+let fetch_datalab_by_index ~season_code ~matchup_index =
+  let id = Printf.sprintf "%s01%02d1" season_code matchup_index in
+  let url = Printf.sprintf "%s/teamAnalysis?id=%s" datalab_url id in
+  Printf.printf "  Fetching DataLab: season=%s index=%02d (id=%s)...\n%!"
+    season_code matchup_index id;
+  let* html = fetch_url url in
+  if String.length html = 0 then
+    Lwt.return None
+  else
+    Lwt.return (extract_datalab_json html)
+
+(** Generate matchup indices to try (1 to max_matchup_index) *)
+let all_matchup_indices () =
+  List.init max_matchup_index (fun i -> i + 1)
+
+(** Fetch all games for a season from DataLab *)
+let fetch_season_games season_code =
+  let indices = all_matchup_indices () in
+  let seen_games = Hashtbl.create 256 in  (* Deduplicate games *)
+  let rec fetch_all acc = function
+    | [] -> Lwt.return acc
+    | idx :: rest ->
+        let* json_opt = fetch_datalab_by_index ~season_code ~matchup_index:idx in
+        let games = match json_opt with
+          | Some json ->
+              parse_game_records json
+              |> List.filter (fun g ->
+                  (* Filter by season and deduplicate *)
+                  g.game_season = season_code &&
+                  not (Hashtbl.mem seen_games g.game_id) &&
+                  begin
+                    Hashtbl.add seen_games g.game_id true;
+                    true
+                  end
+                )
+          | None -> []
+        in
+        (* Rate limiting: 200ms delay *)
+        let* () = Lwt_unix.sleep 0.2 in
+        fetch_all (games @ acc) rest
+  in
+  fetch_all [] indices
+
+(** Fetch all games for multiple seasons *)
+let fetch_all_games ?(seasons=datalab_season_codes) () =
+  Printf.printf "Fetching games from DataLab (%d seasons)...\n%!" (List.length seasons);
+  let rec fetch_all acc = function
+    | [] -> Lwt.return (List.rev acc)
+    | (code, name) :: rest ->
+        Printf.printf "\n=== Season %s (%s) ===\n%!" name code;
+        let* games = fetch_season_games code in
+        Printf.printf "  Found %d games\n%!" (List.length games);
+        fetch_all (games @ acc) rest
+  in
+  fetch_all [] seasons
+
+(** Fetch team stats for all matchups in a season *)
+let fetch_season_team_stats season_code =
+  let indices = all_matchup_indices () in
+  let seen_matchups = Hashtbl.create 64 in  (* Deduplicate matchups *)
+  let rec fetch_all acc = function
+    | [] -> Lwt.return acc
+    | idx :: rest ->
+        let* json_opt = fetch_datalab_by_index ~season_code ~matchup_index:idx in
+        let stats = match json_opt with
+          | Some json ->
+              (match extract_team_names json with
+               | Some (home_name, away_name) ->
+                   let key = home_name ^ "vs" ^ away_name in
+                   if Hashtbl.mem seen_matchups key then []
+                   else begin
+                     Hashtbl.add seen_matchups key true;
+                     parse_team_stats ~season:season_code ~home_team:home_name ~away_team:away_name json
+                   end
+               | None -> [])
+          | None -> []
+        in
+        let* () = Lwt_unix.sleep 0.2 in
+        fetch_all (stats @ acc) rest
+  in
+  fetch_all [] indices
+
+(** Fetch all team stats for multiple seasons *)
+let fetch_all_team_stats ?(seasons=datalab_season_codes) () =
+  Printf.printf "Fetching team stats from DataLab (%d seasons)...\n%!" (List.length seasons);
+  let rec fetch_all acc = function
+    | [] -> Lwt.return (List.rev acc)
+    | (code, name) :: rest ->
+        Printf.printf "\n=== Season %s (%s) ===\n%!" name code;
+        let* stats = fetch_season_team_stats code in
+        Printf.printf "  Found %d stat entries\n%!" (List.length stats);
+        fetch_all (stats @ acc) rest
+  in
+  fetch_all [] seasons
+
+(** Fetch versus records for all matchups in a season *)
+let fetch_season_versus_records season_code =
+  let indices = all_matchup_indices () in
+  let seen_matchups = Hashtbl.create 64 in  (* Deduplicate matchups *)
+  let rec fetch_all acc = function
+    | [] -> Lwt.return acc
+    | idx :: rest ->
+        let* json_opt = fetch_datalab_by_index ~season_code ~matchup_index:idx in
+        let records = match json_opt with
+          | Some json ->
+              (match extract_team_names json with
+               | Some (home_name, away_name) ->
+                   let key = home_name ^ "vs" ^ away_name in
+                   if Hashtbl.mem seen_matchups key then []
+                   else begin
+                     Hashtbl.add seen_matchups key true;
+                     parse_versus_records ~home_team:home_name ~away_team:away_name json
+                   end
+               | None -> [])
+          | None -> []
+        in
+        let* () = Lwt_unix.sleep 0.2 in
+        fetch_all (records @ acc) rest
+  in
+  fetch_all [] indices
+
+(** Print game records as CSV *)
+let print_games_csv games =
+  Printf.printf "game_id,season,date,court,home_team,away_team,home_score,away_score,home_q1,home_q2,home_q3,home_q4,home_ext,away_q1,away_q2,away_q3,away_q4,away_ext,winner\n";
+  games |> List.iter (fun g ->
+    Printf.printf "%s,%s,%s,\"%s\",%s,%s,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%s\n"
+      g.game_id
+      g.game_season
+      g.game_date
+      g.court_name
+      g.home_team_name
+      g.away_team_name
+      g.home_team_score
+      g.away_team_score
+      g.home_q1 g.home_q2 g.home_q3 g.home_q4 g.home_ext
+      g.away_q1 g.away_q2 g.away_q3 g.away_q4 g.away_ext
+      g.winner_team_name
+  )
+
+(** Print team stats as CSV *)
+let print_team_stats_csv stats =
+  Printf.printf "season,team,opponent,score_avg,reb_avg,ast_avg,stl_avg,blk_avg,fg_pct,three_pct,ft_pct\n";
+  stats |> List.iter (fun s ->
+    Printf.printf "%s,%s,%s,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n"
+      s.ts_season
+      s.ts_team_name
+      s.opponent_team_name
+      s.score_avg
+      s.reb_avg
+      s.ast_avg
+      s.stl_avg
+      s.blk_avg
+      s.fg_pct
+      s.three_pct
+      s.ft_pct
+  )
+
+(** Print versus records as CSV *)
+let print_versus_csv records =
+  Printf.printf "season,season_name,home_team,away_team,home_win,home_lose\n";
+  records |> List.iter (fun v ->
+    Printf.printf "%s,%s,%s,%s,%d,%d\n"
+      v.vs_season
+      v.vs_season_name
+      v.vs_home_team
+      v.vs_away_team
+      v.home_win
+      v.home_lose
+  )
+
+(* ============================================================
+   CHAMPIONSHIP & ALL-STAR HISTORY SCRAPERS
+   ============================================================ *)
+
+(** Championship record type *)
+type championship_record = {
+  champ_season: string;        (* e.g., "2024-2025" *)
+  champ_edition: int;          (* e.g., 28 *)
+  champion_team: string;       (* e.g., "BNK 썸" *)
+  runner_up_team: string;      (* e.g., "우리은행" *)
+  finals_result: string;       (* e.g., "3승 0패" *)
+  regular_champion: string;    (* Regular season winner *)
+}
+[@@deriving show, eq]
+
+(** All-star record type *)
+type allstar_record = {
+  as_edition: int;            (* e.g., 24 *)
+  as_season: string;          (* e.g., "2025~2026" *)
+  as_date: string;            (* e.g., "2020. 1. 12" *)
+  as_venue: string;           (* e.g., "부산사직실내체육관" *)
+  as_mvp: string;             (* MVP player name *)
+}
+[@@deriving show, eq]
+
+(** Extract text from td, preferring data-kr attribute *)
+let extract_td_text td =
+  let data_kr = Soup.attribute "data-kr" td in
+  match data_kr with
+  | Some kr when String.length kr > 0 -> String.trim kr
+  | _ ->
+      (* Try to get text from nested span with data-kr *)
+      let span = Soup.select_one "span.language" td in
+      match span with
+      | Some s ->
+          (match Soup.attribute "data-kr" s with
+           | Some kr -> String.trim kr
+           | None -> Soup.leaf_text td |> Option.value ~default:"" |> String.trim)
+      | None -> Soup.leaf_text td |> Option.value ~default:"" |> String.trim
+
+(** Fetch championship history from WKBL website *)
+let fetch_championship_history () =
+  Printf.printf "Fetching championship history...\n%!";
+  let url = "https://www.wkbl.or.kr/history/league_champion.asp" in
+  let* html = fetch_url url in
+  let soup = Soup.parse html in
+
+  let records = ref [] in
+  let edition = ref 0 in
+
+  (* Find tbody rows - each championship starts with a row that has 6 TDs *)
+  let rows = Soup.select "tbody tr" soup in
+  rows |> Soup.iter (fun row ->
+    let tds = Soup.select "td" row |> Soup.to_list in
+    (* First row of each championship has 6 cells (with rowspans) *)
+    if List.length tds >= 6 then begin
+      incr edition;
+      let season = extract_td_text (List.nth tds 0) in
+      let finals_result = extract_td_text (List.nth tds 2) in
+      let champion = extract_td_text (List.nth tds 4) in
+      let regular_champ = extract_td_text (List.nth tds 5) in
+
+      (* Extract runner-up from matchup (td 1) - format: "TeamA : TeamB" *)
+      let matchup_td = List.nth tds 1 in
+      let home_span = Soup.select_one "span.home_team" matchup_td in
+      let away_span = Soup.select_one "span.away_team" matchup_td in
+      let home_team = match home_span with
+        | Some s -> Soup.attribute "data-kr" s |> Option.value ~default:""
+        | None -> "" in
+      let away_team = match away_span with
+        | Some s -> Soup.attribute "data-kr" s |> Option.value ~default:""
+        | None -> "" in
+
+      (* Determine runner-up: the team that's not the champion *)
+      let runner_up =
+        if String.equal champion home_team then away_team
+        else if String.equal champion away_team then home_team
+        else if String.length home_team > 0 then home_team
+        else away_team
+      in
+
+      (* Skip if no champion (e.g., COVID cancelled season) *)
+      if String.length champion > 0 && not (String.equal champion "-") then
+        records := {
+          champ_season = season;
+          champ_edition = !edition;
+          champion_team = champion;
+          runner_up_team = runner_up;
+          finals_result;
+          regular_champion = regular_champ;
+        } :: !records
+    end
+  );
+
+  Printf.printf "  Found %d championship records\n%!" (List.length !records);
+  Lwt.return (List.rev !records)
+
+(** Fetch all-star history from WKBL website *)
+let fetch_allstar_history () =
+  Printf.printf "Fetching all-star history...\n%!";
+  let url = "https://www.wkbl.or.kr/history/league_allstar.asp" in
+  let* html = fetch_url url in
+  let soup = Soup.parse html in
+
+  (* First, collect edition/season pairs from the summary table (2 columns) *)
+  let edition_seasons = ref [] in
+  let tables = Soup.select "table" soup |> Soup.to_list in
+
+  (* First table has edition + season *)
+  (match tables with
+   | first_table :: _ ->
+       let rows = Soup.select "tbody tr" first_table in
+       rows |> Soup.iter (fun row ->
+         let tds = Soup.select "td" row |> Soup.to_list in
+         if List.length tds = 2 then begin
+           let edition_text = List.nth tds 0 |> Soup.leaf_text |> Option.value ~default:"" |> String.trim in
+           let season_text = List.nth tds 1 |> Soup.leaf_text |> Option.value ~default:"" |> String.trim in
+           match int_of_string_opt edition_text with
+           | Some edition -> edition_seasons := (edition, season_text) :: !edition_seasons
+           | None -> ()
+         end
+       )
+   | [] -> ()
+  );
+
+  (* Reverse to get ascending order *)
+  edition_seasons := List.rev !edition_seasons;
+
+  (* Second table (or later) has detailed data: venue, home, score, away, mvp, etc. *)
+  let records = ref [] in
+  let detail_idx = ref 0 in
+
+  tables |> List.iter (fun table ->
+    let rows = Soup.select "tbody tr" table in
+    rows |> Soup.iter (fun row ->
+      let tds = Soup.select "td" row |> Soup.to_list in
+      (* Detail table has 7 columns: venue, home, score, away, mvp, scorer, best_perf *)
+      if List.length tds >= 5 then begin
+        let venue = extract_td_text (List.nth tds 0) in
+        let mvp = extract_td_text (List.nth tds 4) in
+
+        (* Get edition/season from the collected list *)
+        let (edition, season) =
+          if !detail_idx < List.length !edition_seasons then
+            List.nth !edition_seasons !detail_idx
+          else
+            (0, "")
+        in
+        incr detail_idx;
+
+        if edition > 0 then
+          records := {
+            as_edition = edition;
+            as_season = season;
+            as_date = "";  (* Date not available in current HTML *)
+            as_venue = venue;
+            as_mvp = mvp;
+          } :: !records
+      end
+    )
+  );
+
+  Printf.printf "  Found %d all-star records\n%!" (List.length !records);
+  Lwt.return (List.rev !records)
+
+(** Print championship history as CSV *)
+let print_championship_csv records =
+  Printf.printf "edition,season,champion,runner_up,finals_result,regular_champion\n";
+  records |> List.iter (fun r ->
+    Printf.printf "%d,%s,\"%s\",\"%s\",\"%s\",\"%s\"\n"
+      r.champ_edition
+      r.champ_season
+      r.champion_team
+      r.runner_up_team
+      r.finals_result
+      r.regular_champion
+  )
+
+(** Print all-star history as CSV *)
+let print_allstar_csv records =
+  Printf.printf "edition,season,date,venue,mvp\n";
+  records |> List.iter (fun r ->
+    Printf.printf "%d,%s,\"%s\",\"%s\",\"%s\"\n"
+      r.as_edition
+      r.as_season
+      r.as_date
+      r.as_venue
+      r.as_mvp
+  )
