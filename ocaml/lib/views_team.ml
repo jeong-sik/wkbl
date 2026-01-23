@@ -241,8 +241,43 @@ let team_profile_page (detail: team_full_detail) ~season ~seasons =
           (escape_html margin_str))
     |> String.concat "\n"
   in
+  (* Four Factors Section *)
+  let four_factors_section =
+    match detail.tfd_team_totals with
+    | None -> ""
+    | Some totals ->
+        let ff = Stats.four_factors_of_totals totals in
+        let stat_card label value desc color =
+          Printf.sprintf
+            {html|<div class="bg-slate-100 dark:bg-slate-800/60 rounded-lg p-3 border border-slate-200 dark:border-slate-700/50">
+              <div class="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-widest font-bold">%s</div>
+              <div class="mt-1 text-xl font-black %s font-mono tabular-nums">%.1f%%</div>
+              <div class="mt-1 text-[10px] text-slate-500 dark:text-slate-400 leading-tight">%s</div>
+            </div>|html}
+            label color value desc
+        in
+        Printf.sprintf
+          {html|<div class="space-y-4">
+            <h3 class="text-xl font-bold text-slate-900 dark:text-slate-200">Four Factors</h3>
+            <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-lg">
+              <div class="grid grid-cols-2 gap-3">
+                %s
+                %s
+                %s
+                %s
+              </div>
+              <div class="mt-3 text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                Dean Oliver's Four Factors: 팀 성과를 결정짓는 4가지 핵심 지표
+              </div>
+            </div>
+          </div>|html}
+          (stat_card "eFG%%" ff.efg_pct "슈팅 효율" "text-emerald-600 dark:text-emerald-400")
+          (stat_card "TOV%%" ff.tov_pct "턴오버율 (낮을수록 좋음)" "text-rose-500 dark:text-rose-400")
+          (stat_card "ORB%%" ff.orb_pct "공격 리바운드율" "text-sky-600 dark:text-sky-400")
+          (stat_card "FTR" ff.ftr "자유투 시도율" "text-orange-600 dark:text-orange-400")
+  in
 	  layout ~title:(t ^ " | WKBL Team Profile")
-	    ~content:(Printf.sprintf {html|<div class="space-y-6 sm:space-y-8 animate-fade-in"><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 sm:p-8 shadow-2xl flex flex-col md:flex-row items-center md:items-start gap-6 sm:gap-8"><div class="w-24 h-24 sm:w-32 sm:h-32 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center p-3 sm:p-4 border-2 border-slate-300 dark:border-slate-700 shadow-inner">%s</div><div class="text-center md:text-left space-y-4 w-full"><div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3"><h1 class="text-3xl sm:text-4xl font-black text-slate-900 dark:text-slate-200">%s</h1><form action="/team/%s" method="get" class="flex flex-col sm:flex-row items-stretch sm:items-center justify-center sm:justify-end gap-2 w-full sm:w-auto"><span class="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-widest font-bold">Season</span><select name="season" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none w-full sm:w-48" onchange="this.form.submit()">%s</select></form></div>%s</div></div><div class="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8"><div class="space-y-4 lg:col-span-2"><h3 class="text-xl font-bold text-slate-900 dark:text-slate-200">Roster</h3><div class="sm:hidden space-y-3">%s</div><details class="sm:hidden bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 p-4"><summary class="cursor-pointer font-bold text-slate-700 dark:text-slate-300 select-none">Full table</summary><div class="mt-3 overflow-x-auto">%s</div></details><div class="hidden sm:block bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-lg">%s</div></div><div class="space-y-6 lg:col-span-1"><h3 class="text-xl font-bold text-slate-900 dark:text-slate-200">Game Results</h3>%s<h3 class="text-xl font-bold text-slate-900 dark:text-slate-200">Recent Results</h3><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto overflow-y-hidden shadow-lg"><table class="min-w-[480px] w-full text-xs sm:text-sm font-mono tabular-nums table-fixed"><thead class="bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px] sm:text-xs whitespace-nowrap"><tr><th class="px-4 py-3 text-left font-sans w-24">Date</th><th class="px-4 py-3 text-left font-sans">Opponent</th><th class="px-4 py-3 text-center font-sans w-14">Result</th><th class="px-4 py-3 text-right font-sans w-36">Score</th></tr></thead><tbody>%s</tbody></table></div></div></div></div>|html}
+	    ~content:(Printf.sprintf {html|<div class="space-y-6 sm:space-y-8 animate-fade-in"><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 sm:p-8 shadow-2xl flex flex-col md:flex-row items-center md:items-start gap-6 sm:gap-8"><div class="w-24 h-24 sm:w-32 sm:h-32 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center p-3 sm:p-4 border-2 border-slate-300 dark:border-slate-700 shadow-inner">%s</div><div class="text-center md:text-left space-y-4 w-full"><div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3"><h1 class="text-3xl sm:text-4xl font-black text-slate-900 dark:text-slate-200">%s</h1><form action="/team/%s" method="get" class="flex flex-col sm:flex-row items-stretch sm:items-center justify-center sm:justify-end gap-2 w-full sm:w-auto"><span class="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-widest font-bold">Season</span><select name="season" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none w-full sm:w-48" onchange="this.form.submit()">%s</select></form></div>%s</div></div><div class="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8"><div class="space-y-4 lg:col-span-2"><h3 class="text-xl font-bold text-slate-900 dark:text-slate-200">Roster</h3><div class="sm:hidden space-y-3">%s</div><details class="sm:hidden bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 p-4"><summary class="cursor-pointer font-bold text-slate-700 dark:text-slate-300 select-none">Full table</summary><div class="mt-3 overflow-x-auto">%s</div></details><div class="hidden sm:block bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-lg">%s</div></div><div class="space-y-6 lg:col-span-1"><h3 class="text-xl font-bold text-slate-900 dark:text-slate-200">Game Results</h3>%s%s<h3 class="text-xl font-bold text-slate-900 dark:text-slate-200">Recent Results</h3><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto overflow-y-hidden shadow-lg"><table class="min-w-[480px] w-full text-xs sm:text-sm font-mono tabular-nums table-fixed"><thead class="bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px] sm:text-xs whitespace-nowrap"><tr><th class="px-4 py-3 text-left font-sans w-24">Date</th><th class="px-4 py-3 text-left font-sans">Opponent</th><th class="px-4 py-3 text-center font-sans w-14">Result</th><th class="px-4 py-3 text-right font-sans w-36">Score</th></tr></thead><tbody>%s</tbody></table></div></div></div></div>|html}
 	          (team_logo_tag ~class_name:"w-16 h-16 sm:w-24 sm:h-24" t)
 	          (escape_html t)
 	          (Uri.pct_encode t)
@@ -252,6 +287,7 @@ let team_profile_page (detail: team_full_detail) ~season ~seasons =
 	          roster_table_inner
 	          roster_table_inner
 	          game_results_chart
+	          four_factors_section
 	          game_rows) ()
 
 (** DB QA dashboard page *)

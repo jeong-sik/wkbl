@@ -453,6 +453,7 @@ type team_full_detail = {
   tfd_roster: player_aggregate list;
   tfd_game_results: team_game_result list;
   tfd_recent_games: team_game_result list;
+  tfd_team_totals: team_totals option;  (** For Four Factors calculation *)
 }
 
 type h2h_game = {
