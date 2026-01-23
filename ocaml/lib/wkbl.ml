@@ -14,3 +14,5 @@ module Views_streaks = Views_streaks
 module Prediction = Prediction
 module Streaks = Streaks
 module Qa = Qa
+module Clutch = Clutch
+module Scraper = Scraper
