@@ -662,6 +662,8 @@ let compare_page
     ~p2_candidates
     ~error
     ~h2h_disabled_reason
+    ~p1_season_history:(p1_season_history: season_stats list)
+    ~p2_season_history:(p2_season_history: season_stats list)
     (p1_selected: player_aggregate option)
     (p2_selected: player_aggregate option)
     (h2h: h2h_game list)
@@ -889,8 +891,100 @@ let compare_page
             (escape_html (normalize_name b.name))
             (radar_chart ~labels ~values_a ~values_b ~color_a:"#f97316" ~color_b:"#0ea5e9")
         in
+        (* Season trend line chart - shows PTS progression across seasons *)
+        let trend_chart_html =
+          let has_history = List.length p1_season_history > 1 || List.length p2_season_history > 1 in
+          if not has_history then ""
+          else
+            let max_pts =
+              let p1_max = p1_season_history |> List.map (fun (s: season_stats) -> s.ss_avg_points) |> List.fold_left max 0.0 in
+              let p2_max = p2_season_history |> List.map (fun (s: season_stats) -> s.ss_avg_points) |> List.fold_left max 0.0 in
+              max 15.0 (max p1_max p2_max *. 1.1)
+            in
+            let width = 400 in
+            let height = 200 in
+            let padding = 40 in
+            let chart_w = width - padding * 2 in
+            let chart_h = height - padding * 2 in
+            let all_seasons =
+              (List.map (fun (s: season_stats) -> s.ss_season_code) p1_season_history @
+               List.map (fun (s: season_stats) -> s.ss_season_code) p2_season_history)
+              |> List.sort_uniq compare
+              |> List.rev (* Most recent on right *)
+            in
+            let n_seasons = List.length all_seasons in
+            if n_seasons < 2 then ""
+            else
+              let x_of_season s =
+                match List.find_opt (fun x -> x = s) all_seasons with
+                | None -> padding
+                | Some _ ->
+                    let idx = match List.find_index (fun x -> x = s) all_seasons with
+                      | Some i -> i | None -> 0 in
+                    padding + (chart_w * idx / (n_seasons - 1))
+              in
+              let y_of_pts pts = padding + int_of_float ((1.0 -. pts /. max_pts) *. float_of_int chart_h) in
+              let make_line color data =
+                let points =
+                  data
+                  |> List.map (fun (s: season_stats) ->
+                      let x = x_of_season s.ss_season_code in
+                      let y = y_of_pts s.ss_avg_points in
+                      Printf.sprintf "%d,%d" x y)
+                  |> String.concat " "
+                in
+                if List.length data < 2 then ""
+                else Printf.sprintf {svg|<polyline points="%s" fill="none" stroke="%s" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>|svg} points color
+              in
+              let make_dots color data =
+                data
+                |> List.map (fun (s: season_stats) ->
+                    let x = x_of_season s.ss_season_code in
+                    let y = y_of_pts s.ss_avg_points in
+                    Printf.sprintf {svg|<circle cx="%d" cy="%d" r="4" fill="%s"/><title>%s: %.1f PTS</title>|svg} x y color s.ss_season_name s.ss_avg_points)
+                |> String.concat "\n"
+              in
+              let x_labels =
+                all_seasons
+                |> List.mapi (fun i s ->
+                    let x = padding + (chart_w * i / (n_seasons - 1)) in
+                    let label = if String.length s >= 3 then String.sub s (String.length s - 2) 2 else s in
+                    Printf.sprintf {svg|<text x="%d" y="%d" text-anchor="middle" class="fill-slate-500 dark:fill-slate-400 text-[10px]">%s</text>|svg} x (height - 10) label)
+                |> String.concat "\n"
+              in
+              let y_labels =
+                [0.0; max_pts /. 2.0; max_pts]
+                |> List.map (fun v ->
+                    let y = y_of_pts v in
+                    Printf.sprintf {svg|<text x="%d" y="%d" text-anchor="end" class="fill-slate-400 dark:fill-slate-500 text-[9px]">%.0f</text><line x1="%d" y1="%d" x2="%d" y2="%d" stroke="currentColor" class="text-slate-200 dark:text-slate-700" stroke-dasharray="2,2"/>|svg}
+                      (padding - 5) (y + 3) v padding y (width - padding) y)
+                |> String.concat "\n"
+              in
+              Printf.sprintf
+                {html|<div class="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 p-6 mt-6">
+                  <div class="text-center mb-4">
+                    <h3 class="text-slate-500 dark:text-slate-400 text-sm font-bold uppercase">Season Trend (PTS)</h3>
+                    <p class="text-[10px] text-slate-400 dark:text-slate-500 mt-1">시즌별 평균 득점 추이</p>
+                  </div>
+                  <div class="flex justify-center">
+                    <svg viewBox="0 0 %d %d" class="w-full max-w-md">
+                      %s
+                      %s
+                      %s
+                      %s
+                      %s
+                    </svg>
+                  </div>
+                </div>|html}
+                width height
+                y_labels
+                x_labels
+                (make_line "#f97316" p1_season_history)
+                (make_line "#0ea5e9" p2_season_history)
+                ((make_dots "#f97316" p1_season_history) ^ "\n" ^ (make_dots "#0ea5e9" p2_season_history))
+        in
         Printf.sprintf
-          {html|<div class="space-y-8 animate-fade-in"><div class="grid grid-cols-1 md:grid-cols-3 gap-8 items-start"><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 flex flex-col items-center gap-4 shadow-xl border-t-4 border-t-orange-500">%s<div class="text-center space-y-2"><div class="text-2xl font-black text-slate-900 dark:text-slate-200 hover:text-orange-600 dark:text-orange-400"><a href="/player/%s">%s</a></div><div class="text-slate-500 dark:text-slate-400">%s</div>%s</div></div><div class="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 p-6 space-y-6"><div class="text-center space-y-2"><h3 class="text-slate-500 dark:text-slate-400 text-sm font-bold uppercase">Average Stats</h3><p class="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed"><span class="font-mono">MG</span>는 팀 득실마진(출전시간 가중)이며, 개인 +/-는 문자중계(PBP) 기반으로 일부 경기에서만 제공됩니다. (데이터가 없으면 -)</p></div>%s%s%s%s%s%s%s%s</div><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 flex flex-col items-center gap-4 shadow-xl border-t-4 border-t-sky-500">%s<div class="text-center space-y-2"><div class="text-2xl font-black text-slate-900 dark:text-slate-200 hover:text-sky-600 dark:text-sky-400"><a href="/player/%s">%s</a></div><div class="text-slate-500 dark:text-slate-400">%s</div>%s</div></div></div>%s%s</div>|html}
+          {html|<div class="space-y-8 animate-fade-in"><div class="grid grid-cols-1 md:grid-cols-3 gap-8 items-start"><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 flex flex-col items-center gap-4 shadow-xl border-t-4 border-t-orange-500">%s<div class="text-center space-y-2"><div class="text-2xl font-black text-slate-900 dark:text-slate-200 hover:text-orange-600 dark:text-orange-400"><a href="/player/%s">%s</a></div><div class="text-slate-500 dark:text-slate-400">%s</div>%s</div></div><div class="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 p-6 space-y-6"><div class="text-center space-y-2"><h3 class="text-slate-500 dark:text-slate-400 text-sm font-bold uppercase">Average Stats</h3><p class="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed"><span class="font-mono">MG</span>는 팀 득실마진(출전시간 가중)이며, 개인 +/-는 문자중계(PBP) 기반으로 일부 경기에서만 제공됩니다. (데이터가 없으면 -)</p></div>%s%s%s%s%s%s%s%s</div><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 flex flex-col items-center gap-4 shadow-xl border-t-4 border-t-sky-500">%s<div class="text-center space-y-2"><div class="text-2xl font-black text-slate-900 dark:text-slate-200 hover:text-sky-600 dark:text-sky-400"><a href="/player/%s">%s</a></div><div class="text-slate-500 dark:text-slate-400">%s</div>%s</div></div></div>%s%s%s</div>|html}
           (player_img_tag ~class_name:"w-32 h-32" a.player_id a.name)
           a.player_id
           (escape_html (normalize_name a.name))
@@ -910,6 +1004,7 @@ let compare_page
           (escape_html b.team_name)
           (season_badge p2_season)
           radar_chart_html
+          trend_chart_html
           h2h_html
     | _ -> ""
   in
