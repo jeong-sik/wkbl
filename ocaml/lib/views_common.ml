@@ -93,6 +93,36 @@ let player_id_badge player_id =
     (escape_html player_id)
     (escape_html short)
 
+(** Empty state component with icon - consistent UX for no-data scenarios *)
+type empty_state_icon =
+  | SearchIcon
+  | ChartIcon
+  | UsersIcon
+  | CalendarIcon
+  | TableIcon
+  | BasketballIcon
+
+let empty_state_svg = function
+  | SearchIcon -> {svg|<svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>|svg}
+  | ChartIcon -> {svg|<svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>|svg}
+  | UsersIcon -> {svg|<svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>|svg}
+  | CalendarIcon -> {svg|<svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>|svg}
+  | TableIcon -> {svg|<svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>|svg}
+  | BasketballIcon -> {svg|<svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke-width="1.5"/><path stroke-width="1.5" d="M12 2v20M2 12h20M4.93 4.93l14.14 14.14M19.07 4.93L4.93 19.07"/></svg>|svg}
+
+let empty_state ?(icon=SearchIcon) ?(action="") title description =
+  Printf.sprintf
+    {html|<div class="empty-state" role="status" aria-live="polite">
+  %s
+  <h3 class="empty-state-title">%s</h3>
+  <p class="empty-state-description">%s</p>
+  %s
+</div>|html}
+    (empty_state_svg icon)
+    (escape_html title)
+    (escape_html description)
+    (if action = "" then "" else Printf.sprintf {html|<div class="empty-state-action">%s</div>|html} action)
+
 (** Player image component with fallback *)
 let player_img_tag ?(class_name="w-12 h-12") player_id _player_name =
   let local_src = Printf.sprintf "/static/images/player_%s.png" player_id in
@@ -813,6 +843,12 @@ let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="")
   <meta name="twitter:description" content="%s">
   <meta name="twitter:image" content="%s">
   <link rel="canonical" href="%s">
+  <!-- Preconnect hints for performance -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.tailwindcss.com">
+  <link rel="preconnect" href="https://www.wkbl.or.kr">
+  <link rel="dns-prefetch" href="https://www.wkbl.or.kr">
   <link rel="icon" type="image/png" sizes="32x32" href="/static/images/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="/static/images/favicon-16.png">
   <link rel="apple-touch-icon" sizes="180x180" href="/static/images/apple-touch-icon.png">

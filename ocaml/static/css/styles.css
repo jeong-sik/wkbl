@@ -47,9 +47,34 @@
   transition: opacity 150ms ease-out, transform 150ms ease-out;
 }
 
-/* Table row hover enhancement */
+/* Table row hover enhancement with left accent bar */
 tbody tr {
+  transition: background-color 150ms ease, box-shadow 150ms ease;
+  position: relative;
+}
+
+tbody tr::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: transparent;
   transition: background-color 150ms ease;
+}
+
+tbody tr:hover::before {
+  background: #f97316;
+}
+
+/* Enhanced row hover for data tables */
+.data-table tbody tr:hover {
+  background-color: rgba(249, 115, 22, 0.05);
+}
+
+.dark .data-table tbody tr:hover {
+  background-color: rgba(249, 115, 22, 0.08);
 }
 
 /* Roster table: keep layout stable even if Tailwind is delayed/blocked */
@@ -528,4 +553,109 @@ body.menu-open {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+}
+
+/* ===========================================
+   13. Empty State Component
+   =========================================== */
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1.5rem;
+  text-align: center;
+  min-height: 200px;
+}
+
+.empty-state-icon {
+  width: 64px;
+  height: 64px;
+  margin-bottom: 1rem;
+  color: #94a3b8;
+  opacity: 0.6;
+}
+
+.dark .empty-state-icon {
+  color: #475569;
+}
+
+.empty-state-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #475569;
+  margin-bottom: 0.5rem;
+}
+
+.dark .empty-state-title {
+  color: #94a3b8;
+}
+
+.empty-state-description {
+  font-size: 0.875rem;
+  color: #64748b;
+  max-width: 320px;
+  line-height: 1.5;
+}
+
+.dark .empty-state-description {
+  color: #64748b;
+}
+
+.empty-state-action {
+  margin-top: 1rem;
+}
+
+/* ===========================================
+   14. Data Formatting Utilities
+   =========================================== */
+
+/* Tabular numbers for consistent stat alignment */
+.stat-value {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+/* Positive/negative value indicators */
+.stat-positive {
+  color: #16a34a;
+}
+
+.dark .stat-positive {
+  color: #4ade80;
+}
+
+.stat-negative {
+  color: #dc2626;
+}
+
+.dark .stat-negative {
+  color: #f87171;
+}
+
+/* ===========================================
+   15. Performance Optimization Classes
+   =========================================== */
+
+/* GPU acceleration hint for animated elements */
+.will-animate {
+  will-change: transform, opacity;
+}
+
+/* Content visibility optimization for off-screen content */
+.content-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 500px;
+}
+
+/* Image optimization */
+.img-optimized {
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+}
+
+/* Prevent text rendering jank */
+.text-optimized {
+  text-rendering: optimizeSpeed;
 }
