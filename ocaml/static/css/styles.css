@@ -659,3 +659,58 @@ body.menu-open {
 .text-optimized {
   text-rendering: optimizeSpeed;
 }
+
+/* ===========================================
+   16. Sortable Tables
+   =========================================== */
+
+/* Sticky table header for long tables */
+.table-sticky thead {
+  position: sticky;
+  top: 64px; /* Header height */
+  z-index: 20;
+  background: inherit;
+}
+
+.table-sticky thead th {
+  background: inherit;
+}
+
+/* Dark mode sticky header */
+.dark .table-sticky thead {
+  background-color: #0f172a; /* slate-900 */
+}
+
+/* Sortable column header */
+th[data-sortable] {
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 150ms ease;
+}
+
+th[data-sortable]:hover {
+  background-color: rgba(249, 115, 22, 0.05);
+}
+
+.dark th[data-sortable]:hover {
+  background-color: rgba(249, 115, 22, 0.1);
+}
+
+/* Sort indicator */
+.sort-indicator {
+  vertical-align: middle;
+  transition: opacity 150ms ease;
+}
+
+th[data-sortable]:hover .sort-indicator {
+  opacity: 1 !important;
+}
+
+/* Active sort column */
+th[data-sortable][aria-sort] {
+  background-color: rgba(249, 115, 22, 0.03);
+}
+
+.dark th[data-sortable][aria-sort] {
+  background-color: rgba(249, 115, 22, 0.05);
+}
