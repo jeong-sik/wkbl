@@ -4138,11 +4138,13 @@ let get_team_full_detail ~team_name ?(season="ALL") () =
     let* roster_res = get_players_by_team ~team_name ~season () in
     let* games_res = with_db (fun db -> Repo.get_team_recent_games ~team_name ~season db) in
     let* game_results_res = with_db (fun db -> Repo.get_team_games ~team_name ~season db) in
-    match standing_res, roster_res, games_res, game_results_res with
-    | Ok standings, Ok roster, Ok games, Ok game_results ->
+    let* team_totals_res = with_db (fun db -> Repo.get_team_totals ~season ~include_mismatch:false db) in
+    match standing_res, roster_res, games_res, game_results_res, team_totals_res with
+    | Ok standings, Ok roster, Ok games, Ok game_results, Ok all_totals ->
         let standing = List.find_opt (fun (s: team_standing) -> s.team_name = team_name) standings in
-        Lwt.return (Ok { tfd_team_name = team_name; tfd_standing = standing; tfd_roster = roster; tfd_game_results = game_results; tfd_recent_games = games })
-    | Error e, _, _, _ | _, Error e, _, _ | _, _, Error e, _ | _, _, _, Error e -> Lwt.return (Error e))
+        let team_totals = List.find_opt (fun (t: team_totals) -> t.team = team_name) all_totals in
+        Lwt.return (Ok { tfd_team_name = team_name; tfd_standing = standing; tfd_roster = roster; tfd_game_results = game_results; tfd_recent_games = games; tfd_team_totals = team_totals })
+    | Error e, _, _, _, _ | _, Error e, _, _, _ | _, _, Error e, _, _ | _, _, _, Error e, _ | _, _, _, _, Error e -> Lwt.return (Error e))
 let get_player_h2h_data ~p1_id ~p2_id ?(season="ALL") () =
   with_db (fun db -> Repo.get_player_h2h ~p1_id ~p2_id ~season db)
 
