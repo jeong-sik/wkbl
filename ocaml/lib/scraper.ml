@@ -1260,3 +1260,113 @@ let print_allstar_csv records =
       r.as_venue
       r.as_mvp
   )
+
+(* ============================================================
+   DATA ANALYSIS FUNCTIONS
+   ============================================================ *)
+
+(** Count occurrences in a list and return sorted by count desc *)
+let count_occurrences items =
+  let tbl = Hashtbl.create 16 in
+  items |> List.iter (fun item ->
+    let count = try Hashtbl.find tbl item with Not_found -> 0 in
+    Hashtbl.replace tbl item (count + 1)
+  );
+  Hashtbl.fold (fun k v acc -> (k, v) :: acc) tbl []
+  |> List.sort (fun (_, a) (_, b) -> compare b a)
+
+(** Analyze championship records - team statistics *)
+let analyze_championships records =
+  (* Count championships won *)
+  let champions = records |> List.map (fun r -> r.champion_team)
+    |> List.filter (fun t -> String.length t > 0) in
+  let champion_counts = count_occurrences champions in
+
+  (* Count runner-up finishes *)
+  let runners_up = records |> List.map (fun r -> r.runner_up_team)
+    |> List.filter (fun t -> String.length t > 0) in
+  let runner_up_counts = count_occurrences runners_up in
+
+  (* Count regular season wins *)
+  let regular_champs = records |> List.map (fun r -> r.regular_champion)
+    |> List.filter (fun t -> String.length t > 0) in
+  let regular_counts = count_occurrences regular_champs in
+
+  (champion_counts, runner_up_counts, regular_counts)
+
+(** Print championship analysis *)
+let print_championship_analysis records =
+  let (champs, runners, regulars) = analyze_championships records in
+
+  Printf.printf "\n📊 WKBL 챔피언십 통계 (총 %d시즌)\n" (List.length records);
+  Printf.printf "════════════════════════════════════════\n\n";
+
+  Printf.printf "🏆 역대 우승 횟수:\n";
+  Printf.printf "────────────────────────────────────────\n";
+  champs |> List.iter (fun (team, count) ->
+    let bar = String.make (count * 2) '#' in
+    Printf.printf "  %-12s %2d회 %s\n" team count bar
+  );
+
+  Printf.printf "\n🥈 역대 준우승 횟수:\n";
+  Printf.printf "────────────────────────────────────────\n";
+  runners |> List.iter (fun (team, count) ->
+    Printf.printf "  %-12s %2d회\n" team count
+  );
+
+  Printf.printf "\n🎯 정규시즌 1위 횟수:\n";
+  Printf.printf "────────────────────────────────────────\n";
+  regulars |> List.iter (fun (team, count) ->
+    Printf.printf "  %-12s %2d회\n" team count
+  );
+
+  Printf.printf "\n"
+
+(** Extract player name from MVP string like "박지수(KB스타즈)" *)
+let extract_player_name mvp_str =
+  let str = String.trim mvp_str in
+  if String.length str = 0 || String.equal str "-" then None
+  else
+    (* Handle multiple MVPs separated by <br> or <br/> *)
+    let first_mvp =
+      try
+        let br_pos = Str.search_forward (Str.regexp_string "<br") str 0 in
+        String.sub str 0 br_pos
+      with Not_found -> str
+    in
+    (* Extract name before parenthesis *)
+    try
+      let paren_pos = String.index first_mvp '(' in
+      Some (String.sub first_mvp 0 paren_pos |> String.trim)
+    with Not_found -> Some (String.trim first_mvp)
+
+(** Analyze all-star MVP records *)
+let analyze_allstar_mvps records =
+  let mvps = records
+    |> List.filter_map (fun r -> extract_player_name r.as_mvp) in
+  count_occurrences mvps
+
+(** Print all-star MVP analysis *)
+let print_allstar_analysis records =
+  let mvp_counts = analyze_allstar_mvps records in
+
+  Printf.printf "\n⭐ WKBL 올스타 MVP 통계 (총 %d회)\n" (List.length records);
+  Printf.printf "════════════════════════════════════════\n\n";
+
+  Printf.printf "🌟 다회 MVP 수상자:\n";
+  Printf.printf "────────────────────────────────────────\n";
+  mvp_counts |> List.iter (fun (player, count) ->
+    if count >= 2 then
+      Printf.printf "  %-15s %2d회\n" player count
+  );
+
+  Printf.printf "\n📍 역대 개최지:\n";
+  Printf.printf "────────────────────────────────────────\n";
+  let venues = records |> List.map (fun r -> r.as_venue)
+    |> List.filter (fun v -> String.length v > 0) in
+  let venue_counts = count_occurrences venues in
+  venue_counts |> List.iter (fun (venue, count) ->
+    Printf.printf "  %-20s %2d회\n" venue count
+  );
+
+  Printf.printf "\n"

@@ -27,7 +27,9 @@ Usage:
   scraper_tool teamstats [--csv]       Fetch team vs team statistics from DataLab
   scraper_tool versus [--csv]          Fetch head-to-head records from DataLab
   scraper_tool championship [--csv]    Fetch championship history (챔피언 역사)
+  scraper_tool championship --stats    Show championship statistics (통계 분석)
   scraper_tool allstar [--csv]         Fetch all-star game history (올스타 역사)
+  scraper_tool allstar --stats         Show all-star MVP statistics (통계 분석)
   scraper_tool --help                  Show this help
 
 Examples:
@@ -247,10 +249,12 @@ let run_versus ~season_filter ~csv_output =
     );
   Lwt.return ()
 
-let run_championship ~csv_output =
+let run_championship ~csv_output ~stats_output =
   let* records = Scraper.fetch_championship_history () in
   Printf.printf "\n=== Fetched %d championship records ===\n\n" (List.length records);
-  if csv_output then
+  if stats_output then
+    Scraper.print_championship_analysis records
+  else if csv_output then
     Scraper.print_championship_csv records
   else
     records |> List.iter (fun (c : Scraper.championship_record) ->
@@ -264,10 +268,12 @@ let run_championship ~csv_output =
     );
   Lwt.return ()
 
-let run_allstar ~csv_output =
+let run_allstar ~csv_output ~stats_output =
   let* records = Scraper.fetch_allstar_history () in
   Printf.printf "\n=== Fetched %d all-star records ===\n\n" (List.length records);
-  if csv_output then
+  if stats_output then
+    Scraper.print_allstar_analysis records
+  else if csv_output then
     Scraper.print_allstar_csv records
   else
     records |> List.iter (fun (a : Scraper.allstar_record) ->
@@ -284,6 +290,7 @@ let () =
   let args = Array.to_list Sys.argv |> List.tl in
 
   let csv_output = List.mem "--csv" args in
+  let stats_output = List.mem "--stats" args in
   let season_filter =
     args |> List.find_map (fun arg ->
       if String.length arg > 9 && String.sub arg 0 9 = "--season=" then
@@ -319,9 +326,9 @@ let () =
   | "versus" :: _ ->
       Lwt_main.run (run_versus ~season_filter ~csv_output)
   | "championship" :: _ ->
-      Lwt_main.run (run_championship ~csv_output)
+      Lwt_main.run (run_championship ~csv_output ~stats_output)
   | "allstar" :: _ ->
-      Lwt_main.run (run_allstar ~csv_output)
+      Lwt_main.run (run_allstar ~csv_output ~stats_output)
   | cmd :: _ ->
       Printf.eprintf "Unknown command: %s\n%s" cmd usage;
       exit 1
