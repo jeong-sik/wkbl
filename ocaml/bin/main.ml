@@ -283,6 +283,15 @@ Sitemap: https://wkbl.win/sitemap.xml
       | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
     );
 
+    (* Team Shooting Comparison Chart - HTMX Partial *)
+    Kirin.get "/teams/shooting-chart" (fun request ->
+      let season = Kirin.query_opt "season" request |> Option.value ~default:"ALL" in
+      let include_mismatch = query_bool request "include_mismatch" in
+      match Db.get_team_stats ~season ~scope:Domain.PerGame ~sort:Domain.TeamByPoints ~include_mismatch () with
+      | Ok stats -> Kirin.html (Views_charts.team_shooting_comparison stats)
+      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+    );
+
     (* Standings *)
     Kirin.get "/standings" (fun request ->
       match Db.get_seasons () with
