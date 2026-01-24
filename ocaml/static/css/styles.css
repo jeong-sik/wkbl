@@ -8,6 +8,30 @@
  */
 
 /* ===========================================
+   0. Theme Transitions (Dark Mode)
+   =========================================== */
+
+/* Smooth theme transition when toggling */
+.theme-transitioning,
+.theme-transitioning *,
+.theme-transitioning *::before,
+.theme-transitioning *::after {
+  transition:
+    background-color 300ms ease-out,
+    border-color 300ms ease-out,
+    color 200ms ease-out,
+    fill 200ms ease-out,
+    stroke 200ms ease-out,
+    box-shadow 300ms ease-out !important;
+}
+
+/* Prevent flash of unstyled content */
+html:not(.dark) body,
+html.dark body {
+  transition: background-color 0ms;
+}
+
+/* ===========================================
    1. HTMX Page Transitions
    =========================================== */
 

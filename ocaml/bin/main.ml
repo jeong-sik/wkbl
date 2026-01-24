@@ -109,6 +109,29 @@ let () =
   @@ Kirin.static "/static" ~dir:static_path
   @@ Kirin.router [
 
+    (* PWA: manifest.json - serve from static folder *)
+    Kirin.get "/manifest.json" (fun _ ->
+      let manifest_path = Filename.concat static_path "manifest.json" in
+      if Sys.file_exists manifest_path then
+        let content = In_channel.with_open_text manifest_path In_channel.input_all in
+        Kirin.with_header "Content-Type" "application/manifest+json"
+        @@ Kirin.with_header "Cache-Control" "public, max-age=86400"
+        @@ Kirin.text content
+      else
+        Kirin.not_found ~body:"manifest.json not found" ());
+
+    (* PWA: service-worker.js - must be served from root for full scope *)
+    Kirin.get "/sw.js" (fun _ ->
+      let sw_path = Filename.concat static_path "js/service-worker.js" in
+      if Sys.file_exists sw_path then
+        let content = In_channel.with_open_text sw_path In_channel.input_all in
+        Kirin.with_header "Content-Type" "application/javascript; charset=utf-8"
+        @@ Kirin.with_header "Cache-Control" "no-cache"
+        @@ Kirin.with_header "Service-Worker-Allowed" "/"
+        @@ Kirin.text content
+      else
+        Kirin.not_found ~body:"service-worker.js not found" ());
+
     (* SEO: robots.txt *)
     Kirin.get "/robots.txt" (fun _ ->
       Kirin.with_header "Content-Type" "text/plain; charset=utf-8"
