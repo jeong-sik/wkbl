@@ -20,6 +20,9 @@ WORKDIR /home/opam/src/ocaml
 # Update opam repository to find latest dream/caqti versions
 RUN opam update
 
+# Cache bust for kirin installation (change this value to force rebuild)
+ARG CACHEBUST=2026012401
+
 # Pin Kirin from GitHub (private dependency not in opam)
 RUN opam pin add kirin https://github.com/jeong-sik/kirin.git#main -y --no-action
 RUN opam install kirin -y
