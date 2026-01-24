@@ -129,7 +129,7 @@ let streak_records_table (records: streak_record list) =
   Printf.sprintf
     {html|<div class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto">
       <table class="w-full min-w-max text-sm">
-        <thead class="bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wider">
+        <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wider">
           <tr>
             <th class="px-3 py-2 text-left">보유자</th>
             <th class="px-3 py-2 text-left">기록 종류</th>

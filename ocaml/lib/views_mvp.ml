@@ -77,7 +77,7 @@ let mvp_race_table (candidates: mvp_candidate list) =
   Printf.sprintf
     {html|<div class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto overflow-y-hidden">
       <table class="w-full min-w-max text-sm">
-        <thead class="bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wider">
+        <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wider">
           <tr>
             <th class="px-3 py-3 text-center w-12">Rank</th>
             <th class="px-3 py-3 text-left">Player</th>
