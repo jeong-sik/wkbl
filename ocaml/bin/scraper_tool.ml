@@ -7,7 +7,6 @@
       scraper_tool awards best5 [--csv]    Fetch BEST5 awards
 *)
 
-open Lwt.Syntax
 open Wkbl
 
 let usage = {|
@@ -49,14 +48,14 @@ Examples:
   scraper_tool allstar --csv > allstars.csv
 |}
 
-let run_draft ~season_filter ~csv_output =
-  let* entries = match season_filter with
+let run_draft ~sw ~env ~season_filter ~csv_output =
+  let entries = match season_filter with
     | Some code ->
         let name = List.assoc_opt code Scraper.season_codes
           |> Option.value ~default:"Unknown" in
-        Scraper.fetch_draft_season ~season_code:code ~season_name:name
+        Scraper.fetch_draft_season ~sw ~env ~season_code:code ~season_name:name
     | None ->
-        Scraper.fetch_all_drafts ()
+        Scraper.fetch_all_drafts ~sw ~env
   in
   Printf.printf "\n=== Fetched %d draft entries ===\n\n" (List.length entries);
   if csv_output then
@@ -69,11 +68,10 @@ let run_draft ~season_filter ~csv_output =
         e.player_name
         e.team_name
         (Option.value ~default:"?" e.school)
-    );
-  Lwt.return ()
+    )
 
-let run_stat_awards ~csv_output =
-  let* entries = Scraper.fetch_stat_awards () in
+let run_stat_awards ~sw ~env ~csv_output =
+  let entries = Scraper.fetch_stat_awards ~sw ~env in
   Printf.printf "\n=== Fetched %d statistical award entries ===\n\n" (List.length entries);
   if csv_output then
     Scraper.print_stat_awards_csv entries
@@ -84,11 +82,10 @@ let run_stat_awards ~csv_output =
         (Scraper.award_category_to_string e.category)
         e.player_name
         (Option.value ~default:"-" e.stat_value)
-    );
-  Lwt.return ()
+    )
 
-let run_best5_awards ~csv_output =
-  let* entries = Scraper.fetch_best5_awards () in
+let run_best5_awards ~sw ~env ~csv_output =
+  let entries = Scraper.fetch_best5_awards ~sw ~env in
   Printf.printf "\n=== Fetched %d BEST5 seasons ===\n\n" (List.length entries);
   if csv_output then
     Scraper.print_best5_csv entries
@@ -98,11 +95,10 @@ let run_best5_awards ~csv_output =
       e.players |> List.iteri (fun i player ->
         Printf.printf "  %d. %s\n" (i + 1) player
       )
-    );
-  Lwt.return ()
+    )
 
-let run_fa ~csv_output =
-  let* entries = Scraper.fetch_fa_results () in
+let run_fa ~sw ~env ~csv_output =
+  let entries = Scraper.fetch_fa_results ~sw ~env in
   Printf.printf "\n=== Fetched %d FA entries ===\n\n" (List.length entries);
   if csv_output then
     Scraper.print_fa_csv entries
@@ -116,11 +112,10 @@ let run_fa ~csv_output =
         e.acquiring_team
         e.contract_period
         e.total_salary
-    );
-  Lwt.return ()
+    )
 
-let run_salary ~csv_output =
-  let* entries = Scraper.fetch_salary () in
+let run_salary ~sw ~env ~csv_output =
+  let entries = Scraper.fetch_salary ~sw ~env in
   Printf.printf "\n=== Fetched %d salary entries ===\n\n" (List.length entries);
   if csv_output then
     Scraper.print_salary_csv entries
@@ -132,11 +127,10 @@ let run_salary ~csv_output =
         e.sal_player_name
         e.sal_team_name
         e.total
-    );
-  Lwt.return ()
+    )
 
-let run_crowd ~csv_output =
-  let* entries = Scraper.fetch_crowd () in
+let run_crowd ~sw ~env ~csv_output =
+  let entries = Scraper.fetch_crowd ~sw ~env in
   Printf.printf "\n=== Fetched %d crowd (attendance) seasons ===\n\n" (List.length entries);
   if csv_output then
     Scraper.print_crowd_csv entries
@@ -148,11 +142,10 @@ let run_crowd ~csv_output =
         e.kb_stars
         e.bnk_sum
         e.woori_bank
-    );
-  Lwt.return ()
+    )
 
-let run_records ~csv_output =
-  let* entries = Scraper.fetch_major_records () in
+let run_records ~sw ~env ~csv_output =
+  let entries = Scraper.fetch_major_records ~sw ~env in
   Printf.printf "\n=== Fetched %d major records ===\n\n" (List.length entries);
   if csv_output then
     Scraper.print_major_records_csv entries
@@ -164,10 +157,9 @@ let run_records ~csv_output =
         e.team1
         e.team2
         e.date
-    );
-  Lwt.return ()
+    )
 
-let run_games ~season_filter ~csv_output =
+let run_games ~sw ~env ~season_filter ~csv_output =
   let seasons = match season_filter with
     | Some code ->
         let name = List.assoc_opt code Scraper.datalab_season_codes
@@ -175,7 +167,7 @@ let run_games ~season_filter ~csv_output =
         [(code, name)]
     | None -> Scraper.datalab_season_codes
   in
-  let* games = Scraper.fetch_all_games ~seasons () in
+  let games = Scraper.fetch_all_games ~sw ~env ~seasons () in
   Printf.printf "\n=== Fetched %d game records ===\n\n" (List.length games);
   if csv_output then
     Scraper.print_games_csv games
@@ -190,10 +182,9 @@ let run_games ~season_filter ~csv_output =
         g.away_team_name
         g.court_name
         g.winner_team_name
-    );
-  Lwt.return ()
+    )
 
-let run_teamstats ~season_filter ~csv_output =
+let run_teamstats ~sw ~env ~season_filter ~csv_output =
   let seasons = match season_filter with
     | Some code ->
         let name = List.assoc_opt code Scraper.datalab_season_codes
@@ -201,7 +192,7 @@ let run_teamstats ~season_filter ~csv_output =
         [(code, name)]
     | None -> Scraper.datalab_season_codes
   in
-  let* stats = Scraper.fetch_all_team_stats ~seasons () in
+  let stats = Scraper.fetch_all_team_stats ~sw ~env ~seasons () in
   Printf.printf "\n=== Fetched %d team stat entries ===\n\n" (List.length stats);
   if csv_output then
     Scraper.print_team_stats_csv stats
@@ -214,10 +205,9 @@ let run_teamstats ~season_filter ~csv_output =
         s.score_avg
         s.reb_avg
         s.ast_avg
-    );
-  Lwt.return ()
+    )
 
-let run_versus ~season_filter ~csv_output =
+let run_versus ~sw ~env ~season_filter ~csv_output =
   let seasons = match season_filter with
     | Some code ->
         let name = List.assoc_opt code Scraper.datalab_season_codes
@@ -226,11 +216,11 @@ let run_versus ~season_filter ~csv_output =
     | None -> Scraper.datalab_season_codes
   in
   (* Fetch from each season by iterating *)
-  let* records =
+  let records =
     let rec fetch_all acc = function
-      | [] -> Lwt.return (List.rev acc)
+      | [] -> List.rev acc
       | (code, _) :: rest ->
-          let* season_records = Scraper.fetch_season_versus_records code in
+          let season_records = Scraper.fetch_season_versus_records ~sw ~env code in
           fetch_all (season_records @ acc) rest
     in
     fetch_all [] seasons
@@ -246,11 +236,10 @@ let run_versus ~season_filter ~csv_output =
         v.vs_away_team
         v.home_win
         v.home_lose
-    );
-  Lwt.return ()
+    )
 
-let run_championship ~csv_output ~stats_output =
-  let* records = Scraper.fetch_championship_history () in
+let run_championship ~sw ~env ~csv_output ~stats_output =
+  let records = Scraper.fetch_championship_history ~sw ~env in
   Printf.printf "\n=== Fetched %d championship records ===\n\n" (List.length records);
   if stats_output then
     Scraper.print_championship_analysis records
@@ -265,11 +254,10 @@ let run_championship ~csv_output ~stats_output =
         c.runner_up_team
         c.finals_result
         c.regular_champion
-    );
-  Lwt.return ()
+    )
 
-let run_allstar ~csv_output ~stats_output =
-  let* records = Scraper.fetch_allstar_history () in
+let run_allstar ~sw ~env ~csv_output ~stats_output =
+  let records = Scraper.fetch_allstar_history ~sw ~env in
   Printf.printf "\n=== Fetched %d all-star records ===\n\n" (List.length records);
   if stats_output then
     Scraper.print_allstar_analysis records
@@ -283,8 +271,7 @@ let run_allstar ~csv_output ~stats_output =
         a.as_venue
         a.as_date
         a.as_mvp
-    );
-  Lwt.return ()
+    )
 
 let () =
   let args = Array.to_list Sys.argv |> List.tl in
@@ -303,32 +290,56 @@ let () =
   | [] | "--help" :: _ | "-h" :: _ ->
       print_string usage
   | "draft" :: _ ->
-      Lwt_main.run (run_draft ~season_filter ~csv_output)
+      Eio_main.run @@ fun env ->
+      Eio.Switch.run @@ fun sw ->
+      run_draft ~sw ~env ~season_filter ~csv_output
   | "awards" :: "stats" :: _ ->
-      Lwt_main.run (run_stat_awards ~csv_output)
+      Eio_main.run @@ fun env ->
+      Eio.Switch.run @@ fun sw ->
+      run_stat_awards ~sw ~env ~csv_output
   | "awards" :: "best5" :: _ ->
-      Lwt_main.run (run_best5_awards ~csv_output)
+      Eio_main.run @@ fun env ->
+      Eio.Switch.run @@ fun sw ->
+      run_best5_awards ~sw ~env ~csv_output
   | "awards" :: _ ->
       Printf.eprintf "Unknown awards subcommand. Use 'stats' or 'best5'\n%s" usage;
       exit 1
   | "fa" :: _ ->
-      Lwt_main.run (run_fa ~csv_output)
+      Eio_main.run @@ fun env ->
+      Eio.Switch.run @@ fun sw ->
+      run_fa ~sw ~env ~csv_output
   | "salary" :: _ ->
-      Lwt_main.run (run_salary ~csv_output)
+      Eio_main.run @@ fun env ->
+      Eio.Switch.run @@ fun sw ->
+      run_salary ~sw ~env ~csv_output
   | "crowd" :: _ ->
-      Lwt_main.run (run_crowd ~csv_output)
+      Eio_main.run @@ fun env ->
+      Eio.Switch.run @@ fun sw ->
+      run_crowd ~sw ~env ~csv_output
   | "records" :: _ ->
-      Lwt_main.run (run_records ~csv_output)
+      Eio_main.run @@ fun env ->
+      Eio.Switch.run @@ fun sw ->
+      run_records ~sw ~env ~csv_output
   | "games" :: _ ->
-      Lwt_main.run (run_games ~season_filter ~csv_output)
+      Eio_main.run @@ fun env ->
+      Eio.Switch.run @@ fun sw ->
+      run_games ~sw ~env ~season_filter ~csv_output
   | "teamstats" :: _ ->
-      Lwt_main.run (run_teamstats ~season_filter ~csv_output)
+      Eio_main.run @@ fun env ->
+      Eio.Switch.run @@ fun sw ->
+      run_teamstats ~sw ~env ~season_filter ~csv_output
   | "versus" :: _ ->
-      Lwt_main.run (run_versus ~season_filter ~csv_output)
+      Eio_main.run @@ fun env ->
+      Eio.Switch.run @@ fun sw ->
+      run_versus ~sw ~env ~season_filter ~csv_output
   | "championship" :: _ ->
-      Lwt_main.run (run_championship ~csv_output ~stats_output)
+      Eio_main.run @@ fun env ->
+      Eio.Switch.run @@ fun sw ->
+      run_championship ~sw ~env ~csv_output ~stats_output
   | "allstar" :: _ ->
-      Lwt_main.run (run_allstar ~csv_output ~stats_output)
+      Eio_main.run @@ fun env ->
+      Eio.Switch.run @@ fun sw ->
+      run_allstar ~sw ~env ~csv_output ~stats_output
   | cmd :: _ ->
       Printf.eprintf "Unknown command: %s\n%s" cmd usage;
       exit 1
