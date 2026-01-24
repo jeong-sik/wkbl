@@ -22,7 +22,7 @@ WORKDIR /home/opam/src/ocaml
 RUN opam update
 
 # Cache bust for kirin installation (change this value to force rebuild)
-ARG CACHEBUST=2026012406
+ARG CACHEBUST=2026012407
 
 # Pin private dependencies from GitHub (not in opam)
 # grpc-direct repo has multiple packages: grpc-direct-core and grpc-direct
@@ -30,6 +30,8 @@ ARG CACHEBUST=2026012406
 RUN opam pin add grpc-direct-core https://github.com/jeong-sik/grpc-direct.git#main -y --no-action
 RUN opam pin add grpc-direct https://github.com/jeong-sik/grpc-direct.git#main -y --no-action
 RUN opam pin add kirin https://github.com/jeong-sik/kirin.git#main -y --no-action
+# Force fetch latest commits from pinned repos (opam caches git repos)
+RUN opam update grpc-direct-core grpc-direct kirin
 RUN opam install kirin -y
 
 # Copy opam file first to leverage Docker layer caching
