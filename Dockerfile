@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y \
     libgmp-dev \
     libffi-dev \
     libsqlite3-dev \
+    liburing-dev \
     pkg-config \
     perl \
     && rm -rf /var/lib/apt/lists/*
@@ -21,7 +22,7 @@ WORKDIR /home/opam/src/ocaml
 RUN opam update
 
 # Cache bust for kirin installation (change this value to force rebuild)
-ARG CACHEBUST=2026012403
+ARG CACHEBUST=2026012404
 
 # Pin private dependencies from GitHub (not in opam)
 # grpc-direct repo has multiple packages: grpc-direct-core and grpc-direct
