@@ -16,3 +16,4 @@ module Streaks = Streaks
 module Qa = Qa
 module Clutch = Clutch
 module Scraper = Scraper
+module Cards = Cards
