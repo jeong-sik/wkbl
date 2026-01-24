@@ -135,7 +135,7 @@ let standings_table ~season (standings : team_standing list) =
         in
         Printf.sprintf
           {html|<tr class="%s"><td class="%s">%d</td><td class="px-4 py-3 font-bold text-slate-900 dark:text-slate-200" style="width: max-content; white-space: nowrap; word-break: keep-all;"><span class="inline-flex items-center gap-2" style="white-space: nowrap;">%s<a href="%s" class="team-name hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 transition-colors" style="white-space: nowrap; word-break: keep-all;">%s</a></span></td><td class="px-4 py-3 text-right text-slate-700 dark:text-slate-300">%d</td><td class="px-4 py-3 text-right text-slate-700 dark:text-slate-300">%d</td><td class="px-4 py-3 text-right text-slate-700 dark:text-slate-300">%d</td><td class="px-4 py-3 text-right text-orange-600 dark:text-orange-400 font-bold">%s</td><td class="px-4 py-3 text-right text-slate-600 dark:text-slate-400 hidden sm:table-cell">%s</td><td class="px-4 py-3 text-right text-slate-700 dark:text-slate-300 font-mono hidden md:table-cell">%.1f</td><td class="px-4 py-3 text-right text-slate-700 dark:text-slate-300 font-mono hidden md:table-cell">%.1f</td><td class="px-4 py-3 text-right %s font-mono font-bold hidden sm:table-cell">%.1f</td></tr>|html}
-          row_class rank_class (i + 1) (team_logo_tag ~class_name:"w-5 h-5" s.team_name) (escape_html team_href) (escape_html s.team_name) s.games_played s.wins s.losses win_pct_fmt gb_fmt s.avg_pts s.avg_opp_pts (if s.diff >= 0.0 then "text-emerald-400" else "text-rose-400") s.diff)
+          row_class rank_class (i + 1) (team_logo_tag ~class_name:"w-5 h-5" s.team_name) (escape_html team_href) (escape_html s.team_name) s.games_played s.wins s.losses win_pct_fmt gb_fmt s.avg_pts s.avg_opp_pts (if s.diff >= 0.0 then "text-emerald-600 dark:text-emerald-400" else "text-rose-600 dark:text-rose-400") s.diff)
     |> String.concat "\n"
   in
   Printf.sprintf
@@ -225,7 +225,7 @@ let boxscores_table (games : game_summary list) =
         let score_b = match g.away_score with Some s -> s | None -> 0 in
         let margin = score_a - score_b in
         let margin_str = if margin > 0 then Printf.sprintf "+%d" margin else if margin < 0 then Printf.sprintf "%d" margin else "0" in
-        let margin_color = if margin > 0 then "text-sky-600 dark:text-sky-400" else if margin < 0 then "text-rose-400" else "text-slate-600 dark:text-slate-400" in
+        let margin_color = if margin > 0 then "text-sky-600 dark:text-sky-400" else if margin < 0 then "text-rose-600 dark:text-rose-400" else "text-slate-600 dark:text-slate-400" in
         if g.home_score = None then ""
         else
           Printf.sprintf
@@ -264,7 +264,7 @@ let boxscores_table (games : game_summary list) =
         let score_b = match g.away_score with Some s -> s | None -> 0 in
         let margin = score_a - score_b in
         let margin_str = if margin > 0 then Printf.sprintf "+%d" margin else if margin < 0 then Printf.sprintf "%d" margin else "0" in
-        let margin_color = if margin > 0 then "text-sky-600 dark:text-sky-400" else if margin < 0 then "text-rose-400" else "text-slate-600 dark:text-slate-400" in
+        let margin_color = if margin > 0 then "text-sky-600 dark:text-sky-400" else if margin < 0 then "text-rose-600 dark:text-rose-400" else "text-slate-600 dark:text-slate-400" in
         if g.home_score = None then ""
         else
           Printf.sprintf
@@ -375,7 +375,7 @@ let boxscore_player_table (title: string) (players: boxscore_player_stat list) =
           | Some v ->
               let cls =
                 if v > 0 then "text-sky-600 dark:text-sky-400"
-                else if v < 0 then "text-rose-400"
+                else if v < 0 then "text-rose-600 dark:text-rose-400"
                 else "text-slate-600 dark:text-slate-400"
               in
               let s = if v > 0 then Printf.sprintf "+%d" v else string_of_int v in
@@ -1093,7 +1093,7 @@ let prediction_result_card ~(home: string) ~(away: string) (output: prediction_o
         let delta_pp = ctx.pcb_delta *. 100.0 in
         let delta_cls =
           if delta_pp > 0.0 then "text-sky-600 dark:text-sky-400"
-          else if delta_pp < 0.0 then "text-rose-400"
+          else if delta_pp < 0.0 then "text-rose-600 dark:text-rose-400"
           else "text-slate-700 dark:text-slate-300"
         in
         let delta_str =

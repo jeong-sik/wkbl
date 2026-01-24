@@ -40,7 +40,7 @@ let team_profile_page (detail: team_full_detail) ~season ~seasons =
     let margin_chip v =
       let cls =
         if v > 0.0 then "text-sky-600 dark:text-sky-400"
-        else if v < 0.0 then "text-rose-400"
+        else if v < 0.0 then "text-rose-600 dark:text-rose-400"
         else "text-slate-700 dark:text-slate-300"
       in
       let s = if v > 0.0 then Printf.sprintf "+%.1f" v else Printf.sprintf "%.1f" v in
@@ -203,12 +203,12 @@ let team_profile_page (detail: team_full_detail) ~season ~seasons =
 		  let game_rows =
 		    detail.tfd_recent_games
 		    |> List.map (fun (g: team_game_result) ->
-		        let res_class = if g.tgr_is_win then "text-sky-600 dark:text-sky-400" else "text-rose-400" in
+		        let res_class = if g.tgr_is_win then "text-sky-600 dark:text-sky-400" else "text-rose-600 dark:text-rose-400" in
 	        let res_label = if g.tgr_is_win then "W" else "L" in
 	        let margin = g.tgr_team_score - g.tgr_opponent_score in
         let margin_class =
           if margin > 0 then "text-sky-600 dark:text-sky-400"
-          else if margin < 0 then "text-rose-400"
+          else if margin < 0 then "text-rose-600 dark:text-rose-400"
           else "text-slate-500 dark:text-slate-400"
         in
         let margin_str =
