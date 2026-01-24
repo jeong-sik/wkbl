@@ -128,14 +128,14 @@ let streak_records_table (records: streak_record list) =
   let rows = records |> List.map streak_record_row |> String.concat "\n" in
   Printf.sprintf
     {html|<div class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto">
-      <table class="w-full min-w-[560px] text-sm table-fixed">
+      <table class="w-full min-w-[560px] text-sm table-fixed" aria-label="연속 기록 보유자">
         <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wider">
           <tr>
-            <th class="px-3 py-2 text-left w-[30%%]">보유자</th>
-            <th class="px-3 py-2 text-left w-[25%%]">기록 종류</th>
-            <th class="px-3 py-2 text-right w-[10%%]">횟수</th>
-            <th class="px-3 py-2 text-right hidden sm:table-cell w-[15%%]">시즌</th>
-            <th class="px-3 py-2 text-right hidden md:table-cell w-[20%%]">기간</th>
+            <th scope="col" class="px-3 py-2 text-left w-[30%%]">보유자</th>
+            <th scope="col" class="px-3 py-2 text-left w-[25%%]">기록 종류</th>
+            <th scope="col" class="px-3 py-2 text-right w-[10%%]" title="연속 기록 횟수">횟수</th>
+            <th scope="col" class="px-3 py-2 text-right hidden sm:table-cell w-[15%%]">시즌</th>
+            <th scope="col" class="px-3 py-2 text-right hidden md:table-cell w-[20%%]" title="기록 달성 기간">기간</th>
           </tr>
         </thead>
         <tbody>%s</tbody>

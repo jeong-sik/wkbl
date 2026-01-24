@@ -54,9 +54,9 @@ let history_page (seasons: historical_season list) =
         <p class="text-slate-500 dark:text-slate-400 text-sm">Season champions and award winners since 1998.</p></div>
       <div class="space-y-3 sm:hidden">%s</div>
       <div class="hidden sm:block bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 table-scroll-container shadow-lg">
-        <table class="w-full text-sm table-fixed">
+        <table class="w-full text-sm table-fixed" aria-label="WKBL 시즌별 역대 기록">
           <thead class="bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 text-xs uppercase">
-            <tr><th class="w-[10%%] px-3 py-2 text-left">Season</th><th class="w-[14%%] px-3 py-2 text-left">Champion</th><th class="w-[14%%] px-3 py-2 text-left">Runner-up</th><th class="w-[18%%] px-3 py-2 text-left">MVP</th><th class="w-[18%%] px-3 py-2 text-left">Finals MVP</th><th class="w-[13%%] px-3 py-2 text-left">ROY</th><th class="w-[13%%] px-3 py-2 text-left">Scoring</th></tr>
+            <tr><th scope="col" class="w-[10%%] px-3 py-2 text-left">Season</th><th scope="col" class="w-[14%%] px-3 py-2 text-left">Champion</th><th scope="col" class="w-[14%%] px-3 py-2 text-left">Runner-up</th><th scope="col" class="w-[18%%] px-3 py-2 text-left" title="Most Valuable Player">MVP</th><th scope="col" class="w-[18%%] px-3 py-2 text-left" title="Finals MVP">Finals MVP</th><th scope="col" class="w-[13%%] px-3 py-2 text-left" title="Rookie of the Year">ROY</th><th scope="col" class="w-[13%%] px-3 py-2 text-left" title="Scoring Leader">Scoring</th></tr>
           </thead>
           <tbody>%s</tbody>
         </table>
@@ -134,18 +134,18 @@ let legends_page (legends: legend_player list) =
       <div class="grid grid-cols-1 gap-4 md:hidden">%s</div>
       <!-- Desktop table view -->
       <div class="hidden md:block bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 table-scroll-container shadow-lg">
-        <table class="min-w-full text-sm">
+        <table class="min-w-full text-sm" aria-label="WKBL 레전드 선수 목록">
           <thead class="bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 text-xs uppercase">
             <tr>
-              <th class="px-3 py-2 text-left">선수</th>
-              <th class="px-3 py-2 text-left">활동기간</th>
-              <th class="px-3 py-2 text-left">소속팀</th>
-              <th class="px-3 py-2 text-center">우승</th>
-              <th class="px-3 py-2 text-center">MVP</th>
-              <th class="px-3 py-2 text-center">올스타</th>
-              <th class="px-3 py-2 text-center">통산득점</th>
-              <th class="px-3 py-2 text-center">통산리바</th>
-              <th class="px-3 py-2 text-center">통산어시</th>
+              <th scope="col" class="px-3 py-2 text-left">선수</th>
+              <th scope="col" class="px-3 py-2 text-left">활동기간</th>
+              <th scope="col" class="px-3 py-2 text-left">소속팀</th>
+              <th scope="col" class="px-3 py-2 text-center" title="챔피언십 우승 횟수">우승</th>
+              <th scope="col" class="px-3 py-2 text-center" title="정규시즌 MVP 수상 횟수">MVP</th>
+              <th scope="col" class="px-3 py-2 text-center" title="올스타 선정 횟수">올스타</th>
+              <th scope="col" class="px-3 py-2 text-center" title="통산 총 득점">통산득점</th>
+              <th scope="col" class="px-3 py-2 text-center" title="통산 총 리바운드">통산리바</th>
+              <th scope="col" class="px-3 py-2 text-center" title="통산 총 어시스트">통산어시</th>
             </tr>
           </thead>
           <tbody>%s</tbody>
@@ -226,9 +226,9 @@ let coaches_page (coaches: coach list) =
       <div class="grid gap-4 md:hidden">%s</div>
       <!-- Desktop table view -->
       <div class="hidden md:block bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 table-scroll-container shadow-lg">
-        <table class="min-w-full text-sm">
+        <table class="min-w-full text-sm" aria-label="WKBL 감독 기록">
           <thead class="bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 text-xs uppercase">
-            <tr><th class="px-3 py-2 text-left">감독</th><th class="px-3 py-2 text-left">팀</th><th class="px-3 py-2 text-left">재임기간</th><th class="px-3 py-2 text-center">우승</th><th class="px-3 py-2 text-center">정규 W</th><th class="px-3 py-2 text-center">플옵 W</th><th class="px-3 py-2 text-left">선수경력</th></tr>
+            <tr><th scope="col" class="px-3 py-2 text-left">감독</th><th scope="col" class="px-3 py-2 text-left">팀</th><th scope="col" class="px-3 py-2 text-left">재임기간</th><th scope="col" class="px-3 py-2 text-center" title="챔피언십 우승 횟수">우승</th><th scope="col" class="px-3 py-2 text-center" title="정규시즌 승리 횟수">정규 W</th><th scope="col" class="px-3 py-2 text-center" title="플레이오프 승리 횟수">플옵 W</th><th scope="col" class="px-3 py-2 text-left">선수경력</th></tr>
           </thead>
           <tbody>%s</tbody>
         </table>
@@ -265,9 +265,9 @@ let player_career_page ~player_name (entries: player_career_entry list) =
       <div><h2 class="text-2xl font-bold text-slate-900 dark:text-slate-200">%s</h2>
         <p class="text-slate-500 dark:text-slate-400 text-sm">Career statistics by season.</p></div>
       <div class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 table-scroll-container shadow-lg">
-        <table class="min-w-full text-sm font-mono tabular-nums">
+        <table class="min-w-full text-sm font-mono tabular-nums" aria-label="선수 시즌별 기록">
           <thead class="bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 text-xs uppercase">
-            <tr><th class="px-3 py-2 text-left">Season</th><th class="px-3 py-2 text-left">Team</th><th class="px-3 py-2 text-center">#</th><th class="px-3 py-2 text-center">GP</th><th class="px-3 py-2 text-center">PPG</th><th class="px-3 py-2 text-center">RPG</th><th class="px-3 py-2 text-center">APG</th><th class="px-3 py-2 text-center">★</th><th class="px-3 py-2 text-left">Awards</th></tr>
+            <tr><th scope="col" class="px-3 py-2 text-left">Season</th><th scope="col" class="px-3 py-2 text-left">Team</th><th scope="col" class="px-3 py-2 text-center" title="Jersey Number">#</th><th scope="col" class="px-3 py-2 text-center" title="Games Played">GP</th><th scope="col" class="px-3 py-2 text-center" title="Points Per Game">PPG</th><th scope="col" class="px-3 py-2 text-center" title="Rebounds Per Game">RPG</th><th scope="col" class="px-3 py-2 text-center" title="Assists Per Game">APG</th><th scope="col" class="px-3 py-2 text-center" title="All-Star Selection">★</th><th scope="col" class="px-3 py-2 text-left">Awards</th></tr>
           </thead>
           <tbody>%s</tbody>
         </table>

@@ -823,7 +823,7 @@ let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2 w-[120px] sm
   in
   Printf.sprintf
     {html|<tr class="group border-b border-slate-200 dark:border-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-all duration-200 hover:scale-[1.01] hover:shadow-md relative z-0 hover:z-10">
-      <td class="px-3 py-2 text-slate-500 dark:text-slate-500 text-sm whitespace-nowrap">%d</td>
+      <td class="px-3 py-2 w-12 text-slate-500 dark:text-slate-500 text-sm whitespace-nowrap">%d</td>
       <td class="px-3 py-2 font-medium text-slate-900 dark:text-white w-[220px] sm:w-[260px]">
         <div class="flex items-center gap-3 min-w-0">
           %s
