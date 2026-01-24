@@ -76,20 +76,20 @@ let mvp_race_table (candidates: mvp_candidate list) =
   let rows = candidates |> List.map mvp_candidate_row |> String.concat "\n" in
   Printf.sprintf
     {html|<div class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto overflow-y-hidden">
-      <table class="w-full min-w-max text-sm">
+      <table class="w-full min-w-[720px] text-sm table-fixed">
         <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wider">
           <tr>
-            <th class="px-3 py-3 text-center w-12">Rank</th>
-            <th class="px-3 py-3 text-left">Player</th>
-            <th class="px-3 py-3 text-center">GP</th>
-            <th class="px-3 py-3 text-right">PPG</th>
-            <th class="px-3 py-3 text-right hidden md:table-cell">RPG</th>
-            <th class="px-3 py-3 text-right hidden md:table-cell">APG</th>
-            <th class="px-3 py-3 text-right hidden lg:table-cell">SPG</th>
-            <th class="px-3 py-3 text-right hidden lg:table-cell">BPG</th>
-            <th class="px-3 py-3 text-right hidden sm:table-cell text-orange-600 dark:text-orange-400">EFF</th>
-            <th class="px-3 py-3 text-center hidden sm:table-cell">Team W-L</th>
-            <th class="px-3 py-3 text-right text-sky-600 dark:text-sky-400" title="MVP Score = Base + Win Bonus">Score</th>
+            <th class="px-3 py-3 text-center w-[6%%]">Rank</th>
+            <th class="px-3 py-3 text-left w-[22%%]">Player</th>
+            <th class="px-3 py-3 text-center w-[6%%]">GP</th>
+            <th class="px-3 py-3 text-right w-[7%%]">PPG</th>
+            <th class="px-3 py-3 text-right hidden md:table-cell w-[7%%]">RPG</th>
+            <th class="px-3 py-3 text-right hidden md:table-cell w-[7%%]">APG</th>
+            <th class="px-3 py-3 text-right hidden lg:table-cell w-[7%%]">SPG</th>
+            <th class="px-3 py-3 text-right hidden lg:table-cell w-[7%%]">BPG</th>
+            <th class="px-3 py-3 text-right hidden sm:table-cell text-orange-600 dark:text-orange-400 w-[8%%]">EFF</th>
+            <th class="px-3 py-3 text-center hidden sm:table-cell w-[12%%]">Team W-L</th>
+            <th class="px-3 py-3 text-right text-sky-600 dark:text-sky-400 w-[8%%]" title="MVP Score = Base + Win Bonus">Score</th>
           </tr>
         </thead>
         <tbody>%s</tbody>
