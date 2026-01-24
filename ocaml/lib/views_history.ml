@@ -25,13 +25,13 @@ let history_page (seasons: historical_season list) =
     let scoring = match s.hs_scoring_leader with Some p -> escape_html p | None -> "-" in
     Printf.sprintf
       {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-50 dark:hover:bg-slate-800/30">
-        <td class="px-4 py-3 font-bold text-orange-600 dark:text-orange-400">%s</td>
-        <td class="px-4 py-3 font-medium">%s</td>
-        <td class="px-4 py-3">%s</td>
-        <td class="px-4 py-3">%s</td>
-        <td class="px-4 py-3">%s</td>
-        <td class="px-4 py-3">%s</td>
-        <td class="px-4 py-3">%s</td>
+        <td class="px-3 py-2 font-bold text-orange-600 dark:text-orange-400">%s</td>
+        <td class="px-3 py-2 font-medium">%s</td>
+        <td class="px-3 py-2">%s</td>
+        <td class="px-3 py-2">%s</td>
+        <td class="px-3 py-2">%s</td>
+        <td class="px-3 py-2">%s</td>
+        <td class="px-3 py-2">%s</td>
       </tr>|html}
       (escape_html s.hs_season_name) champion runner_up mvp finals_mvp roy scoring
   ) |> String.concat "\n" in
@@ -56,7 +56,7 @@ let history_page (seasons: historical_season list) =
       <div class="hidden sm:block bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 table-scroll-container shadow-lg">
         <table class="w-full text-sm table-fixed">
           <thead class="bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 text-xs uppercase">
-            <tr><th class="w-[10%%] px-4 py-3 text-left">Season</th><th class="w-[14%%] px-4 py-3 text-left">Champion</th><th class="w-[14%%] px-4 py-3 text-left">Runner-up</th><th class="w-[18%%] px-4 py-3 text-left">MVP</th><th class="w-[18%%] px-4 py-3 text-left">Finals MVP</th><th class="w-[13%%] px-4 py-3 text-left">ROY</th><th class="w-[13%%] px-4 py-3 text-left">Scoring</th></tr>
+            <tr><th class="w-[10%%] px-3 py-2 text-left">Season</th><th class="w-[14%%] px-3 py-2 text-left">Champion</th><th class="w-[14%%] px-3 py-2 text-left">Runner-up</th><th class="w-[18%%] px-3 py-2 text-left">MVP</th><th class="w-[18%%] px-3 py-2 text-left">Finals MVP</th><th class="w-[13%%] px-3 py-2 text-left">ROY</th><th class="w-[13%%] px-3 py-2 text-left">Scoring</th></tr>
           </thead>
           <tbody>%s</tbody>
         </table>
