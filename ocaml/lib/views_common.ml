@@ -196,18 +196,38 @@ let radar_chart ~labels ~values_a ~values_b ~color_a ~color_b =
     Printf.sprintf "%.1f,%.1f" x y
   ) values_b in
 
-  (* Assemble the SVG *)
+  (* Assemble the SVG with CSS animation *)
   Printf.sprintf
     {svg|<svg viewBox="0 0 300 300" class="w-full max-w-xs mx-auto" role="img" aria-label="선수 스탯 비교 레이더 차트">
+  <style>
+    @keyframes radar-draw {
+      from { stroke-dashoffset: 1000; opacity: 0; }
+      to { stroke-dashoffset: 0; opacity: 1; }
+    }
+    @keyframes radar-fill {
+      from { fill-opacity: 0; }
+      to { fill-opacity: 0.2; }
+    }
+    .radar-polygon-a {
+      stroke-dasharray: 1000;
+      animation: radar-draw 0.8s ease-out forwards, radar-fill 0.5s ease-out 0.5s forwards;
+      fill-opacity: 0;
+    }
+    .radar-polygon-b {
+      stroke-dasharray: 1000;
+      animation: radar-draw 0.8s ease-out 0.2s forwards, radar-fill 0.5s ease-out 0.6s forwards;
+      fill-opacity: 0;
+    }
+  </style>
   <title>선수 스탯 비교</title>
   <!-- Grid -->
   %s
   <!-- Axes -->
   %s
   <!-- Player B polygon (back) -->
-  <polygon points="%s" fill="%s" fill-opacity="0.2" stroke="%s" stroke-width="2"/>
+  <polygon class="radar-polygon-b" points="%s" fill="%s" stroke="%s" stroke-width="2"/>
   <!-- Player A polygon (front) -->
-  <polygon points="%s" fill="%s" fill-opacity="0.2" stroke="%s" stroke-width="2"/>
+  <polygon class="radar-polygon-a" points="%s" fill="%s" stroke="%s" stroke-width="2"/>
   <!-- Labels -->
   %s
 </svg>|svg}

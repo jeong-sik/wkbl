@@ -259,3 +259,78 @@ let player_shot_chart_html (p: player_shooting_stats) =
     ~fg2_pct ~fg2_made ~fg2_attempts
     ~fg3_pct ~fg3_made:p.pss_fg3_made ~fg3_attempts:p.pss_fg3_attempted
     ~ft_pct ~ft_made:p.pss_ft_made ~ft_attempts:p.pss_ft_attempted
+
+(** Team shooting comparison bar chart - horizontal stacked bars *)
+let team_shooting_comparison (teams: team_stats list) =
+  if teams = [] then ""
+  else
+    (* Sort by True Shooting % descending *)
+    let sorted = List.sort (fun a b -> compare b.ts_pct a.ts_pct) teams in
+    (* Note: team_stats percentages are already in 0-100 format, not 0.0-1.0 *)
+    (* Scale bar width: each bar represents actual percentage (capped at 100%) *)
+    let clamp_width pct = min pct 100.0 in
+
+    let team_rows = sorted |> List.map (fun t ->
+      let fg_width = clamp_width t.fg_pct in
+      let fg3_width = clamp_width t.fg3_pct in
+      let ft_width = clamp_width t.ft_pct in
+      let ts_width = clamp_width t.ts_pct in
+      Printf.sprintf {|
+      <div class="team-shooting-row">
+        <div class="w-24 text-sm font-medium text-slate-700 dark:text-slate-300 truncate">%s</div>
+        <div class="flex-1 space-y-1">
+          <div class="flex items-center gap-2">
+            <span class="w-8 text-[10px] text-slate-500">FG</span>
+            <div class="flex-1 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+              <div class="h-full bg-blue-500 rounded-full transition-all duration-500" style="width: %.1f%%"></div>
+            </div>
+            <span class="w-12 text-[10px] text-slate-600 dark:text-slate-400 text-right font-mono">%.1f%%</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="w-8 text-[10px] text-slate-500">3PT</span>
+            <div class="flex-1 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+              <div class="h-full bg-green-500 rounded-full transition-all duration-500" style="width: %.1f%%"></div>
+            </div>
+            <span class="w-12 text-[10px] text-slate-600 dark:text-slate-400 text-right font-mono">%.1f%%</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="w-8 text-[10px] text-slate-500">FT</span>
+            <div class="flex-1 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+              <div class="h-full bg-amber-500 rounded-full transition-all duration-500" style="width: %.1f%%"></div>
+            </div>
+            <span class="w-12 text-[10px] text-slate-600 dark:text-slate-400 text-right font-mono">%.1f%%</span>
+          </div>
+          <div class="flex items-center gap-2 pt-1 border-t border-slate-200 dark:border-slate-700">
+            <span class="w-8 text-[10px] text-orange-500 font-bold">TS</span>
+            <div class="flex-1 h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+              <div class="h-full bg-orange-500 rounded-full transition-all duration-500" style="width: %.1f%%"></div>
+            </div>
+            <span class="w-12 text-[10px] text-orange-500 text-right font-mono font-bold">%.1f%%</span>
+          </div>
+        </div>
+      </div>|}
+      t.team
+      fg_width t.fg_pct
+      fg3_width t.fg3_pct
+      ft_width t.ft_pct
+      ts_width t.ts_pct
+    ) |> String.concat "\n" in
+
+    Printf.sprintf {|
+<div class="team-shooting-comparison bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-lg">
+  <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+    <span>📊</span> 팀 슈팅 효율 비교
+  </h3>
+  <div class="space-y-4">
+    %s
+  </div>
+  <div class="mt-4 pt-3 border-t border-slate-200 dark:border-slate-700">
+    <div class="flex flex-wrap gap-3 text-[10px] text-slate-500">
+      <span class="flex items-center gap-1"><span class="w-2 h-2 bg-blue-500 rounded-full"></span>FG: 필드골</span>
+      <span class="flex items-center gap-1"><span class="w-2 h-2 bg-green-500 rounded-full"></span>3PT: 3점슛</span>
+      <span class="flex items-center gap-1"><span class="w-2 h-2 bg-amber-500 rounded-full"></span>FT: 자유투</span>
+      <span class="flex items-center gap-1"><span class="w-2 h-2 bg-orange-500 rounded-full"></span>TS: 트루슈팅</span>
+    </div>
+  </div>
+</div>
+|} team_rows
