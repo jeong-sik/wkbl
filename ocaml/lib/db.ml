@@ -16,8 +16,8 @@ type db_error =
   | ParseError of string
 [@@deriving show]
 
-(** Result type alias for convenience *)
-type 'a db_result = ('a, db_error) result Lwt.t
+(** Result type alias for convenience - Direct style with Eio *)
+type 'a db_result = ('a, db_error) result
 
 (** DB QA (data quality) report types. *)
 type qa_score_mismatch = {
@@ -3225,8 +3225,8 @@ end
 
 (** Database operations *)
   module Repo = struct
-    let ensure_schema (module Db : Caqti_lwt.CONNECTION) =
-      let open Lwt_result.Syntax in
+    let ensure_schema (module Db : Caqti_eio.CONNECTION) =
+      let (let*) = Result.bind in
       let* () = Db.exec Queries.ensure_player_plus_minus_table () in
       let* () = Db.exec Queries.ensure_player_plus_minus_index () in
       let* () = Db.exec Queries.ensure_play_by_play_events_table () in
@@ -3270,88 +3270,88 @@ end
       Db.exec Queries.ensure_games_calc_season_index ()
 
     (* Refresh materialized views - call after data sync *)
-    let refresh_matviews (module Db : Caqti_lwt.CONNECTION) =
-      let open Lwt_result.Syntax in
+    let refresh_matviews (module Db : Caqti_eio.CONNECTION) =
+      let (let*) = Result.bind in
       let* () = Db.exec Queries.refresh_leaders_base_cache () in
       let* () = Db.exec Queries.refresh_games_calc () in
       Db.exec Queries.refresh_score_mismatch ()
-  let get_teams (module Db : Caqti_lwt.CONNECTION) = Db.collect_list Queries.all_teams ()
-  let get_seasons (module Db : Caqti_lwt.CONNECTION) = Db.collect_list Queries.all_seasons ()
-  let get_historical_seasons (module Db : Caqti_lwt.CONNECTION) = Db.collect_list Queries.all_historical_seasons ()
-  let get_legend_players (module Db : Caqti_lwt.CONNECTION) = Db.collect_list Queries.all_legend_players ()
-  let get_coaches (module Db : Caqti_lwt.CONNECTION) = Db.collect_list Queries.all_coaches ()
-  let get_player_career ~player_name (module Db : Caqti_lwt.CONNECTION) = Db.collect_list Queries.player_career_by_name player_name
-  let get_player_by_name ~name ~season (module Db : Caqti_lwt.CONNECTION) = let s = if season = "" then "ALL" else season in Db.find_opt Queries.player_by_name (name, (s, s))
-  let get_player_aggregate_by_id ~player_id ~season (module Db : Caqti_lwt.CONNECTION) =
+  let get_teams (module Db : Caqti_eio.CONNECTION) = Db.collect_list Queries.all_teams ()
+  let get_seasons (module Db : Caqti_eio.CONNECTION) = Db.collect_list Queries.all_seasons ()
+  let get_historical_seasons (module Db : Caqti_eio.CONNECTION) = Db.collect_list Queries.all_historical_seasons ()
+  let get_legend_players (module Db : Caqti_eio.CONNECTION) = Db.collect_list Queries.all_legend_players ()
+  let get_coaches (module Db : Caqti_eio.CONNECTION) = Db.collect_list Queries.all_coaches ()
+  let get_player_career ~player_name (module Db : Caqti_eio.CONNECTION) = Db.collect_list Queries.player_career_by_name player_name
+  let get_player_by_name ~name ~season (module Db : Caqti_eio.CONNECTION) = let s = if season = "" then "ALL" else season in Db.find_opt Queries.player_by_name (name, (s, s))
+  let get_player_aggregate_by_id ~player_id ~season (module Db : Caqti_eio.CONNECTION) =
     let s = if String.trim season = "" then "ALL" else season in
     Db.find_opt Queries.player_aggregate_by_id (s, (s, (player_id, (s, s))))
 
-  let get_draft_years (module Db : Caqti_lwt.CONNECTION) =
+  let get_draft_years (module Db : Caqti_eio.CONNECTION) =
     Db.collect_list Queries.draft_years ()
 
-  let get_draft_picks ~year ~search (module Db : Caqti_lwt.CONNECTION) =
+  let get_draft_picks ~year ~search (module Db : Caqti_eio.CONNECTION) =
     let pattern = normalize_search_pattern (normalize_label search) in
     Db.collect_list Queries.draft_picks_filtered ((year, year), (pattern, pattern))
 
-  let get_official_trade_years (module Db : Caqti_lwt.CONNECTION) =
+  let get_official_trade_years (module Db : Caqti_eio.CONNECTION) =
     Db.collect_list Queries.official_trade_years ()
 
-  let get_official_trade_events ~year ~search (module Db : Caqti_lwt.CONNECTION) =
+  let get_official_trade_events ~year ~search (module Db : Caqti_eio.CONNECTION) =
     let pattern = normalize_search_pattern (normalize_label search) in
     Db.collect_list Queries.official_trade_events_filtered ((year, year), pattern)
 
   (* Schedule queries *)
-  let get_upcoming_schedule ~status ~limit (module Db : Caqti_lwt.CONNECTION) =
+  let get_upcoming_schedule ~status ~limit (module Db : Caqti_eio.CONNECTION) =
     Db.collect_list Queries.get_upcoming_schedule (status, limit)
 
-  let get_schedule_by_date_range ~start_date ~end_date ~status (module Db : Caqti_lwt.CONNECTION) =
+  let get_schedule_by_date_range ~start_date ~end_date ~status (module Db : Caqti_eio.CONNECTION) =
     Db.collect_list Queries.get_schedule_by_date_range (start_date, (end_date, (status, status)))
 
-  let get_players_base ~season ~include_mismatch (module Db : Caqti_lwt.CONNECTION) =
+  let get_players_base ~season ~include_mismatch (module Db : Caqti_eio.CONNECTION) =
     let s = if String.trim season = "" then "ALL" else season in
     let include_int = if include_mismatch then 1 else 0 in
     Db.collect_list Queries.player_stats_by_season_base (s, (s, include_int))
-  let get_top_players ?(team_name="ALL") ~limit (module Db : Caqti_lwt.CONNECTION) = Db.collect_list Queries.player_stats_base ((team_name, team_name), limit)
-  let get_players_by_team ~team_name ~season ~limit (module Db : Caqti_lwt.CONNECTION) =
+  let get_top_players ?(team_name="ALL") ~limit (module Db : Caqti_eio.CONNECTION) = Db.collect_list Queries.player_stats_base ((team_name, team_name), limit)
+  let get_players_by_team ~team_name ~season ~limit (module Db : Caqti_eio.CONNECTION) =
     let s = if String.trim season = "" then "ALL" else season in
     Db.collect_list Queries.players_by_team (team_name, (s, (s, limit)))
-  let get_team_totals ~season ~include_mismatch (module Db : Caqti_lwt.CONNECTION) =
+  let get_team_totals ~season ~include_mismatch (module Db : Caqti_eio.CONNECTION) =
     let include_int = if include_mismatch then 1 else 0 in
     Db.collect_list Queries.team_totals_by_season (season, (season, (season, include_int)))
 
-  let get_team_margins ~season ~include_mismatch (module Db : Caqti_lwt.CONNECTION) =
+  let get_team_margins ~season ~include_mismatch (module Db : Caqti_eio.CONNECTION) =
     let include_int = if include_mismatch then 1 else 0 in
     Db.collect_list Queries.team_margin_by_season (season, include_int)
-  let get_standings ~season (module Db : Caqti_lwt.CONNECTION) =
+  let get_standings ~season (module Db : Caqti_eio.CONNECTION) =
     Db.collect_list Queries.team_standings_by_season season
-  let get_games ~season (module Db : Caqti_lwt.CONNECTION) = Db.collect_list Queries.all_games_by_season (season, season)
-  let get_scored_games ~season ~include_mismatch (module Db : Caqti_lwt.CONNECTION) =
+  let get_games ~season (module Db : Caqti_eio.CONNECTION) = Db.collect_list Queries.all_games_by_season (season, season)
+  let get_scored_games ~season ~include_mismatch (module Db : Caqti_eio.CONNECTION) =
     let include_int = if include_mismatch then 1 else 0 in
     Db.collect_list Queries.scored_games_by_season (season, (season, include_int))
-  let get_game_season_code ~game_id (module Db : Caqti_lwt.CONNECTION) = Db.find_opt Queries.game_season_by_id game_id
-  let get_pbp_periods ~game_id (module Db : Caqti_lwt.CONNECTION) =
+  let get_game_season_code ~game_id (module Db : Caqti_eio.CONNECTION) = Db.find_opt Queries.game_season_by_id game_id
+  let get_pbp_periods ~game_id (module Db : Caqti_eio.CONNECTION) =
     Db.collect_list Queries.pbp_periods_by_game game_id
-  let get_pbp_events ~game_id ~period_code (module Db : Caqti_lwt.CONNECTION) =
+  let get_pbp_events ~game_id ~period_code (module Db : Caqti_eio.CONNECTION) =
     Db.collect_list Queries.pbp_events_by_game_period (game_id, period_code)
-  let get_team_core_player_ids ~season ~team_name ~limit (module Db : Caqti_lwt.CONNECTION) =
+  let get_team_core_player_ids ~season ~team_name ~limit (module Db : Caqti_eio.CONNECTION) =
     Db.collect_list Queries.team_core_player_ids (team_name, ((season, season), limit))
-  let get_team_active_player_ids ~team_name ~game_id (module Db : Caqti_lwt.CONNECTION) =
+  let get_team_active_player_ids ~team_name ~game_id (module Db : Caqti_eio.CONNECTION) =
     Db.collect_list Queries.team_active_player_ids (team_name, game_id)
 
-  let qa_games_total (module Db : Caqti_lwt.CONNECTION) = Db.find_opt Queries.qa_games_total ()
-  let qa_games_with_stats (module Db : Caqti_lwt.CONNECTION) = Db.find_opt Queries.qa_games_with_stats ()
-  let qa_plus_minus_games (module Db : Caqti_lwt.CONNECTION) = Db.find_opt Queries.qa_plus_minus_games ()
-  let qa_score_mismatch_count (module Db : Caqti_lwt.CONNECTION) = Db.find_opt Queries.qa_score_mismatch_count ()
-  let qa_score_mismatch_sample (module Db : Caqti_lwt.CONNECTION) = Db.collect_list Queries.qa_score_mismatch_sample ()
-  let qa_team_count_anomaly_count (module Db : Caqti_lwt.CONNECTION) = Db.find_opt Queries.qa_team_count_anomaly_count ()
-  let qa_team_count_anomaly_sample (module Db : Caqti_lwt.CONNECTION) = Db.collect_list Queries.qa_team_count_anomaly_sample ()
-  let qa_duplicate_player_row_count (module Db : Caqti_lwt.CONNECTION) = Db.find_opt Queries.qa_duplicate_player_row_count ()
-  let qa_duplicate_player_row_sample (module Db : Caqti_lwt.CONNECTION) = Db.collect_list Queries.qa_duplicate_player_row_sample ()
-  let qa_duplicate_player_name_count (module Db : Caqti_lwt.CONNECTION) = Db.find_opt Queries.qa_duplicate_player_name_count ()
-  let qa_duplicate_player_name_sample (module Db : Caqti_lwt.CONNECTION) = Db.collect_list Queries.qa_duplicate_player_name_sample ()
-  let get_game_info ~game_id (module Db : Caqti_lwt.CONNECTION) = Db.find_opt Queries.game_info_by_id game_id
-  let get_boxscore_stats ~game_id (module Db : Caqti_lwt.CONNECTION) = Db.collect_list Queries.boxscore_stats_by_game_id game_id
-  let get_leaders ~category ~scope ~season (module Db : Caqti_lwt.CONNECTION) =
+  let qa_games_total (module Db : Caqti_eio.CONNECTION) = Db.find_opt Queries.qa_games_total ()
+  let qa_games_with_stats (module Db : Caqti_eio.CONNECTION) = Db.find_opt Queries.qa_games_with_stats ()
+  let qa_plus_minus_games (module Db : Caqti_eio.CONNECTION) = Db.find_opt Queries.qa_plus_minus_games ()
+  let qa_score_mismatch_count (module Db : Caqti_eio.CONNECTION) = Db.find_opt Queries.qa_score_mismatch_count ()
+  let qa_score_mismatch_sample (module Db : Caqti_eio.CONNECTION) = Db.collect_list Queries.qa_score_mismatch_sample ()
+  let qa_team_count_anomaly_count (module Db : Caqti_eio.CONNECTION) = Db.find_opt Queries.qa_team_count_anomaly_count ()
+  let qa_team_count_anomaly_sample (module Db : Caqti_eio.CONNECTION) = Db.collect_list Queries.qa_team_count_anomaly_sample ()
+  let qa_duplicate_player_row_count (module Db : Caqti_eio.CONNECTION) = Db.find_opt Queries.qa_duplicate_player_row_count ()
+  let qa_duplicate_player_row_sample (module Db : Caqti_eio.CONNECTION) = Db.collect_list Queries.qa_duplicate_player_row_sample ()
+  let qa_duplicate_player_name_count (module Db : Caqti_eio.CONNECTION) = Db.find_opt Queries.qa_duplicate_player_name_count ()
+  let qa_duplicate_player_name_sample (module Db : Caqti_eio.CONNECTION) = Db.collect_list Queries.qa_duplicate_player_name_sample ()
+  let get_game_info ~game_id (module Db : Caqti_eio.CONNECTION) = Db.find_opt Queries.game_info_by_id game_id
+  let get_boxscore_stats ~game_id (module Db : Caqti_eio.CONNECTION) = Db.collect_list Queries.boxscore_stats_by_game_id game_id
+  let get_leaders ~category ~scope ~season (module Db : Caqti_eio.CONNECTION) =
     let q =
       match (category, scope) with
       | "gp", _ -> Queries.leaders_gp
@@ -3387,29 +3387,28 @@ end
     in
     Db.collect_list q (season, season)
 
-  let get_leaders_base ~season (module Db : Caqti_lwt.CONNECTION) =
+  let get_leaders_base ~season (module Db : Caqti_eio.CONNECTION) =
     let s = if String.trim season = "" then "ALL" else season in
     if s = "ALL" then
       Db.collect_list Queries.leaders_base_cached_all ()
     else
       Db.collect_list Queries.leaders_base_cached s
 
-  let get_stat_mvp_eff ~season ~include_mismatch (module Db : Caqti_lwt.CONNECTION) =
+  let get_stat_mvp_eff ~season ~include_mismatch (module Db : Caqti_eio.CONNECTION) =
     let include_int = if include_mismatch then 1 else 0 in
     let s = if String.trim season = "" then "ALL" else season in
     Db.collect_list Queries.stat_mvp_eff (s, (s, include_int))
 
-  let get_stat_mip_eff_delta ~season ~prev_season ~include_mismatch (module Db : Caqti_lwt.CONNECTION) =
+  let get_stat_mip_eff_delta ~season ~prev_season ~include_mismatch (module Db : Caqti_eio.CONNECTION) =
     let include_int = if include_mismatch then 1 else 0 in
     Db.collect_list Queries.stat_mip_eff_delta (season, (include_int, (prev_season, include_int)))
   
-	  let get_player_profile ~player_id (module Db : Caqti_lwt.CONNECTION) = 
-	    let open Lwt.Syntax in 
-	    let* info = Db.find_opt Queries.player_info player_id in 
-	    match info with 
-	    | Error e -> Lwt.return (Error e) 
-		    | Ok None -> Lwt.return (Ok None) 
-		    | Ok (Some p) -> 
+	  let get_player_profile ~player_id (module Db : Caqti_eio.CONNECTION) =
+	    let (let*) = Result.bind in
+	    let* info = Db.find_opt Queries.player_info player_id in
+	    match info with
+	    | None -> Ok None
+		    | Some p -> 
 		        let team_stints_of_games (games: (string * string) list) =
 		          let rec loop current acc = function
 		            | [] ->
@@ -3463,7 +3462,7 @@ end
               let trade_pattern = "%" ^ name_norm ^ "%" in
 	              let* trade_events_res =
 	                if String.trim name_norm = "" then
-	                  Lwt.return (Ok [])
+	                  Ok ([])
 	                else
 	                  Db.collect_list Queries.official_trade_events_by_player_name_norm trade_pattern
 	              in
@@ -3476,47 +3475,32 @@ end
 				        let* ch_steals = Db.find_opt Queries.career_high_steals_game player_id in
 				        let* ch_blocks = Db.find_opt Queries.career_high_blocks_game player_id in
 				        let dummy_avg = { player_id = p.id; name = p.name; team_name = ""; games_played = 0; total_minutes = 0.0; total_points = 0; total_rebounds = 0; total_assists = 0; total_steals = 0; total_blocks = 0; total_turnovers = 0; avg_points = 0.0; avg_margin = 0.0; avg_rebounds = 0.0; avg_assists = 0.0; avg_steals = 0.0; avg_blocks = 0.0; avg_turnovers = 0.0; efficiency = 0.0; } in 
-			        match seasons, recent, all_star, team_games, averages_res, draft_res, trade_events_res, external_links_res, ch_points, ch_rebounds, ch_assists, ch_steals, ch_blocks with 
-			        | Ok ss, Ok rg, Ok asg, Ok tgs, Ok avg_opt, Ok draft_opt, Ok trade_events, Ok external_links, Ok pts_g, Ok reb_g, Ok ast_g, Ok stl_g, Ok blk_g -> 
+(* All values already unwrapped by let* - use them directly *)
 			            let add_opt opt mk acc = match opt with | None -> acc | Some v -> mk v :: acc in
 			            let items =
 			              []
-			              |> add_opt pts_g (fun (g: player_game_stat) -> { chi_label = "Points"; chi_value = g.pts; chi_game_id = g.game_id; chi_game_date = g.game_date; chi_opponent = g.opponent; chi_is_home = g.is_home })
-              |> add_opt reb_g (fun g -> { chi_label = "Rebounds"; chi_value = g.reb; chi_game_id = g.game_id; chi_game_date = g.game_date; chi_opponent = g.opponent; chi_is_home = g.is_home })
-              |> add_opt ast_g (fun g -> { chi_label = "Assists"; chi_value = g.ast; chi_game_id = g.game_id; chi_game_date = g.game_date; chi_opponent = g.opponent; chi_is_home = g.is_home })
-              |> add_opt stl_g (fun g -> { chi_label = "Steals"; chi_value = g.stl; chi_game_id = g.game_id; chi_game_date = g.game_date; chi_opponent = g.opponent; chi_is_home = g.is_home })
-              |> add_opt blk_g (fun g -> { chi_label = "Blocks"; chi_value = g.blk; chi_game_id = g.game_id; chi_game_date = g.game_date; chi_opponent = g.opponent; chi_is_home = g.is_home })
+			              |> add_opt ch_points (fun (g: player_game_stat) -> { chi_label = "Points"; chi_value = g.pts; chi_game_id = g.game_id; chi_game_date = g.game_date; chi_opponent = g.opponent; chi_is_home = g.is_home })
+              |> add_opt ch_rebounds (fun g -> { chi_label = "Rebounds"; chi_value = g.reb; chi_game_id = g.game_id; chi_game_date = g.game_date; chi_opponent = g.opponent; chi_is_home = g.is_home })
+              |> add_opt ch_assists (fun g -> { chi_label = "Assists"; chi_value = g.ast; chi_game_id = g.game_id; chi_game_date = g.game_date; chi_opponent = g.opponent; chi_is_home = g.is_home })
+              |> add_opt ch_steals (fun g -> { chi_label = "Steals"; chi_value = g.stl; chi_game_id = g.game_id; chi_game_date = g.game_date; chi_opponent = g.opponent; chi_is_home = g.is_home })
+              |> add_opt ch_blocks (fun g -> { chi_label = "Blocks"; chi_value = g.blk; chi_game_id = g.game_id; chi_game_date = g.game_date; chi_opponent = g.opponent; chi_is_home = g.is_home })
               |> List.rev
 			            in
 			            let career_highs = match items with | [] -> None | _ -> Some items in
-			            let averages = match avg_opt with Some a -> a | None -> dummy_avg in
-			            let team_stints = team_stints_of_games tgs in
-			            Lwt.return (Ok (Some { player = p; averages; recent_games = rg; all_star_games = asg; draft = draft_opt; official_trade_events = trade_events; external_links; team_stints; season_breakdown = ss; career_highs })) 
-			        | Error e, _, _, _, _, _, _, _, _, _, _, _, _
-			        | _, Error e, _, _, _, _, _, _, _, _, _, _, _
-			        | _, _, Error e, _, _, _, _, _, _, _, _, _, _
-			        | _, _, _, Error e, _, _, _, _, _, _, _, _, _
-			        | _, _, _, _, Error e, _, _, _, _, _, _, _, _
-			        | _, _, _, _, _, Error e, _, _, _, _, _, _, _
-			        | _, _, _, _, _, _, Error e, _, _, _, _, _, _
-			        | _, _, _, _, _, _, _, Error e, _, _, _, _, _
-			        | _, _, _, _, _, _, _, _, Error e, _, _, _, _
-			        | _, _, _, _, _, _, _, _, _, Error e, _, _, _
-			        | _, _, _, _, _, _, _, _, _, _, Error e, _, _
-			        | _, _, _, _, _, _, _, _, _, _, _, Error e, _
-			        | _, _, _, _, _, _, _, _, _, _, _, _, Error e ->
-			            Lwt.return (Error e)
+			            let averages = match averages_res with Some a -> a | None -> dummy_avg in
+			            let team_stints = team_stints_of_games team_games in
+			            Ok ((Some { player = p; averages; recent_games = recent; all_star_games = all_star; draft = draft_res; official_trade_events = trade_events_res; external_links = external_links_res; team_stints; season_breakdown = seasons; career_highs }))
 
-  let get_player_season_stats ~player_id ~scope (module Db : Caqti_lwt.CONNECTION) = let q = match scope with | "totals" -> Queries.player_seasons_totals | "per_36" -> Queries.player_seasons_per36 | _ -> Queries.player_seasons_per_game in Db.collect_list q player_id
-  let get_player_game_logs ~player_id ~season ~include_mismatch (module Db : Caqti_lwt.CONNECTION) =
+  let get_player_season_stats ~player_id ~scope (module Db : Caqti_eio.CONNECTION) = let q = match scope with | "totals" -> Queries.player_seasons_totals | "per_36" -> Queries.player_seasons_per36 | _ -> Queries.player_seasons_per_game in Db.collect_list q player_id
+  let get_player_game_logs ~player_id ~season ~include_mismatch (module Db : Caqti_eio.CONNECTION) =
     let include_int = if include_mismatch then 1 else 0 in
     let s = if String.trim season = "" then "ALL" else season in
     Db.collect_list Queries.player_game_logs (player_id, (s, (s, include_int)))
-  let get_batch_player_game_logs ~player_ids ~season (module Db : Caqti_lwt.CONNECTION) =
+  let get_batch_player_game_logs ~player_ids ~season (module Db : Caqti_eio.CONNECTION) =
     let ids_csv = String.concat "," player_ids in
     let s = if String.trim season = "" then "ALL" else season in
     Db.collect_list Queries.batch_player_game_logs (ids_csv, (s, s))
-	  let get_team_recent_games ~team_name ~season (module Db : Caqti_lwt.CONNECTION) =
+	  let get_team_recent_games ~team_name ~season (module Db : Caqti_eio.CONNECTION) =
 	    let s = if String.trim season = "" then "ALL" else season in
 	    let t =
 	      (team_name,
@@ -3530,7 +3514,7 @@ end
 	              (s, s)))))))))
 	    in
 	    Db.collect_list Queries.team_recent_games t
-	  let get_team_games ~team_name ~season (module Db : Caqti_lwt.CONNECTION) =
+	  let get_team_games ~team_name ~season (module Db : Caqti_eio.CONNECTION) =
 	    let s = if String.trim season = "" then "ALL" else season in
 	    let t =
 	      (team_name,
@@ -3544,23 +3528,32 @@ end
 	              (s, s)))))))))
 	    in
 	    Db.collect_list Queries.team_games t
-	  let get_player_h2h ~p1_id ~p2_id ~season (module Db : Caqti_lwt.CONNECTION) = let s = if season = "" then "ALL" else season in Db.collect_list Queries.player_h2h_games ((p1_id, p2_id), (s, s))
+	  let get_player_h2h ~p1_id ~p2_id ~season (module Db : Caqti_eio.CONNECTION) = let s = if season = "" then "ALL" else season in Db.collect_list Queries.player_h2h_games ((p1_id, p2_id), (s, s))
 
     (** Get MVP race candidates for a season *)
-    let get_mvp_race_candidates ~season ~min_games (module Db : Caqti_lwt.CONNECTION) =
+    let get_mvp_race_candidates ~season ~min_games (module Db : Caqti_eio.CONNECTION) =
       let s = if String.trim season = "" then "ALL" else season in
       Db.collect_list Queries.mvp_race_candidates (s, min_games)
 	end
 
-(** Connection pool *)
-let pool_ref : (Caqti_lwt.connection, Caqti_error.t) Caqti_lwt_unix.Pool.t option ref = ref None
-let init_pool db_url = 
-  (* Initializing pool without extra parameters for Supabase compatibility *)
+(** Connection pool - Eio-based *)
+let pool_ref : (Caqti_eio.connection, Caqti_error.t) Caqti_eio.Pool.t option ref = ref None
+
+(** Initialize pool with Eio context - must be called inside Eio_main.run *)
+let init_pool ~sw ~stdenv db_url =
   let uri = Uri.of_string db_url in
-  match Caqti_lwt_unix.connect_pool uri with 
-  | Ok pool -> pool_ref := Some pool; Ok () 
+  match Caqti_eio_unix.connect_pool ~sw ~stdenv uri with
+  | Ok pool -> pool_ref := Some pool; Ok ()
   | Error e -> Error (ConnectionFailed (Caqti_error.show e))
-let with_db f = let open Lwt.Syntax in match !pool_ref with | None -> Lwt.return (Error (ConnectionFailed "Pool not initialized")) | Some pool -> let* result = Caqti_lwt_unix.Pool.use f pool in match result with | Ok v -> Lwt.return (Ok v) | Error e -> Lwt.return (Error (QueryFailed (Caqti_error.show e)))
+
+(** Run a database operation using the pool *)
+let with_db f =
+  match !pool_ref with
+  | None -> Error (ConnectionFailed "Pool not initialized")
+  | Some pool ->
+      match Caqti_eio.Pool.use f pool with
+      | Ok v -> Ok v
+      | Error e -> Error (QueryFailed (Caqti_error.show e))
 
 let iso8601_utc () =
   let tm = Unix.gmtime (Unix.time ()) in
@@ -3628,14 +3621,13 @@ end
 
 let cached cache key f =
   match Cache.get cache key with
-  | Some value -> Lwt.return (Ok value)
+  | Some value -> Ok value
   | None ->
-      let open Lwt.Syntax in
-      let* result = f () in
+      let result = f () in
       (match result with
        | Ok value -> Cache.set cache key value
        | Error _ -> ());
-      Lwt.return result
+      result
 
 (** Public API *)
 let cache_key_text value =
@@ -3823,15 +3815,12 @@ let get_players ?(season="ALL") ?(limit=50) ?(search="") ?(sort=ByEfficiency) ?(
       include_mismatch
   in
   cached players_cache key (fun () ->
-    let open Lwt.Syntax in
-    let* base_res = get_players_base ~season ~include_mismatch () in
-    match base_res with
-    | Error err -> Lwt.return (Error err)
-    | Ok base ->
-        let filtered = filter_player_bases ~search ~sort base in
-        let limited = take limit filtered in
-        let result = List.map player_base_to_aggregate limited in
-        Lwt.return (Ok result))
+    let (let*) = Result.bind in
+    let* base = get_players_base ~season ~include_mismatch () in
+    let filtered = filter_player_bases ~search ~sort base in
+    let limited = take limit filtered in
+    let result = List.map player_base_to_aggregate limited in
+    Ok result)
 let get_players_by_team ~team_name ?(season="ALL") ?(limit=20) () =
   let key =
     Printf.sprintf "team=%s|season=%s|limit=%d"
@@ -3913,33 +3902,27 @@ let get_team_stats ?(season="ALL") ?(scope=PerGame) ?(sort=TeamByPoints) ?(inclu
       include_mismatch
   in
   cached team_stats_cache key (fun () ->
-    let open Lwt.Syntax in
-    let* totals_result = with_db (fun db -> Repo.get_team_totals ~season ~include_mismatch db) in
-    let* margins_result = with_db (fun db -> Repo.get_team_margins ~season ~include_mismatch db) in
-    match totals_result, margins_result with
-    | Ok totals, Ok margins ->
-        let margin_map = build_margin_map margins in
-        let stats =
-          totals
-          |> List.map (fun (row: team_totals) ->
-              let key = (row.season, row.team) in
-              let margin = MarginMap.find_opt key margin_map in
-              Stats.team_stats_of_totals ~scope ~margin row)
-          |> sort_team_stats sort
-          |> dedupe_team_stats
-        in
-        Lwt.return (Ok stats)
-    | Error err, _ -> Lwt.return (Error err)
-    | _, Error err -> Lwt.return (Error err))
+    let (let*) = Result.bind in
+    let* totals = with_db (fun db -> Repo.get_team_totals ~season ~include_mismatch db) in
+    let* margins = with_db (fun db -> Repo.get_team_margins ~season ~include_mismatch db) in
+    let margin_map = build_margin_map margins in
+    let stats =
+      totals
+      |> List.map (fun (row: team_totals) ->
+          let key = (row.season, row.team) in
+          let margin = MarginMap.find_opt key margin_map in
+          Stats.team_stats_of_totals ~scope ~margin row)
+      |> sort_team_stats sort
+      |> dedupe_team_stats
+    in
+    Ok stats)
 let calculate_gb (standings : team_standing list) = match standings with | [] -> [] | leader :: others -> let calc s = let wins_diff = Stdlib.float (leader.wins - s.wins) in let losses_diff = Stdlib.float (s.losses - leader.losses) in (wins_diff +. losses_diff) /. 2.0 in leader :: List.map (fun s -> { s with gb = calc s }) others
 let get_standings ?(season = "ALL") () =
   let key = Printf.sprintf "season=%s" season in
   cached standings_cache key (fun () ->
-    let open Lwt.Syntax in
-    let* result = with_db (fun db -> Repo.get_standings ~season db) in
-    match result with
-    | Ok standings -> Lwt.return (Ok (calculate_gb standings))
-    | Error err -> Lwt.return (Error err))
+    let (let*) = Result.bind in
+    let* standings = with_db (fun db -> Repo.get_standings ~season db) in
+    Ok (calculate_gb standings))
 let get_games ?(season = "ALL") () =
   let key = Printf.sprintf "season=%s" season in
   cached games_cache key (fun () -> with_db (fun db -> Repo.get_games ~season db))
@@ -3958,17 +3941,15 @@ let get_team_active_player_ids ~team_name ~game_id () =
 let get_boxscore ~game_id () =
   let key = Printf.sprintf "game_id=%s" game_id in
   cached boxscore_cache key (fun () ->
-    let open Lwt.Syntax in
-    let* game_info_result = with_db (fun db -> Repo.get_game_info ~game_id db) in
-    let* stats_result = with_db (fun db -> Repo.get_boxscore_stats ~game_id db) in
-    match game_info_result, stats_result with
-    | Ok (Some game_info), Ok stats ->
+    let (let*) = Result.bind in
+    let* game_info_opt = with_db (fun db -> Repo.get_game_info ~game_id db) in
+    let* stats = with_db (fun db -> Repo.get_boxscore_stats ~game_id db) in
+    match game_info_opt with
+    | Some game_info ->
         let home_players = List.filter (fun s -> s.bs_team_code = game_info.gi_home_team_code) stats in
         let away_players = List.filter (fun s -> s.bs_team_code = game_info.gi_away_team_code) stats in
-        Lwt.return (Ok { boxscore_game = game_info; boxscore_home_players = home_players; boxscore_away_players = away_players })
-    | Ok None, _ -> Lwt.return (Error (QueryFailed "Game not found"))
-    | Error err, _ -> Lwt.return (Error err)
-    | _, Error err -> Lwt.return (Error err))
+        Ok { boxscore_game = game_info; boxscore_home_players = home_players; boxscore_away_players = away_players }
+    | None -> Error (QueryFailed "Game not found"))
 let get_leaders_base ?(season="ALL") () =
   let key = cache_key_text season in
   cached leaders_base_cache key (fun () -> with_db (fun db -> Repo.get_leaders_base ~season db))
@@ -4082,11 +4063,9 @@ let leaders_from_base ~scope ~category (bases: leader_base list) =
 let get_leaders ?(season="ALL") ?(scope="per_game") category =
   let key = Printf.sprintf "season=%s|scope=%s|category=%s" season scope category in
   cached leaders_cache key (fun () ->
-    let open Lwt.Syntax in
-    let* base_res = get_leaders_base ~season () in
-    match base_res with
-    | Error err -> Lwt.return (Error err)
-    | Ok bases -> Lwt.return (Ok (leaders_from_base ~scope ~category bases)))
+    let (let*) = Result.bind in
+    let* bases = get_leaders_base ~season () in
+    Ok (leaders_from_base ~scope ~category bases))
 
 let get_stat_mvp_eff ?(season="ALL") ?(include_mismatch=false) () =
   let key = Printf.sprintf "mvp|season=%s|mismatch=%b" season include_mismatch in
@@ -4113,44 +4092,38 @@ let get_player_game_logs ~player_id ?(season="ALL") ?(include_mismatch=false) ()
 (** Batch fetch game logs for multiple players in single query.
     Returns a Hashtbl mapping player_id -> player_game_stat list *)
 let get_batch_player_game_logs ~player_ids ?(season="ALL") () =
-  let open Lwt.Syntax in
-  let* result = with_db (fun db -> Repo.get_batch_player_game_logs ~player_ids ~season db) in
-  match result with
-  | Error e -> Lwt.return (Error e)
-  | Ok rows ->
-      let tbl = Hashtbl.create (List.length player_ids) in
-      List.iter (fun (row: player_game_stat_with_id) ->
-        let existing = match Hashtbl.find_opt tbl row.pgs_player_id with
-          | Some lst -> lst
-          | None -> []
-        in
-        Hashtbl.replace tbl row.pgs_player_id (row.pgs_stat :: existing)
-      ) rows;
-      (* Reverse lists since we iterated in DESC order but appended to front *)
-      Hashtbl.iter (fun k v -> Hashtbl.replace tbl k (List.rev v)) tbl;
-      Lwt.return (Ok tbl)
+  let (let*) = Result.bind in
+  let* rows = with_db (fun db -> Repo.get_batch_player_game_logs ~player_ids ~season db) in
+  let tbl = Hashtbl.create (List.length player_ids) in
+  List.iter (fun (row: player_game_stat_with_id) ->
+    let existing = match Hashtbl.find_opt tbl row.pgs_player_id with
+      | Some lst -> lst
+      | None -> []
+    in
+    Hashtbl.replace tbl row.pgs_player_id (row.pgs_stat :: existing)
+  ) rows;
+  (* Reverse lists since we iterated in DESC order but appended to front *)
+  Hashtbl.iter (fun k v -> Hashtbl.replace tbl k (List.rev v)) tbl;
+  Ok tbl
 
 let get_team_full_detail ~team_name ?(season="ALL") () =
   let key = Printf.sprintf "team=%s|season=%s" (cache_key_text team_name) season in
   cached team_detail_cache key (fun () ->
-    let open Lwt.Syntax in
-    let* standing_res = get_standings ~season () in
-    let* roster_res = get_players_by_team ~team_name ~season () in
-    let* games_res = with_db (fun db -> Repo.get_team_recent_games ~team_name ~season db) in
-    let* game_results_res = with_db (fun db -> Repo.get_team_games ~team_name ~season db) in
-    let* team_totals_res = with_db (fun db -> Repo.get_team_totals ~season ~include_mismatch:false db) in
-    match standing_res, roster_res, games_res, game_results_res, team_totals_res with
-    | Ok standings, Ok roster, Ok games, Ok game_results, Ok all_totals ->
-        let standing = List.find_opt (fun (s: team_standing) -> s.team_name = team_name) standings in
-        let team_totals = List.find_opt (fun (t: team_totals) -> t.team = team_name) all_totals in
-        Lwt.return (Ok { tfd_team_name = team_name; tfd_standing = standing; tfd_roster = roster; tfd_game_results = game_results; tfd_recent_games = games; tfd_team_totals = team_totals })
-    | Error e, _, _, _, _ | _, Error e, _, _, _ | _, _, Error e, _, _ | _, _, _, Error e, _ | _, _, _, _, Error e -> Lwt.return (Error e))
+    let (let*) = Result.bind in
+    let* standings = get_standings ~season () in
+    let* roster = get_players_by_team ~team_name ~season () in
+    let* games = with_db (fun db -> Repo.get_team_recent_games ~team_name ~season db) in
+    let* game_results = with_db (fun db -> Repo.get_team_games ~team_name ~season db) in
+    let* all_totals = with_db (fun db -> Repo.get_team_totals ~season ~include_mismatch:false db) in
+    let standing = List.find_opt (fun (s: team_standing) -> s.team_name = team_name) standings in
+    let team_totals = List.find_opt (fun (t: team_totals) -> t.team = team_name) all_totals in
+    Ok { tfd_team_name = team_name; tfd_standing = standing; tfd_roster = roster; tfd_game_results = game_results; tfd_recent_games = games; tfd_team_totals = team_totals })
 let get_player_h2h_data ~p1_id ~p2_id ?(season="ALL") () =
   with_db (fun db -> Repo.get_player_h2h ~p1_id ~p2_id ~season db)
 
 let get_db_quality_report () : qa_db_report db_result =
   cached qa_report_cache "qa_report" (fun () ->
-    let open Lwt_result.Syntax in
+    let (let*) = Result.bind in
     let int_or_zero = Option.value ~default:0 in
     let round1 v = Float.round (v *. 10.0) /. 10.0 in
     let* games_total_opt = with_db (fun db -> Repo.qa_games_total db) in
@@ -4179,8 +4152,7 @@ let get_db_quality_report () : qa_db_report db_result =
             qdpn_player_ids = split_csv_ids ids_csv;
           })
     in
-    Lwt_result.return
-      { qdr_generated_at = iso8601_utc ();
+    Ok { qdr_generated_at = iso8601_utc ();
         qdr_games_total = games_total;
         qdr_games_with_stats = games_with_stats;
         qdr_plus_minus_games = plus_minus_games;
@@ -4233,15 +4205,12 @@ let mvp_race_cache = Cache.create ~ttl:120.0 ~max_entries:16
 let get_mvp_race ?(season="ALL") ?(min_games=5) () =
   let key = Printf.sprintf "season=%s,min_games=%d" season min_games in
   let min_games_str = string_of_int min_games in
-  let open Lwt.Syntax in
-  let* result = cached mvp_race_cache key (fun () ->
+  let (let*) = Result.bind in
+  let* candidates = cached mvp_race_cache key (fun () ->
     with_db (fun db -> Repo.get_mvp_race_candidates ~season ~min_games:min_games_str db)) in
-  match result with
-  | Ok candidates ->
-      (* Add rank to each candidate *)
-      let ranked = candidates |> List.mapi (fun i c -> { c with mvp_rank = i + 1 }) in
-      Lwt.return (Ok ranked)
-  | Error e -> Lwt.return (Error e)
+  (* Add rank to each candidate *)
+  let ranked = candidates |> List.mapi (fun i c -> { c with mvp_rank = i + 1 }) in
+  Ok ranked
 
 (* ===== Clutch Time Stats Public API ===== *)
 
@@ -4249,14 +4218,12 @@ let get_mvp_race ?(season="ALL") ?(min_games=5) () =
     Clutch time = Q4 remaining 5 min + score diff <= 5 points.
     Uses play_by_play_events with player_id to aggregate scoring stats. *)
 let get_clutch_stats ~season () =
-  let open Lwt.Syntax in
+  let (let*) = Result.bind in
   let s = if String.trim season = "" then "ALL" else season in
-  let* result = with_db (fun (module Db : Caqti_lwt.CONNECTION) ->
+  let* rows = with_db (fun (module Db : Caqti_eio.CONNECTION) ->
     Db.collect_list Queries.clutch_stats_by_season s
   ) in
-  match result with
-  | Ok rows -> Lwt.return (Ok rows)
-  | Error e -> Lwt.return (Error e)
+  Ok rows
 
 (* ===== On/Off Impact Public API ===== *)
 
@@ -4293,25 +4260,22 @@ let row_to_on_off_impact (player_id, (player_name, (team_name, (games_played, (t
 
 (** Get on/off impact stats for all qualifying players in a season *)
 let get_on_off_impact_stats ~season ?(limit=50) () =
-  let open Lwt.Syntax in
+  let (let*) = Result.bind in
   let limit_str = string_of_int limit in
-  let* result = with_db (fun (module Db : Caqti_lwt.CONNECTION) ->
+  let* rows = with_db (fun (module Db : Caqti_eio.CONNECTION) ->
     Db.collect_list Queries.on_off_impact_stats (season, limit_str)
   ) in
-  match result with
-  | Ok rows -> Lwt.return (Ok (List.map row_to_on_off_impact rows))
-  | Error e -> Lwt.return (Error e)
+  Ok (List.map row_to_on_off_impact rows)
 
 (** Get on/off impact for a specific player *)
 let get_on_off_impact_for_player ~player_id ~season () =
-  let open Lwt.Syntax in
-  let* result = with_db (fun (module Db : Caqti_lwt.CONNECTION) ->
+  let (let*) = Result.bind in
+  let* row_opt = with_db (fun (module Db : Caqti_eio.CONNECTION) ->
     Db.find_opt Queries.on_off_impact_for_player (player_id, season)
   ) in
-  match result with
-  | Ok (Some row) -> Lwt.return (Ok (Some (row_to_on_off_impact row)))
-  | Ok None -> Lwt.return (Ok None)
-  | Error e -> Lwt.return (Error e)
+  match row_opt with
+  | Some row -> Ok (Some (row_to_on_off_impact row))
+  | None -> Ok None
 
 (* ===== Lineup Chemistry Public API ===== *)
 
@@ -4333,9 +4297,9 @@ let lineup_cache = Cache.create ~ttl:300.0 ~max_entries:32
 let get_lineup_data ~season ~team_name () =
   let key = Printf.sprintf "season=%s,team=%s" season team_name in
   cached lineup_cache key (fun () ->
-    with_db (fun (module Db : Caqti_lwt.CONNECTION) ->
+    with_db (fun (module Db : Caqti_eio.CONNECTION) ->
       let open Caqti_type in
-      let open Lwt_result.Syntax in
+      let (let*) = Result.bind in
       let query = Request_oneshot.(
         t2 string (t2 string (t2 string string)) ->*
         (t2 string (t2 string (t2 string (t2 string (t2 string (t2 int (t2 int (option int))))))))
@@ -4371,7 +4335,7 @@ let get_lineup_data ~season ~team_name () =
           lgd_plus_minus = plus_minus;
         })
       in
-      Lwt_result.return parsed))
+      Ok parsed))
 
 (** Module for lineup analysis calculations *)
 module LineupAnalysis = struct
@@ -4531,46 +4495,43 @@ module LineupAnalysis = struct
 end
 
 (** Get full lineup chemistry analysis for a team *)
-let get_lineup_chemistry ~season ~team_name () : (Domain.lineup_chemistry, db_error) result Lwt.t =
-  let open Lwt.Syntax in
+let get_lineup_chemistry ~season ~team_name () : (Domain.lineup_chemistry, db_error) result =
+  let (let*) = Result.bind in
   let open Domain in
-  let* data_result = get_lineup_data ~season ~team_name () in
-  match data_result with
-  | Error e -> Lwt.return (Error e)
-  | Ok data ->
-    let lineups = LineupAnalysis.analyze_lineups ~team_name data in
-    let synergies = LineupAnalysis.analyze_synergies lineups in
+  let* data = get_lineup_data ~season ~team_name () in
+  let lineups = LineupAnalysis.analyze_lineups ~team_name data in
+  let synergies = LineupAnalysis.analyze_synergies lineups in
 
-    (* Sort lineups by different criteria *)
-    let by_minutes =
-      lineups
-      |> List.sort (compare_lineup_stats LineupByMinutes)
-      |> (fun l -> let rec take n acc = function
-          | [] -> List.rev acc
-          | x :: xs -> if n <= 0 then List.rev acc else take (n-1) (x::acc) xs
-        in take 10 [] l) in
+  (* Sort lineups by different criteria *)
+  let by_minutes =
+    lineups
+    |> List.sort (compare_lineup_stats LineupByMinutes)
+    |> (fun l -> let rec take n acc = function
+        | [] -> List.rev acc
+        | x :: xs -> if n <= 0 then List.rev acc else take (n-1) (x::acc) xs
+      in take 10 [] l) in
 
-    let by_plus_minus =
-      lineups
-      |> List.filter (fun l -> l.ls_total_minutes >= 20.0)  (* Min 20 min filter *)
-      |> List.sort (compare_lineup_stats LineupByPlusMinus)
-      |> (fun l -> let rec take n acc = function
-          | [] -> List.rev acc
-          | x :: xs -> if n <= 0 then List.rev acc else take (n-1) (x::acc) xs
-        in take 10 [] l) in
+  let by_plus_minus =
+    lineups
+    |> List.filter (fun l -> l.ls_total_minutes >= 20.0)  (* Min 20 min filter *)
+    |> List.sort (compare_lineup_stats LineupByPlusMinus)
+    |> (fun l -> let rec take n acc = function
+        | [] -> List.rev acc
+        | x :: xs -> if n <= 0 then List.rev acc else take (n-1) (x::acc) xs
+      in take 10 [] l) in
 
-    let top_synergies =
-      synergies
-      |> List.filter (fun s -> s.syn_games_together >= 2)
-      |> (fun l -> let rec take n acc = function
-          | [] -> List.rev acc
-          | x :: xs -> if n <= 0 then List.rev acc else take (n-1) (x::acc) xs
-        in take 20 [] l) in
+  let top_synergies =
+    synergies
+    |> List.filter (fun s -> s.syn_games_together >= 2)
+    |> (fun l -> let rec take n acc = function
+        | [] -> List.rev acc
+        | x :: xs -> if n <= 0 then List.rev acc else take (n-1) (x::acc) xs
+      in take 20 [] l) in
 
-    Lwt.return (Ok {
-      lc_team_name = team_name;
-      lc_season = season;
-      lc_top_lineups = by_plus_minus;
-      lc_frequent_lineups = by_minutes;
-      lc_synergies = top_synergies;
-    })
+  Ok {
+    lc_team_name = team_name;
+    lc_season = season;
+    lc_top_lineups = by_plus_minus;
+    lc_frequent_lineups = by_minutes;
+    lc_synergies = top_synergies;
+  }
