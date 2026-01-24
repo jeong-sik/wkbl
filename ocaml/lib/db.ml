@@ -689,11 +689,16 @@ module Types = struct
 
   let h2h_game =
     let encode _ = Error "Encode not supported: read-only type" in
-    let decode (game_id, (game_date, (p1_team, (p2_team, (p1_pts, (p1_reb, (p1_ast, (p2_pts, (p2_reb, (p2_ast, (winner, score_diff))))))))))) =
-      Ok { game_id; game_date; player1_team = p1_team; player2_team = p2_team; player1_pts = p1_pts; player1_reb = p1_reb; player1_ast = p1_ast; player2_pts = p2_pts; player2_reb = p2_reb; player2_ast = p2_ast; winner_team = winner; score_diff }
+    let decode (game_id, (game_date, (p1_team, (p2_team, (p1_pts, (p1_reb, (p1_ast, (p1_stl, (p1_blk, (p2_pts, (p2_reb, (p2_ast, (p2_stl, (p2_blk, (winner, score_diff))))))))))))))) =
+      Ok { game_id; game_date; player1_team = p1_team; player2_team = p2_team;
+           player1_pts = p1_pts; player1_reb = p1_reb; player1_ast = p1_ast;
+           player1_stl = p1_stl; player1_blk = p1_blk;
+           player2_pts = p2_pts; player2_reb = p2_reb; player2_ast = p2_ast;
+           player2_stl = p2_stl; player2_blk = p2_blk;
+           winner_team = winner; score_diff }
     in
     let t = t2 in
-    custom ~encode ~decode (t string (t string (t string (t string (t int (t int (t int (t int (t int (t int (t string int)))))))))))
+    custom ~encode ~decode (t string (t string (t string (t string (t int (t int (t int (t int (t int (t int (t int (t int (t int (t int (t string int)))))))))))))))
 
   let pbp_event =
     let encode _ = Error "Encode not supported: read-only type" in
@@ -2864,9 +2869,13 @@ module Queries = struct
       s1.pts as p1_pts,
       s1.reb_tot as p1_reb,
       s1.ast as p1_ast,
+      COALESCE(s1.stl, 0) as p1_stl,
+      COALESCE(s1.blk, 0) as p1_blk,
       s2.pts as p2_pts,
       s2.reb_tot as p2_reb,
       s2.ast as p2_ast,
+      COALESCE(s2.stl, 0) as p2_stl,
+      COALESCE(s2.blk, 0) as p2_blk,
       CASE WHEN g.home_score_calc > g.away_score_calc THEN t1.team_name_kr ELSE t2.team_name_kr END as winner,
       COALESCE(ABS(g.home_score_calc - g.away_score_calc), 0) as diff
     FROM scored_games g

@@ -464,9 +464,13 @@ type h2h_game = {
   player1_pts: int;
   player1_reb: int;
   player1_ast: int;
+  player1_stl: int;
+  player1_blk: int;
   player2_pts: int;
   player2_reb: int;
   player2_ast: int;
+  player2_stl: int;
+  player2_blk: int;
   winner_team: string;
   score_diff: int;
 }
@@ -479,9 +483,13 @@ type h2h_summary = {
   h2h_p1_avg_pts: float;
   h2h_p1_avg_reb: float;
   h2h_p1_avg_ast: float;
+  h2h_p1_avg_stl: float;
+  h2h_p1_avg_blk: float;
   h2h_p2_avg_pts: float;
   h2h_p2_avg_reb: float;
   h2h_p2_avg_ast: float;
+  h2h_p2_avg_stl: float;
+  h2h_p2_avg_blk: float;
 }
 
 (** Calculate H2H summary from a list of h2h_games *)
@@ -491,15 +499,20 @@ let calculate_h2h_summary ~p1_team (games: h2h_game list) : h2h_summary =
     { h2h_total_games = 0;
       h2h_p1_wins = 0; h2h_p2_wins = 0;
       h2h_p1_avg_pts = 0.0; h2h_p1_avg_reb = 0.0; h2h_p1_avg_ast = 0.0;
-      h2h_p2_avg_pts = 0.0; h2h_p2_avg_reb = 0.0; h2h_p2_avg_ast = 0.0 }
+      h2h_p1_avg_stl = 0.0; h2h_p1_avg_blk = 0.0;
+      h2h_p2_avg_pts = 0.0; h2h_p2_avg_reb = 0.0; h2h_p2_avg_ast = 0.0;
+      h2h_p2_avg_stl = 0.0; h2h_p2_avg_blk = 0.0 }
   else
-    (* Single-pass fold for all stats - 7x faster than individual folds *)
-    let (p1_wins, sum_p1_pts, sum_p1_reb, sum_p1_ast, sum_p2_pts, sum_p2_reb, sum_p2_ast) =
-      List.fold_left (fun (w1, p1pts, p1reb, p1ast, p2pts, p2reb, p2ast) g ->
+    (* Single-pass fold for all stats including steals and blocks *)
+    let (p1_wins, sum_p1_pts, sum_p1_reb, sum_p1_ast, sum_p1_stl, sum_p1_blk,
+         sum_p2_pts, sum_p2_reb, sum_p2_ast, sum_p2_stl, sum_p2_blk) =
+      List.fold_left (fun (w1, p1pts, p1reb, p1ast, p1stl, p1blk, p2pts, p2reb, p2ast, p2stl, p2blk) g ->
         let w1' = if g.player1_team = g.winner_team then w1 + 1 else w1 in
         (w1', p1pts + g.player1_pts, p1reb + g.player1_reb, p1ast + g.player1_ast,
-         p2pts + g.player2_pts, p2reb + g.player2_reb, p2ast + g.player2_ast))
-      (0, 0, 0, 0, 0, 0, 0) games
+         p1stl + g.player1_stl, p1blk + g.player1_blk,
+         p2pts + g.player2_pts, p2reb + g.player2_reb, p2ast + g.player2_ast,
+         p2stl + g.player2_stl, p2blk + g.player2_blk))
+      (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0) games
     in
     let p2_wins = total - p1_wins in
     let n = float_of_int total in
@@ -510,9 +523,13 @@ let calculate_h2h_summary ~p1_team (games: h2h_game list) : h2h_summary =
       h2h_p1_avg_pts = float_of_int sum_p1_pts /. n;
       h2h_p1_avg_reb = float_of_int sum_p1_reb /. n;
       h2h_p1_avg_ast = float_of_int sum_p1_ast /. n;
+      h2h_p1_avg_stl = float_of_int sum_p1_stl /. n;
+      h2h_p1_avg_blk = float_of_int sum_p1_blk /. n;
       h2h_p2_avg_pts = float_of_int sum_p2_pts /. n;
       h2h_p2_avg_reb = float_of_int sum_p2_reb /. n;
-      h2h_p2_avg_ast = float_of_int sum_p2_ast /. n }
+      h2h_p2_avg_ast = float_of_int sum_p2_ast /. n;
+      h2h_p2_avg_stl = float_of_int sum_p2_stl /. n;
+      h2h_p2_avg_blk = float_of_int sum_p2_blk /. n }
 
 (** Prediction types *)
 type team_prediction_stats = {

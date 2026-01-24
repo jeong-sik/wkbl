@@ -486,17 +486,17 @@ let player_season_stats_table ~scope (stats: season_stats list) =
     @ (stats |> List.map row_html)
     |> String.concat "\n"
   in
-  Printf.sprintf {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-lg animate-fade-in"><table class="season-stats-table min-w-[520px] sm:min-w-[720px] w-full text-sm font-mono table-fixed">
+  Printf.sprintf {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-lg animate-fade-in"><table class="season-stats-table min-w-[520px] sm:min-w-[720px] w-full text-sm font-mono table-fixed" aria-label="시즌별 선수 스탯">
     <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-xs whitespace-nowrap">
       <tr>
-        <th class="px-3 py-2 text-left font-sans">Season</th>
-        <th class="px-3 py-2 text-right w-[60px]">GP</th>
-        <th class="px-3 py-2 text-right w-[80px] hidden sm:table-cell">MIN</th>
-        <th class="px-3 py-2 text-right text-orange-600 dark:text-orange-400 w-[80px]">PTS</th>
-        <th class="px-3 py-2 text-right w-[80px] hidden sm:table-cell">MG</th>
-        <th class="px-3 py-2 text-right w-[80px]">REB</th>
-        <th class="px-3 py-2 text-right w-[80px] hidden sm:table-cell">AST</th>
-        <th class="px-3 py-2 text-right w-[80px]">EFF</th>
+        <th scope="col" class="px-3 py-2 text-left font-sans">Season</th>
+        <th scope="col" class="px-3 py-2 text-right w-[60px]" title="Games Played">GP</th>
+        <th scope="col" class="px-3 py-2 text-right w-[80px] hidden sm:table-cell" title="Minutes">MIN</th>
+        <th scope="col" class="px-3 py-2 text-right text-orange-600 dark:text-orange-400 w-[80px]" title="Points">PTS</th>
+        <th scope="col" class="px-3 py-2 text-right w-[80px] hidden sm:table-cell" title="Margin">MG</th>
+        <th scope="col" class="px-3 py-2 text-right w-[80px]" title="Rebounds">REB</th>
+        <th scope="col" class="px-3 py-2 text-right w-[80px] hidden sm:table-cell" title="Assists">AST</th>
+        <th scope="col" class="px-3 py-2 text-right w-[80px]" title="Efficiency">EFF</th>
       </tr>
     </thead>
     <tbody>%s</tbody>
@@ -877,22 +877,22 @@ let players_table (players: player_aggregate list) =
   in
   Printf.sprintf
     {html|<div class="overflow-x-auto max-h-[75vh] overflow-y-auto">
-    <table class="min-w-[680px] sm:min-w-[860px] lg:min-w-[980px] w-full text-xs sm:text-sm font-mono tabular-nums table-fixed">
+    <table class="min-w-[680px] sm:min-w-[860px] lg:min-w-[980px] w-full text-xs sm:text-sm font-mono tabular-nums table-fixed" aria-label="선수 스탯 순위">
       <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 text-[10px] sm:text-xs uppercase tracking-wider whitespace-nowrap">
         <tr>
-          <th class="px-3 py-2 text-left w-12">#</th>
-          <th class="px-3 py-2 text-left w-[220px] sm:w-[260px]">Player</th>
-          <th class="px-3 py-2 text-left w-[120px] sm:w-[160px]">Team</th>
-          <th class="px-3 py-2 text-right w-[60px] hidden sm:table-cell">GP</th>
-          <th class="px-3 py-2 text-right w-[72px] cursor-pointer hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300" hx-get="/players/table?sort=pts" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter">PTS</th>
-          <th class="px-3 py-2 text-right w-[72px] cursor-pointer hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 hidden md:table-cell" title="MG: 팀 득실마진(출전시간 가중 평균)" hx-get="/players/table?sort=mg" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter">MG</th>
-          <th class="px-3 py-2 text-right w-[72px] cursor-pointer hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300" hx-get="/players/table?sort=reb" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter">REB</th>
-          <th class="px-3 py-2 text-right w-[72px] cursor-pointer hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 hidden md:table-cell" hx-get="/players/table?sort=ast" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter">AST</th>
-          <th class="px-3 py-2 text-right w-[72px] hidden lg:table-cell">STL</th>
-          <th class="px-3 py-2 text-right w-[72px] hidden lg:table-cell">BLK</th>
-          <th class="px-3 py-2 text-right w-[72px] hidden lg:table-cell">TO</th>
-          <th class="px-3 py-2 text-right w-[72px] cursor-pointer hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300" hx-get="/players/table?sort=eff" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter">EFF</th>
-          <th class="px-3 py-2 text-right w-[72px] hidden sm:table-cell" title="Player Efficiency Rating (분당 효율 정규화)">PER</th>
+          <th scope="col" class="px-3 py-2 text-left w-12" title="Rank">#</th>
+          <th scope="col" class="px-3 py-2 text-left w-[220px] sm:w-[260px]">Player</th>
+          <th scope="col" class="px-3 py-2 text-left w-[120px] sm:w-[160px]">Team</th>
+          <th scope="col" class="px-3 py-2 text-right w-[60px] hidden sm:table-cell" title="Games Played">GP</th>
+          <th scope="col" class="px-3 py-2 text-right w-[72px] cursor-pointer hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300" title="Points" hx-get="/players/table?sort=pts" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter">PTS</th>
+          <th scope="col" class="px-3 py-2 text-right w-[72px] cursor-pointer hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 hidden md:table-cell" title="MG: 팀 득실마진(출전시간 가중 평균)" hx-get="/players/table?sort=mg" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter">MG</th>
+          <th scope="col" class="px-3 py-2 text-right w-[72px] cursor-pointer hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300" title="Rebounds" hx-get="/players/table?sort=reb" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter">REB</th>
+          <th scope="col" class="px-3 py-2 text-right w-[72px] cursor-pointer hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 hidden md:table-cell" title="Assists" hx-get="/players/table?sort=ast" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter">AST</th>
+          <th scope="col" class="px-3 py-2 text-right w-[72px] hidden lg:table-cell" title="Steals">STL</th>
+          <th scope="col" class="px-3 py-2 text-right w-[72px] hidden lg:table-cell" title="Blocks">BLK</th>
+          <th scope="col" class="px-3 py-2 text-right w-[72px] hidden lg:table-cell" title="Turnovers">TO</th>
+          <th scope="col" class="px-3 py-2 text-right w-[72px] cursor-pointer hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300" title="Efficiency" hx-get="/players/table?sort=eff" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter">EFF</th>
+          <th scope="col" class="px-3 py-2 text-right w-[72px] hidden sm:table-cell" title="Player Efficiency Rating (분당 효율 정규화)">PER</th>
         </tr>
       </thead>
       <tbody id="players-body">%s</tbody>

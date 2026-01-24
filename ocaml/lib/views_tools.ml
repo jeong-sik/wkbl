@@ -637,6 +637,8 @@ let h2h_avg_comparison ~p1_name ~p2_name (summary: Domain.h2h_summary) =
           %s
           %s
           %s
+          %s
+          %s
         </div>
         <div class="mt-3 text-center text-[10px] text-slate-400 dark:text-slate-500">
           Based on %d head-to-head games
@@ -646,6 +648,8 @@ let h2h_avg_comparison ~p1_name ~p2_name (summary: Domain.h2h_summary) =
       (stat_bar "Points" summary.h2h_p1_avg_pts summary.h2h_p2_avg_pts)
       (stat_bar "Rebounds" summary.h2h_p1_avg_reb summary.h2h_p2_avg_reb)
       (stat_bar "Assists" summary.h2h_p1_avg_ast summary.h2h_p2_avg_ast)
+      (stat_bar "Steals" summary.h2h_p1_avg_stl summary.h2h_p2_avg_stl)
+      (stat_bar "Blocks" summary.h2h_p1_avg_blk summary.h2h_p2_avg_blk)
       summary.h2h_total_games
 
 (** H2H Score Chart - Visual bar chart comparing scores per game *)

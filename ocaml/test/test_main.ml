@@ -433,10 +433,13 @@ let fantasy_score_tests = [
 (* ============================================= *)
 
 let make_h2h_game ~game_id ~game_date ~p1_team ~p2_team ~p1_pts ~p1_reb ~p1_ast
-    ~p2_pts ~p2_reb ~p2_ast ~winner_team ~score_diff : h2h_game =
+    ?(p1_stl=0) ?(p1_blk=0) ~p2_pts ~p2_reb ~p2_ast ?(p2_stl=0) ?(p2_blk=0)
+    ~winner_team ~score_diff () : h2h_game =
   { game_id; game_date; player1_team = p1_team; player2_team = p2_team;
     player1_pts = p1_pts; player1_reb = p1_reb; player1_ast = p1_ast;
+    player1_stl = p1_stl; player1_blk = p1_blk;
     player2_pts = p2_pts; player2_reb = p2_reb; player2_ast = p2_ast;
+    player2_stl = p2_stl; player2_blk = p2_blk;
     winner_team; score_diff }
 
 let test_h2h_summary_empty () =
@@ -455,7 +458,7 @@ let test_h2h_summary_single_game () =
       ~p1_team:"KB" ~p2_team:"SH"
       ~p1_pts:25 ~p1_reb:10 ~p1_ast:5
       ~p2_pts:18 ~p2_reb:8 ~p2_ast:3
-      ~winner_team:"KB" ~score_diff:12
+      ~winner_team:"KB" ~score_diff:12 ()
   ] in
   let summary = calculate_h2h_summary ~p1_team:"KB" games in
   Alcotest.(check int) "total games" 1 summary.h2h_total_games;
@@ -475,17 +478,17 @@ let test_h2h_summary_multiple_games () =
       ~p1_team:"KB" ~p2_team:"SH"
       ~p1_pts:20 ~p1_reb:8 ~p1_ast:6
       ~p2_pts:22 ~p2_reb:10 ~p2_ast:4
-      ~winner_team:"KB" ~score_diff:5;
+      ~winner_team:"KB" ~score_diff:5 ();
     make_h2h_game ~game_id:"G2" ~game_date:"2024-01-20"
       ~p1_team:"KB" ~p2_team:"SH"
       ~p1_pts:15 ~p1_reb:6 ~p1_ast:3
       ~p2_pts:28 ~p2_reb:12 ~p2_ast:8
-      ~winner_team:"SH" ~score_diff:(-10);
+      ~winner_team:"SH" ~score_diff:(-10) ();
     make_h2h_game ~game_id:"G3" ~game_date:"2024-01-30"
       ~p1_team:"KB" ~p2_team:"SH"
       ~p1_pts:30 ~p1_reb:7 ~p1_ast:9
       ~p2_pts:20 ~p2_reb:5 ~p2_ast:3
-      ~winner_team:"KB" ~score_diff:15;
+      ~winner_team:"KB" ~score_diff:15 ();
   ] in
   let summary = calculate_h2h_summary ~p1_team:"KB" games in
   Alcotest.(check int) "total games" 3 summary.h2h_total_games;
@@ -507,12 +510,12 @@ let test_h2h_summary_all_p2_wins () =
       ~p1_team:"WO" ~p2_team:"BN"
       ~p1_pts:12 ~p1_reb:5 ~p1_ast:2
       ~p2_pts:25 ~p2_reb:11 ~p2_ast:7
-      ~winner_team:"BN" ~score_diff:(-20);
+      ~winner_team:"BN" ~score_diff:(-20) ();
     make_h2h_game ~game_id:"G2" ~game_date:"2024-02-15"
       ~p1_team:"WO" ~p2_team:"BN"
       ~p1_pts:18 ~p1_reb:7 ~p1_ast:4
       ~p2_pts:21 ~p2_reb:9 ~p2_ast:5
-      ~winner_team:"BN" ~score_diff:(-8);
+      ~winner_team:"BN" ~score_diff:(-8) ();
   ] in
   let summary = calculate_h2h_summary ~p1_team:"WO" games in
   Alcotest.(check int) "total games" 2 summary.h2h_total_games;
