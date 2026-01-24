@@ -98,6 +98,14 @@ tbody tr:hover::before {
   text-overflow: ellipsis;
 }
 
+/* Prevent CJK per-character wrapping for team names in tables */
+.team-name {
+  white-space: nowrap !important;
+  word-break: keep-all !important;
+  overflow-wrap: normal !important;
+  display: inline-block;
+}
+
 /* HTMX loading indicator */
 .page-loader {
   position: fixed;
