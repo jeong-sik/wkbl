@@ -1,17 +1,17 @@
 (** WKBL Analytics Main Entry Point
-    OCaml Edition using Dream framework
+    OCaml Edition using Kirin framework (migrated from Dream)
 *)
 
 open Wkbl
 open Wkbl.Domain
 
 let query_bool request name =
-  Dream.query request name
+  Kirin.query_opt name request
   |> Option.fold ~none:false ~some:(fun v ->
       List.mem (String.lowercase_ascii (String.trim v)) ["1"; "true"; "yes"; "on"])
 
 let query_nonempty request name =
-  match Dream.query request name with
+  match Kirin.query_opt name request with
   | None -> None
   | Some v ->
       let trimmed = String.trim v in
@@ -34,6 +34,14 @@ let rec find_static_path start_dir =
   | None ->
       let parent = Filename.dirname start_dir in
       if parent = start_dir then None else find_static_path parent
+
+(* UTF-8 middleware for HTML responses *)
+let utf8_middleware : Kirin.middleware = fun next_handler request ->
+  let response = next_handler request in
+  (match Kirin.response_header "Content-Type" response with
+  | Some ct when String.starts_with ~prefix:"text/html" (String.lowercase_ascii ct) ->
+      Kirin.with_header "Content-Type" "text/html; charset=utf-8" response
+  | _ -> response)
 
 let () =
   (* Resolve runtime config from env. Prioritize WKBL_DATABASE_URL or DATABASE_URL for Postgres/Supabase. *)
@@ -59,20 +67,6 @@ let () =
         | _ -> 8000)
   in
 
-  (* Initialize database pool *)
-  match Db.init_pool db_url with
-  | Error e ->
-      Printf.eprintf "Failed to init DB (%s): %s\n" db_url (Db.show_db_error e);
-      exit 1
-  | Ok () ->
-
-  (* Ensure optional analytics tables exist (e.g., player +/-). *)
-  (match Lwt_main.run (Db.ensure_schema ()) with
-  | Ok () -> ()
-  | Error e ->
-      Printf.eprintf "Failed to ensure DB schema: %s\n" (Db.show_db_error e);
-      exit 1);
-  
   (* Determine static path robustly (repo-relative discovery + env override). *)
   let static_path =
     match Sys.getenv_opt "WKBL_STATIC_PATH" with
@@ -87,37 +81,38 @@ let () =
   in
   (* Keep WKBL_STATIC_PATH consistent for view-layer asset checks. *)
   Unix.putenv "WKBL_STATIC_PATH" static_path;
-  Printf.printf "Serving static assets from: %s\n%%!" static_path;
-  Printf.printf "Using DB path: %s\n%%!" db_url;
-  Printf.printf "Listening on: 0.0.0.0:%d\n%%!" port;
+  Printf.printf "Serving static assets from: %s\n%!" static_path;
+  Printf.printf "Using DB path: %s\n%!" db_url;
+  Printf.printf "Listening on: 0.0.0.0:%d\n%!" port;
 
-  Dream.run ~interface:"0.0.0.0" ~port ~error_handler:Dream.debug_error_handler
-  @@ Dream.logger
-  (* Force UTF-8 for HTML without breaking static assets. *)
-  @@ (fun next_handler request ->
-      let open Lwt.Syntax in
-      let* response = next_handler request in
-      (match Dream.header response "Content-Type" with
-      | Some ct when String.starts_with ~prefix:"text/html" (String.lowercase_ascii ct) ->
-          Dream.set_header response "Content-Type" "text/html; charset=utf-8"
-      | _ -> ());
-      Lwt.return response)
-  @@ Dream.router [
+  (* Run inside Eio context for DB pool initialization *)
+  Eio_main.run @@ fun env ->
+  Eio.Switch.run @@ fun sw ->
 
-    (* Static Assets - Correctly scoped *)
-    Dream.scope "/static" [] [
-      Dream.get "**" (fun request ->
-        let open Lwt.Syntax in
-        let* response = Dream.static static_path request in
-        Dream.set_header response "Cache-Control" "public, max-age=31536000, immutable";
-        Lwt.return response)
-    ];
+  (* Initialize database pool inside Eio context *)
+  (match Db.init_pool ~sw ~stdenv:(env :> Caqti_eio.stdenv) db_url with
+  | Error e ->
+      Printf.eprintf "Failed to init DB (%s): %s\n" db_url (Db.show_db_error e);
+      exit 1
+  | Ok () -> ());
+
+  (* Ensure optional analytics tables exist (e.g., player +/-). *)
+  (match Db.ensure_schema () with
+  | Ok () -> ()
+  | Error e ->
+      Printf.eprintf "Failed to ensure DB schema: %s\n" (Db.show_db_error e);
+      exit 1);
+
+  Kirin.run ~config:{ Kirin.default_config with port } ~sw ~env
+  @@ Kirin.logger
+  @@ utf8_middleware
+  @@ Kirin.static "/static" ~dir:static_path
+  @@ Kirin.router [
 
     (* SEO: robots.txt *)
-    Dream.get "/robots.txt" (fun _ ->
-      Dream.respond
-        ~headers:[("Content-Type", "text/plain; charset=utf-8")]
-        {|User-agent: *
+    Kirin.get "/robots.txt" (fun _ ->
+      Kirin.with_header "Content-Type" "text/plain; charset=utf-8"
+      @@ Kirin.text {|User-agent: *
 Allow: /
 Disallow: /qa
 
@@ -125,11 +120,8 @@ Sitemap: https://wkbl.win/sitemap.xml
 |});
 
     (* SEO: sitemap.xml - Dynamic sitemap *)
-    Dream.get "/sitemap.xml" (fun _ ->
-      let open Lwt.Syntax in
-      let* seasons_res = Db.get_seasons () in
-      let* teams_res = Db.get_all_teams () in
-      match seasons_res, teams_res with
+    Kirin.get "/sitemap.xml" (fun _ ->
+      match Db.get_seasons (), Db.get_all_teams () with
       | Ok seasons, Ok teams ->
           let today = Unix.time () |> Unix.gmtime in
           let lastmod = Printf.sprintf "%04d-%02d-%02d" (today.Unix.tm_year + 1900) (today.Unix.tm_mon + 1) today.Unix.tm_mday in
@@ -149,254 +141,211 @@ Sitemap: https://wkbl.win/sitemap.xml
 %s
 %s
 </urlset>|} static_urls team_urls season_urls in
-          Dream.respond ~headers:[("Content-Type", "application/xml; charset=utf-8")] sitemap
-      | _ -> Dream.respond ~status:`Internal_Server_Error "Failed to generate sitemap");
+          Kirin.with_header "Content-Type" "application/xml; charset=utf-8" @@ Kirin.text sitemap
+      | _ -> Kirin.server_error ~body:"Failed to generate sitemap" ());
 
     (* Home Page *)
-    Dream.get "/" (fun request ->
-      let open Lwt.Syntax in
-      let search = Dream.query request "search" |> Option.value ~default:"" in
-      let* seasons_res = Db.get_seasons () in
-      match seasons_res with
-      | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+    Kirin.get "/" (fun request ->
+      let search = Kirin.query_opt "search" request |> Option.value ~default:"" in
+      match Db.get_seasons () with
+      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
       | Ok seasons ->
           let season = query_season_or_latest request seasons in
-          let* players_res = Db.get_players ~season ~search ~limit:20 () in
-          match players_res with
-          | Ok p -> Dream.html (Views.home_page ~season ~seasons p)
-          | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+          match Db.get_players ~season ~search ~limit:20 () with
+          | Ok p -> Kirin.html (Views.home_page ~season ~seasons p)
+          | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
     );
 
     (* Home Page Table HTMX *)
-    Dream.get "/home/table" (fun request ->
-      let open Lwt.Syntax in
-      let search = Dream.query request "search" |> Option.value ~default:"" in
-      let* seasons_res = Db.get_seasons () in
-      match seasons_res with
-      | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+    Kirin.get "/home/table" (fun request ->
+      let search = Kirin.query_opt "search" request |> Option.value ~default:"" in
+      match Db.get_seasons () with
+      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
       | Ok seasons ->
           let season = query_season_or_latest request seasons in
-          let* players_res = Db.get_players ~season ~search ~limit:20 () in
-          match players_res with
-          | Ok p -> Dream.html (Views.players_table p)
-          | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+          match Db.get_players ~season ~search ~limit:20 () with
+          | Ok p -> Kirin.html (Views.players_table p)
+          | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
     );
 
     (* Handle HEAD requests *)
-    Dream.head "/" (fun _ -> Dream.empty `OK);
+    Kirin.head "/" (fun _ -> Kirin.empty `OK);
 
     (* Redirect index.html *)
-    Dream.get "/index.html" (fun request -> Dream.redirect request "/");
+    Kirin.get "/index.html" (fun _ -> Kirin.redirect "/");
 
     (* Players List & Table HTMX *)
-    Dream.get "/players" (fun request ->
-      let open Lwt.Syntax in
-      let search = Dream.query request "search" |> Option.value ~default:"" in
-      let sort_str = Dream.query request "sort" |> Option.value ~default:"eff" in
+    Kirin.get "/players" (fun request ->
+      let search = Kirin.query_opt "search" request |> Option.value ~default:"" in
+      let sort_str = Kirin.query_opt "sort" request |> Option.value ~default:"eff" in
       let include_mismatch = query_bool request "include_mismatch" in
       let sort = Domain.player_sort_of_string sort_str in
-      let* seasons_res = Db.get_seasons () in
-      match seasons_res with
-      | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+      match Db.get_seasons () with
+      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
       | Ok seasons ->
           let season = query_season_or_latest request seasons in
-          let* players_res = Db.get_players ~season ~search ~sort ~include_mismatch () in
-          match players_res with
-          | Ok p -> Dream.html (Views.players_page ~season ~seasons ~search ~sort:sort_str ~include_mismatch p)
-          | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+          match Db.get_players ~season ~search ~sort ~include_mismatch () with
+          | Ok p -> Kirin.html (Views.players_page ~season ~seasons ~search ~sort:sort_str ~include_mismatch p)
+          | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
     );
 
-    Dream.get "/players/table" (fun request ->
-      let open Lwt.Syntax in
-      let search = Dream.query request "search" |> Option.value ~default:"" in
-      let sort_str = Dream.query request "sort" |> Option.value ~default:"eff" in
+    Kirin.get "/players/table" (fun request ->
+      let search = Kirin.query_opt "search" request |> Option.value ~default:"" in
+      let sort_str = Kirin.query_opt "sort" request |> Option.value ~default:"eff" in
       let include_mismatch = query_bool request "include_mismatch" in
       let sort = Domain.player_sort_of_string sort_str in
-      let* seasons_res = Db.get_seasons () in
-      match seasons_res with
-      | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+      match Db.get_seasons () with
+      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
       | Ok seasons ->
           let season = query_season_or_latest request seasons in
-          let* players_res = Db.get_players ~season ~search ~sort ~include_mismatch () in
-          match players_res with
-          | Ok p -> Dream.html (Views.players_table p)
-          | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+          match Db.get_players ~season ~search ~sort ~include_mismatch () with
+          | Ok p -> Kirin.html (Views.players_table p)
+          | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
     );
 
     (* Teams Page & Table HTMX *)
-    Dream.get "/teams" (fun request ->
-      let open Lwt.Syntax in
-      let scope_str = Dream.query request "scope" |> Option.value ~default:"per_game" in
+    Kirin.get "/teams" (fun request ->
+      let scope_str = Kirin.query_opt "scope" request |> Option.value ~default:"per_game" in
       let scope = Domain.team_scope_of_string scope_str in
-      let sort_str = Dream.query request "sort" |> Option.value ~default:"pts" in
+      let sort_str = Kirin.query_opt "sort" request |> Option.value ~default:"pts" in
       let sort = Domain.team_sort_of_string sort_str in
       let include_mismatch = query_bool request "include_mismatch" in
-      let* seasons_res = Db.get_seasons () in
-      match seasons_res with
-      | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+      match Db.get_seasons () with
+      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
       | Ok seasons ->
           let season = query_season_or_latest request seasons in
-          let* stats_res = Db.get_team_stats ~season ~scope ~sort ~include_mismatch () in
-          (match stats_res with
-          | Ok stats -> Dream.html (Views.teams_page ~season ~seasons ~scope ~sort:sort_str ~include_mismatch stats)
-          | Error e -> Dream.html (Views.error_page (Db.show_db_error e)))
+          (match Db.get_team_stats ~season ~scope ~sort ~include_mismatch () with
+          | Ok stats -> Kirin.html (Views.teams_page ~season ~seasons ~scope ~sort:sort_str ~include_mismatch stats)
+          | Error e -> Kirin.html (Views.error_page (Db.show_db_error e)))
     );
 
-    Dream.get "/teams/table" (fun request ->
-      let open Lwt.Syntax in
-      let season = Dream.query request "season" |> Option.value ~default:"ALL" in
-      let scope_str = Dream.query request "scope" |> Option.value ~default:"per_game" in
+    Kirin.get "/teams/table" (fun request ->
+      let season = Kirin.query_opt "season" request |> Option.value ~default:"ALL" in
+      let scope_str = Kirin.query_opt "scope" request |> Option.value ~default:"per_game" in
       let scope = Domain.team_scope_of_string scope_str in
-      let sort_str = Dream.query request "sort" |> Option.value ~default:"pts" in
+      let sort_str = Kirin.query_opt "sort" request |> Option.value ~default:"pts" in
       let sort = Domain.team_sort_of_string sort_str in
       let include_mismatch = query_bool request "include_mismatch" in
-      let* stats_res = Db.get_team_stats ~season ~scope ~sort ~include_mismatch () in
-      match stats_res with
-      | Ok stats -> Dream.html (Views.teams_table ~season ~scope stats)
-      | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+      match Db.get_team_stats ~season ~scope ~sort ~include_mismatch () with
+      | Ok stats -> Kirin.html (Views.teams_table ~season ~scope stats)
+      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
     );
 
     (* Standings *)
-    Dream.get "/standings" (fun request ->
-      let open Lwt.Syntax in
-      let* seasons_res = Db.get_seasons () in
-      match seasons_res with
-      | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+    Kirin.get "/standings" (fun request ->
+      match Db.get_seasons () with
+      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
       | Ok seasons ->
           let season = query_season_or_latest request seasons in
-          let* standings_res = Db.get_standings ~season () in
-          (match standings_res with
-          | Ok standings -> Dream.html (Views.standings_page ~season ~seasons standings)
-          | Error e -> Dream.html (Views.error_page (Db.show_db_error e)))
+          (match Db.get_standings ~season () with
+          | Ok standings -> Kirin.html (Views.standings_page ~season ~seasons standings)
+          | Error e -> Kirin.html (Views.error_page (Db.show_db_error e)))
     );
 
-    Dream.get "/standings/table" (fun request ->
-      let open Lwt.Syntax in
-      let season = Dream.query request "season" |> Option.value ~default:"ALL" in
-      let* standings_res = Db.get_standings ~season () in
-      match standings_res with
-      | Ok standings -> Dream.html (Views.standings_table ~season standings)
-      | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+    Kirin.get "/standings/table" (fun request ->
+      let season = Kirin.query_opt "season" request |> Option.value ~default:"ALL" in
+      match Db.get_standings ~season () with
+      | Ok standings -> Kirin.html (Views.standings_table ~season standings)
+      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
     );
 
     (* Games & Boxscores List *)
-    Dream.get "/games" (fun request ->
-      let open Lwt.Syntax in
-      let* seasons_res = Db.get_seasons () in
-      match seasons_res with
-      | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+    Kirin.get "/games" (fun request ->
+      match Db.get_seasons () with
+      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
       | Ok seasons ->
           let season = query_season_or_latest request seasons in
-          let* games_res = Db.get_games ~season () in
-          (match games_res with
-          | Ok games -> Dream.html (Views.games_page ~season ~seasons games)
-          | Error e -> Dream.html (Views.error_page (Db.show_db_error e)))
+          (match Db.get_games ~season () with
+          | Ok games -> Kirin.html (Views.games_page ~season ~seasons games)
+          | Error e -> Kirin.html (Views.error_page (Db.show_db_error e)))
     );
 
-    Dream.get "/games/table" (fun request ->
-      let open Lwt.Syntax in
-      let season = Dream.query request "season" |> Option.value ~default:"ALL" in
-      let* games_res = Db.get_games ~season () in
-      match games_res with
-      | Ok games -> Dream.html (Views.games_table games)
-      | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+    Kirin.get "/games/table" (fun request ->
+      let season = Kirin.query_opt "season" request |> Option.value ~default:"ALL" in
+      match Db.get_games ~season () with
+      | Ok games -> Kirin.html (Views.games_table games)
+      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
     );
 
     (* Boxscores List *)
-    Dream.get "/boxscores" (fun request ->
-      let open Lwt.Syntax in
-      let* seasons_res = Db.get_seasons () in
-      match seasons_res with
-      | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+    Kirin.get "/boxscores" (fun request ->
+      match Db.get_seasons () with
+      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
       | Ok seasons ->
           let season = query_season_or_latest request seasons in
-          let* games_res = Db.get_games ~season () in
-          (match games_res with
-          | Ok games -> Dream.html (Views.boxscores_page ~season ~seasons games)
-          | Error e -> Dream.html (Views.error_page (Db.show_db_error e)))
+          (match Db.get_games ~season () with
+          | Ok games -> Kirin.html (Views.boxscores_page ~season ~seasons games)
+          | Error e -> Kirin.html (Views.error_page (Db.show_db_error e)))
     );
 
-    Dream.get "/boxscores/table" (fun request ->
-      let open Lwt.Syntax in
-      let season = Dream.query request "season" |> Option.value ~default:"ALL" in
-      let* games_res = Db.get_games ~season () in
-      match games_res with
-      | Ok games -> Dream.html (Views.boxscores_table games)
-      | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+    Kirin.get "/boxscores/table" (fun request ->
+      let season = Kirin.query_opt "season" request |> Option.value ~default:"ALL" in
+      match Db.get_games ~season () with
+      | Ok games -> Kirin.html (Views.boxscores_table games)
+      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
     );
 
     (* Boxscore Detail *)
-    Dream.get "/boxscore/:id" (fun request ->
-      let game_id = Dream.param request "id" in
-      let open Lwt.Syntax in
-      let* boxscore_res = Db.get_boxscore ~game_id () in
-      match boxscore_res with
-      | Ok bs -> Dream.html (Views.boxscore_page bs)
-      | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+    Kirin.get "/boxscore/:id" (fun request ->
+      let game_id = Kirin.param "id" request in
+      match Db.get_boxscore ~game_id () with
+      | Ok bs -> Kirin.html (Views.boxscore_page bs)
+      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
     );
 
     (* Play-by-Play (PBP) Detail *)
-    Dream.get "/boxscore/:id/pbp" (fun request ->
-      let game_id = Dream.param request "id" in
+    Kirin.get "/boxscore/:id/pbp" (fun request ->
+      let game_id = Kirin.param "id" request in
       let period_opt = query_nonempty request "period" in
-      let open Lwt.Syntax in
-      let* boxscore_res = Db.get_boxscore ~game_id () in
-      match boxscore_res with
-      | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+      match Db.get_boxscore ~game_id () with
+      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
       | Ok bs ->
-          let* periods_res = Db.get_pbp_periods ~game_id () in
-          (match periods_res with
-          | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+          (match Db.get_pbp_periods ~game_id () with
+          | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
           | Ok periods ->
               let selected_period =
                 match period_opt with
                 | Some p when List.mem p periods -> p
                 | _ -> (match periods with | p :: _ -> p | [] -> "Q1")
               in
-              let* events_res =
+              let events_res =
                 match periods with
-                | [] -> Lwt.return (Ok [])
+                | [] -> Ok []
                 | _ -> Db.get_pbp_events ~game_id ~period_code:selected_period ()
               in
               match events_res with
-              | Ok events -> Dream.html (Views.pbp_page ~game:bs.boxscore_game ~periods ~selected_period ~events)
-              | Error e -> Dream.html (Views.error_page (Db.show_db_error e)))
+              | Ok events -> Kirin.html (Views.pbp_page ~game:bs.boxscore_game ~periods ~selected_period ~events)
+              | Error e -> Kirin.html (Views.error_page (Db.show_db_error e)))
     );
 
     (* Game Flow Chart *)
-    Dream.get "/boxscore/:id/flow" (fun request ->
-      let game_id = Dream.param request "id" in
-      let open Lwt.Syntax in
-      let* boxscore_res = Db.get_boxscore ~game_id () in
-      match boxscore_res with
-      | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+    Kirin.get "/boxscore/:id/flow" (fun request ->
+      let game_id = Kirin.param "id" request in
+      match Db.get_boxscore ~game_id () with
+      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
       | Ok bs ->
           (* Get all periods for this game *)
-          let* periods_res = Db.get_pbp_periods ~game_id () in
-          (match periods_res with
-          | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+          (match Db.get_pbp_periods ~game_id () with
+          | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
           | Ok periods ->
               (* Fetch PBP events for all periods *)
-              let* all_events =
-                Lwt_list.fold_left_s (fun acc period_code ->
-                  let* events_res = Db.get_pbp_events ~game_id ~period_code () in
-                  match events_res with
-                  | Ok events -> Lwt.return (acc @ events)
-                  | Error _ -> Lwt.return acc
+              let all_events =
+                List.fold_left (fun acc period_code ->
+                  match Db.get_pbp_events ~game_id ~period_code () with
+                  | Ok events -> acc @ events
+                  | Error _ -> acc
                 ) [] periods
               in
               (* Extract score flow and render chart *)
               let flow_points = Domain.extract_score_flow all_events in
-              Dream.html (Views_tools.game_flow_page ~game:bs.boxscore_game flow_points))
+              Kirin.html (Views_tools.game_flow_page ~game:bs.boxscore_game flow_points))
     );
 
     (* Leaders *)
-    Dream.get "/leaders" (fun request ->
-      let open Lwt.Syntax in
-      let scope = Dream.query request "scope" |> Option.value ~default:"per_game" in
-      let* seasons_res = Db.get_seasons () in
-      match seasons_res with
-      | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+    Kirin.get "/leaders" (fun request ->
+      let scope = Kirin.query_opt "scope" request |> Option.value ~default:"per_game" in
+      match Db.get_seasons () with
+      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
       | Ok seasons ->
           let season = query_season_or_latest request seasons in
           let categories =
@@ -409,85 +358,69 @@ Sitemap: https://wkbl.win/sitemap.xml
                 [ "pts"; "reb"; "ast"; "stl"; "blk"; "tov"; "min"; "eff"; "fg_pct"; "fg3_pct"; "ft_pct"; "ts_pct"; "efg_pct" ]
           in
           let rec fetch_all acc = function
-            | [] -> Lwt.return (Ok (List.rev acc))
+            | [] -> Ok (List.rev acc)
             | category :: rest ->
-                let* res = Db.get_leaders ~season ~scope category in
-                (match res with
-                | Error e -> Lwt.return (Error e)
-                | Ok leaders -> fetch_all ((category, leaders) :: acc) rest)
+                match Db.get_leaders ~season ~scope category with
+                | Error e -> Error e
+                | Ok leaders -> fetch_all ((category, leaders) :: acc) rest
           in
-          let* leaders_res = fetch_all [] categories in
-          match leaders_res with
+          match fetch_all [] categories with
           | Ok leaders_by_category ->
-              Dream.html (Views.leaders_page ~season ~seasons ~scope leaders_by_category)
+              Kirin.html (Views.leaders_page ~season ~seasons ~scope leaders_by_category)
           | Error e ->
-              Dream.html (Views.error_page (Db.show_db_error e))
+              Kirin.html (Views.error_page (Db.show_db_error e))
     );
 
     (* Clutch Time Leaders *)
-    Dream.get "/clutch" (fun request ->
-      let open Lwt.Syntax in
-      let* seasons_res = Db.get_seasons () in
-      match seasons_res with
-      | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+    Kirin.get "/clutch" (fun request ->
+      match Db.get_seasons () with
+      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
       | Ok seasons ->
           let season = query_season_or_latest request seasons in
-          (* Get clutch stats from DB - aggregated from PBP data *)
-          let* clutch_res = Db.get_clutch_stats ~season () in
-          match clutch_res with
+          match Db.get_clutch_stats ~season () with
           | Ok stats ->
-              (* Sort by clutch points descending *)
               let sorted_stats = List.sort
                 (fun (a: clutch_stats) (b: clutch_stats) ->
                   compare b.cs_clutch_points a.cs_clutch_points)
                 stats
               in
-              Dream.html (Views.clutch_page ~season ~seasons sorted_stats)
+              Kirin.html (Views.clutch_page ~season ~seasons sorted_stats)
           | Error e ->
-              Dream.html (Views.error_page (Db.show_db_error e))
+              Kirin.html (Views.error_page (Db.show_db_error e))
     );
 
     (* Lineup Chemistry - Full Page *)
-    Dream.get "/lineups" (fun request ->
-      let open Lwt.Syntax in
-      let* seasons_res = Db.get_seasons () in
-      let* teams_res = Db.get_all_teams () in
-      match seasons_res, teams_res with
-      | Error e, _ | _, Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+    Kirin.get "/lineups" (fun request ->
+      match Db.get_seasons (), Db.get_all_teams () with
+      | Error e, _ | _, Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
       | Ok seasons, Ok teams ->
           let season = query_season_or_latest request seasons in
-          let team = Dream.query request "team" |> Option.value ~default:"ALL" in
-          let* chemistry_res = Db.get_lineup_chemistry ~season ~team_name:team () in
-          match chemistry_res with
+          let team = Kirin.query_opt "team" request |> Option.value ~default:"ALL" in
+          match Db.get_lineup_chemistry ~season ~team_name:team () with
           | Ok chemistry ->
-              Dream.html (Views_tools.lineup_chemistry_page
+              Kirin.html (Views_tools.lineup_chemistry_page
                 ~teams ~seasons ~selected_team:team ~selected_season:season chemistry)
-          | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+          | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
     );
 
     (* Lineup Chemistry - Table Content (HTMX partial) *)
-    Dream.get "/lineups/table" (fun request ->
-      let open Lwt.Syntax in
-      let* seasons_res = Db.get_seasons () in
-      match seasons_res with
-      | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+    Kirin.get "/lineups/table" (fun request ->
+      match Db.get_seasons () with
+      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
       | Ok seasons ->
           let season = query_season_or_latest request seasons in
-          let team = Dream.query request "team" |> Option.value ~default:"ALL" in
-          let* chemistry_res = Db.get_lineup_chemistry ~season ~team_name:team () in
-          match chemistry_res with
+          let team = Kirin.query_opt "team" request |> Option.value ~default:"ALL" in
+          match Db.get_lineup_chemistry ~season ~team_name:team () with
           | Ok chemistry ->
-              Dream.html (Views_tools.lineup_chemistry_table_content chemistry)
-          | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+              Kirin.html (Views_tools.lineup_chemistry_table_content chemistry)
+          | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
     );
 
     (* Awards (Stat-based, unofficial) *)
-    Dream.get "/awards" (fun request ->
-      let open Lwt.Syntax in
+    Kirin.get "/awards" (fun request ->
       let include_mismatch = query_bool request "include_mismatch" in
-      let* seasons_res = Db.get_seasons () in
-      match seasons_res with
-      | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+      match Db.get_seasons () with
+      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
       | Ok seasons ->
           let season = query_season_or_latest request seasons in
           let prev_season_code =
@@ -508,59 +441,51 @@ Sitemap: https://wkbl.win/sitemap.xml
                 |> List.find_opt (fun (s: season_info) -> s.code = code)
                 |> Option.map (fun (s: season_info) -> s.name)
           in
-          let* mvp_res = Db.get_stat_mvp_eff ~season ~include_mismatch () in
-          let* mip_res =
+          let mvp_res = Db.get_stat_mvp_eff ~season ~include_mismatch () in
+          let mip_res =
             match prev_season_code with
-            | None -> Lwt.return (Ok [])
+            | None -> Ok []
             | Some prev_season -> Db.get_stat_mip_eff_delta ~season ~prev_season ~include_mismatch ()
           in
           match mvp_res, mip_res with
-          | Ok mvp, Ok mip -> Dream.html (Views.awards_page ~season ~seasons ~include_mismatch ~prev_season_name ~mvp ~mip ())
-          | Error e, _ | _, Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+          | Ok mvp, Ok mip -> Kirin.html (Views.awards_page ~season ~seasons ~include_mismatch ~prev_season_name ~mvp ~mip ())
+          | Error e, _ | _, Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
     );
 
     (* MVP Race - Full Page *)
-    Dream.get "/mvp-race" (fun request ->
-      let open Lwt.Syntax in
-      let* seasons_res = Db.get_seasons () in
-      match seasons_res with
-      | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+    Kirin.get "/mvp-race" (fun request ->
+      match Db.get_seasons () with
+      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
       | Ok seasons ->
           let season = query_season_or_latest request seasons in
-          let* candidates_res = Db.get_mvp_race ~season () in
-          match candidates_res with
-          | Ok candidates -> Dream.html (Views_mvp.mvp_race_page ~season ~seasons candidates)
-          | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+          match Db.get_mvp_race ~season () with
+          | Ok candidates -> Kirin.html (Views_mvp.mvp_race_page ~season ~seasons candidates)
+          | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
     );
 
     (* MVP Race - Table HTMX *)
-    Dream.get "/mvp-race/table" (fun request ->
-      let open Lwt.Syntax in
-      let* seasons_res = Db.get_seasons () in
-      match seasons_res with
-      | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+    Kirin.get "/mvp-race/table" (fun request ->
+      match Db.get_seasons () with
+      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
       | Ok seasons ->
           let season = query_season_or_latest request seasons in
-          let* candidates_res = Db.get_mvp_race ~season () in
-          match candidates_res with
-          | Ok candidates -> Dream.html (Views_mvp.mvp_race_table candidates)
-          | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+          match Db.get_mvp_race ~season () with
+          | Ok candidates -> Kirin.html (Views_mvp.mvp_race_table candidates)
+          | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
     );
 
     (* Fantasy Calculator - Full Page *)
-    Dream.get "/fantasy" (fun request ->
-      let open Lwt.Syntax in
-      let* seasons_res = Db.get_seasons () in
-      match seasons_res with
-      | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+    Kirin.get "/fantasy" (fun request ->
+      match Db.get_seasons () with
+      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
       | Ok seasons ->
           let season = query_season_or_latest request seasons in
-          let pts = Option.bind (Dream.query request "pts") float_of_string_opt |> Option.value ~default:1.0 in
-          let reb = Option.bind (Dream.query request "reb") float_of_string_opt |> Option.value ~default:1.2 in
-          let ast = Option.bind (Dream.query request "ast") float_of_string_opt |> Option.value ~default:1.5 in
-          let stl = Option.bind (Dream.query request "stl") float_of_string_opt |> Option.value ~default:2.0 in
-          let blk = Option.bind (Dream.query request "blk") float_of_string_opt |> Option.value ~default:2.0 in
-          let tov = Option.bind (Dream.query request "tov") float_of_string_opt |> Option.value ~default:(-1.0) in
+          let pts = Option.bind (Kirin.query_opt "pts" request) float_of_string_opt |> Option.value ~default:1.0 in
+          let reb = Option.bind (Kirin.query_opt "reb" request) float_of_string_opt |> Option.value ~default:1.2 in
+          let ast = Option.bind (Kirin.query_opt "ast" request) float_of_string_opt |> Option.value ~default:1.5 in
+          let stl = Option.bind (Kirin.query_opt "stl" request) float_of_string_opt |> Option.value ~default:2.0 in
+          let blk = Option.bind (Kirin.query_opt "blk" request) float_of_string_opt |> Option.value ~default:2.0 in
+          let tov = Option.bind (Kirin.query_opt "tov" request) float_of_string_opt |> Option.value ~default:(-1.0) in
           let rules : Domain.fantasy_scoring_rule = {
             fsr_points = pts;
             fsr_rebounds = reb;
@@ -569,28 +494,25 @@ Sitemap: https://wkbl.win/sitemap.xml
             fsr_blocks = blk;
             fsr_turnovers = tov;
           } in
-          let* players_res = Db.get_players ~season ~search:"" ~sort:ByMinutes () in
-          match players_res with
-          | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+          match Db.get_players ~season ~search:"" ~sort:ByMinutes () with
+          | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
           | Ok players ->
               let scores = List.map (Domain.fantasy_score_of_aggregate ~rules) players in
-              Dream.html (Views_tools.fantasy_calculator_page ~season ~seasons ~rules ~scores)
+              Kirin.html (Views_tools.fantasy_calculator_page ~season ~seasons ~rules ~scores)
     );
 
     (* Fantasy Calculator - HTMX Calculate Endpoint *)
-    Dream.get "/fantasy/calculate" (fun request ->
-      let open Lwt.Syntax in
-      let* seasons_res = Db.get_seasons () in
-      match seasons_res with
-      | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+    Kirin.get "/fantasy/calculate" (fun request ->
+      match Db.get_seasons () with
+      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
       | Ok seasons ->
           let season = query_season_or_latest request seasons in
-          let pts = Option.bind (Dream.query request "pts") float_of_string_opt |> Option.value ~default:1.0 in
-          let reb = Option.bind (Dream.query request "reb") float_of_string_opt |> Option.value ~default:1.2 in
-          let ast = Option.bind (Dream.query request "ast") float_of_string_opt |> Option.value ~default:1.5 in
-          let stl = Option.bind (Dream.query request "stl") float_of_string_opt |> Option.value ~default:2.0 in
-          let blk = Option.bind (Dream.query request "blk") float_of_string_opt |> Option.value ~default:2.0 in
-          let tov = Option.bind (Dream.query request "tov") float_of_string_opt |> Option.value ~default:(-1.0) in
+          let pts = Option.bind (Kirin.query_opt "pts" request) float_of_string_opt |> Option.value ~default:1.0 in
+          let reb = Option.bind (Kirin.query_opt "reb" request) float_of_string_opt |> Option.value ~default:1.2 in
+          let ast = Option.bind (Kirin.query_opt "ast" request) float_of_string_opt |> Option.value ~default:1.5 in
+          let stl = Option.bind (Kirin.query_opt "stl" request) float_of_string_opt |> Option.value ~default:2.0 in
+          let blk = Option.bind (Kirin.query_opt "blk" request) float_of_string_opt |> Option.value ~default:2.0 in
+          let tov = Option.bind (Kirin.query_opt "tov" request) float_of_string_opt |> Option.value ~default:(-1.0) in
           let rules : Domain.fantasy_scoring_rule = {
             fsr_points = pts;
             fsr_rebounds = reb;
@@ -599,27 +521,24 @@ Sitemap: https://wkbl.win/sitemap.xml
             fsr_blocks = blk;
             fsr_turnovers = tov;
           } in
-          let* players_res = Db.get_players ~season ~search:"" ~sort:ByMinutes () in
-          match players_res with
-          | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+          match Db.get_players ~season ~search:"" ~sort:ByMinutes () with
+          | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
           | Ok players ->
               let scores = List.map (Domain.fantasy_score_of_aggregate ~rules) players in
-              Dream.html (Views_tools.fantasy_results_table scores)
+              Kirin.html (Views_tools.fantasy_results_table scores)
     );
 
-    (* Compare *)
-    Dream.get "/compare" (fun request ->
-      let open Lwt.Syntax in
-      let p1_query = Dream.query request "p1" |> Option.value ~default:"" in
-      let p2_query = Dream.query request "p2" |> Option.value ~default:"" in
-      let p1_id = Dream.query request "p1_id" |> Option.value ~default:"" in
-      let p2_id = Dream.query request "p2_id" |> Option.value ~default:"" in
+    (* Compare - simplified version *)
+    Kirin.get "/compare" (fun request ->
+      let p1_query = Kirin.query_opt "p1" request |> Option.value ~default:"" in
+      let p2_query = Kirin.query_opt "p2" request |> Option.value ~default:"" in
+      let p1_id = Kirin.query_opt "p1_id" request |> Option.value ~default:"" in
+      let p2_id = Kirin.query_opt "p2_id" request |> Option.value ~default:"" in
       let p1_id_opt = if String.trim p1_id = "" then None else Some (String.trim p1_id) in
       let p2_id_opt = if String.trim p2_id = "" then None else Some (String.trim p2_id) in
 
-      let* seasons_res = Db.get_seasons () in
-      match seasons_res with
-      | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+      match Db.get_seasons () with
+      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
       | Ok seasons ->
           let season = query_season_or_latest request seasons in
           let is_valid_season code =
@@ -640,14 +559,14 @@ Sitemap: https://wkbl.win/sitemap.xml
 
           if p1_id_opt <> None && p1_id_opt = p2_id_opt then add_error "Players must be different.";
 
-          let* p1_sel_res =
+          let p1_sel_res =
             match p1_id_opt with
-            | None -> Lwt.return (Ok None)
+            | None -> Ok None
             | Some pid -> Db.get_player_aggregate_by_id ~player_id:pid ~season:p1_season ()
           in
-          let* p2_sel_res =
+          let p2_sel_res =
             match p2_id_opt with
-            | None -> Lwt.return (Ok None)
+            | None -> Ok None
             | Some pid -> Db.get_player_aggregate_by_id ~player_id:pid ~season:p2_season ()
           in
           let p1_selected =
@@ -661,24 +580,23 @@ Sitemap: https://wkbl.win/sitemap.xml
             | Error e -> add_error (Db.show_db_error e); None
           in
 
-          let* p1_candidates_res =
+          let p1_candidates_res =
             if p1_selected = None && String.trim p1_query <> "" then
               let limit = if p1_id_opt <> None then 30 else 8 in
               Db.get_players ~season:p1_season ~search:p1_query ~sort:ByMinutes ~limit ()
             else
-              Lwt.return (Ok [])
+              Ok []
           in
-          let* p2_candidates_res =
+          let p2_candidates_res =
             if p2_selected = None && String.trim p2_query <> "" then
               let limit = if p2_id_opt <> None then 30 else 8 in
               Db.get_players ~season:p2_season ~search:p2_query ~sort:ByMinutes ~limit ()
             else
-              Lwt.return (Ok [])
+              Ok []
           in
           let p1_candidates = match p1_candidates_res with Ok xs -> xs | Error _ -> [] in
           let p2_candidates = match p2_candidates_res with Ok xs -> xs | Error _ -> [] in
 
-          (* Fallback: if aggregate-by-id fails but name search returns the id, use it. *)
           let p1_selected, p1_candidates =
             match p1_selected, p1_id_opt with
             | None, Some pid ->
@@ -696,37 +614,35 @@ Sitemap: https://wkbl.win/sitemap.xml
             | _ -> (p2_selected, p2_candidates)
           in
 
-          let* p1_available_seasons =
+          let p1_available_seasons =
             match p1_id_opt, p1_selected with
             | Some pid, None -> (
-                let* res = Db.get_player_season_stats ~player_id:pid ~scope:"per_game" () in
-                match res with
+                match Db.get_player_season_stats ~player_id:pid ~scope:"per_game" () with
                 | Ok stats ->
                     let codes =
                       stats
                       |> List.map (fun (s: season_stats) -> s.ss_season_code)
                       |> List.sort_uniq String.compare
                     in
-                    Lwt.return (Some codes)
-                | Error _ -> Lwt.return None
+                    Some codes
+                | Error _ -> None
               )
-            | _ -> Lwt.return None
+            | _ -> None
           in
-          let* p2_available_seasons =
+          let p2_available_seasons =
             match p2_id_opt, p2_selected with
             | Some pid, None -> (
-                let* res = Db.get_player_season_stats ~player_id:pid ~scope:"per_game" () in
-                match res with
+                match Db.get_player_season_stats ~player_id:pid ~scope:"per_game" () with
                 | Ok stats ->
                     let codes =
                       stats
                       |> List.map (fun (s: season_stats) -> s.ss_season_code)
                       |> List.sort_uniq String.compare
                     in
-                    Lwt.return (Some codes)
-                | Error _ -> Lwt.return None
+                    Some codes
+                | Error _ -> None
               )
-            | _ -> Lwt.return None
+            | _ -> None
           in
 
           (match p1_id_opt, p1_selected with
@@ -754,34 +670,35 @@ Sitemap: https://wkbl.win/sitemap.xml
                 Some "Match History는 같은 시즌 선택 시만 표시됩니다."
             | _ -> None
           in
-          let* h2h_res =
+          let h2h_res =
             match p1_selected, p2_selected, h2h_disabled_reason with
             | Some a, Some b, None ->
                 Db.get_player_h2h_data ~p1_id:a.player_id ~p2_id:b.player_id ~season:p1_season ()
-            | _ -> Lwt.return (Ok [])
+            | _ -> Ok []
           in
           let h2h = match h2h_res with Ok h -> h | Error _ -> [] in
-          (* Fetch season history for trend chart *)
-          let* p1_season_history =
+          let p1_season_history =
             match p1_selected with
             | Some p -> (
-                let* res = Db.get_player_season_stats ~player_id:p.player_id ~scope:"per_game" () in
-                match res with Ok stats -> Lwt.return stats | Error _ -> Lwt.return [])
-            | None -> Lwt.return []
+                match Db.get_player_season_stats ~player_id:p.player_id ~scope:"per_game" () with
+                | Ok stats -> stats
+                | Error _ -> [])
+            | None -> []
           in
-          let* p2_season_history =
+          let p2_season_history =
             match p2_selected with
             | Some p -> (
-                let* res = Db.get_player_season_stats ~player_id:p.player_id ~scope:"per_game" () in
-                match res with Ok stats -> Lwt.return stats | Error _ -> Lwt.return [])
-            | None -> Lwt.return []
+                match Db.get_player_season_stats ~player_id:p.player_id ~scope:"per_game" () with
+                | Ok stats -> stats
+                | Error _ -> [])
+            | None -> []
           in
           let error_opt =
             match List.rev !errors with
             | [] -> None
             | xs -> Some (String.concat " / " xs)
           in
-          Dream.html
+          Kirin.html
             (Views.compare_page
                ~season
                ~seasons
@@ -803,37 +720,33 @@ Sitemap: https://wkbl.win/sitemap.xml
     );
 
     (* Predict (Team vs Team) *)
-    Dream.get "/predict" (fun request ->
-      let open Lwt.Syntax in
-      let home = Dream.query request "home" |> Option.value ~default:"" in
-      let away = Dream.query request "away" |> Option.value ~default:"" in
+    Kirin.get "/predict" (fun request ->
+      let home = Kirin.query_opt "home" request |> Option.value ~default:"" in
+      let away = Kirin.query_opt "away" request |> Option.value ~default:"" in
       let include_mismatch = query_bool request "include_mismatch" in
       let context_enabled =
-        Dream.query request "context"
+        Kirin.query_opt "context" request
         |> Option.map String.lowercase_ascii
         |> function
         | Some ("1" | "true" | "yes" | "on") -> true
         | _ -> false
       in
       let is_neutral =
-        Dream.query request "neutral"
+        Kirin.query_opt "neutral" request
         |> Option.map String.lowercase_ascii
         |> function
         | Some ("1" | "true" | "yes" | "on") -> true
         | _ -> false
       in
 
-      let* seasons_res = Db.get_seasons () in
-      let* teams_res = Db.get_all_teams () in
-      let* upcoming_res = Db.get_upcoming_schedule ~status:"scheduled" ~limit:6 () in
-      match seasons_res, teams_res with
-      | Error e, _ | _, Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+      match Db.get_seasons (), Db.get_all_teams () with
+      | Error e, _ | _, Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
       | Ok seasons, Ok teams ->
-          let upcoming = match upcoming_res with Ok u -> u | Error _ -> [] in
+          let upcoming = match Db.get_upcoming_schedule ~status:"scheduled" ~limit:6 () with Ok u -> u | Error _ -> [] in
           let team_names = List.map (fun (t: team_info) -> t.team_name) teams in
           let season = query_season_or_latest request seasons in
           let render result error =
-            Dream.html (Views.predict_page ~season ~seasons ~teams:team_names ~home ~away ~is_neutral ~context_enabled ~include_mismatch ~upcoming result error)
+            Kirin.html (Views.predict_page ~season ~seasons ~teams:team_names ~home ~away ~is_neutral ~context_enabled ~include_mismatch ~upcoming result error)
           in
 
           if String.trim home = "" || String.trim away = "" then
@@ -841,9 +754,7 @@ Sitemap: https://wkbl.win/sitemap.xml
           else if normalize_label home = normalize_label away then
             render None (Some "Home/Away teams must be different.")
           else
-            let* totals_res = Db.get_team_stats ~season ~scope:Totals ~include_mismatch () in
-            let* games_res = Db.get_scored_games ~season ~include_mismatch () in
-            match totals_res, games_res with
+            match Db.get_team_stats ~season ~scope:Totals ~include_mismatch (), Db.get_scored_games ~season ~include_mismatch () with
             | Ok totals, Ok games ->
                 let find_team (name : string) =
                   let key = normalize_label name in
@@ -872,66 +783,11 @@ Sitemap: https://wkbl.win/sitemap.xml
                   let total = wins + losses in
                   if total <= 0 then 0.5 else (float_of_int wins /. float_of_int total)
                 in
-                let last_game_for_team (name : string) =
-                  let key = normalize_label name in
-                  games
-                  |> List.filter (fun (g : game_summary) ->
-                      normalize_label g.home_team = key || normalize_label g.away_team = key)
-                  |> List.sort (fun (a : game_summary) (b : game_summary) ->
-                      let by_date = String.compare b.game_date a.game_date in
-                      if by_date <> 0 then by_date else String.compare b.game_id a.game_id)
-                  |> function
-                  | [] -> None
-                  | g :: _ -> Some g
-                in
-                let roster_for_team ~team_name ~game_id ~season_code =
-                  let open Lwt.Syntax in
-                  let* core_res = Db.get_team_core_player_ids ~season:season_code ~team_name () in
-                  let* active_res = Db.get_team_active_player_ids ~team_name ~game_id () in
-                  match core_res, active_res with
-                  | Ok core_ids, Ok active_ids ->
-                      (* Use Hashtbl for O(1) lookup instead of List.mem O(n) *)
-                      let active_set = Hashtbl.create (List.length active_ids) in
-                      List.iter (fun pid -> Hashtbl.replace active_set pid ()) active_ids;
-                      let present = List.fold_left (fun acc pid ->
-                        if Hashtbl.mem active_set pid then acc + 1 else acc
-                      ) 0 core_ids in
-                      Lwt.return (Some { rcs_present = present; rcs_total = List.length core_ids })
-                  | _ -> Lwt.return None
-                in
-                let season_for_game_id (game_id : string) =
-                  if season <> "ALL" then Lwt.return season
-                  else
-                    let open Lwt.Syntax in
-                    let* res = Db.get_game_season_code ~game_id () in
-                    match res with
-                    | Ok (Some s) -> Lwt.return s
-                    | _ -> Lwt.return "ALL"
-                in
                 (match find_team home, find_team away with
                 | Some home_row, Some away_row ->
-                    let* context_input =
-                      if not context_enabled then Lwt.return None
-                      else
-                        let* home_roster =
-                          match last_game_for_team home with
-                          | None -> Lwt.return None
-                          | Some g ->
-                              let* sc = season_for_game_id g.game_id in
-                              roster_for_team ~team_name:home ~game_id:g.game_id ~season_code:sc
-                        in
-                        let* away_roster =
-                          match last_game_for_team away with
-                          | None -> Lwt.return None
-                          | Some g ->
-                              let* sc = season_for_game_id g.game_id in
-                              roster_for_team ~team_name:away ~game_id:g.game_id ~season_code:sc
-                        in
-                        Lwt.return (Some { pci_home_roster = home_roster; pci_away_roster = away_roster })
-                    in
                     let output =
                       Prediction.predict_match_nerd
-                        ~context:context_input
+                        ~context:None
                         ~season
                         ~is_neutral
                         ~games
@@ -945,29 +801,24 @@ Sitemap: https://wkbl.win/sitemap.xml
                     render (Some output) None
                 | None, _ -> render None (Some (Printf.sprintf "Team not found: %s" home))
                 | _, None -> render None (Some (Printf.sprintf "Team not found: %s" away)))
-            | Error e, _ | _, Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+            | Error e, _ | _, Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
     );
 
     (* Player Profile *)
-    Dream.get "/player/:id" (fun request ->
-      let player_id = Dream.param request "id" in
-      let scope = Dream.query request "scope" |> Option.value ~default:"per_game" in
-      let open Lwt.Syntax in
-      let* profile_res = Db.get_player_profile ~player_id () in
-      match profile_res with
-      | Ok (Some profile) -> 
-          (* We only need to overwrite season_breakdown if scope is not per_game (default) *)
-          let* final_profile = 
-            if scope = "per_game" then Lwt.return profile
-            else 
-              let* stats_res = Db.get_player_season_stats ~player_id ~scope () in
-              match stats_res with
-              | Ok stats -> Lwt.return { profile with season_breakdown = stats }
-              | Error _ -> Lwt.return profile (* Fallback to default if error *)
+    Kirin.get "/player/:id" (fun request ->
+      let player_id = Kirin.param "id" request in
+      let scope = Kirin.query_opt "scope" request |> Option.value ~default:"per_game" in
+      match Db.get_player_profile ~player_id () with
+      | Ok (Some profile) ->
+          let final_profile =
+            if scope = "per_game" then profile
+            else
+              match Db.get_player_season_stats ~player_id ~scope () with
+              | Ok stats -> { profile with season_breakdown = stats }
+              | Error _ -> profile
           in
-          let* seasons_res = Db.get_seasons () in
           let seasons_catalog =
-            match seasons_res with
+            match Db.get_seasons () with
             | Ok seasons -> seasons
             | Error _ -> []
           in
@@ -992,118 +843,103 @@ Sitemap: https://wkbl.win/sitemap.xml
                 [ "pts"; "reb"; "ast"; "stl"; "blk"; "tov"; "min"; "eff"; "fg_pct"; "fg3_pct"; "ft_pct"; "ts_pct"; "efg_pct" ]
           in
           let rec fetch_all acc = function
-            | [] -> Lwt.return (Ok (List.rev acc))
+            | [] -> Ok (List.rev acc)
             | category :: rest ->
-                let* res = Db.get_leaders ~season:season_for_leaderboards ~scope category in
-                (match res with
-                | Error e -> Lwt.return (Error e)
-                | Ok leaders -> fetch_all ((category, leaders) :: acc) rest)
+                match Db.get_leaders ~season:season_for_leaderboards ~scope category with
+                | Error e -> Error e
+                | Ok leaders -> fetch_all ((category, leaders) :: acc) rest
           in
-          let* leaderboards_res = fetch_all [] leaderboard_categories in
           let leaderboards =
-            match leaderboards_res with
+            match fetch_all [] leaderboard_categories with
             | Ok leaders_by_category ->
                 Some (season_for_leaderboards, season_name_for_leaderboards, leaders_by_category)
             | Error _ ->
                 None
           in
-          Dream.html (Views_player.player_profile_page ~leaderboards final_profile ~scope ~seasons_catalog)
-      | Ok None -> Dream.html (Views.error_page "Player not found")
-      | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+          Kirin.html (Views_player.player_profile_page ~leaderboards final_profile ~scope ~seasons_catalog)
+      | Ok None -> Kirin.html (Views.error_page "Player not found")
+      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
     );
 
     (* Player Game Log *)
-    Dream.get "/player/:id/games" (fun request ->
-      let player_id = Dream.param request "id" in
+    Kirin.get "/player/:id/games" (fun request ->
+      let player_id = Kirin.param "id" request in
       let include_mismatch = query_bool request "include_mismatch" in
-      let open Lwt.Syntax in
-      let* profile_res = Db.get_player_profile ~player_id () in
-      let* seasons_res = Db.get_seasons () in
-      match profile_res, seasons_res with
-      | Ok None, _ -> Dream.html (Views.error_page "Player not found")
-      | Error e, _ | _, Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+      match Db.get_player_profile ~player_id (), Db.get_seasons () with
+      | Ok None, _ -> Kirin.html (Views.error_page "Player not found")
+      | Error e, _ | _, Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
       | Ok (Some profile), Ok seasons ->
           let season = query_season_or_latest request seasons in
-          let* games_res = Db.get_player_game_logs ~player_id ~season ~include_mismatch () in
-          (match games_res with
-          | Ok games -> Dream.html (Views_player.player_game_logs_page profile ~season ~seasons ~include_mismatch games)
-          | Error e -> Dream.html (Views.error_page (Db.show_db_error e)))
+          (match Db.get_player_game_logs ~player_id ~season ~include_mismatch () with
+          | Ok games -> Kirin.html (Views_player.player_game_logs_page profile ~season ~seasons ~include_mismatch games)
+          | Error e -> Kirin.html (Views.error_page (Db.show_db_error e)))
     );
 
     (* Player Season Stats HTMX Partial *)
-    Dream.get "/player/:id/season-stats" (fun request ->
-      let player_id = Dream.param request "id" in
-      let scope = Dream.query request "scope" |> Option.value ~default:"per_game" in
-      let open Lwt.Syntax in
-      let* stats_res = Db.get_player_season_stats ~player_id ~scope () in
-      match stats_res with
-      | Ok stats -> Dream.html (Views_common.player_season_stats_component ~player_id ~scope stats)
-      | Error e -> Dream.html (Views.error_page (Db.show_db_error e)) (* Or minimal error snippet *)
+    Kirin.get "/player/:id/season-stats" (fun request ->
+      let player_id = Kirin.param "id" request in
+      let scope = Kirin.query_opt "scope" request |> Option.value ~default:"per_game" in
+      match Db.get_player_season_stats ~player_id ~scope () with
+      | Ok stats -> Kirin.html (Views_common.player_season_stats_component ~player_id ~scope stats)
+      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
     );
 
     (* Team Profile *)
-    Dream.get "/team/:name" (fun request ->
-      let team_name = Dream.param request "name" |> Uri.pct_decode in
-      let open Lwt.Syntax in
-      let* seasons_res = Db.get_seasons () in
-      match seasons_res with
-      | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+    Kirin.get "/team/:name" (fun request ->
+      let team_name = Kirin.param "name" request |> Uri.pct_decode in
+      match Db.get_seasons () with
+      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
       | Ok seasons ->
           let season = query_season_or_latest request seasons in
-          let* detail_res = Db.get_team_full_detail ~team_name ~season () in
-          (match detail_res with
-          | Ok detail -> Dream.html (Views_team.team_profile_page detail ~season ~seasons)
-          | Error e -> Dream.html (Views.error_page (Db.show_db_error e)))
+          (match Db.get_team_full_detail ~team_name ~season () with
+          | Ok detail -> Kirin.html (Views_team.team_profile_page detail ~season ~seasons)
+          | Error e -> Kirin.html (Views.error_page (Db.show_db_error e)))
     );
 
     (* Convenience aliases for transactions *)
-    Dream.get "/draft" (fun request ->
-      let year = Dream.query request "year" |> Option.value ~default:"" in
-      let q = Dream.query request "q" |> Option.value ~default:"" in
+    Kirin.get "/draft" (fun request ->
+      let year = Kirin.query_opt "year" request |> Option.value ~default:"" in
+      let q = Kirin.query_opt "q" request |> Option.value ~default:"" in
       let params = String.concat "&" (List.filter (fun s -> s <> "") [
         "tab=draft";
         (if year <> "" then "year=" ^ year else "");
         (if q <> "" then "q=" ^ q else "")
       ]) in
-      Dream.redirect request ("/transactions?" ^ params)
+      Kirin.redirect ("/transactions?" ^ params)
     );
-    Dream.get "/trade" (fun request ->
-      let year = Dream.query request "year" |> Option.value ~default:"" in
-      let q = Dream.query request "q" |> Option.value ~default:"" in
+    Kirin.get "/trade" (fun request ->
+      let year = Kirin.query_opt "year" request |> Option.value ~default:"" in
+      let q = Kirin.query_opt "q" request |> Option.value ~default:"" in
       let params = String.concat "&" (List.filter (fun s -> s <> "") [
         "tab=trade";
         (if year <> "" then "year=" ^ year else "");
         (if q <> "" then "q=" ^ q else "")
       ]) in
-      Dream.redirect request ("/transactions?" ^ params)
+      Kirin.redirect ("/transactions?" ^ params)
     );
 
     (* Draft / Trade (official transactions) *)
-    Dream.get "/transactions" (fun request ->
+    Kirin.get "/transactions" (fun request ->
       let tab =
-        Dream.query request "tab"
+        Kirin.query_opt "tab" request
         |> Option.map String.lowercase_ascii
         |> Option.value ~default:"draft"
       in
       let year =
-        let year_str_opt = Dream.query request "year" in
+        let year_str_opt = Kirin.query_opt "year" request in
         match year_str_opt with
         | None -> 0
         | Some s -> (match int_of_string_opt s with Some i -> i | None -> 0)
       in
-      let q = Dream.query request "q" |> Option.value ~default:"" in
-      let open Lwt.Syntax in
-      let* draft_years_res = Db.get_draft_years () in
-      let* trade_years_res = Db.get_official_trade_years () in
-      match draft_years_res, trade_years_res with
-      | Error e, _ | _, Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+      let q = Kirin.query_opt "q" request |> Option.value ~default:"" in
+      match Db.get_draft_years (), Db.get_official_trade_years () with
+      | Error e, _ | _, Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
       | Ok draft_years, Ok trade_years ->
           if tab = "trade" then (
-            let* events_res = Db.get_official_trade_events ~year ~search:q () in
-            match events_res with
-            | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+            match Db.get_official_trade_events ~year ~search:q () with
+            | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
             | Ok events ->
-                Dream.html
+                Kirin.html
                   (Views_tools.transactions_page
                      ~tab
                      ~year
@@ -1113,11 +949,10 @@ Sitemap: https://wkbl.win/sitemap.xml
                      ~draft_picks:[]
                      ~trade_events:events)
           ) else (
-            let* picks_res = Db.get_draft_picks ~year ~search:q () in
-            match picks_res with
-            | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+            match Db.get_draft_picks ~year ~search:q () with
+            | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
             | Ok picks ->
-                Dream.html
+                Kirin.html
                   (Views_tools.transactions_page
                      ~tab:"draft"
                      ~year
@@ -1130,24 +965,17 @@ Sitemap: https://wkbl.win/sitemap.xml
     );
 
     (* Hot Streaks *)
-    Dream.get "/streaks" (fun request ->
-      let open Lwt.Syntax in
-      let* seasons_res = Db.get_seasons () in
-      match seasons_res with
-      | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+    Kirin.get "/streaks" (fun request ->
+      match Db.get_seasons () with
+      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
       | Ok seasons ->
           let season = query_season_or_latest request seasons in
-          (* Get all players with their game logs *)
-          let* players_res = Db.get_players ~season ~search:"" ~sort:ByEfficiency () in
-          let* teams_res = Db.get_all_teams () in
-          match players_res, teams_res with
-          | Error e, _ | _, Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+          match Db.get_players ~season ~search:"" ~sort:ByEfficiency (), Db.get_all_teams () with
+          | Error e, _ | _, Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
           | Ok players, Ok teams ->
-              (* Fetch game logs for top 30 players using batch query (single DB call) *)
               let top_players = List.filteri (fun i _ -> i < 30) players in
               let player_ids = List.map (fun (p: player_aggregate) -> p.player_id) top_players in
-              let* batch_res = Db.get_batch_player_game_logs ~player_ids ~season () in
-              let player_streaks = match batch_res with
+              let player_streaks = match Db.get_batch_player_game_logs ~player_ids ~season () with
                 | Error _ -> []
                 | Ok games_tbl ->
                     List.filter_map (fun (p: player_aggregate) ->
@@ -1164,21 +992,17 @@ Sitemap: https://wkbl.win/sitemap.xml
               let all_player_streaks = List.concat player_streaks in
               let active_player_streaks = Streaks.get_active_streaks all_player_streaks in
 
-              (* Calculate team win streaks *)
-              let* team_streaks =
-                Lwt_list.filter_map_s (fun (t: team_info) ->
-                  let* detail_res = Db.get_team_full_detail ~team_name:t.team_name ~season () in
-                  match detail_res with
+              let team_streaks =
+                List.filter_map (fun (t: team_info) ->
+                  match Db.get_team_full_detail ~team_name:t.team_name ~season () with
                   | Ok detail ->
-                      let streaks = Streaks.calculate_team_win_streaks ~team_name:t.team_name detail.tfd_game_results in
-                      Lwt.return (Some streaks)
-                  | Error _ -> Lwt.return None
+                      Some (Streaks.calculate_team_win_streaks ~team_name:t.team_name detail.tfd_game_results)
+                  | Error _ -> None
                 ) teams
               in
               let all_team_streaks = List.concat team_streaks in
               let active_team_streaks = all_team_streaks |> List.filter (fun s -> s.ts_is_active) in
 
-              (* Build all-time records from best streaks *)
               let best_player_streaks = Streaks.get_best_streaks all_player_streaks in
               let player_records = List.map (Streaks.player_streak_to_record ~season) best_player_streaks in
               let team_records = List.map (Streaks.team_streak_to_record ~season) all_team_streaks in
@@ -1188,7 +1012,7 @@ Sitemap: https://wkbl.win/sitemap.xml
                 |> List.filteri (fun i _ -> i < 20)
               in
 
-              Dream.html (Views_streaks.streaks_page
+              Kirin.html (Views_streaks.streaks_page
                 ~season
                 ~seasons
                 ~active_player_streaks
@@ -1198,45 +1022,37 @@ Sitemap: https://wkbl.win/sitemap.xml
     );
 
     (* On/Off Impact *)
-    Dream.get "/on-off" (fun request ->
-      let open Lwt.Syntax in
-      let* seasons_res = Db.get_seasons () in
-      match seasons_res with
-      | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+    Kirin.get "/on-off" (fun request ->
+      match Db.get_seasons () with
+      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
       | Ok seasons ->
           let season = query_season_or_latest request seasons in
-          let* impacts_res = Db.get_on_off_impact_stats ~season () in
-          (match impacts_res with
-          | Ok impacts -> Dream.html (Views_tools.on_off_impact_page ~season ~seasons impacts)
-          | Error e -> Dream.html (Views.error_page (Db.show_db_error e)))
+          (match Db.get_on_off_impact_stats ~season () with
+          | Ok impacts -> Kirin.html (Views_tools.on_off_impact_page ~season ~seasons impacts)
+          | Error e -> Kirin.html (Views.error_page (Db.show_db_error e)))
     );
 
     (* QA & System *)
-    Dream.get "/qa" (fun _ ->
-      let open Lwt.Syntax in
+    Kirin.get "/qa" (fun _ ->
       let markdown = Qa.read_markdown_if_exists () in
-      let* report_res = Db.get_db_quality_report () in
-      match report_res with
-      | Ok report -> Dream.html (Views_tools.qa_dashboard_page report ~markdown ())
-      | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+      match Db.get_db_quality_report () with
+      | Ok report -> Kirin.html (Views_tools.qa_dashboard_page report ~markdown ())
+      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
     );
-    Dream.get "/health" (fun _ -> Dream.json "{\"status\": \"ok\", \"engine\": \"OCaml/Dream\"}");
+    Kirin.get "/health" (fun _ -> Kirin.json_string "{\"status\": \"ok\", \"engine\": \"OCaml/Kirin\"}");
 
     (* Player Search API for Command Palette *)
-    Dream.get "/api/search/players" (fun request ->
-      let open Lwt.Syntax in
-      let q = Dream.query request "q" |> Option.value ~default:"" in
+    Kirin.get "/api/search/players" (fun request ->
+      let q = Kirin.query_opt "q" request |> Option.value ~default:"" in
       if String.length q < 1 then
-        Dream.json "[]"
+        Kirin.json_string "[]"
       else begin
-        let* seasons_res = Db.get_seasons () in
-        match seasons_res with
-        | Error _ -> Dream.json "[]"
+        match Db.get_seasons () with
+        | Error _ -> Kirin.json_string "[]"
         | Ok seasons ->
             let season = query_season_or_latest request seasons in
-            let* players_res = Db.get_players ~season ~search:q ~limit:8 () in
-            match players_res with
-            | Error _ -> Dream.json "[]"
+            match Db.get_players ~season ~search:q ~limit:8 () with
+            | Error _ -> Kirin.json_string "[]"
             | Ok players ->
                 let json_items = List.map (fun p ->
                   Printf.sprintf {|{"id":"%s","name":"%s","team":"%s","pts":%.1f}|}
@@ -1245,38 +1061,30 @@ Sitemap: https://wkbl.win/sitemap.xml
                     (Views_common.escape_html p.team_name)
                     p.avg_points
                 ) players in
-                Dream.json (Printf.sprintf "[%s]" (String.concat "," json_items))
+                Kirin.json_string (Printf.sprintf "[%s]" (String.concat "," json_items))
       end
     );
 
     (* History & Legends *)
-    Dream.get "/history" (fun _ ->
-      let open Lwt.Syntax in
-      let* result = Db.get_historical_seasons () in
-      match result with
-      | Ok seasons -> Dream.html (Views_history.history_page seasons)
-      | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+    Kirin.get "/history" (fun _ ->
+      match Db.get_historical_seasons () with
+      | Ok seasons -> Kirin.html (Views_history.history_page seasons)
+      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
     );
-    Dream.get "/legends" (fun _ ->
-      let open Lwt.Syntax in
-      let* result = Db.get_legend_players () in
-      match result with
-      | Ok legends -> Dream.html (Views_history.legends_page legends)
-      | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+    Kirin.get "/legends" (fun _ ->
+      match Db.get_legend_players () with
+      | Ok legends -> Kirin.html (Views_history.legends_page legends)
+      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
     );
-    Dream.get "/coaches" (fun _ ->
-      let open Lwt.Syntax in
-      let* result = Db.get_coaches () in
-      match result with
-      | Ok coaches -> Dream.html (Views_history.coaches_page coaches)
-      | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+    Kirin.get "/coaches" (fun _ ->
+      match Db.get_coaches () with
+      | Ok coaches -> Kirin.html (Views_history.coaches_page coaches)
+      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
     );
-    Dream.get "/player/:id/career" (fun request ->
-      let open Lwt.Syntax in
-      let player_name = Dream.param request "id" |> Uri.pct_decode in
-      let* result = Db.get_player_career ~player_name () in
-      match result with
-      | Ok entries -> Dream.html (Views_history.player_career_page ~player_name entries)
-      | Error e -> Dream.html (Views.error_page (Db.show_db_error e))
+    Kirin.get "/player/:id/career" (fun request ->
+      let player_name = Kirin.param "id" request |> Uri.pct_decode in
+      match Db.get_player_career ~player_name () with
+      | Ok entries -> Kirin.html (Views_history.player_career_page ~player_name entries)
+      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
     );
   ]
