@@ -911,6 +911,39 @@ module Types = struct
     let t = t2 in
     custom ~encode ~decode
       (t string (t string (t string (t int (t int (t int (t int (t float (t int (t int int))))))))))
+
+  (** Player shooting stats for shot distribution chart *)
+  let player_shooting_stats =
+    let encode _ = Error "Encode not supported: read-only type" in
+    let decode (player_id, rest) =
+      let (name, rest) = rest in
+      let (games, rest) = rest in
+      let (fg_made, rest) = rest in
+      let (fg_attempted, rest) = rest in
+      let (fg_pct, rest) = rest in
+      let (fg3_made, rest) = rest in
+      let (fg3_attempted, rest) = rest in
+      let (fg3_pct, rest) = rest in
+      let (ft_made, rest) = rest in
+      let (ft_attempted, ft_pct) = rest in
+      Ok {
+        pss_player_id = player_id;
+        pss_name = name;
+        pss_games = games;
+        pss_fg_made = fg_made;
+        pss_fg_attempted = fg_attempted;
+        pss_fg_pct = fg_pct;
+        pss_fg3_made = fg3_made;
+        pss_fg3_attempted = fg3_attempted;
+        pss_fg3_pct = fg3_pct;
+        pss_ft_made = ft_made;
+        pss_ft_attempted = ft_attempted;
+        pss_ft_pct = ft_pct;
+      }
+    in
+    let t = t2 in
+    custom ~encode ~decode
+      (t string (t string (t int (t int (t int (t float (t int (t int (t float (t int (t int float)))))))))))
 end
 
 (** Use oneshot queries to avoid prepared-statement conflicts with PgBouncer. *)
@@ -1527,6 +1560,43 @@ module Queries = struct
       AND (? = 'ALL' OR g.season_code = ?)
     GROUP BY p.player_id, p.player_name
   |}
+
+  (** Player shooting stats aggregated from all games *)
+  let player_shooting_stats_by_id = (t2 string (t2 string string) ->? Types.player_shooting_stats) {|
+    SELECT
+      p.player_id,
+      TRIM(REPLACE(REPLACE(p.player_name, chr(92), ''), '"', '')) AS player_name,
+      COUNT(DISTINCT s.game_id) AS games,
+      COALESCE(SUM(s.fg_2p_m + s.fg_3p_m), 0) AS fg_made,
+      COALESCE(SUM(s.fg_2p_a + s.fg_3p_a), 0) AS fg_attempted,
+      CASE
+        WHEN SUM(s.fg_2p_a + s.fg_3p_a) > 0
+        THEN SUM(s.fg_2p_m + s.fg_3p_m)::float / SUM(s.fg_2p_a + s.fg_3p_a)
+        ELSE 0
+      END AS fg_pct,
+      COALESCE(SUM(s.fg_3p_m), 0) AS fg3_made,
+      COALESCE(SUM(s.fg_3p_a), 0) AS fg3_attempted,
+      CASE
+        WHEN SUM(s.fg_3p_a) > 0
+        THEN SUM(s.fg_3p_m)::float / SUM(s.fg_3p_a)
+        ELSE 0
+      END AS fg3_pct,
+      COALESCE(SUM(s.ft_m), 0) AS ft_made,
+      COALESCE(SUM(s.ft_a), 0) AS ft_attempted,
+      CASE
+        WHEN SUM(s.ft_a) > 0
+        THEN SUM(s.ft_m)::float / SUM(s.ft_a)
+        ELSE 0
+      END AS ft_pct
+    FROM game_stats s
+    JOIN games_calc g ON g.game_id = s.game_id
+    JOIN players p ON s.player_id = p.player_id
+    WHERE s.player_id = ?
+      AND g.game_type != '10'
+      AND (? = 'ALL' OR g.season_code = ?)
+    GROUP BY p.player_id, p.player_name
+  |}
+
 	  let team_totals_by_season = (t2 string (t2 string (t2 string int)) ->* Types.team_totals) {|
 	    SELECT
 	      CASE WHEN ? = 'ALL' THEN 'ALL' ELSE g.season_code END as season,
@@ -3295,6 +3365,10 @@ end
     let s = if String.trim season = "" then "ALL" else season in
     Db.find_opt Queries.player_aggregate_by_id (s, (s, (player_id, (s, s))))
 
+  let get_player_shooting_stats ~player_id ~season (module Db : Caqti_eio.CONNECTION) =
+    let s = if String.trim season = "" then "ALL" else season in
+    Db.find_opt Queries.player_shooting_stats_by_id (player_id, (s, s))
+
   let get_draft_years (module Db : Caqti_eio.CONNECTION) =
     Db.collect_list Queries.draft_years ()
 
@@ -3810,6 +3884,8 @@ let get_seasons () =
 let get_player_by_name ?(season="ALL") name = with_db (fun db -> Repo.get_player_by_name ~name ~season db)
 let get_player_aggregate_by_id ~player_id ?(season="ALL") () =
   with_db (fun db -> Repo.get_player_aggregate_by_id ~player_id ~season db)
+let get_player_shooting_stats ~player_id ?(season="ALL") () =
+  with_db (fun db -> Repo.get_player_shooting_stats ~player_id ~season db)
 let get_players_base ?(season="ALL") ?(include_mismatch=false) () =
   let key = Printf.sprintf "season=%s|mismatch=%b" season include_mismatch in
   cached players_base_cache key (fun () ->

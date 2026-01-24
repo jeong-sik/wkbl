@@ -437,6 +437,22 @@ type player_profile = {
   career_highs: career_high_item list option;
 }
 
+(** Aggregated shooting stats for shot distribution visualization *)
+type player_shooting_stats = {
+  pss_player_id: string;
+  pss_name: string;
+  pss_games: int;
+  pss_fg_made: int;
+  pss_fg_attempted: int;
+  pss_fg_pct: float;
+  pss_fg3_made: int;
+  pss_fg3_attempted: int;
+  pss_fg3_pct: float;
+  pss_ft_made: int;
+  pss_ft_attempted: int;
+  pss_ft_pct: float;
+}
+
 type team_game_result = {
   tgr_game_id: string;
   tgr_game_date: string;
