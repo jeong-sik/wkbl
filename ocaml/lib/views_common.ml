@@ -25,6 +25,7 @@ let escape_html s =
     | '>' -> "&gt;"
     | '&' -> "&amp;"
     | '"' -> "&quot;"
+    | '\'' -> "&#x27;"
     | c -> String.make 1 c)
   |> List.of_seq
   |> String.concat ""
@@ -568,11 +569,11 @@ let career_trajectory_chart (stats: season_stats list) =
 
       (* Chart dimensions - increased for better text rendering *)
       let chart_width = 400.0 in  (* viewBox units *)
-      let chart_height = 200.0 in
+      let chart_height = 220.0 in  (* Increased for rotated x-axis labels *)
       let padding_left = 32.0 in
       let padding_right = 16.0 in
       let padding_top = 24.0 in
-      let padding_bottom = 40.0 in
+      let padding_bottom = 56.0 in  (* Increased for rotated labels *)
       let plot_width = chart_width -. padding_left -. padding_right in
       let plot_height = chart_height -. padding_top -. padding_bottom in
 
@@ -641,8 +642,8 @@ let career_trajectory_chart (stats: season_stats list) =
                 s.ss_season_name
             in
             Printf.sprintf
-              {svg|<text x="%.2f" y="%.2f" class="fill-slate-500 dark:fill-slate-400" font-size="12" text-anchor="middle">%s</text>|svg}
-              x (chart_height -. 8.0) (escape_html label))
+              {svg|<text x="%.2f" y="%.2f" class="fill-slate-600 dark:fill-slate-400" font-size="10" text-anchor="end" transform="rotate(-45 %.2f %.2f)">%s</text>|svg}
+              x (chart_height -. 12.0) x (chart_height -. 12.0) (escape_html label))
         |> String.concat "\n"
       in
 
