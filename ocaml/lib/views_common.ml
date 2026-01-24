@@ -990,7 +990,7 @@ let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="")
 <body class="bg-slate-50 dark:bg-[#0b0e14] text-slate-900 dark:text-slate-200 font-sans antialiased min-h-screen is-loading">
   <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[60] focus:bg-orange-500 focus:text-white focus:px-4 focus:py-2 focus:rounded-lg focus:font-semibold focus:shadow-lg">본문으로 건너뛰기</a>
   <div id="page-loader" class="page-loader" aria-hidden="true"><div class="page-loader-bar"></div></div>
-  <header role="banner" class="sticky top-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 py-3 sm:py-4">
+  <header role="banner" class="sticky top-0 z-[110] bg-white/95 dark:bg-slate-900/95 backdrop-blur border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 py-3 sm:py-4">
     <div class="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
       <div class="flex items-center justify-between w-full sm:w-auto">
         <a href="/" class="flex items-center gap-3 shrink-0" aria-label="WKBL Analytics 홈으로 이동">
@@ -1008,27 +1008,27 @@ let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="")
         </div>
       </div>
       <div class="hidden md:flex items-center gap-3">
-        <button onclick="SearchModal.open()" class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-400 bg-slate-100 dark:bg-slate-800 rounded-lg hover:text-slate-600 dark:hover:text-slate-300 transition" aria-label="검색 열기">
+        <button onclick="SearchModal.open()" class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 rounded-lg hover:text-slate-900 dark:hover:text-slate-200 transition" aria-label="검색 열기">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
           <span>검색</span>
           <kbd class="px-1.5 py-0.5 text-xs font-mono bg-white dark:bg-slate-700 rounded shadow-sm">⌘K</kbd>
         </button>
         <nav aria-label="메인 내비게이션" class="flex items-center gap-x-4 gap-y-2 text-sm flex-wrap justify-end">
-          <a href="/" class="shrink-0 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition">Home</a>
-          <a href="/awards" class="shrink-0 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition">Awards</a>
-          <a href="/history" class="shrink-0 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition">History</a>
-          <a href="/legends" class="shrink-0 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition">Legends</a>
-          <a href="/leaders" class="shrink-0 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition">Leaders</a>
-          <a href="/boxscores" class="shrink-0 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition">Boxscores</a>
-          <a href="/games" class="shrink-0 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition">Games</a>
-          <a href="/standings" class="shrink-0 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition">Standings</a>
-          <a href="/teams" class="shrink-0 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition">Teams</a>
-          <a href="/players" class="shrink-0 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition">Players</a>
-          <a href="/predict" class="shrink-0 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition">Predict</a>
-          <a href="/compare" class="shrink-0 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition">Compare</a>
-          <a href="/on-off" class="shrink-0 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition">On/Off</a>
-          <a href="/transactions" class="shrink-0 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition">Draft/Trade</a>
-          <a href="/qa" class="shrink-0 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition">QA</a>
+          <a href="/" class="shrink-0 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition">Home</a>
+          <a href="/awards" class="shrink-0 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition">Awards</a>
+          <a href="/history" class="shrink-0 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition">History</a>
+          <a href="/legends" class="shrink-0 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition">Legends</a>
+          <a href="/leaders" class="shrink-0 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition">Leaders</a>
+          <a href="/boxscores" class="shrink-0 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition">Boxscores</a>
+          <a href="/games" class="shrink-0 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition">Games</a>
+          <a href="/standings" class="shrink-0 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition">Standings</a>
+          <a href="/teams" class="shrink-0 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition">Teams</a>
+          <a href="/players" class="shrink-0 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition">Players</a>
+          <a href="/predict" class="shrink-0 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition">Predict</a>
+          <a href="/compare" class="shrink-0 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition">Compare</a>
+          <a href="/on-off" class="shrink-0 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition">On/Off</a>
+          <a href="/transactions" class="shrink-0 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition">Draft/Trade</a>
+          <a href="/qa" class="shrink-0 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition">QA</a>
         </nav>
         <button onclick="toggleTheme()" class="hidden sm:block p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-orange-500 dark:hover:text-orange-400 transition" aria-label="테마 전환 (라이트/다크)">
           <svg class="w-5 h-5 dark:hidden" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
@@ -1038,13 +1038,13 @@ let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="")
     </div>
   </header>
   <main id="main-content" class="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 pb-24 md:pb-8" tabindex="-1">%s</main>
-  <footer class="border-t border-slate-200 dark:border-slate-800 py-6 text-center text-slate-500 dark:text-slate-400 text-sm mb-20 md:mb-0">
+  <footer class="border-t border-slate-200 dark:border-slate-800 py-6 text-center text-slate-600 dark:text-slate-400 text-sm mb-20 md:mb-0">
     <a href="mailto:contact@wkbl.win" class="hover:text-slate-700 dark:hover:text-slate-300 transition-colors">📧 contact@wkbl.win</a>
   </footer>
 
   <!-- Mobile Slide Menu Overlay -->
   <div id="mobile-menu-overlay" class="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm hidden opacity-0 transition-opacity duration-300" aria-hidden="true">
-    <div id="mobile-menu-panel" class="absolute right-0 top-0 h-full w-72 bg-white dark:bg-slate-900 shadow-2xl transform translate-x-full transition-transform duration-300 overflow-y-auto" role="dialog" aria-modal="true" aria-label="메뉴">
+    <div id="mobile-menu-panel" class="absolute right-0 top-0 h-full w-72 max-w-[calc(100vw-3rem)] bg-white dark:bg-slate-900 shadow-2xl transform translate-x-full transition-transform duration-300 overflow-y-auto" role="dialog" aria-modal="true" aria-label="메뉴">
       <div class="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700">
         <span class="font-bold text-slate-900 dark:text-white">메뉴</span>
         <button id="mobile-menu-close" class="p-2 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white transition" aria-label="메뉴 닫기">
@@ -1118,26 +1118,26 @@ let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="")
 
   <!-- Mobile Bottom Navigation -->
   <nav data-bottom-nav class="fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur border-t border-slate-200 dark:border-slate-700 md:hidden safe-area-bottom" aria-label="모바일 하단 내비게이션">
-    <div class="flex items-center justify-around h-16 max-w-md mx-auto px-2">
-      <a href="/" class="flex flex-col items-center gap-1 px-3 py-2 text-slate-500 dark:text-slate-400 hover:text-orange-500 dark:hover:text-orange-400 transition">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
-        <span class="text-[10px] font-medium">Home</span>
+    <div class="flex items-center justify-around h-16 max-w-md sm:max-w-lg mx-auto px-2 gap-1">
+      <a href="/" class="flex flex-col items-center gap-1 px-3 py-2 text-slate-600 dark:text-slate-400 hover:text-orange-500 dark:hover:text-orange-400 transition" aria-label="홈">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+        <span class="text-[10px] font-medium">홈</span>
       </a>
-      <a href="/leaders" class="flex flex-col items-center gap-1 px-3 py-2 text-slate-500 dark:text-slate-400 hover:text-orange-500 dark:hover:text-orange-400 transition">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
-        <span class="text-[10px] font-medium">Leaders</span>
+      <a href="/leaders" class="flex flex-col items-center gap-1 px-3 py-2 text-slate-600 dark:text-slate-400 hover:text-orange-500 dark:hover:text-orange-400 transition" aria-label="리더">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+        <span class="text-[10px] font-medium">리더</span>
       </a>
-      <a href="/games" class="flex flex-col items-center gap-1 px-3 py-2 text-slate-500 dark:text-slate-400 hover:text-orange-500 dark:hover:text-orange-400 transition">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-        <span class="text-[10px] font-medium">Games</span>
+      <a href="/games" class="flex flex-col items-center gap-1 px-3 py-2 text-slate-600 dark:text-slate-400 hover:text-orange-500 dark:hover:text-orange-400 transition" aria-label="경기">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+        <span class="text-[10px] font-medium">경기</span>
       </a>
-      <a href="/players" class="flex flex-col items-center gap-1 px-3 py-2 text-slate-500 dark:text-slate-400 hover:text-orange-500 dark:hover:text-orange-400 transition">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
-        <span class="text-[10px] font-medium">Players</span>
+      <a href="/players" class="flex flex-col items-center gap-1 px-3 py-2 text-slate-600 dark:text-slate-400 hover:text-orange-500 dark:hover:text-orange-400 transition" aria-label="선수">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+        <span class="text-[10px] font-medium">선수</span>
       </a>
-      <button onclick="MobileNav.open()" class="flex flex-col items-center gap-1 px-3 py-2 text-slate-500 dark:text-slate-400 hover:text-orange-500 dark:hover:text-orange-400 transition" aria-label="더보기 메뉴">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
-        <span class="text-[10px] font-medium">More</span>
+      <button onclick="MobileNav.open()" class="flex flex-col items-center gap-1 px-3 py-2 text-slate-600 dark:text-slate-400 hover:text-orange-500 dark:hover:text-orange-400 transition" aria-label="더보기 메뉴">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+        <span class="text-[10px] font-medium">더보기</span>
       </button>
     </div>
   </nav>

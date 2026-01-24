@@ -144,7 +144,7 @@ let transactions_page
       if active_tab = t then
         "bg-slate-100 dark:bg-slate-800/80 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-200"
       else
-        "bg-white dark:bg-slate-900/40 border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/50"
+        "bg-white dark:bg-slate-900/40 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/50"
     in
     Printf.sprintf
       {html|<a href="/transactions?tab=%s" class="px-3 py-2 rounded-lg border text-xs font-bold uppercase tracking-widest transition %s">%s</a>|html}
