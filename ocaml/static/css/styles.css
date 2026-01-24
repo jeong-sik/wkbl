@@ -332,21 +332,24 @@ button:active:not(:disabled),
 /* Small mobile (phones in portrait) */
 @media (max-width: 480px) {
   .roster-table {
-    font-size: 0.675rem;
+    /* Minimum 12px for WCAG accessibility (was 0.675rem = 10.8px) */
+    font-size: 0.75rem;
   }
 
   .roster-table th,
   .roster-table td {
-    padding: 0.25rem 0.125rem;
+    padding: 0.25rem 0.25rem;
   }
 
   .player-name {
-    max-width: 60px;
+    /* Slightly wider to show more characters */
+    max-width: 72px;
   }
 
   /* Extra compact for very small screens */
   .season-stats-table {
-    font-size: 0.675rem;
+    /* Minimum 12px for WCAG accessibility (was 0.675rem = 10.8px) */
+    font-size: 0.75rem;
   }
 
   .season-stats-table th:nth-child(n+3),

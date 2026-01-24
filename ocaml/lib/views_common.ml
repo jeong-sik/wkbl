@@ -272,7 +272,7 @@ let team_logo_tag ?(class_name="w-8 h-8") team_name =
         class_name
 
 (** Team badge component *)
-let team_badge ?(max_width="max-w-[110px] sm:max-w-[180px]") team_name =
+let team_badge ?(max_width="max-w-[130px] sm:max-w-[200px]") team_name =
   let display = normalize_label team_name in
   let color =
     team_code_of_string display
