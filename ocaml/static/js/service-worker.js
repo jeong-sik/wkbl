@@ -155,6 +155,79 @@ async function networkFirstWithFallback(request) {
   }
 }
 
+// ========== Web Push Notifications ==========
+
+// Handle incoming push messages
+self.addEventListener('push', (event) => {
+  console.log('[SW] Push received');
+
+  let data = { title: 'WKBL 알림', body: '새로운 소식이 있습니다.' };
+
+  if (event.data) {
+    try {
+      data = event.data.json();
+    } catch (e) {
+      data.body = event.data.text();
+    }
+  }
+
+  const options = {
+    body: data.body,
+    icon: '/static/images/favicon-512.png',
+    badge: '/static/images/favicon-32.png',
+    vibrate: [100, 50, 100],
+    tag: data.tag || 'wkbl-notification',
+    renotify: true,
+    data: {
+      url: data.url || '/',
+      gameId: data.gameId
+    },
+    actions: data.actions || []
+  };
+
+  event.waitUntil(
+    self.registration.showNotification(data.title, options)
+  );
+});
+
+// Handle notification click
+self.addEventListener('notificationclick', (event) => {
+  console.log('[SW] Notification clicked:', event.notification.tag);
+  event.notification.close();
+
+  const url = event.notification.data?.url || '/';
+
+  // Handle action buttons
+  if (event.action === 'view-boxscore' && event.notification.data?.gameId) {
+    const boxscoreUrl = `/boxscore/${event.notification.data.gameId}`;
+    event.waitUntil(clients.openWindow(boxscoreUrl));
+    return;
+  }
+
+  // Default: open or focus the app
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true })
+      .then((windowClients) => {
+        // Focus existing window if available
+        for (const client of windowClients) {
+          if (client.url.includes(self.location.origin) && 'focus' in client) {
+            client.navigate(url);
+            return client.focus();
+          }
+        }
+        // Open new window
+        return clients.openWindow(url);
+      })
+  );
+});
+
+// Handle notification close (optional analytics)
+self.addEventListener('notificationclose', (event) => {
+  console.log('[SW] Notification closed:', event.notification.tag);
+});
+
+// ========== Offline Support ==========
+
 // Offline fallback HTML
 function offlineHTML() {
   return `<!DOCTYPE html>

@@ -1162,6 +1162,26 @@ Sitemap: https://wkbl.win/sitemap.xml
       @@ Kirin.html (Views.live_scores_htmx ())
     );
 
+    (* Push Notification: Subscribe (MVP - just log) *)
+    Kirin.post "/api/push/subscribe" (fun request ->
+      let body = Kirin.Request.body request in
+      Printf.printf "[Push] Subscribe: %s\n%!" body;
+      Kirin.json_string {|{"status":"ok","message":"subscribed"}|}
+    );
+
+    (* Push Notification: Unsubscribe (MVP - just log) *)
+    Kirin.post "/api/push/unsubscribe" (fun _ ->
+      Printf.printf "[Push] Unsubscribe\n%!";
+      Kirin.json_string {|{"status":"ok","message":"unsubscribed"}|}
+    );
+
+    (* Push Notification: Test (send test notification) *)
+    Kirin.post "/api/push/test" (fun _ ->
+      (* In production, this would trigger actual push notifications *)
+      Printf.printf "[Push] Test notification requested\n%!";
+      Kirin.json_string {|{"status":"ok","message":"test notification sent"}|}
+    );
+
     (* History & Legends *)
     Kirin.get "/history" (fun _ ->
       match Db.get_historical_seasons () with
