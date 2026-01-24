@@ -936,6 +936,16 @@ Sitemap: https://wkbl.win/sitemap.xml
       | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
     );
 
+    (* Player Shot Chart HTMX Partial *)
+    Kirin.get "/player/:id/shot-chart" (fun request ->
+      let player_id = Kirin.param "id" request in
+      let season = Kirin.query_opt "season" request |> Option.value ~default:"ALL" in
+      match Db.get_player_shooting_stats ~player_id ~season () with
+      | Ok (Some stats) -> Kirin.html (Views_charts.player_shot_chart_html stats)
+      | Ok None -> Kirin.html {|<div class="text-slate-400 text-center p-4">슈팅 데이터가 없습니다.</div>|}
+      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+    );
+
     (* Team Profile *)
     Kirin.get "/team/:name" (fun request ->
       let team_name = Kirin.param "name" request |> Uri.pct_decode in
