@@ -20,11 +20,14 @@ WORKDIR /home/opam/src/ocaml
 # Update opam repository to find latest dream/caqti versions
 RUN opam update
 
+# Pin Kirin from GitHub (private dependency not in opam)
+RUN opam pin add kirin https://github.com/jeong-sik/kirin.git#main -y --no-action
+RUN opam install kirin -y
+
 # Copy opam file first to leverage Docker layer caching
 COPY --chown=opam:opam ocaml/wkbl.opam .
 
-# Install dependencies (This is the failing step 18)
-# Adding --with-test to ensure all potential libs are there, and using -y
+# Install dependencies
 RUN opam install . --deps-only -y
 
 # Copy source and build
