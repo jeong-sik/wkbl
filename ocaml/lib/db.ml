@@ -3026,13 +3026,13 @@ module Queries = struct
         p.player_name,
         t.team_name_kr AS team_name,
         COUNT(DISTINCT gs.game_id) AS gp,
-        ROUND(CAST(SUM(gs.pts) AS FLOAT) / NULLIF(COUNT(DISTINCT gs.game_id), 0), 1) AS ppg,
-        ROUND(CAST(SUM(gs.reb_tot) AS FLOAT) / NULLIF(COUNT(DISTINCT gs.game_id), 0), 1) AS rpg,
-        ROUND(CAST(SUM(gs.ast) AS FLOAT) / NULLIF(COUNT(DISTINCT gs.game_id), 0), 1) AS apg,
-        ROUND(CAST(SUM(gs.stl) AS FLOAT) / NULLIF(COUNT(DISTINCT gs.game_id), 0), 1) AS spg,
-        ROUND(CAST(SUM(gs.blk) AS FLOAT) / NULLIF(COUNT(DISTINCT gs.game_id), 0), 1) AS bpg,
+        ROUND(CAST(SUM(gs.pts) AS NUMERIC) / NULLIF(COUNT(DISTINCT gs.game_id), 0), 1) AS ppg,
+        ROUND(CAST(SUM(gs.reb_tot) AS NUMERIC) / NULLIF(COUNT(DISTINCT gs.game_id), 0), 1) AS rpg,
+        ROUND(CAST(SUM(gs.ast) AS NUMERIC) / NULLIF(COUNT(DISTINCT gs.game_id), 0), 1) AS apg,
+        ROUND(CAST(SUM(gs.stl) AS NUMERIC) / NULLIF(COUNT(DISTINCT gs.game_id), 0), 1) AS spg,
+        ROUND(CAST(SUM(gs.blk) AS NUMERIC) / NULLIF(COUNT(DISTINCT gs.game_id), 0), 1) AS bpg,
         ROUND(
-          CAST(SUM(gs.pts + gs.reb_tot + gs.ast + gs.stl + gs.blk - (gs.fg_2p_a + gs.fg_3p_a - gs.fg_2p_m - gs.fg_3p_m) - (gs.ft_a - gs.ft_m) - gs.tov) AS FLOAT)
+          CAST(SUM(gs.pts + gs.reb_tot + gs.ast + gs.stl + gs.blk - (gs.fg_2p_a + gs.fg_3p_a - gs.fg_2p_m - gs.fg_3p_m) - (gs.ft_a - gs.ft_m) - gs.tov) AS NUMERIC)
           / NULLIF(COUNT(DISTINCT gs.game_id), 0),
           1
         ) AS efficiency
@@ -3061,7 +3061,7 @@ module Queries = struct
       COALESCE(ts.losses, 0) AS team_losses,
       ROUND(
         CASE WHEN (COALESCE(ts.wins, 0) + COALESCE(ts.losses, 0)) > 0
-          THEN CAST(COALESCE(ts.wins, 0) AS FLOAT) / (COALESCE(ts.wins, 0) + COALESCE(ts.losses, 0))
+          THEN CAST(COALESCE(ts.wins, 0) AS NUMERIC) / (COALESCE(ts.wins, 0) + COALESCE(ts.losses, 0))
           ELSE 0
         END,
         3
@@ -3072,7 +3072,7 @@ module Queries = struct
     ORDER BY
       (pa.ppg * 2 + pa.rpg * 1.2 + pa.apg * 1.5 + pa.spg * 2 + pa.bpg * 2 + pa.efficiency * 0.5
        + CASE WHEN (COALESCE(ts.wins, 0) + COALESCE(ts.losses, 0)) > 0
-           THEN (CAST(COALESCE(ts.wins, 0) AS FLOAT) / (COALESCE(ts.wins, 0) + COALESCE(ts.losses, 0))) * 20
+           THEN (CAST(COALESCE(ts.wins, 0) AS NUMERIC) / (COALESCE(ts.wins, 0) + COALESCE(ts.losses, 0))) * 20
            ELSE 0
          END) DESC
     LIMIT 20
