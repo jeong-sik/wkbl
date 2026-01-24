@@ -18,3 +18,4 @@ module Clutch = Clutch
 module Scraper = Scraper
 module Cards = Cards
 module Views_charts = Views_charts
+module Ai = Ai

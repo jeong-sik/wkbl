@@ -1083,6 +1083,8 @@ let prediction_result_card ~(home: string) ~(away: string) (output: prediction_o
   let pyth_away_pct = pct (1.0 -. breakdown.pb_pyth_prob) in
   let stats_home_pct = pct breakdown.pb_stats_prob in
   let stats_away_pct = pct (1.0 -. breakdown.pb_stats_prob) in
+  (* Generate AI explanation *)
+  let ai_explanation = Ai.get_explanation ~home ~away output in
   let context_card_html, context_note_html =
     match breakdown.pb_context with
     | None ->
@@ -1164,6 +1166,14 @@ let prediction_result_card ~(home: string) ~(away: string) (output: prediction_o
           <span class="text-sky-600 dark:text-sky-400 font-bold">%.1f%%</span>
         </div>
       </div>
+      <!-- AI Analysis -->
+      <div class="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/30 dark:to-purple-950/30 border border-indigo-200 dark:border-indigo-800/50 rounded-lg p-4">
+        <div class="flex items-center gap-2 mb-2">
+          <span class="text-lg">🤖</span>
+          <span class="text-xs font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider">AI 분석</span>
+        </div>
+        <p class="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">%s</p>
+      </div>
       <div class="grid grid-cols-1 lg:grid-cols-4 gap-3 text-xs">
         <div class="bg-slate-100 dark:bg-slate-800/40 border border-slate-300 dark:border-slate-700/50 rounded-lg p-3">
           <div class="flex items-center justify-between">
@@ -1225,6 +1235,7 @@ let prediction_result_card ~(home: string) ~(away: string) (output: prediction_o
     away_pct
     home_pct
     away_pct
+    (escape_html ai_explanation)
     breakdown.pb_games_used
     breakdown.pb_elo_home
     breakdown.pb_elo_away
