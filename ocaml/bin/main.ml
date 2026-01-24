@@ -761,6 +761,21 @@ Sitemap: https://wkbl.win/sitemap.xml
             | _ -> Lwt.return (Ok [])
           in
           let h2h = match h2h_res with Ok h -> h | Error _ -> [] in
+          (* Fetch season history for trend chart *)
+          let* p1_season_history =
+            match p1_selected with
+            | Some p -> (
+                let* res = Db.get_player_season_stats ~player_id:p.player_id ~scope:"per_game" () in
+                match res with Ok stats -> Lwt.return stats | Error _ -> Lwt.return [])
+            | None -> Lwt.return []
+          in
+          let* p2_season_history =
+            match p2_selected with
+            | Some p -> (
+                let* res = Db.get_player_season_stats ~player_id:p.player_id ~scope:"per_game" () in
+                match res with Ok stats -> Lwt.return stats | Error _ -> Lwt.return [])
+            | None -> Lwt.return []
+          in
           let error_opt =
             match List.rev !errors with
             | [] -> None
@@ -780,6 +795,8 @@ Sitemap: https://wkbl.win/sitemap.xml
                ~p2_candidates
                ~error:error_opt
                ~h2h_disabled_reason
+               ~p1_season_history
+               ~p2_season_history
                p1_selected
                p2_selected
                h2h)
