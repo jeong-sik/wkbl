@@ -132,6 +132,35 @@ let () =
       else
         Kirin.not_found ~body:"service-worker.js not found" ());
 
+    (* Share Cards: Player card PNG *)
+    Kirin.get "/card/player/png/:id" (fun request ->
+      let player_id = Kirin.param "id" request in
+      match Db.get_player_aggregate_by_id ~player_id () with
+      | Ok (Some p) ->
+          let svg = Cards.player_card p in
+          (match Cards.svg_to_png svg with
+          | Some png ->
+              Kirin.with_header "Content-Type" "image/png"
+              @@ Kirin.with_header "Cache-Control" "public, max-age=3600"
+              @@ Kirin.Response.make ~status:`OK png
+          | None ->
+              (* Fallback: return SVG if PNG conversion fails *)
+              Kirin.with_header "Content-Type" "image/svg+xml"
+              @@ Kirin.text svg)
+      | Ok None -> Kirin.not_found ~body:"Player not found" ()
+      | Error e -> Kirin.server_error ~body:(Db.show_db_error e) ());
+
+    (* Share Cards: Player card SVG (for debugging/preview) *)
+    Kirin.get "/card/player/svg/:id" (fun request ->
+      let player_id = Kirin.param "id" request in
+      match Db.get_player_aggregate_by_id ~player_id () with
+      | Ok (Some p) ->
+          Kirin.with_header "Content-Type" "image/svg+xml"
+          @@ Kirin.with_header "Cache-Control" "public, max-age=3600"
+          @@ Kirin.text (Cards.player_card p)
+      | Ok None -> Kirin.not_found ~body:"Player not found" ()
+      | Error e -> Kirin.server_error ~body:(Db.show_db_error e) ());
+
     (* SEO: robots.txt *)
     Kirin.get "/robots.txt" (fun _ ->
       Kirin.with_header "Content-Type" "text/plain; charset=utf-8"
