@@ -152,6 +152,18 @@
         link.classList.remove('text-slate-700', 'dark:text-slate-300');
       }
     });
+
+    // Desktop header nav active state
+    const desktopNavLinks = document.querySelectorAll('nav[aria-label="메인 내비게이션"] a');
+    desktopNavLinks.forEach(function(link) {
+      const href = link.getAttribute('href');
+      const isActive = path === href || (href !== '/' && path.startsWith(href));
+
+      if (isActive) {
+        link.classList.add('text-orange-500', 'dark:text-orange-400', 'font-medium');
+        link.classList.remove('text-slate-600', 'dark:text-slate-400');
+      }
+    });
   }
 
   // Expose for external use
