@@ -166,7 +166,9 @@ let streaks_page
   (* Active player streaks section *)
   let active_player_section =
     if List.length active_player_streaks = 0 then
-      {html|<div class="text-center py-8 text-slate-500 dark:text-slate-400">현재 진행 중인 선수 기록이 없습니다.</div>|html}
+      Views_common.empty_state ~icon:ChartIcon
+        "진행 중인 선수 기록 없음"
+        "현재 시즌에 진행 중인 연속 기록이 없습니다."
     else
       let cards = active_player_streaks |> List.map streak_card |> String.concat "\n" in
       Printf.sprintf {html|<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">%s</div>|html} cards
@@ -175,7 +177,9 @@ let streaks_page
   (* Active team streaks section *)
   let active_team_section =
     if List.length active_team_streaks = 0 then
-      {html|<div class="text-center py-8 text-slate-500 dark:text-slate-400">현재 진행 중인 팀 연승 기록이 없습니다.</div>|html}
+      Views_common.empty_state ~icon:UsersIcon
+        "진행 중인 팀 연승 없음"
+        "현재 시즌에 팀 연승 기록이 없습니다."
     else
       let cards = active_team_streaks |> List.map team_streak_card |> String.concat "\n" in
       Printf.sprintf {html|<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">%s</div>|html} cards
@@ -184,7 +188,9 @@ let streaks_page
   (* All-time records section *)
   let records_section =
     if List.length all_time_records = 0 then
-      {html|<div class="text-center py-8 text-slate-500 dark:text-slate-400">기록이 없습니다.</div>|html}
+      Views_common.empty_state ~icon:TableIcon
+        "기록 없음"
+        "등록된 역대 기록이 없습니다."
     else
       streak_records_table all_time_records
   in

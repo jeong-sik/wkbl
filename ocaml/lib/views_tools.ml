@@ -1271,7 +1271,7 @@ let on_off_impact_table (impacts: Domain.on_off_impact list) : string =
       rank_badge
       impact.ooi_player_id
       (escape_html impact.ooi_player_name)
-      (escape_html impact.ooi_team_name)
+      (team_badge ~max_width:"max-w-[100px]" impact.ooi_team_name)
       impact.ooi_games_played
       impact.ooi_total_minutes
       (format_plus_minus impact.ooi_plus_minus_avg)

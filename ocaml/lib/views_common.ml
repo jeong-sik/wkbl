@@ -1009,10 +1009,10 @@ let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="")
         </div>
       </div>
       <div class="hidden md:flex items-center gap-3">
-        <button onclick="SearchModal.open()" class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 rounded-lg hover:text-slate-900 dark:hover:text-slate-200 transition" aria-label="검색 열기">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-          <span>검색</span>
-          <kbd class="px-1.5 py-0.5 text-xs font-mono bg-white dark:bg-slate-700 rounded shadow-sm">⌘K</kbd>
+        <button onclick="SearchModal.open()" class="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 rounded-lg hover:text-slate-900 dark:hover:text-slate-200 transition whitespace-nowrap shrink-0" aria-label="검색 열기">
+          <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+          <span class="shrink-0">검색</span>
+          <kbd class="px-1.5 py-0.5 text-xs font-mono bg-white dark:bg-slate-700 rounded shadow-sm shrink-0">⌘K</kbd>
         </button>
         <nav aria-label="메인 내비게이션" class="flex items-center gap-x-4 gap-y-2 text-sm flex-wrap justify-end">
           <a href="/" class="shrink-0 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition">Home</a>

@@ -1,4 +1,4 @@
-(** WKBL Official Site Scraper
+(** WKBL Official Site Scraper (Eio-based)
 
     Scrapes data from https://www.wkbl.or.kr:
     - Draft history: /history/draft.asp
@@ -6,26 +6,30 @@
     - FA results: /history/fa_result.asp (TODO)
 *)
 
-open Lwt.Syntax
-
 let base_url = "https://www.wkbl.or.kr"
 
-(** HTTP fetch with User-Agent *)
-let fetch_url url =
+(** HTTP fetch with User-Agent - Eio-based *)
+let fetch_url ~sw ~env url =
+  let net = Eio.Stdenv.net env in
   let headers = Cohttp.Header.of_list [
     ("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) WKBL-Stats-Bot/1.0");
     ("Accept", "text/html,application/xhtml+xml");
     ("Accept-Language", "ko-KR,ko;q=0.9");
   ] in
   let uri = Uri.of_string url in
-  let* (resp, body) = Cohttp_lwt_unix.Client.get ~headers uri in
-  let code = resp |> Cohttp.Response.status |> Cohttp.Code.code_of_status in
-  if code >= 200 && code < 300 then
-    Cohttp_lwt.Body.to_string body
-  else begin
-    Printf.eprintf "HTTP %d for %s\n" code url;
-    Lwt.return ""
-  end
+  let client = Cohttp_eio.Client.make ~https:None net in
+  match Cohttp_eio.Client.get ~sw client ~headers uri with
+  | resp, body ->
+      let code = resp |> Cohttp.Response.status |> Cohttp.Code.code_of_status in
+      if code >= 200 && code < 300 then
+        Eio.Buf_read.(parse_exn take_all) body ~max_size:max_int
+      else begin
+        Printf.eprintf "HTTP %d for %s\n" code url;
+        ""
+      end
+  | exception exn ->
+      Printf.eprintf "HTTP error for %s: %s\n" url (Printexc.to_string exn);
+      ""
 
 (** Draft entry type *)
 type draft_entry = {
@@ -69,14 +73,14 @@ let parse_draft_html ~season_code ~season_name html =
   )
 
 (** Fetch draft data for a specific season *)
-let fetch_draft_season ~season_code ~season_name =
+let fetch_draft_season ~sw ~env ~season_code ~season_name =
   let url = Printf.sprintf "%s/history/draft.asp?season_gu=%s" base_url season_code in
   Printf.printf "Fetching draft season %s (%s)...\n%!" season_name season_code;
-  let* html = fetch_url url in
+  let html = fetch_url ~sw ~env url in
   if String.length html = 0 then
-    Lwt.return []
+    []
   else
-    Lwt.return (parse_draft_html ~season_code ~season_name html)
+    parse_draft_html ~season_code ~season_name html
 
 (** Season codes mapping (recent seasons) *)
 let season_codes = [
@@ -98,13 +102,14 @@ let season_codes = [
 ]
 
 (** Fetch all draft history *)
-let fetch_all_drafts () =
+let fetch_all_drafts ~sw ~env =
+  let clock = Eio.Stdenv.clock env in
   let rec fetch_all acc = function
-    | [] -> Lwt.return (List.rev acc)
+    | [] -> List.rev acc
     | (code, name) :: rest ->
-        let* entries = fetch_draft_season ~season_code:code ~season_name:name in
+        let entries = fetch_draft_season ~sw ~env ~season_code:code ~season_name:name in
         (* Rate limiting: 500ms delay between requests *)
-        let* () = Lwt_unix.sleep 0.5 in
+        Eio.Time.sleep clock 0.5;
         fetch_all (entries @ acc) rest
   in
   fetch_all [] season_codes
@@ -124,7 +129,7 @@ let print_draft_csv entries =
   )
 
 (** Insert draft entries to database *)
-let insert_drafts_to_db pool entries =
+let insert_drafts_to_db entries =
   let open Caqti_request.Infix in
   let insert_query =
     (Caqti_type.(t6 string string int string string (option string)) ->. Caqti_type.unit)
@@ -136,12 +141,13 @@ let insert_drafts_to_db pool entries =
         player_name = EXCLUDED.player_name,
         birth_date = EXCLUDED.birth_date|}
   in
-  let* () = entries |> Lwt_list.iter_s (fun e ->
-    Caqti_lwt_unix.Pool.use (fun (module Db : Caqti_lwt.CONNECTION) ->
+  entries |> List.iter (fun e ->
+    match Db.with_db (fun (module Db : Caqti_eio.CONNECTION) ->
       Db.exec insert_query (e.season_code, e.season_name, e.pick_order, e.team_name, e.player_name, e.birth_date)
-    ) pool |> Lwt.map (function Ok () -> () | Error _ -> ())
-  ) in
-  Lwt.return ()
+    ) with
+    | Ok () -> ()
+    | Error _ -> ()
+  )
 
 (* ======== AWARDS SCRAPER ======== *)
 
@@ -265,24 +271,24 @@ let parse_best5_html html =
   )
 
 (** Fetch statistical awards *)
-let fetch_stat_awards () =
+let fetch_stat_awards ~sw ~env =
   let url = Printf.sprintf "%s/history/awards_statistics.asp" base_url in
   Printf.printf "Fetching statistical awards...\n%!";
-  let* html = fetch_url url in
+  let html = fetch_url ~sw ~env url in
   if String.length html = 0 then
-    Lwt.return []
+    []
   else
-    Lwt.return (parse_stat_awards_html html)
+    parse_stat_awards_html html
 
 (** Fetch BEST5 awards *)
-let fetch_best5_awards () =
+let fetch_best5_awards ~sw ~env =
   let url = Printf.sprintf "%s/history/awards.asp" base_url in
   Printf.printf "Fetching BEST5 awards...\n%!";
-  let* html = fetch_url url in
+  let html = fetch_url ~sw ~env url in
   if String.length html = 0 then
-    Lwt.return []
+    []
   else
-    Lwt.return (parse_best5_html html)
+    parse_best5_html html
 
 (** Print stat awards as CSV *)
 let print_stat_awards_csv entries =
@@ -366,14 +372,14 @@ let parse_fa_html html =
   tabs |> List.concat_map parse_fa_year_table
 
 (** Fetch FA results *)
-let fetch_fa_results () =
+let fetch_fa_results ~sw ~env =
   let url = Printf.sprintf "%s/history/fa_result.asp" base_url in
   Printf.printf "Fetching FA results...\n%!";
-  let* html = fetch_url url in
+  let html = fetch_url ~sw ~env url in
   if String.length html = 0 then
-    Lwt.return []
+    []
   else
-    Lwt.return (parse_fa_html html)
+    parse_fa_html html
 
 (** Print FA results as CSV *)
 let print_fa_csv entries =
@@ -469,14 +475,14 @@ let parse_salary_html html =
   tabs |> List.concat_map parse_salary_year_table
 
 (** Fetch salary data *)
-let fetch_salary () =
+let fetch_salary ~sw ~env =
   let url = Printf.sprintf "%s/history/salary.asp" base_url in
   Printf.printf "Fetching salary data...\n%!";
-  let* html = fetch_url url in
+  let html = fetch_url ~sw ~env url in
   if String.length html = 0 then
-    Lwt.return []
+    []
   else
-    Lwt.return (parse_salary_html html)
+    parse_salary_html html
 
 (** Print salary as CSV *)
 let print_salary_csv entries =
@@ -535,14 +541,14 @@ let parse_crowd_html html =
   )
 
 (** Fetch crowd data *)
-let fetch_crowd () =
+let fetch_crowd ~sw ~env =
   let url = Printf.sprintf "%s/history/crowd.asp" base_url in
   Printf.printf "Fetching crowd (attendance) data...\n%!";
-  let* html = fetch_url url in
+  let html = fetch_url ~sw ~env url in
   if String.length html = 0 then
-    Lwt.return []
+    []
   else
-    Lwt.return (parse_crowd_html html)
+    parse_crowd_html html
 
 (** Print crowd as CSV *)
 let print_crowd_csv entries =
@@ -614,14 +620,14 @@ let parse_major_records_html html =
   )
 
 (** Fetch major records *)
-let fetch_major_records () =
+let fetch_major_records ~sw ~env =
   let url = Printf.sprintf "%s/history/major_team.asp" base_url in
   Printf.printf "Fetching major records...\n%!";
-  let* html = fetch_url url in
+  let html = fetch_url ~sw ~env url in
   if String.length html = 0 then
-    Lwt.return []
+    []
   else
-    Lwt.return (parse_major_records_html html)
+    parse_major_records_html html
 
 (** Print major records as CSV *)
 let print_major_records_csv entries =
@@ -901,29 +907,30 @@ let parse_versus_records ~home_team ~away_team json =
     - "1" = trailing digit (always 1)
     Example: 04601031 = season 046, matchup index 03
 *)
-let fetch_datalab_by_index ~season_code ~matchup_index =
+let fetch_datalab_by_index ~sw ~env ~season_code ~matchup_index =
   let id = Printf.sprintf "%s01%02d1" season_code matchup_index in
   let url = Printf.sprintf "%s/teamAnalysis?id=%s" datalab_url id in
   Printf.printf "  Fetching DataLab: season=%s index=%02d (id=%s)...\n%!"
     season_code matchup_index id;
-  let* html = fetch_url url in
+  let html = fetch_url ~sw ~env url in
   if String.length html = 0 then
-    Lwt.return None
+    None
   else
-    Lwt.return (extract_datalab_json html)
+    extract_datalab_json html
 
 (** Generate matchup indices to try (1 to max_matchup_index) *)
 let all_matchup_indices () =
   List.init max_matchup_index (fun i -> i + 1)
 
 (** Fetch all games for a season from DataLab *)
-let fetch_season_games season_code =
+let fetch_season_games ~sw ~env season_code =
+  let clock = Eio.Stdenv.clock env in
   let indices = all_matchup_indices () in
   let seen_games = Hashtbl.create 256 in  (* Deduplicate games *)
   let rec fetch_all acc = function
-    | [] -> Lwt.return acc
+    | [] -> acc
     | idx :: rest ->
-        let* json_opt = fetch_datalab_by_index ~season_code ~matchup_index:idx in
+        let json_opt = fetch_datalab_by_index ~sw ~env ~season_code ~matchup_index:idx in
         let games = match json_opt with
           | Some json ->
               parse_game_records json
@@ -939,32 +946,33 @@ let fetch_season_games season_code =
           | None -> []
         in
         (* Rate limiting: 200ms delay *)
-        let* () = Lwt_unix.sleep 0.2 in
+        Eio.Time.sleep clock 0.2;
         fetch_all (games @ acc) rest
   in
   fetch_all [] indices
 
 (** Fetch all games for multiple seasons *)
-let fetch_all_games ?(seasons=datalab_season_codes) () =
+let fetch_all_games ~sw ~env ?(seasons=datalab_season_codes) () =
   Printf.printf "Fetching games from DataLab (%d seasons)...\n%!" (List.length seasons);
   let rec fetch_all acc = function
-    | [] -> Lwt.return (List.rev acc)
+    | [] -> List.rev acc
     | (code, name) :: rest ->
         Printf.printf "\n=== Season %s (%s) ===\n%!" name code;
-        let* games = fetch_season_games code in
+        let games = fetch_season_games ~sw ~env code in
         Printf.printf "  Found %d games\n%!" (List.length games);
         fetch_all (games @ acc) rest
   in
   fetch_all [] seasons
 
 (** Fetch team stats for all matchups in a season *)
-let fetch_season_team_stats season_code =
+let fetch_season_team_stats ~sw ~env season_code =
+  let clock = Eio.Stdenv.clock env in
   let indices = all_matchup_indices () in
   let seen_matchups = Hashtbl.create 64 in  (* Deduplicate matchups *)
   let rec fetch_all acc = function
-    | [] -> Lwt.return acc
+    | [] -> acc
     | idx :: rest ->
-        let* json_opt = fetch_datalab_by_index ~season_code ~matchup_index:idx in
+        let json_opt = fetch_datalab_by_index ~sw ~env ~season_code ~matchup_index:idx in
         let stats = match json_opt with
           | Some json ->
               (match extract_team_names json with
@@ -978,32 +986,33 @@ let fetch_season_team_stats season_code =
                | None -> [])
           | None -> []
         in
-        let* () = Lwt_unix.sleep 0.2 in
+        Eio.Time.sleep clock 0.2;
         fetch_all (stats @ acc) rest
   in
   fetch_all [] indices
 
 (** Fetch all team stats for multiple seasons *)
-let fetch_all_team_stats ?(seasons=datalab_season_codes) () =
+let fetch_all_team_stats ~sw ~env ?(seasons=datalab_season_codes) () =
   Printf.printf "Fetching team stats from DataLab (%d seasons)...\n%!" (List.length seasons);
   let rec fetch_all acc = function
-    | [] -> Lwt.return (List.rev acc)
+    | [] -> List.rev acc
     | (code, name) :: rest ->
         Printf.printf "\n=== Season %s (%s) ===\n%!" name code;
-        let* stats = fetch_season_team_stats code in
+        let stats = fetch_season_team_stats ~sw ~env code in
         Printf.printf "  Found %d stat entries\n%!" (List.length stats);
         fetch_all (stats @ acc) rest
   in
   fetch_all [] seasons
 
 (** Fetch versus records for all matchups in a season *)
-let fetch_season_versus_records season_code =
+let fetch_season_versus_records ~sw ~env season_code =
+  let clock = Eio.Stdenv.clock env in
   let indices = all_matchup_indices () in
   let seen_matchups = Hashtbl.create 64 in  (* Deduplicate matchups *)
   let rec fetch_all acc = function
-    | [] -> Lwt.return acc
+    | [] -> acc
     | idx :: rest ->
-        let* json_opt = fetch_datalab_by_index ~season_code ~matchup_index:idx in
+        let json_opt = fetch_datalab_by_index ~sw ~env ~season_code ~matchup_index:idx in
         let records = match json_opt with
           | Some json ->
               (match extract_team_names json with
@@ -1017,7 +1026,7 @@ let fetch_season_versus_records season_code =
                | None -> [])
           | None -> []
         in
-        let* () = Lwt_unix.sleep 0.2 in
+        Eio.Time.sleep clock 0.2;
         fetch_all (records @ acc) rest
   in
   fetch_all [] indices
@@ -1112,10 +1121,10 @@ let extract_td_text td =
       | None -> Soup.leaf_text td |> Option.value ~default:"" |> String.trim
 
 (** Fetch championship history from WKBL website *)
-let fetch_championship_history () =
+let fetch_championship_history ~sw ~env =
   Printf.printf "Fetching championship history...\n%!";
   let url = "https://www.wkbl.or.kr/history/league_champion.asp" in
-  let* html = fetch_url url in
+  let html = fetch_url ~sw ~env url in
   let soup = Soup.parse html in
 
   let records = ref [] in
@@ -1166,13 +1175,13 @@ let fetch_championship_history () =
   );
 
   Printf.printf "  Found %d championship records\n%!" (List.length !records);
-  Lwt.return (List.rev !records)
+  List.rev !records
 
 (** Fetch all-star history from WKBL website *)
-let fetch_allstar_history () =
+let fetch_allstar_history ~sw ~env =
   Printf.printf "Fetching all-star history...\n%!";
   let url = "https://www.wkbl.or.kr/history/league_allstar.asp" in
-  let* html = fetch_url url in
+  let html = fetch_url ~sw ~env url in
   let soup = Soup.parse html in
 
   (* First, collect edition/season pairs from the summary table (2 columns) *)
@@ -1234,7 +1243,7 @@ let fetch_allstar_history () =
   );
 
   Printf.printf "  Found %d all-star records\n%!" (List.length !records);
-  Lwt.return (List.rev !records)
+  List.rev !records
 
 (** Print championship history as CSV *)
 let print_championship_csv records =
