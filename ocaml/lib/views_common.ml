@@ -339,7 +339,7 @@ let points_total_cell ?(extra_classes="") (avg_points: float) (total_points: int
 let margin_cell ?(extra_classes="") value =
   let class_name =
     if value > 0.0 then "text-sky-600 dark:text-sky-400 font-bold"
-    else if value < 0.0 then "text-rose-400 font-bold"
+    else if value < 0.0 then "text-rose-600 dark:text-rose-400 font-bold"
     else "text-slate-700 dark:text-slate-300 font-bold"
   in
   let value_str =
@@ -450,7 +450,7 @@ let player_season_stats_table ~scope (stats: season_stats list) =
         }
   in
   let row_html ?(highlight=false) (s: season_stats) =
-    let margin_class = if s.ss_margin >= 0.0 then "text-sky-600 dark:text-sky-400" else "text-rose-400" in
+    let margin_class = if s.ss_margin >= 0.0 then "text-sky-600 dark:text-sky-400" else "text-rose-600 dark:text-rose-400" in
     let margin_str = if s.ss_margin > 0.0 then Printf.sprintf "+%.1f" s.ss_margin else Printf.sprintf "%.1f" s.ss_margin in
     let row_class =
       if highlight then "bg-slate-100 dark:bg-slate-800/40 border-b border-slate-300 dark:border-slate-700/60"

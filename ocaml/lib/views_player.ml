@@ -938,7 +938,7 @@ let player_game_logs_page (profile: player_profile) ~(season: string) ~(seasons:
             | Some v, _, _ ->
                 let cls =
                   if v > 0 then "text-sky-600 dark:text-sky-400"
-                  else if v < 0 then "text-rose-400"
+                  else if v < 0 then "text-rose-600 dark:text-rose-400"
                   else "text-slate-600 dark:text-slate-400"
                 in
                 let s = if v > 0 then Printf.sprintf "+%d" v else string_of_int v in
@@ -947,7 +947,7 @@ let player_game_logs_page (profile: player_profile) ~(season: string) ~(seasons:
                 let margin = team_score - opponent_score in
                 let cls =
                   if margin > 0 then "text-sky-600 dark:text-sky-400"
-                  else if margin < 0 then "text-rose-400"
+                  else if margin < 0 then "text-rose-600 dark:text-rose-400"
                   else "text-slate-600 dark:text-slate-400"
                 in
                 let s =
@@ -963,7 +963,7 @@ let player_game_logs_page (profile: player_profile) ~(season: string) ~(seasons:
                 let margin = team_score - opponent_score in
                 let cls =
                   if margin > 0 then "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/30"
-                  else if margin < 0 then "bg-rose-500/10 text-rose-400 border-rose-500/30"
+                  else if margin < 0 then "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30"
                   else "bg-slate-50 dark:bg-[#0b0e14]0/10 text-slate-700 dark:text-slate-300 border-slate-500/30"
                 in
                 let label =
