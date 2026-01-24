@@ -1145,6 +1145,23 @@ Sitemap: https://wkbl.win/sitemap.xml
       end
     );
 
+    (* Live Scores API: JSON *)
+    Kirin.get "/api/live/status" (fun _ ->
+      Kirin.with_header "Cache-Control" "no-cache"
+      @@ Kirin.json_string (Live.get_status_json ())
+    );
+
+    (* Live Scores API: SSE *)
+    Kirin.get "/api/live/sse" (fun request ->
+      Live.sse_handler () request
+    );
+
+    (* Live Scores Widget: HTMX partial *)
+    Kirin.get "/api/live/widget" (fun _ ->
+      Kirin.with_header "Cache-Control" "no-cache"
+      @@ Kirin.html (Views.live_scores_htmx ())
+    );
+
     (* History & Legends *)
     Kirin.get "/history" (fun _ ->
       match Db.get_historical_seasons () with

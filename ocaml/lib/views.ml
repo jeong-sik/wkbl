@@ -8,6 +8,43 @@ open Views_common
 (* Re-export table function from Views_common for external use *)
 let players_table = players_table
 
+(** Live scores widget for homepage *)
+let live_scores_widget (games: Live.live_game list) =
+  if List.length games = 0 then
+    {html|<div class="text-center text-slate-500 dark:text-slate-400 py-2 text-sm">오늘 경기가 없습니다</div>|html}
+  else
+    let game_cards = games |> List.map (fun (g: Live.live_game) ->
+      let status_badge =
+        if g.is_live then
+          {html|<span class="px-2 py-0.5 rounded-full bg-red-500 text-white text-[10px] font-bold animate-pulse">LIVE</span>|html}
+        else
+          Printf.sprintf {html|<span class="px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-[10px]">%s</span>|html}
+            (escape_html g.quarter)
+      in
+      Printf.sprintf
+        {html|<a href="/boxscore/%s" class="flex items-center justify-between gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700/50 transition">
+          <div class="flex items-center gap-2">
+            <span class="font-medium text-sm text-slate-900 dark:text-slate-200">%s</span>
+            <span class="text-xl font-bold text-slate-900 dark:text-slate-200">%d</span>
+          </div>
+          <div class="flex flex-col items-center gap-1">%s<span class="text-[10px] text-slate-500">vs</span></div>
+          <div class="flex items-center gap-2">
+            <span class="text-xl font-bold text-slate-900 dark:text-slate-200">%d</span>
+            <span class="font-medium text-sm text-slate-900 dark:text-slate-200">%s</span>
+          </div>
+        </a>|html}
+        (escape_html g.game_id)
+        (escape_html g.home_team) g.home_score
+        status_badge
+        g.away_score (escape_html g.away_team)
+    ) |> String.concat "\n" in
+    Printf.sprintf {html|<div class="space-y-2">%s</div>|html} game_cards
+
+(** HTMX endpoint for live scores widget *)
+let live_scores_htmx () =
+  let games = Live.get_todays_games () |> List.map Live.game_to_live in
+  live_scores_widget games
+
 let home_page ~season ~seasons players =
   let season_options =
     seasons
@@ -17,11 +54,25 @@ let home_page ~season ~seasons players =
     |> String.concat "\n"
   in
   let table = players_table players in
+  let live_games = Live.get_todays_games () |> List.map Live.game_to_live in
+  let live_widget = live_scores_widget live_games in
   layout ~title:"WKBL Analytics" ~canonical_path:"/"
     ~description:"WKBL 여자농구 효율성 순위, 팀 순위, 선수 통계를 한눈에 확인하세요."
     ~content:(Printf.sprintf
-      {html|<div class="space-y-6"><div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"><h2 class="text-xl font-bold text-slate-900 dark:text-slate-200">Top Players by Efficiency</h2><form class="flex gap-2" hx-get="/home/table" hx-target="#players-table" hx-trigger="change"><select name="season" aria-label="시즌 선택" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-1.5 text-sm focus:border-orange-500 focus:outline-none">%s</select><input type="text" placeholder="Search player..." aria-label="선수 검색" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-1.5 text-sm focus:border-orange-500 focus:outline-none" hx-get="/home/table" hx-trigger="keyup changed delay:300ms" hx-target="#players-table" name="search"></form></div><div id="players-table" class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto overflow-y-hidden" data-skeleton="table" data-skeleton-count="10" data-skeleton-cols="8">%s</div></div>|html}
-      season_options table) ()
+      {html|<div class="space-y-6">
+        <!-- Live Scores Widget -->
+        <div class="bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-950/30 dark:to-amber-950/30 border border-orange-200 dark:border-orange-800/50 rounded-lg p-4">
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-2">
+              <span class="text-lg">🏀</span>
+              <span class="text-xs font-bold text-orange-700 dark:text-orange-300 uppercase tracking-wider">오늘의 경기</span>
+            </div>
+            <a href="/games" class="text-xs text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300">전체 일정 →</a>
+          </div>
+          <div id="live-scores" hx-get="/api/live/widget" hx-trigger="every 30s" hx-swap="innerHTML">%s</div>
+        </div>
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"><h2 class="text-xl font-bold text-slate-900 dark:text-slate-200">Top Players by Efficiency</h2><form class="flex gap-2" hx-get="/home/table" hx-target="#players-table" hx-trigger="change"><select name="season" aria-label="시즌 선택" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-1.5 text-sm focus:border-orange-500 focus:outline-none">%s</select><input type="text" placeholder="Search player..." aria-label="선수 검색" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-1.5 text-sm focus:border-orange-500 focus:outline-none" hx-get="/home/table" hx-trigger="keyup changed delay:300ms" hx-target="#players-table" name="search"></form></div><div id="players-table" class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto overflow-y-hidden" data-skeleton="table" data-skeleton-count="10" data-skeleton-cols="8">%s</div></div>|html}
+      live_widget season_options table) ()
 
 let players_page ~season ~seasons ~search ~sort ~include_mismatch players =
   let season_options =
