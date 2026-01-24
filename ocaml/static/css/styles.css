@@ -681,6 +681,24 @@ body.menu-open {
   background-color: #0f172a; /* slate-900 */
 }
 
+/* Scrollable table container with sticky header support
+ * Use this wrapper for long tables that need:
+ * 1. Horizontal scroll on mobile (overflow-x-auto)
+ * 2. Sticky headers that work within the container
+ * The max-height creates a scrolling context where sticky works */
+.table-scroll-container {
+  max-height: 70vh;
+  overflow-y: auto;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table-scroll-container thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
 /* Sortable column header */
 th[data-sortable] {
   cursor: pointer;

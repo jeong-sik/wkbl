@@ -42,7 +42,7 @@ let history_page (seasons: historical_season list) =
       <div><h2 class="text-2xl font-bold text-slate-900 dark:text-slate-200">WKBL History</h2>
         <p class="text-slate-500 dark:text-slate-400 text-sm">Season champions and award winners since 1998.</p></div>
       <div class="space-y-3 sm:hidden">%s</div>
-      <div class="hidden sm:block bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-lg">
+      <div class="hidden sm:block bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 table-scroll-container shadow-lg">
         <table class="min-w-full text-sm">
           <thead class="bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 text-xs uppercase">
             <tr><th class="px-4 py-3 text-left">Season</th><th class="px-4 py-3 text-left">Champion</th><th class="px-4 py-3 text-left">Runner-up</th><th class="px-4 py-3 text-left">MVP</th><th class="px-4 py-3 text-left">Finals MVP</th><th class="px-4 py-3 text-left">ROY</th><th class="px-4 py-3 text-left">Scoring</th></tr>
@@ -122,7 +122,7 @@ let legends_page (legends: legend_player list) =
       <!-- Mobile card view -->
       <div class="grid grid-cols-1 gap-4 md:hidden">%s</div>
       <!-- Desktop table view -->
-      <div class="hidden md:block bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-lg">
+      <div class="hidden md:block bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 table-scroll-container shadow-lg">
         <table class="min-w-full text-sm">
           <thead class="bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 text-xs uppercase">
             <tr>
@@ -214,7 +214,7 @@ let coaches_page (coaches: coach list) =
       <!-- Mobile card view -->
       <div class="grid gap-4 md:hidden">%s</div>
       <!-- Desktop table view -->
-      <div class="hidden md:block bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-lg">
+      <div class="hidden md:block bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 table-scroll-container shadow-lg">
         <table class="min-w-full text-sm">
           <thead class="bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 text-xs uppercase">
             <tr><th class="px-4 py-3 text-left">감독</th><th class="px-4 py-3 text-left">팀</th><th class="px-4 py-3 text-left">재임기간</th><th class="px-4 py-3 text-center">우승</th><th class="px-4 py-3 text-center">정규 W</th><th class="px-4 py-3 text-center">플옵 W</th><th class="px-4 py-3 text-left">선수경력</th></tr>
@@ -253,7 +253,7 @@ let player_career_page ~player_name (entries: player_career_entry list) =
     {html|<div class="space-y-6">
       <div><h2 class="text-2xl font-bold text-slate-900 dark:text-slate-200">%s</h2>
         <p class="text-slate-500 dark:text-slate-400 text-sm">Career statistics by season.</p></div>
-      <div class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-lg">
+      <div class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 table-scroll-container shadow-lg">
         <table class="min-w-full text-sm font-mono tabular-nums">
           <thead class="bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 text-xs uppercase">
             <tr><th class="px-4 py-3 text-left">Season</th><th class="px-4 py-3 text-left">Team</th><th class="px-4 py-3 text-center">#</th><th class="px-4 py-3 text-center">GP</th><th class="px-4 py-3 text-center">PPG</th><th class="px-4 py-3 text-center">RPG</th><th class="px-4 py-3 text-center">APG</th><th class="px-4 py-3 text-center">★</th><th class="px-4 py-3 text-left">Awards</th></tr>

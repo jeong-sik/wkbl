@@ -487,7 +487,7 @@ let player_season_stats_table ~scope (stats: season_stats list) =
     |> String.concat "\n"
   in
   Printf.sprintf {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-lg animate-fade-in"><table class="season-stats-table min-w-[520px] sm:min-w-[720px] w-full text-sm font-mono table-auto">
-    <thead class="bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-xs whitespace-nowrap">
+    <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-xs whitespace-nowrap">
       <tr>
         <th class="px-4 py-3 text-left font-sans">Season</th>
         <th class="px-4 py-3 text-right w-[60px]">GP</th>
