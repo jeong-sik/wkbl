@@ -334,3 +334,129 @@ let team_shooting_comparison (teams: team_stats list) =
   </div>
 </div>
 |} team_rows
+
+(** Team comparison radar chart - overlay multiple teams on one radar *)
+let team_radar_chart ?(selected_teams = []) (teams: team_stats list) =
+  if teams = [] then ""
+  else
+    (* WKBL team colors *)
+    let team_color name = match name with
+      | "KB스타즈" -> ("#FFCC00", "rgba(255,204,0,0.2)")  (* Yellow *)
+      | "삼성생명" -> ("#004098", "rgba(0,64,152,0.2)")  (* Blue *)
+      | "우리은행" -> ("#003366", "rgba(0,51,102,0.2)")  (* Navy *)
+      | "하나원큐" -> ("#00B8A9", "rgba(0,184,169,0.2)")  (* Teal *)
+      | "신한은행" -> ("#004AAD", "rgba(0,74,173,0.2)")  (* Blue *)
+      | "OK저축은행" -> ("#EE3338", "rgba(238,51,56,0.2)")  (* Red *)
+      | _ -> ("#F97316", "rgba(249,115,22,0.2)")  (* Default orange *)
+    in
+
+    (* Filter teams if selection provided, otherwise use top 3 by EFF *)
+    let display_teams = match selected_teams with
+      | [] -> List.sort (fun a b -> compare b.eff a.eff) teams |> (fun l -> try List.filteri (fun i _ -> i < 3) l with _ -> l)
+      | names -> List.filter (fun t -> List.mem t.team names) teams
+    in
+
+    if display_teams = [] then ""
+    else
+      (* Chart dimensions *)
+      let size = 300.0 in
+      let center = size /. 2.0 in
+      let radius = 100.0 in
+
+      (* 6 axes: PTS, REB, AST, STL, BLK, EFF *)
+      let labels = [|"PTS"; "REB"; "AST"; "STL"; "BLK"; "EFF"|] in
+      let n_axes = Array.length labels in
+      let angle_step = 2.0 *. Float.pi /. float_of_int n_axes in
+
+      (* Find max values for normalization - team_stats fields are already float *)
+      let max_pts = List.fold_left (fun m (t: team_stats) -> max m t.pts) 0.0 teams in
+      let max_reb = List.fold_left (fun m (t: team_stats) -> max m t.reb) 0.0 teams in
+      let max_ast = List.fold_left (fun m (t: team_stats) -> max m t.ast) 0.0 teams in
+      let max_stl = List.fold_left (fun m (t: team_stats) -> max m t.stl) 0.0 teams in
+      let max_blk = List.fold_left (fun m (t: team_stats) -> max m t.blk) 0.0 teams in
+      let max_eff = List.fold_left (fun m (t: team_stats) -> max m t.eff) 0.0 teams in
+
+      let normalize (t: team_stats) i = match i with
+        | 0 -> t.pts /. max (max_pts *. 1.1) 1.0
+        | 1 -> t.reb /. max (max_reb *. 1.1) 1.0
+        | 2 -> t.ast /. max (max_ast *. 1.1) 1.0
+        | 3 -> t.stl /. max (max_stl *. 1.1) 1.0
+        | 4 -> t.blk /. max (max_blk *. 1.1) 1.0
+        | 5 -> t.eff /. max (max_eff *. 1.1) 1.0
+        | _ -> 0.0
+      in
+
+      (* Generate grid circles *)
+      let grid_circles = [0.2; 0.4; 0.6; 0.8; 1.0] |> List.map (fun level ->
+        Printf.sprintf {|<circle cx="%.1f" cy="%.1f" r="%.1f" fill="none" stroke="#94a3b8" stroke-width="0.5" opacity="0.3"/>|}
+          center center (radius *. level)
+      ) |> String.concat "\n" in
+
+      (* Generate axis lines and labels *)
+      let axes_and_labels = Array.mapi (fun i label ->
+        let angle = float_of_int i *. angle_step -. (Float.pi /. 2.0) in
+        let x_end = center +. radius *. cos angle in
+        let y_end = center +. radius *. sin angle in
+        let x_label = center +. (radius +. 18.0) *. cos angle in
+        let y_label = center +. (radius +. 18.0) *. sin angle in
+        Printf.sprintf {|<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="#94a3b8" stroke-width="0.5" opacity="0.5"/>
+<text x="%.1f" y="%.1f" fill="#64748b" font-size="10" text-anchor="middle" dominant-baseline="middle" font-weight="500">%s</text>|}
+          center center x_end y_end x_label y_label label
+      ) labels |> Array.to_list |> String.concat "\n" in
+
+      (* Generate polygon for each team *)
+      let team_polygons = display_teams |> List.mapi (fun idx t ->
+        let (stroke_color, fill_color) = team_color t.team in
+        let points = Array.mapi (fun i _ ->
+          let angle = float_of_int i *. angle_step -. (Float.pi /. 2.0) in
+          let value = normalize t i in
+          let r = radius *. value in
+          let x = center +. r *. cos angle in
+          let y = center +. r *. sin angle in
+          Printf.sprintf "%.1f,%.1f" x y
+        ) labels |> Array.to_list |> String.concat " " in
+        Printf.sprintf {|<polygon points="%s" fill="%s" stroke="%s" stroke-width="2" class="radar-polygon-%c" style="animation-delay: %.1fs"/>|}
+          points fill_color stroke_color (Char.chr (97 + idx)) (float_of_int idx *. 0.15)
+      ) |> String.concat "\n" in
+
+      (* Generate legend *)
+      let legend_items = display_teams |> List.map (fun t ->
+        let (color, _) = team_color t.team in
+        Printf.sprintf {|<span class="flex items-center gap-1"><span class="w-3 h-3 rounded" style="background-color: %s"></span><span class="text-xs text-slate-600 dark:text-slate-400">%s</span></span>|}
+          color t.team
+      ) |> String.concat "\n" in
+
+      Printf.sprintf {|
+<div class="team-radar-chart bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-lg">
+  <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+    <span>🎯</span> 팀 능력치 비교
+  </h3>
+  <div class="flex justify-center">
+    <svg viewBox="0 0 %.0f %.0f" class="w-full max-w-[320px] h-auto" aria-label="Team comparison radar chart">
+      <style>
+        @keyframes radar-draw {
+          from { stroke-dashoffset: 1000; opacity: 0; }
+          to { stroke-dashoffset: 0; opacity: 1; }
+        }
+        @keyframes radar-fill {
+          from { fill-opacity: 0; }
+          to { fill-opacity: 0.2; }
+        }
+        .radar-polygon-a, .radar-polygon-b, .radar-polygon-c {
+          stroke-dasharray: 1000;
+          animation: radar-draw 0.8s ease-out forwards, radar-fill 0.5s ease-out 0.5s forwards;
+          fill-opacity: 0;
+        }
+      </style>
+      %s
+      %s
+      %s
+    </svg>
+  </div>
+  <div class="flex flex-wrap justify-center gap-4 mt-4">
+    %s
+  </div>
+  <div class="text-center text-[10px] text-slate-500 mt-2">효율(EFF) 상위 3팀 자동 표시</div>
+</div>
+|}
+      size size grid_circles axes_and_labels team_polygons legend_items

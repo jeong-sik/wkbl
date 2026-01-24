@@ -292,6 +292,15 @@ Sitemap: https://wkbl.win/sitemap.xml
       | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
     );
 
+    (* Team Radar Chart - HTMX Partial *)
+    Kirin.get "/teams/radar-chart" (fun request ->
+      let season = Kirin.query_opt "season" request |> Option.value ~default:"ALL" in
+      let include_mismatch = query_bool request "include_mismatch" in
+      match Db.get_team_stats ~season ~scope:Domain.PerGame ~sort:Domain.TeamByEfficiency ~include_mismatch () with
+      | Ok stats -> Kirin.html (Views_charts.team_radar_chart stats)
+      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+    );
+
     (* Standings *)
     Kirin.get "/standings" (fun request ->
       match Db.get_seasons () with
