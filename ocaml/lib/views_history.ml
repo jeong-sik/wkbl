@@ -4,10 +4,21 @@
 open Domain
 open Views_common
 
+(** Render multiple teams as a flex row of team logos *)
+let multi_team_badges teams_str =
+  let teams = String.split_on_char ',' teams_str
+    |> List.map String.trim
+    |> List.filter (fun s -> s <> "") in
+  match teams with
+  | [] -> "-"
+  | _ ->
+    let badges = teams |> List.map (fun t -> team_logo_tag ~class_name:"w-5 h-5" t) |> String.concat " " in
+    Printf.sprintf {html|<div class="flex items-center gap-1 flex-wrap">%s</div>|html} badges
+
 let history_page (seasons: historical_season list) =
   let rows = seasons |> List.map (fun (s: historical_season) ->
-    let champion = match s.hs_champion_team with Some t -> escape_html t | None -> "-" in
-    let runner_up = match s.hs_runner_up with Some t -> escape_html t | None -> "-" in
+    let champion = match s.hs_champion_team with Some t -> team_badge ~max_width:"max-w-[100px]" t | None -> "-" in
+    let runner_up = match s.hs_runner_up with Some t -> team_badge ~max_width:"max-w-[100px]" t | None -> "-" in
     let mvp = match s.hs_regular_mvp with Some p -> escape_html p | None -> "-" in
     let finals_mvp = match s.hs_finals_mvp with Some p -> escape_html p | None -> "-" in
     let roy = match s.hs_rookie_of_year with Some p -> escape_html p | None -> "-" in
@@ -25,7 +36,7 @@ let history_page (seasons: historical_season list) =
       (escape_html s.hs_season_name) champion runner_up mvp finals_mvp roy scoring
   ) |> String.concat "\n" in
   let mobile_cards = seasons |> List.map (fun (s: historical_season) ->
-    let champion = match s.hs_champion_team with Some t -> escape_html t | None -> "-" in
+    let champion = match s.hs_champion_team with Some t -> team_badge ~max_width:"max-w-[100px]" t | None -> "-" in
     let mvp = match s.hs_regular_mvp with Some p -> escape_html p | None -> "-" in
     Printf.sprintf
       {html|<div class="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-lg p-4 space-y-2">
@@ -57,7 +68,7 @@ let history_page (seasons: historical_season list) =
 let legends_page (legends: legend_player list) =
   (* Mobile card view *)
   let cards = legends |> List.map (fun (l: legend_player) ->
-    let teams = match l.lp_teams with Some t -> escape_html t | None -> "-" in
+    let teams = match l.lp_teams with Some t -> multi_team_badges t | None -> "-" in
     let years = match l.lp_career_years with Some y -> escape_html y | None -> "-" in
     let achievements = match l.lp_notable_achievements with Some a -> escape_html a | None -> "" in
     let hof_badge = if l.lp_is_hall_of_fame then {html|<span class="bg-yellow-500 text-white text-[10px] px-2 py-0.5 rounded-full ml-2">HOF</span>|html} else "" in
@@ -96,7 +107,7 @@ let legends_page (legends: legend_player list) =
   ) |> String.concat "\n" in
   (* Desktop table view *)
   let rows = legends |> List.map (fun (l: legend_player) ->
-    let teams = match l.lp_teams with Some t -> escape_html t | None -> "-" in
+    let teams = match l.lp_teams with Some t -> multi_team_badges t | None -> "-" in
     let years = match l.lp_career_years with Some y -> escape_html y | None -> "-" in
     let hof_badge = if l.lp_is_hall_of_fame then {html|<span class="bg-yellow-500 text-white text-[10px] px-2 py-0.5 rounded-full ml-1">HOF</span>|html} else "" in
     Printf.sprintf
