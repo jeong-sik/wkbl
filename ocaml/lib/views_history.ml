@@ -112,15 +112,15 @@ let legends_page (legends: legend_player list) =
     let hof_badge = if l.lp_is_hall_of_fame then {html|<span class="bg-yellow-500 text-white text-[10px] px-2 py-0.5 rounded-full ml-1">HOF</span>|html} else "" in
     Printf.sprintf
       {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-50 dark:hover:bg-slate-800/30">
-        <td class="px-4 py-3 font-bold whitespace-nowrap">%s%s</td>
-        <td class="px-4 py-3 text-slate-600 dark:text-slate-400">%s</td>
-        <td class="px-4 py-3 text-slate-600 dark:text-slate-400 text-sm">%s</td>
-        <td class="px-4 py-3 text-center font-bold text-orange-600 dark:text-orange-400">%d</td>
-        <td class="px-4 py-3 text-center font-bold text-orange-600 dark:text-orange-400">%d</td>
-        <td class="px-4 py-3 text-center">%d</td>
-        <td class="px-4 py-3 text-center font-mono">%d</td>
-        <td class="px-4 py-3 text-center font-mono">%d</td>
-        <td class="px-4 py-3 text-center font-mono">%d</td>
+        <td class="px-3 py-2 font-bold whitespace-nowrap">%s%s</td>
+        <td class="px-3 py-2 text-slate-600 dark:text-slate-400">%s</td>
+        <td class="px-3 py-2 text-slate-600 dark:text-slate-400 text-sm">%s</td>
+        <td class="px-3 py-2 text-center font-bold text-orange-600 dark:text-orange-400">%d</td>
+        <td class="px-3 py-2 text-center font-bold text-orange-600 dark:text-orange-400">%d</td>
+        <td class="px-3 py-2 text-center">%d</td>
+        <td class="px-3 py-2 text-center font-mono">%d</td>
+        <td class="px-3 py-2 text-center font-mono">%d</td>
+        <td class="px-3 py-2 text-center font-mono">%d</td>
       </tr>|html}
       (escape_html l.lp_player_name) hof_badge years teams
       l.lp_championships l.lp_mvp_count l.lp_all_star_count
@@ -137,15 +137,15 @@ let legends_page (legends: legend_player list) =
         <table class="min-w-full text-sm">
           <thead class="bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 text-xs uppercase">
             <tr>
-              <th class="px-4 py-3 text-left">선수</th>
-              <th class="px-4 py-3 text-left">활동기간</th>
-              <th class="px-4 py-3 text-left">소속팀</th>
-              <th class="px-4 py-3 text-center">우승</th>
-              <th class="px-4 py-3 text-center">MVP</th>
-              <th class="px-4 py-3 text-center">올스타</th>
-              <th class="px-4 py-3 text-center">통산득점</th>
-              <th class="px-4 py-3 text-center">통산리바</th>
-              <th class="px-4 py-3 text-center">통산어시</th>
+              <th class="px-3 py-2 text-left">선수</th>
+              <th class="px-3 py-2 text-left">활동기간</th>
+              <th class="px-3 py-2 text-left">소속팀</th>
+              <th class="px-3 py-2 text-center">우승</th>
+              <th class="px-3 py-2 text-center">MVP</th>
+              <th class="px-3 py-2 text-center">올스타</th>
+              <th class="px-3 py-2 text-center">통산득점</th>
+              <th class="px-3 py-2 text-center">통산리바</th>
+              <th class="px-3 py-2 text-center">통산어시</th>
             </tr>
           </thead>
           <tbody>%s</tbody>
@@ -208,13 +208,13 @@ let coaches_page (coaches: coach list) =
     else "" in
     Printf.sprintf
       {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-50 dark:hover:bg-slate-800/30">
-        <td class="px-4 py-3 font-bold">%s</td>
-        <td class="px-4 py-3">%s</td>
-        <td class="px-4 py-3 font-mono text-sm">%s</td>
-        <td class="px-4 py-3 text-center font-bold text-orange-600 dark:text-orange-400">%d</td>
-        <td class="px-4 py-3 text-center">%d</td>
-        <td class="px-4 py-3 text-center">%d</td>
-        <td class="px-4 py-3">%s</td>
+        <td class="px-3 py-2 font-bold">%s</td>
+        <td class="px-3 py-2">%s</td>
+        <td class="px-3 py-2 font-mono text-sm">%s</td>
+        <td class="px-3 py-2 text-center font-bold text-orange-600 dark:text-orange-400">%d</td>
+        <td class="px-3 py-2 text-center">%d</td>
+        <td class="px-3 py-2 text-center">%d</td>
+        <td class="px-3 py-2">%s</td>
       </tr>|html}
       (escape_html c.c_coach_name) team tenure c.c_championships c.c_regular_season_wins c.c_playoff_wins player_info
   ) |> String.concat "\n" in
@@ -228,7 +228,7 @@ let coaches_page (coaches: coach list) =
       <div class="hidden md:block bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 table-scroll-container shadow-lg">
         <table class="min-w-full text-sm">
           <thead class="bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 text-xs uppercase">
-            <tr><th class="px-4 py-3 text-left">감독</th><th class="px-4 py-3 text-left">팀</th><th class="px-4 py-3 text-left">재임기간</th><th class="px-4 py-3 text-center">우승</th><th class="px-4 py-3 text-center">정규 W</th><th class="px-4 py-3 text-center">플옵 W</th><th class="px-4 py-3 text-left">선수경력</th></tr>
+            <tr><th class="px-3 py-2 text-left">감독</th><th class="px-3 py-2 text-left">팀</th><th class="px-3 py-2 text-left">재임기간</th><th class="px-3 py-2 text-center">우승</th><th class="px-3 py-2 text-center">정규 W</th><th class="px-3 py-2 text-center">플옵 W</th><th class="px-3 py-2 text-left">선수경력</th></tr>
           </thead>
           <tbody>%s</tbody>
         </table>
@@ -248,15 +248,15 @@ let player_career_page ~player_name (entries: player_career_entry list) =
     let awards = match e.pce_awards with Some a -> escape_html a | None -> "" in
     Printf.sprintf
       {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-50 dark:hover:bg-slate-800/30">
-        <td class="px-4 py-3 font-mono">%s</td>
-        <td class="px-4 py-3 font-medium">%s</td>
-        <td class="px-4 py-3 text-center">%s</td>
-        <td class="px-4 py-3 text-center">%s</td>
-        <td class="px-4 py-3 text-center font-bold">%s</td>
-        <td class="px-4 py-3 text-center">%s</td>
-        <td class="px-4 py-3 text-center">%s</td>
-        <td class="px-4 py-3 text-center">%s</td>
-        <td class="px-4 py-3 text-sm text-slate-500 dark:text-slate-400">%s</td>
+        <td class="px-3 py-2 font-mono">%s</td>
+        <td class="px-3 py-2 font-medium">%s</td>
+        <td class="px-3 py-2 text-center">%s</td>
+        <td class="px-3 py-2 text-center">%s</td>
+        <td class="px-3 py-2 text-center font-bold">%s</td>
+        <td class="px-3 py-2 text-center">%s</td>
+        <td class="px-3 py-2 text-center">%s</td>
+        <td class="px-3 py-2 text-center">%s</td>
+        <td class="px-3 py-2 text-sm text-slate-500 dark:text-slate-400">%s</td>
       </tr>|html}
       (escape_html e.pce_season_id) (escape_html e.pce_team) jersey gp ppg rpg apg allstar awards
   ) |> String.concat "\n" in
@@ -267,7 +267,7 @@ let player_career_page ~player_name (entries: player_career_entry list) =
       <div class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 table-scroll-container shadow-lg">
         <table class="min-w-full text-sm font-mono tabular-nums">
           <thead class="bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 text-xs uppercase">
-            <tr><th class="px-4 py-3 text-left">Season</th><th class="px-4 py-3 text-left">Team</th><th class="px-4 py-3 text-center">#</th><th class="px-4 py-3 text-center">GP</th><th class="px-4 py-3 text-center">PPG</th><th class="px-4 py-3 text-center">RPG</th><th class="px-4 py-3 text-center">APG</th><th class="px-4 py-3 text-center">★</th><th class="px-4 py-3 text-left">Awards</th></tr>
+            <tr><th class="px-3 py-2 text-left">Season</th><th class="px-3 py-2 text-left">Team</th><th class="px-3 py-2 text-center">#</th><th class="px-3 py-2 text-center">GP</th><th class="px-3 py-2 text-center">PPG</th><th class="px-3 py-2 text-center">RPG</th><th class="px-3 py-2 text-center">APG</th><th class="px-3 py-2 text-center">★</th><th class="px-3 py-2 text-left">Awards</th></tr>
           </thead>
           <tbody>%s</tbody>
         </table>
