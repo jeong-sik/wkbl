@@ -43,9 +43,9 @@ let history_page (seasons: historical_season list) =
         <p class="text-slate-500 dark:text-slate-400 text-sm">Season champions and award winners since 1998.</p></div>
       <div class="space-y-3 sm:hidden">%s</div>
       <div class="hidden sm:block bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 table-scroll-container shadow-lg">
-        <table class="min-w-full text-sm">
+        <table class="w-full text-sm table-fixed">
           <thead class="bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 text-xs uppercase">
-            <tr><th class="px-4 py-3 text-left">Season</th><th class="px-4 py-3 text-left">Champion</th><th class="px-4 py-3 text-left">Runner-up</th><th class="px-4 py-3 text-left">MVP</th><th class="px-4 py-3 text-left">Finals MVP</th><th class="px-4 py-3 text-left">ROY</th><th class="px-4 py-3 text-left">Scoring</th></tr>
+            <tr><th class="w-[10%%] px-4 py-3 text-left">Season</th><th class="w-[14%%] px-4 py-3 text-left">Champion</th><th class="w-[14%%] px-4 py-3 text-left">Runner-up</th><th class="w-[18%%] px-4 py-3 text-left">MVP</th><th class="w-[18%%] px-4 py-3 text-left">Finals MVP</th><th class="w-[13%%] px-4 py-3 text-left">ROY</th><th class="w-[13%%] px-4 py-3 text-left">Scoring</th></tr>
           </thead>
           <tbody>%s</tbody>
         </table>
