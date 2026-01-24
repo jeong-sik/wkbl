@@ -1,0 +1,66 @@
+{
+  "name": "WKBL Analytics - 여자농구 통계",
+  "short_name": "WKBL",
+  "description": "한국 여자프로농구 통계 분석 플랫폼",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0b0e14",
+  "theme_color": "#f97316",
+  "scope": "/",
+  "lang": "ko",
+  "categories": ["sports", "news"],
+  "icons": [
+    {
+      "src": "/static/images/favicon-16.png",
+      "sizes": "16x16",
+      "type": "image/png"
+    },
+    {
+      "src": "/static/images/favicon-32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "/static/images/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/images/favicon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/static/images/og-image.jpeg",
+      "sizes": "1200x630",
+      "type": "image/jpeg",
+      "form_factor": "wide",
+      "label": "WKBL Analytics 홈 화면"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "선수 통계",
+      "short_name": "선수",
+      "url": "/players",
+      "icons": [{"src": "/static/images/favicon-32.png", "sizes": "32x32"}]
+    },
+    {
+      "name": "경기 일정",
+      "short_name": "경기",
+      "url": "/games",
+      "icons": [{"src": "/static/images/favicon-32.png", "sizes": "32x32"}]
+    },
+    {
+      "name": "순위표",
+      "short_name": "순위",
+      "url": "/standings",
+      "icons": [{"src": "/static/images/favicon-32.png", "sizes": "32x32"}]
+    }
+  ]
+}

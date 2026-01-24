@@ -971,6 +971,14 @@ let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="")
   <link rel="icon" type="image/png" sizes="32x32" href="/static/images/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="/static/images/favicon-16.png">
   <link rel="apple-touch-icon" sizes="180x180" href="/static/images/apple-touch-icon.png">
+  <!-- PWA Support -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#f97316" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0b0e14" media="(prefers-color-scheme: dark)">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="WKBL">
   <script src="/static/js/theme-toggle.js?v=%s" data-cfasync="false"></script>
   <script src="/static/js/htmx-1.9.10.min.js?v=%s" defer data-cfasync="false"></script>
   <script src="/static/js/page-transitions.js?v=%s" defer data-cfasync="false"></script>
@@ -1142,6 +1150,16 @@ let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="")
       </button>
     </div>
   </nav>
+  <!-- PWA Service Worker Registration -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then(reg => console.log('[PWA] SW registered:', reg.scope))
+          .catch(err => console.warn('[PWA] SW registration failed:', err));
+      });
+    }
+  </script>
 </body>
 </html>|html}
     (escape_html title) (escape_html meta_desc) (escape_html og_title_val) (escape_html og_desc_val) (escape_html og_image_val) (escape_html canonical_url) (escape_html og_title_val) (escape_html og_desc_val) (escape_html og_image_val) (escape_html canonical_url) v v v v v v v v v v v json_ld_script cf_wa_script content
