@@ -1247,3 +1247,87 @@ let empty_lineup_stats ~team_name : lineup_stats = {
   ls_avg_pts_per_min = 0.0;
   ls_avg_margin_per_min = 0.0;
 }
+
+(* ========== Shot Chart Types ========== *)
+
+(** Shot zone types based on PBP description patterns *)
+type shot_zone =
+  | Paint      (* 페인트존 - near basket *)
+  | MidRange   (* 2점슛 without 페인트존 *)
+  | ThreePoint (* 3점슛 *)
+
+(** Shot result *)
+type shot_result = Made | Missed
+
+(** Single shot event *)
+type shot_event = {
+  se_player_name: string;
+  se_zone: shot_zone;
+  se_result: shot_result;
+  se_game_id: string;
+  se_period: string;
+  se_clock: string;
+}
+
+(** Zone stats for shot chart *)
+type zone_stats = {
+  zs_zone: shot_zone;
+  zs_made: int;
+  zs_attempts: int;
+  zs_pct: float;
+}
+
+(** Player shot chart data *)
+type player_shot_chart = {
+  psc_player_id: string;
+  psc_player_name: string;
+  psc_team_name: string;
+  psc_paint: zone_stats;
+  psc_mid: zone_stats;
+  psc_three: zone_stats;
+  psc_total_made: int;
+  psc_total_attempts: int;
+  psc_total_pct: float;
+}
+
+(** Parse shot zone from description *)
+let parse_shot_zone desc =
+  if String.length desc >= 3 then
+    if String.sub desc 0 3 = "페인" ||
+       (try let _ = Str.search_forward (Str.regexp "페인트존") desc 0 in true with Not_found -> false)
+    then Some Paint
+    else if (try let _ = Str.search_forward (Str.regexp "3점슛") desc 0 in true with Not_found -> false)
+    then Some ThreePoint
+    else if (try let _ = Str.search_forward (Str.regexp "2점슛") desc 0 in true with Not_found -> false)
+    then Some MidRange
+    else None
+  else None
+
+(** Parse shot result from description *)
+let parse_shot_result desc =
+  if (try let _ = Str.search_forward (Str.regexp "성공") desc 0 in true with Not_found -> false)
+  then Some Made
+  else if (try let _ = Str.search_forward (Str.regexp "시도") desc 0 in true with Not_found -> false)
+  then Some Missed
+  else None
+
+(** Calculate zone stats *)
+let calc_zone_stats made attempts : zone_stats =
+  let zone = Paint in (* placeholder, will be set by caller *)
+  {
+    zs_zone = zone;
+    zs_made = made;
+    zs_attempts = attempts;
+    zs_pct = if attempts > 0 then (float_of_int made /. float_of_int attempts) *. 100.0 else 0.0;
+  }
+
+(** String representation of shot zone *)
+let string_of_zone = function
+  | Paint -> "paint"
+  | MidRange -> "mid"
+  | ThreePoint -> "three"
+
+let zone_label = function
+  | Paint -> "페인트존"
+  | MidRange -> "미드레인지"
+  | ThreePoint -> "3점"

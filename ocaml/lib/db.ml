@@ -3300,6 +3300,50 @@ module Queries = struct
       AND s.min_seconds > 0
     GROUP BY p.player_id, p.player_name, t.team_name_kr
   |}
+
+  (* Shot chart: Get aggregated shot stats by zone for a player *)
+  let player_shot_stats = (t2 string string ->* t4 string int int float) {|
+    SELECT
+      CASE
+        WHEN description LIKE '%페인트존%' THEN 'paint'
+        WHEN description LIKE '%3점슛%' THEN 'three'
+        WHEN description LIKE '%2점슛%' THEN 'mid'
+        ELSE 'other'
+      END as zone,
+      SUM(CASE WHEN description LIKE '%성공%' THEN 1 ELSE 0 END)::int as made,
+      COUNT(*)::int as attempts,
+      ROUND(
+        SUM(CASE WHEN description LIKE '%성공%' THEN 1 ELSE 0 END)::numeric /
+        NULLIF(COUNT(*), 0) * 100, 1
+      )::float as pct
+    FROM play_by_play_events p
+    JOIN games g ON p.game_id = g.game_id
+    WHERE p.player_id = $1
+      AND p.description LIKE '%슛%'
+      AND ($2 = 'ALL' OR g.season_code = $2)
+    GROUP BY 1
+    ORDER BY 1
+  |}
+
+  (* Shot chart: Get player info for shot chart header *)
+  let player_shot_info = (string ->? t3 string string string) {|
+    SELECT
+      p.player_id,
+      p.player_name,
+      COALESCE(t.team_name_kr, 'Unknown')
+    FROM players p
+    LEFT JOIN (
+      SELECT gs.player_id, gs.team_code, g.season_code
+      FROM game_stats gs
+      JOIN games g ON gs.game_id = g.game_id
+      WHERE gs.player_id = $1
+      ORDER BY g.season_code DESC, g.game_date DESC
+      LIMIT 1
+    ) latest_gs ON p.player_id = latest_gs.player_id
+    LEFT JOIN teams t ON latest_gs.team_code = t.team_code
+    WHERE p.player_id = $1
+    LIMIT 1
+  |}
 end
 
 (** Database operations *)
@@ -3368,6 +3412,45 @@ end
   let get_player_shooting_stats ~player_id ~season (module Db : Caqti_eio.CONNECTION) =
     let s = if String.trim season = "" then "ALL" else season in
     Db.find_opt Queries.player_shooting_stats_by_id (player_id, (s, s))
+
+  (* Shot chart data: zone stats + player info *)
+  let get_player_shot_chart ~player_id ~season (module Db : Caqti_eio.CONNECTION) =
+    let open Domain in
+    let s = if String.trim season = "" then "ALL" else season in
+    let (let*) = Result.bind in
+    let* zone_rows = Db.collect_list Queries.player_shot_stats (player_id, s) in
+    let* player_info = Db.find_opt Queries.player_shot_info player_id in
+    let (pid, pname, tname) = match player_info with
+      | Some (id, name, team) -> (id, name, team)
+      | None -> (player_id, "Unknown", "Unknown")
+    in
+    (* Parse zone rows into stats *)
+    let empty_zone zone = { zs_zone = zone; zs_made = 0; zs_attempts = 0; zs_pct = 0.0 } in
+    let paint_stats = ref (empty_zone Paint) in
+    let mid_stats = ref (empty_zone MidRange) in
+    let three_stats = ref (empty_zone ThreePoint) in
+    List.iter (fun (zone_str, made, attempts, pct) ->
+      let stats = { zs_zone = Paint; zs_made = made; zs_attempts = attempts; zs_pct = pct } in
+      match zone_str with
+      | "paint" -> paint_stats := { stats with zs_zone = Paint }
+      | "mid" -> mid_stats := { stats with zs_zone = MidRange }
+      | "three" -> three_stats := { stats with zs_zone = ThreePoint }
+      | _ -> ()
+    ) zone_rows;
+    let total_made = !paint_stats.zs_made + !mid_stats.zs_made + !three_stats.zs_made in
+    let total_attempts = !paint_stats.zs_attempts + !mid_stats.zs_attempts + !three_stats.zs_attempts in
+    let total_pct = if total_attempts > 0 then (float_of_int total_made /. float_of_int total_attempts) *. 100.0 else 0.0 in
+    Ok {
+      psc_player_id = pid;
+      psc_player_name = pname;
+      psc_team_name = tname;
+      psc_paint = !paint_stats;
+      psc_mid = !mid_stats;
+      psc_three = !three_stats;
+      psc_total_made = total_made;
+      psc_total_attempts = total_attempts;
+      psc_total_pct = total_pct;
+    }
 
   let get_draft_years (module Db : Caqti_eio.CONNECTION) =
     Db.collect_list Queries.draft_years ()
@@ -3886,6 +3969,8 @@ let get_player_aggregate_by_id ~player_id ?(season="ALL") () =
   with_db (fun db -> Repo.get_player_aggregate_by_id ~player_id ~season db)
 let get_player_shooting_stats ~player_id ?(season="ALL") () =
   with_db (fun db -> Repo.get_player_shooting_stats ~player_id ~season db)
+let get_player_shot_chart ~player_id ?(season="ALL") () =
+  with_db (fun db -> Repo.get_player_shot_chart ~player_id ~season db)
 let get_players_base ?(season="ALL") ?(include_mismatch=false) () =
   let key = Printf.sprintf "season=%s|mismatch=%b" season include_mismatch in
   cached players_base_cache key (fun () ->
