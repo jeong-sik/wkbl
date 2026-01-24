@@ -964,6 +964,25 @@ Sitemap: https://wkbl.win/sitemap.xml
       | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
     );
 
+    (* Player Zone Shot Chart (PBP-based) - Full Page *)
+    Kirin.get "/player/:id/shots" (fun request ->
+      let player_id = Kirin.param "id" request in
+      let season = Kirin.query_opt "season" request |> Option.value ~default:"ALL" in
+      let is_htmx = Kirin.header "HX-Request" request |> Option.is_some in
+      match Db.get_player_shot_chart ~player_id ~season () with
+      | Ok chart ->
+          if is_htmx then
+            Kirin.html (Views_charts.zone_shot_chart_partial chart)
+          else
+            (match Db.get_seasons () with
+            | Ok seasons ->
+                let season_list = seasons |> List.map (fun s -> (s.code, s.name)) in
+                Kirin.html (Views_charts.zone_shot_chart_page chart ~seasons:season_list ~current_season:season)
+            | Error _ ->
+                Kirin.html (Views_charts.zone_shot_chart_page chart ~seasons:[] ~current_season:season))
+      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+    );
+
     (* Team Profile *)
     Kirin.get "/team/:name" (fun request ->
       let team_name = Kirin.param "name" request |> Uri.pct_decode in
