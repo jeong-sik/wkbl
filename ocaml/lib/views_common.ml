@@ -136,7 +136,17 @@ let empty_state ?(icon=SearchIcon) ?(action="") title description =
     @param color_a Player A's color (hex)
     @param color_b Player B's color (hex)
 *)
-let radar_chart ~labels ~values_a ~values_b ~color_a ~color_b =
+(** WKBL league average normalized values (based on typical player averages) *)
+let league_avg_normalized = [
+  40.0;  (* PTS: ~10 ppg / 25 max = 40% *)
+  42.0;  (* REB: ~5 rpg / 12 max = 42% *)
+  25.0;  (* AST: ~2 apg / 8 max = 25% *)
+  33.0;  (* STL: ~1 spg / 3 max = 33% *)
+  25.0;  (* BLK: ~0.5 bpg / 2 max = 25% *)
+  40.0;  (* EFF: ~10 / 25 max = 40% *)
+]
+
+let radar_chart ?(show_league_avg=false) ~labels ~values_a ~values_b ~color_a ~color_b () =
   (* SVG viewBox dimensions *)
   let cx, cy = 150.0, 150.0 in
   let radius = 100.0 in
@@ -196,6 +206,25 @@ let radar_chart ~labels ~values_a ~values_b ~color_a ~color_b =
     Printf.sprintf "%.1f,%.1f" x y
   ) values_b in
 
+  (* Generate league average polygon (dashed line, no fill) *)
+  let league_avg_polygon = if show_league_avg then
+    let points_avg = List.mapi (fun i v ->
+      let normalized = Float.min 100.0 (Float.max 0.0 v) /. 100.0 in
+      let (x, y) = point_at_radius (radius *. normalized) i in
+      Printf.sprintf "%.1f,%.1f" x y
+    ) league_avg_normalized in
+    Printf.sprintf {|<polygon points="%s" fill="none" stroke="#64748b" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.6"/>|}
+      (String.concat " " points_avg)
+  else "" in
+
+  (* Legend for league average *)
+  let league_avg_legend = if show_league_avg then
+    {|<g transform="translate(150, 285)">
+      <line x1="-40" y1="0" x2="-15" y2="0" stroke="#64748b" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.6"/>
+      <text x="-8" y="4" class="text-[10px] fill-slate-500 dark:fill-slate-400">리그 평균</text>
+    </g>|}
+  else "" in
+
   (* Assemble the SVG with CSS animation *)
   Printf.sprintf
     {svg|<svg viewBox="0 0 300 300" class="w-full max-w-xs mx-auto" role="img" aria-label="선수 스탯 비교 레이더 차트">
@@ -224,18 +253,24 @@ let radar_chart ~labels ~values_a ~values_b ~color_a ~color_b =
   %s
   <!-- Axes -->
   %s
+  <!-- League average (dashed, background) -->
+  %s
   <!-- Player B polygon (back) -->
   <polygon class="radar-polygon-b" points="%s" fill="%s" stroke="%s" stroke-width="2"/>
   <!-- Player A polygon (front) -->
   <polygon class="radar-polygon-a" points="%s" fill="%s" stroke="%s" stroke-width="2"/>
   <!-- Labels -->
   %s
+  <!-- Legend -->
+  %s
 </svg>|svg}
     (String.concat "\n  " grid_paths)
     (String.concat "\n  " axis_lines)
+    league_avg_polygon
     (String.concat " " points_b) color_b color_b
     (String.concat " " points_a) color_a color_a
     (String.concat "\n  " axis_labels)
+    league_avg_legend
 
 (** Normalize stats to 0-100 scale for radar chart display.
     Uses typical WKBL max values as reference points. *)

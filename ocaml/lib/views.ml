@@ -899,7 +899,7 @@ let compare_page
             </div>|html}
             (escape_html (normalize_name a.name))
             (escape_html (normalize_name b.name))
-            (radar_chart ~labels ~values_a ~values_b ~color_a:"#f97316" ~color_b:"#0ea5e9")
+            (radar_chart ~show_league_avg:true ~labels ~values_a ~values_b ~color_a:"#f97316" ~color_b:"#0ea5e9" ())
         in
         (* Season trend line chart - shows PTS progression across seasons *)
         let trend_chart_html =
