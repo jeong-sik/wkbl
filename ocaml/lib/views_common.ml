@@ -702,29 +702,48 @@ let career_trajectory_chart (stats: season_stats list) =
         |> String.concat "\n"
       in
 
-      (* Data points for PTS (with values on hover) *)
+      (* Find career highs for main stats (PTS, EFF) *)
+      let max_pts = List.fold_left max 0.0 pts_data in
+      let max_eff = List.fold_left max 0.0 eff_data in
+
+      (* Data points for PTS with interactive tooltip and career-high marker *)
       let pts_points =
         pts_data
         |> List.mapi (fun i v ->
             let x = scale_x i in
             let y = scale_y v in
-            let season = (List.nth sorted_stats i).ss_season_name in
+            let stats = List.nth sorted_stats i in
+            let is_career_high = v = max_pts && v > 0.0 in
+            let marker = if is_career_high then
+              Printf.sprintf {svg|<text x="%.2f" y="%.2f" class="fill-orange-600 dark:fill-orange-400" font-size="8" text-anchor="middle">★</text>|svg}
+                x (y -. 10.0)
+            else "" in
             Printf.sprintf
-              {svg|<circle cx="%.2f" cy="%.2f" r="5" class="fill-orange-500 stroke-white dark:stroke-slate-900" stroke-width="2"><title>%s: %.1f PPG</title></circle>|svg}
-              x y (escape_html season) v)
+              {svg|%s<circle cx="%.2f" cy="%.2f" r="5" class="fill-orange-500 stroke-white dark:stroke-slate-900 cursor-pointer transition-transform hover:scale-150" stroke-width="2" data-season="%s" data-pts="%.1f" data-reb="%.1f" data-ast="%.1f" data-eff="%.1f"><title>%s
+PTS: %.1f | REB: %.1f | AST: %.1f | EFF: %.1f</title></circle>|svg}
+              marker x y
+              (escape_html stats.ss_season_name) stats.ss_avg_points stats.ss_avg_rebounds stats.ss_avg_assists stats.ss_efficiency
+              (escape_html stats.ss_season_name) stats.ss_avg_points stats.ss_avg_rebounds stats.ss_avg_assists stats.ss_efficiency)
         |> String.concat "\n"
       in
 
-      (* Data points for EFF *)
+      (* Data points for EFF with career-high marker *)
       let eff_points =
         eff_data
         |> List.mapi (fun i v ->
             let x = scale_x i in
             let y = scale_y v in
-            let season = (List.nth sorted_stats i).ss_season_name in
+            let stats = List.nth sorted_stats i in
+            let is_career_high = v = max_eff && v > 0.0 in
+            let marker = if is_career_high then
+              Printf.sprintf {svg|<text x="%.2f" y="%.2f" class="fill-emerald-600 dark:fill-emerald-400" font-size="8" text-anchor="middle">★</text>|svg}
+                x (y -. 10.0)
+            else "" in
             Printf.sprintf
-              {svg|<circle cx="%.2f" cy="%.2f" r="5" class="fill-emerald-500 stroke-white dark:stroke-slate-900" stroke-width="2"><title>%s: %.1f EFF</title></circle>|svg}
-              x y (escape_html season) v)
+              {svg|%s<circle cx="%.2f" cy="%.2f" r="5" class="fill-emerald-500 stroke-white dark:stroke-slate-900 cursor-pointer transition-transform hover:scale-150" stroke-width="2"><title>%s
+PTS: %.1f | REB: %.1f | AST: %.1f | EFF: %.1f</title></circle>|svg}
+              marker x y
+              (escape_html stats.ss_season_name) stats.ss_avg_points stats.ss_avg_rebounds stats.ss_avg_assists stats.ss_efficiency)
         |> String.concat "\n"
       in
 
