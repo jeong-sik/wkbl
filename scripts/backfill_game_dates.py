@@ -84,14 +84,16 @@ def parse_date(date_str: str) -> Optional[str]:
 
 def scrape_game_date(season_code: str, game_type: str, game_no: int) -> GameDateResult:
     """Scrape game date from WKBL result page."""
-    game_id = f"{season_code}-{game_type}-{game_no}"
+    # Pad season_code to 3 digits (DB stores "46", WKBL needs "046")
+    padded_season = season_code.zfill(3)
+    game_id = f"{padded_season}-{game_type}-{game_no}"
 
     # Try different year-months for the season
-    year_months = SEASON_YEAR_MONTHS.get(season_code, ["202510"])
+    year_months = SEASON_YEAR_MONTHS.get(padded_season, ["202510"])
 
     for ym in year_months:
         params = {
-            "season_gu": season_code,
+            "season_gu": padded_season,  # WKBL expects 3-digit format
             "gun": "1",
             "game_type": game_type,
             "game_no": str(game_no),
