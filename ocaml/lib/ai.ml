@@ -170,3 +170,141 @@ let get_explanation ~(home: string) ~(away: string) (output: prediction_output) 
   match generate_explanation ~home ~away output with
   | Ok explanation -> explanation
   | Error _ -> fallback_explanation ~home ~away output
+
+(* ========== Game Summary (Phase 4.2) ========== *)
+
+(** Cache for game summaries *)
+let game_summary_cache : (string, string) Hashtbl.t = Hashtbl.create 32
+
+(** Find top performer from player list *)
+let find_top_performer (players: boxscore_player_stat list) =
+  match players with
+  | [] -> None
+  | _ ->
+      let best = List.fold_left (fun best p ->
+        (* Score = PTS + (REB + AST) * 1.5 for MVP calculation *)
+        let score p = float_of_int p.bs_pts +. (float_of_int (p.bs_reb + p.bs_ast)) *. 1.5 in
+        if score p > score best then p else best
+      ) (List.hd players) players in
+      Some best
+
+(** Generate game summary prompt for LLM *)
+let build_game_summary_prompt (bs: game_boxscore) =
+  let gi = bs.boxscore_game in
+  let margin = gi.gi_home_score - gi.gi_away_score in
+  let winner =
+    if margin > 0 then gi.gi_home_team_name
+    else gi.gi_away_team_name
+  in
+
+  let home_top = find_top_performer bs.boxscore_home_players in
+  let away_top = find_top_performer bs.boxscore_away_players in
+
+  let top_performers = [home_top; away_top] |> List.filter_map Fun.id in
+  let mvp_candidates = top_performers
+    |> List.sort (fun a b ->
+        let score p = float_of_int p.bs_pts +. (float_of_int (p.bs_reb + p.bs_ast)) *. 1.5 in
+        compare (score b) (score a))
+    |> (fun l -> try [List.hd l] with _ -> [])
+  in
+
+  let mvp_text = match mvp_candidates with
+    | [p] -> Printf.sprintf "MVP 후보: %s (%dPTS, %dREB, %dAST)"
+        p.bs_player_name p.bs_pts p.bs_reb p.bs_ast
+    | _ -> ""
+  in
+
+  Printf.sprintf
+{|당신은 한국 여자프로농구(WKBL) 전문 기자입니다. 다음 경기 결과를 바탕으로 3문장 이내의 간결한 경기 요약을 작성하세요.
+
+## 경기 정보
+- 날짜: %s
+- 홈: %s (%d점)
+- 어웨이: %s (%d점)
+- 승자: %s (점수차: %d점)
+
+## 주요 선수
+%s
+
+## 요청
+- 첫 문장: 승패 결과와 점수차
+- 둘째 문장: MVP 후보의 활약
+- 셋째 문장: 경기 특징 (예: 접전, 대승, 역전 등)
+- 팀명은 정식 명칭 사용
+- 3문장 이내로 작성|}
+    gi.gi_game_date
+    gi.gi_home_team_name gi.gi_home_score
+    gi.gi_away_team_name gi.gi_away_score
+    winner (abs margin)
+    mvp_text
+
+(** Fallback game summary when AI is unavailable *)
+let fallback_game_summary (bs: game_boxscore) =
+  let gi = bs.boxscore_game in
+  let margin = abs (gi.gi_home_score - gi.gi_away_score) in
+  let winner, loser =
+    if gi.gi_home_score > gi.gi_away_score then
+      (gi.gi_home_team_name, gi.gi_away_team_name)
+    else
+      (gi.gi_away_team_name, gi.gi_home_team_name)
+  in
+
+  (* Find MVP candidate *)
+  let all_players = bs.boxscore_home_players @ bs.boxscore_away_players in
+  let mvp = find_top_performer all_players in
+
+  let result_text =
+    if margin >= 20 then
+      Printf.sprintf "%s%s %s%s 상대로 %d점 차 대승을 거뒀습니다."
+        winner (particle_ga winner) loser (particle_reul loser) margin
+    else if margin >= 10 then
+      Printf.sprintf "%s%s %s%s %d점 차로 제압했습니다."
+        winner (particle_ga winner) loser (particle_reul loser) margin
+    else if margin <= 5 then
+      Printf.sprintf "%s%s %s%s 상대로 %d점 차 접전 끝에 신승을 거뒀습니다."
+        winner (particle_ga winner) loser (particle_reul loser) margin
+    else
+      Printf.sprintf "%s%s %s%s %d점 차로 이겼습니다."
+        winner (particle_ga winner) loser (particle_reul loser) margin
+  in
+
+  let mvp_text = match mvp with
+    | Some p ->
+        let double_double =
+          (if p.bs_pts >= 10 then 1 else 0) +
+          (if p.bs_reb >= 10 then 1 else 0) +
+          (if p.bs_ast >= 10 then 1 else 0)
+        in
+        if double_double >= 2 then
+          Printf.sprintf "%s%s %dPTS-%dREB-%dAST 더블더블로 팀 승리를 이끌었습니다."
+            p.bs_player_name (particle_ga p.bs_player_name) p.bs_pts p.bs_reb p.bs_ast
+        else if p.bs_pts >= 20 then
+          Printf.sprintf "%s%s %d득점 맹활약으로 팀 공격을 주도했습니다."
+            p.bs_player_name (particle_ga p.bs_player_name) p.bs_pts
+        else
+          Printf.sprintf "%s%s %dPTS, %dREB, %dAST를 기록하며 활약했습니다."
+            p.bs_player_name (particle_ga p.bs_player_name) p.bs_pts p.bs_reb p.bs_ast
+    | None -> ""
+  in
+
+  if mvp_text <> "" then result_text ^ " " ^ mvp_text
+  else result_text
+
+(** Generate AI game summary *)
+let generate_game_summary (bs: game_boxscore) =
+  let key = bs.boxscore_game.gi_game_id in
+
+  (* Check cache first *)
+  match Hashtbl.find_opt game_summary_cache key with
+  | Some cached -> cached
+  | None ->
+      let summary =
+        let prompt = build_game_summary_prompt bs in
+        match call_llm_http ~prompt with
+        | Ok explanation ->
+            Hashtbl.replace game_summary_cache key explanation;
+            explanation
+        | Error _ -> fallback_game_summary bs
+      in
+      Hashtbl.replace game_summary_cache key summary;
+      summary
