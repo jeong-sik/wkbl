@@ -876,9 +876,9 @@ let players_table (players: player_aggregate list) =
     |> String.concat "\n"
   in
   Printf.sprintf
-    {html|<div class="overflow-x-auto overflow-y-hidden">
+    {html|<div class="overflow-x-auto max-h-[75vh] overflow-y-auto">
     <table class="min-w-[680px] sm:min-w-[860px] lg:min-w-[980px] w-full text-xs sm:text-sm font-mono tabular-nums table-fixed">
-      <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 text-slate-500 dark:text-slate-400 text-[10px] sm:text-xs uppercase tracking-wider whitespace-nowrap">
+      <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 text-[10px] sm:text-xs uppercase tracking-wider whitespace-nowrap">
         <tr>
           <th class="px-3 py-2 text-left w-12">#</th>
           <th class="px-3 py-2 text-left w-[220px] sm:w-[260px]">Player</th>
