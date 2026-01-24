@@ -458,14 +458,14 @@ let player_season_stats_table ~scope (stats: season_stats list) =
     in
     let name_class = if highlight then "text-slate-900 dark:text-slate-200 font-black" else "text-slate-900 dark:text-slate-200 font-medium" in
         Printf.sprintf {html|<tr class="%s">
-          <td class="px-4 py-3 %s truncate whitespace-nowrap">%s</td>
-          <td class="px-4 py-3 text-right text-slate-700 dark:text-slate-300 w-[60px] font-mono whitespace-nowrap">%d</td>
-          <td class="px-4 py-3 text-right text-slate-700 dark:text-slate-300 w-[80px] font-mono whitespace-nowrap hidden sm:table-cell">%.1f</td>
-          <td class="px-4 py-3 text-right font-bold text-orange-600 dark:text-orange-400 w-[80px] font-mono whitespace-nowrap">%.1f</td>
-          <td class="px-4 py-3 text-right font-bold %s w-[80px] font-mono whitespace-nowrap hidden sm:table-cell">%s</td>
-          <td class="px-4 py-3 text-right text-slate-700 dark:text-slate-300 w-[80px] font-mono whitespace-nowrap">%.1f</td>
-          <td class="px-4 py-3 text-right text-slate-700 dark:text-slate-300 w-[80px] font-mono whitespace-nowrap hidden sm:table-cell">%.1f</td>
-          <td class="px-4 py-3 text-right text-slate-700 dark:text-slate-300 w-[80px] font-mono whitespace-nowrap">%.1f</td>
+          <td class="px-3 py-2 %s truncate whitespace-nowrap">%s</td>
+          <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[60px] font-mono whitespace-nowrap">%d</td>
+          <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[80px] font-mono whitespace-nowrap hidden sm:table-cell">%.1f</td>
+          <td class="px-3 py-2 text-right font-bold text-orange-600 dark:text-orange-400 w-[80px] font-mono whitespace-nowrap">%.1f</td>
+          <td class="px-3 py-2 text-right font-bold %s w-[80px] font-mono whitespace-nowrap hidden sm:table-cell">%s</td>
+          <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[80px] font-mono whitespace-nowrap">%.1f</td>
+          <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[80px] font-mono whitespace-nowrap hidden sm:table-cell">%.1f</td>
+          <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[80px] font-mono whitespace-nowrap">%.1f</td>
         </tr>|html}
       row_class
       name_class
@@ -489,14 +489,14 @@ let player_season_stats_table ~scope (stats: season_stats list) =
   Printf.sprintf {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-lg animate-fade-in"><table class="season-stats-table min-w-[520px] sm:min-w-[720px] w-full text-sm font-mono table-fixed">
     <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-xs whitespace-nowrap">
       <tr>
-        <th class="px-4 py-3 text-left font-sans">Season</th>
-        <th class="px-4 py-3 text-right w-[60px]">GP</th>
-        <th class="px-4 py-3 text-right w-[80px] hidden sm:table-cell">MIN</th>
-        <th class="px-4 py-3 text-right text-orange-600 dark:text-orange-400 w-[80px]">PTS</th>
-        <th class="px-4 py-3 text-right w-[80px] hidden sm:table-cell">MG</th>
-        <th class="px-4 py-3 text-right w-[80px]">REB</th>
-        <th class="px-4 py-3 text-right w-[80px] hidden sm:table-cell">AST</th>
-        <th class="px-4 py-3 text-right w-[80px]">EFF</th>
+        <th class="px-3 py-2 text-left font-sans">Season</th>
+        <th class="px-3 py-2 text-right w-[60px]">GP</th>
+        <th class="px-3 py-2 text-right w-[80px] hidden sm:table-cell">MIN</th>
+        <th class="px-3 py-2 text-right text-orange-600 dark:text-orange-400 w-[80px]">PTS</th>
+        <th class="px-3 py-2 text-right w-[80px] hidden sm:table-cell">MG</th>
+        <th class="px-3 py-2 text-right w-[80px]">REB</th>
+        <th class="px-3 py-2 text-right w-[80px] hidden sm:table-cell">AST</th>
+        <th class="px-3 py-2 text-right w-[80px]">EFF</th>
       </tr>
     </thead>
     <tbody>%s</tbody>
@@ -505,8 +505,8 @@ let player_season_stats_table ~scope (stats: season_stats list) =
 (** Player Season Stats Component (Tabs + Table) *)
 let player_season_stats_component ~player_id ~scope (stats: season_stats list) =
   let btn_class active =
-    if active then "season-stats-tab px-3 sm:px-4 py-2 bg-transparent border-0 border-b-2 border-orange-500 text-slate-900 dark:text-slate-200 font-medium cursor-default pointer-events-none whitespace-nowrap"
-    else "season-stats-tab px-3 sm:px-4 py-2 bg-transparent border-0 border-b-2 border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition cursor-pointer font-medium whitespace-nowrap"
+    if active then "season-stats-tab px-3 sm:px-3 py-2 bg-transparent border-0 border-b-2 border-orange-500 text-slate-900 dark:text-slate-200 font-medium cursor-default pointer-events-none whitespace-nowrap"
+    else "season-stats-tab px-3 sm:px-3 py-2 bg-transparent border-0 border-b-2 border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition cursor-pointer font-medium whitespace-nowrap"
   in
   let s_per = btn_class (scope = "per_game") in
   let s_tot = btn_class (scope = "totals") in
@@ -880,19 +880,19 @@ let players_table (players: player_aggregate list) =
     <table class="min-w-[680px] sm:min-w-[860px] lg:min-w-[980px] w-full text-xs sm:text-sm font-mono tabular-nums table-fixed">
       <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 text-slate-500 dark:text-slate-400 text-[10px] sm:text-xs uppercase tracking-wider whitespace-nowrap">
         <tr>
-          <th class="px-3 py-3 text-left w-12">#</th>
-          <th class="px-3 py-3 text-left w-[220px] sm:w-[260px]">Player</th>
-          <th class="px-3 py-3 text-left w-[120px] sm:w-[160px]">Team</th>
-          <th class="px-3 py-3 text-right w-[60px] hidden sm:table-cell">GP</th>
-          <th class="px-3 py-3 text-right w-[72px] cursor-pointer hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300" hx-get="/players/table?sort=pts" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter">PTS</th>
-          <th class="px-3 py-3 text-right w-[72px] cursor-pointer hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 hidden md:table-cell" title="MG: 팀 득실마진(출전시간 가중 평균)" hx-get="/players/table?sort=mg" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter">MG</th>
-          <th class="px-3 py-3 text-right w-[72px] cursor-pointer hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300" hx-get="/players/table?sort=reb" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter">REB</th>
-          <th class="px-3 py-3 text-right w-[72px] cursor-pointer hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 hidden md:table-cell" hx-get="/players/table?sort=ast" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter">AST</th>
-          <th class="px-3 py-3 text-right w-[72px] hidden lg:table-cell">STL</th>
-          <th class="px-3 py-3 text-right w-[72px] hidden lg:table-cell">BLK</th>
-          <th class="px-3 py-3 text-right w-[72px] hidden lg:table-cell">TO</th>
-          <th class="px-3 py-3 text-right w-[72px] cursor-pointer hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300" hx-get="/players/table?sort=eff" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter">EFF</th>
-          <th class="px-3 py-3 text-right w-[72px] hidden sm:table-cell" title="Player Efficiency Rating (분당 효율 정규화)">PER</th>
+          <th class="px-3 py-2 text-left w-12">#</th>
+          <th class="px-3 py-2 text-left w-[220px] sm:w-[260px]">Player</th>
+          <th class="px-3 py-2 text-left w-[120px] sm:w-[160px]">Team</th>
+          <th class="px-3 py-2 text-right w-[60px] hidden sm:table-cell">GP</th>
+          <th class="px-3 py-2 text-right w-[72px] cursor-pointer hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300" hx-get="/players/table?sort=pts" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter">PTS</th>
+          <th class="px-3 py-2 text-right w-[72px] cursor-pointer hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 hidden md:table-cell" title="MG: 팀 득실마진(출전시간 가중 평균)" hx-get="/players/table?sort=mg" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter">MG</th>
+          <th class="px-3 py-2 text-right w-[72px] cursor-pointer hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300" hx-get="/players/table?sort=reb" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter">REB</th>
+          <th class="px-3 py-2 text-right w-[72px] cursor-pointer hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 hidden md:table-cell" hx-get="/players/table?sort=ast" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter">AST</th>
+          <th class="px-3 py-2 text-right w-[72px] hidden lg:table-cell">STL</th>
+          <th class="px-3 py-2 text-right w-[72px] hidden lg:table-cell">BLK</th>
+          <th class="px-3 py-2 text-right w-[72px] hidden lg:table-cell">TO</th>
+          <th class="px-3 py-2 text-right w-[72px] cursor-pointer hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300" hx-get="/players/table?sort=eff" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter">EFF</th>
+          <th class="px-3 py-2 text-right w-[72px] hidden sm:table-cell" title="Player Efficiency Rating (분당 효율 정규화)">PER</th>
         </tr>
       </thead>
       <tbody id="players-body">%s</tbody>
@@ -991,7 +991,7 @@ let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="")
 <body class="bg-slate-50 dark:bg-[#0b0e14] text-slate-900 dark:text-slate-200 font-sans antialiased min-h-screen is-loading">
   <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[60] focus:bg-orange-500 focus:text-white focus:px-4 focus:py-2 focus:rounded-lg focus:font-semibold focus:shadow-lg">본문으로 건너뛰기</a>
   <div id="page-loader" class="page-loader" aria-hidden="true"><div class="page-loader-bar"></div></div>
-  <header role="banner" class="sticky top-0 z-[110] bg-white/95 dark:bg-slate-900/95 backdrop-blur border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 py-3 sm:py-4">
+  <header role="banner" class="sticky top-0 z-[110] bg-white/95 dark:bg-slate-900/95 backdrop-blur border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 py-2 sm:py-4">
     <div class="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
       <div class="flex items-center justify-between w-full sm:w-auto">
         <a href="/" class="flex items-center gap-3 shrink-0" aria-label="WKBL Analytics 홈으로 이동">
@@ -1053,63 +1053,63 @@ let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="")
         </button>
       </div>
       <nav class="p-4 space-y-1" aria-label="모바일 메뉴">
-        <a href="/" class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+        <a href="/" class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
           Home
         </a>
-        <a href="/awards" class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+        <a href="/awards" class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path></svg>
           Awards
         </a>
-        <a href="/history" class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+        <a href="/history" class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
           History
         </a>
-        <a href="/legends" class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+        <a href="/legends" class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path></svg>
           Legends
         </a>
-        <a href="/leaders" class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+        <a href="/leaders" class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
           Leaders
         </a>
-        <a href="/boxscores" class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+        <a href="/boxscores" class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
           Boxscores
         </a>
-        <a href="/games" class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+        <a href="/games" class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
           Games
         </a>
-        <a href="/standings" class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+        <a href="/standings" class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
           Standings
         </a>
-        <a href="/teams" class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+        <a href="/teams" class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
           Teams
         </a>
-        <a href="/players" class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+        <a href="/players" class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
           Players
         </a>
-        <a href="/predict" class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+        <a href="/predict" class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
           Predict
         </a>
-        <a href="/compare" class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+        <a href="/compare" class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
           Compare
         </a>
-        <a href="/on-off" class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+        <a href="/on-off" class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
           On/Off
         </a>
-        <a href="/transactions" class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+        <a href="/transactions" class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
           Draft/Trade
         </a>
-        <a href="/qa" class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+        <a href="/qa" class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
           QA
         </a>

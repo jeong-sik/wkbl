@@ -178,7 +178,7 @@ let transactions_page
     <div class="font-bold uppercase tracking-widest text-[10px]">Search</div>
     <input name="q" value="%s" placeholder="player / team / keyword" class="w-full bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700/60 rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-slate-200 focus:border-orange-500 focus:outline-none">
   </label>
-  <button class="shrink-0 bg-orange-600 hover:bg-orange-500 text-slate-900 dark:text-slate-200 font-bold rounded-lg px-4 py-2 text-sm transition">Apply</button>
+  <button class="shrink-0 bg-orange-600 hover:bg-orange-500 text-slate-900 dark:text-slate-200 font-bold rounded-lg px-3 py-2 text-sm transition">Apply</button>
 </form>|html}
       (escape_html active_tab)
       (year_options active_years)
@@ -211,12 +211,12 @@ let transactions_page
               in
               Printf.sprintf
                 {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:bg-slate-800/30 transition-colors">
-  <td class="px-4 py-3 text-slate-500 dark:text-slate-400 font-mono whitespace-nowrap w-[72px]">%s</td>
-  <td class="px-4 py-3 text-slate-700 dark:text-slate-300 font-mono whitespace-nowrap w-[140px]">%s</td>
-  <td class="px-4 py-3 min-w-0"><a class="text-slate-900 dark:text-slate-200 hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 font-bold truncate block" href="/player/%s">%s</a><div class="mt-1 text-[11px] text-slate-500 dark:text-slate-400 font-mono">%s</div></td>
-  <td class="px-4 py-3">%s</td>
-  <td class="px-4 py-3 text-[11px] text-slate-700 dark:text-slate-300 font-mono whitespace-pre-line break-words">%s</td>
-  <td class="px-4 py-3 text-[11px]"><a class="text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:text-slate-300 underline font-mono" href="%s" target="_blank" rel="noreferrer">Source</a></td>
+  <td class="px-3 py-2 text-slate-500 dark:text-slate-400 font-mono whitespace-nowrap w-[72px]">%s</td>
+  <td class="px-3 py-2 text-slate-700 dark:text-slate-300 font-mono whitespace-nowrap w-[140px]">%s</td>
+  <td class="px-3 py-2 min-w-0"><a class="text-slate-900 dark:text-slate-200 hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 font-bold truncate block" href="/player/%s">%s</a><div class="mt-1 text-[11px] text-slate-500 dark:text-slate-400 font-mono">%s</div></td>
+  <td class="px-3 py-2">%s</td>
+  <td class="px-3 py-2 text-[11px] text-slate-700 dark:text-slate-300 font-mono whitespace-pre-line break-words">%s</td>
+  <td class="px-3 py-2 text-[11px]"><a class="text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:text-slate-300 underline font-mono" href="%s" target="_blank" rel="noreferrer">Source</a></td>
 </tr>|html}
                 (escape_html y)
                 (escape_html (pick_label r))
@@ -233,12 +233,12 @@ let transactions_page
   <table class="min-w-[980px] w-full text-sm table-fixed tabular-nums">
     <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px] whitespace-nowrap">
       <tr>
-        <th class="px-4 py-3 text-left w-[72px]">Year</th>
-        <th class="px-4 py-3 text-left w-[140px]">Pick</th>
-        <th class="px-4 py-3 text-left">Player</th>
-        <th class="px-4 py-3 text-left w-[220px]">Team</th>
-        <th class="px-4 py-3 text-left">Raw</th>
-        <th class="px-4 py-3 text-left w-[90px]">Link</th>
+        <th class="px-3 py-2 text-left w-[72px]">Year</th>
+        <th class="px-3 py-2 text-left w-[140px]">Pick</th>
+        <th class="px-3 py-2 text-left">Player</th>
+        <th class="px-3 py-2 text-left w-[220px]">Team</th>
+        <th class="px-3 py-2 text-left">Raw</th>
+        <th class="px-3 py-2 text-left w-[90px]">Link</th>
       </tr>
     </thead>
     <tbody>%s</tbody>
@@ -495,20 +495,20 @@ and fantasy_results_table (scores: fantasy_player_score list) =
         in
         Printf.sprintf
           {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/30 transition-colors">
-  <td class="px-4 py-3 %s tabular-nums">%d</td>
-  <td class="px-4 py-3">
+  <td class="px-3 py-2 %s tabular-nums">%d</td>
+  <td class="px-3 py-2">
     <a href="/player/%s" class="text-slate-900 dark:text-slate-200 hover:text-orange-600 dark:hover:text-orange-400 font-bold">%s</a>
   </td>
-  <td class="px-4 py-3">%s</td>
-  <td class="px-4 py-3 text-right font-mono tabular-nums text-slate-500 dark:text-slate-400">%d</td>
-  <td class="px-4 py-3 text-right font-mono tabular-nums text-slate-900 dark:text-slate-200 font-bold">%.1f</td>
-  <td class="px-4 py-3 text-right font-mono tabular-nums text-orange-600 dark:text-orange-400 font-bold">%.1f</td>
-  <td class="px-4 py-3 text-right font-mono tabular-nums text-[11px] text-slate-500 dark:text-slate-400">%.1f</td>
-  <td class="px-4 py-3 text-right font-mono tabular-nums text-[11px] text-slate-500 dark:text-slate-400">%.1f</td>
-  <td class="px-4 py-3 text-right font-mono tabular-nums text-[11px] text-slate-500 dark:text-slate-400">%.1f</td>
-  <td class="px-4 py-3 text-right font-mono tabular-nums text-[11px] text-slate-500 dark:text-slate-400">%.1f</td>
-  <td class="px-4 py-3 text-right font-mono tabular-nums text-[11px] text-slate-500 dark:text-slate-400">%.1f</td>
-  <td class="px-4 py-3 text-right font-mono tabular-nums text-[11px] text-red-500 dark:text-red-400">%.1f</td>
+  <td class="px-3 py-2">%s</td>
+  <td class="px-3 py-2 text-right font-mono tabular-nums text-slate-500 dark:text-slate-400">%d</td>
+  <td class="px-3 py-2 text-right font-mono tabular-nums text-slate-900 dark:text-slate-200 font-bold">%.1f</td>
+  <td class="px-3 py-2 text-right font-mono tabular-nums text-orange-600 dark:text-orange-400 font-bold">%.1f</td>
+  <td class="px-3 py-2 text-right font-mono tabular-nums text-[11px] text-slate-500 dark:text-slate-400">%.1f</td>
+  <td class="px-3 py-2 text-right font-mono tabular-nums text-[11px] text-slate-500 dark:text-slate-400">%.1f</td>
+  <td class="px-3 py-2 text-right font-mono tabular-nums text-[11px] text-slate-500 dark:text-slate-400">%.1f</td>
+  <td class="px-3 py-2 text-right font-mono tabular-nums text-[11px] text-slate-500 dark:text-slate-400">%.1f</td>
+  <td class="px-3 py-2 text-right font-mono tabular-nums text-[11px] text-slate-500 dark:text-slate-400">%.1f</td>
+  <td class="px-3 py-2 text-right font-mono tabular-nums text-[11px] text-red-500 dark:text-red-400">%.1f</td>
 </tr>|html}
           rank_class rank
           (Uri.pct_encode s.fps_player_id)
@@ -530,18 +530,18 @@ and fantasy_results_table (scores: fantasy_player_score list) =
   <table class="min-w-[1100px] w-full text-sm table-fixed tabular-nums">
     <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px] whitespace-nowrap">
       <tr>
-        <th class="px-4 py-3 text-left w-[60px]">#</th>
-        <th class="px-4 py-3 text-left">Player</th>
-        <th class="px-4 py-3 text-left w-[180px]">Team</th>
-        <th class="px-4 py-3 text-right w-[60px]">GP</th>
-        <th class="px-4 py-3 text-right w-[90px]">Total</th>
-        <th class="px-4 py-3 text-right w-[90px]">AVG</th>
-        <th class="px-4 py-3 text-right w-[70px]" title="Points contribution">PTS</th>
-        <th class="px-4 py-3 text-right w-[70px]" title="Rebounds contribution">REB</th>
-        <th class="px-4 py-3 text-right w-[70px]" title="Assists contribution">AST</th>
-        <th class="px-4 py-3 text-right w-[70px]" title="Steals contribution">STL</th>
-        <th class="px-4 py-3 text-right w-[70px]" title="Blocks contribution">BLK</th>
-        <th class="px-4 py-3 text-right w-[70px]" title="Turnovers contribution">TOV</th>
+        <th class="px-3 py-2 text-left w-[60px]">#</th>
+        <th class="px-3 py-2 text-left">Player</th>
+        <th class="px-3 py-2 text-left w-[180px]">Team</th>
+        <th class="px-3 py-2 text-right w-[60px]">GP</th>
+        <th class="px-3 py-2 text-right w-[90px]">Total</th>
+        <th class="px-3 py-2 text-right w-[90px]">AVG</th>
+        <th class="px-3 py-2 text-right w-[70px]" title="Points contribution">PTS</th>
+        <th class="px-3 py-2 text-right w-[70px]" title="Rebounds contribution">REB</th>
+        <th class="px-3 py-2 text-right w-[70px]" title="Assists contribution">AST</th>
+        <th class="px-3 py-2 text-right w-[70px]" title="Steals contribution">STL</th>
+        <th class="px-3 py-2 text-right w-[70px]" title="Blocks contribution">BLK</th>
+        <th class="px-3 py-2 text-right w-[70px]" title="Turnovers contribution">TOV</th>
       </tr>
     </thead>
     <tbody>%s</tbody>
@@ -1001,8 +1001,8 @@ let game_flow_page ~(game: Domain.game_info) (flow_points: Domain.score_flow_poi
         %s
         %s
         <div class="flex justify-center gap-4">
-          <a href="/boxscore/%s" class="px-4 py-2 rounded-lg bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-200 hover:border-slate-500 transition">← Boxscore</a>
-          <a href="/boxscore/%s/pbp" class="px-4 py-2 rounded-lg bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-200 hover:border-slate-500 transition">Play-by-Play →</a>
+          <a href="/boxscore/%s" class="px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-200 hover:border-slate-500 transition">← Boxscore</a>
+          <a href="/boxscore/%s/pbp" class="px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-200 hover:border-slate-500 transition">Play-by-Play →</a>
         </div>
       </div>|html}
       (escape_html game.gi_home_team_name) (escape_html game.gi_away_team_name)
@@ -1028,15 +1028,15 @@ let render_lineup_row (lineup: Domain.lineup_stats) (rank: int) : string =
   let pm_sign = if lineup.ls_plus_minus >= 0 then "+" else "" in
   Printf.sprintf
     {html|<tr class="border-b border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900/50">
-      <td class="px-3 py-3 text-center font-mono text-sm">%d</td>
-      <td class="px-3 py-3">
+      <td class="px-3 py-2 text-center font-mono text-sm">%d</td>
+      <td class="px-3 py-2">
         <div class="flex flex-wrap">%s</div>
       </td>
-      <td class="px-3 py-3 text-center font-mono text-sm">%d</td>
-      <td class="px-3 py-3 text-center font-mono text-sm">%.1f</td>
-      <td class="px-3 py-3 text-center font-mono text-sm">%d</td>
-      <td class="px-3 py-3 text-center font-mono text-sm %s">%s%d</td>
-      <td class="px-3 py-3 text-center font-mono text-sm">%.2f</td>
+      <td class="px-3 py-2 text-center font-mono text-sm">%d</td>
+      <td class="px-3 py-2 text-center font-mono text-sm">%.1f</td>
+      <td class="px-3 py-2 text-center font-mono text-sm">%d</td>
+      <td class="px-3 py-2 text-center font-mono text-sm %s">%s%d</td>
+      <td class="px-3 py-2 text-center font-mono text-sm">%.2f</td>
     </tr>|html}
     rank
     players_html
@@ -1056,13 +1056,13 @@ let render_synergy_row (syn: Domain.lineup_synergy) (rank: int) : string =
     else "text-red-600 dark:text-red-400" in
   Printf.sprintf
     {html|<tr class="border-b border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900/50">
-      <td class="px-3 py-3 text-center font-mono text-sm">%d</td>
-      <td class="px-3 py-3 text-sm">%s</td>
-      <td class="px-3 py-3 text-sm">%s</td>
-      <td class="px-3 py-3 text-center font-mono text-sm">%d</td>
-      <td class="px-3 py-3 text-center font-mono text-sm">%.1f</td>
-      <td class="px-3 py-3 text-center font-mono text-sm %s">%+.2f</td>
-      <td class="px-3 py-3 text-center font-mono text-sm font-bold %s">%.2f</td>
+      <td class="px-3 py-2 text-center font-mono text-sm">%d</td>
+      <td class="px-3 py-2 text-sm">%s</td>
+      <td class="px-3 py-2 text-sm">%s</td>
+      <td class="px-3 py-2 text-center font-mono text-sm">%d</td>
+      <td class="px-3 py-2 text-center font-mono text-sm">%.1f</td>
+      <td class="px-3 py-2 text-center font-mono text-sm %s">%+.2f</td>
+      <td class="px-3 py-2 text-center font-mono text-sm font-bold %s">%.2f</td>
     </tr>|html}
     rank
     (escape_html syn.syn_player1_name)
@@ -1080,7 +1080,7 @@ let render_lineup_table ~title (lineups: Domain.lineup_stats list) : string =
     let rows = lineups |> List.mapi (fun i l -> render_lineup_row l (i + 1)) |> String.concat "\n" in
     Printf.sprintf
       {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-        <div class="px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
+        <div class="px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
           <h2 class="font-bold text-slate-900 dark:text-slate-200">%s</h2>
         </div>
         <div class="overflow-x-auto">
@@ -1112,7 +1112,7 @@ let render_synergy_table (synergies: Domain.lineup_synergy list) : string =
     let rows = synergies |> List.mapi (fun i s -> render_synergy_row s (i + 1)) |> String.concat "\n" in
     Printf.sprintf
       {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-        <div class="px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
+        <div class="px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
           <h2 class="font-bold text-slate-900 dark:text-slate-200">Player Synergies (Top Pairs)</h2>
         </div>
         <div class="overflow-x-auto">
@@ -1172,7 +1172,7 @@ let lineup_chemistry_page
           %s
         </select>
       </div>
-      <button type="submit" class="px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-sm font-medium transition">
+      <button type="submit" class="px-3 py-2 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-sm font-medium transition">
         Apply Filter
       </button>
     </form>|html}
@@ -1257,16 +1257,16 @@ let on_off_impact_table (impacts: Domain.on_off_impact list) : string =
     in
     Printf.sprintf
       {html|<tr class="border-b border-slate-200/50 dark:border-slate-800/50 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-        <td class="py-3 px-4 text-center">%s</td>
-        <td class="py-3 px-4">
+        <td class="py-2 px-4 text-center">%s</td>
+        <td class="py-2 px-4">
           <a href="/player/%s" class="font-semibold text-sky-600 dark:text-sky-400 hover:underline">%s</a>
           <div class="text-xs text-slate-500 dark:text-slate-400">%s</div>
         </td>
-        <td class="py-3 px-4 text-center font-mono tabular-nums">%d</td>
-        <td class="py-3 px-4 text-center font-mono tabular-nums">%.1f</td>
-        <td class="py-3 px-4 text-center font-mono tabular-nums">%s</td>
-        <td class="py-3 px-4 text-center font-mono tabular-nums">%s</td>
-        <td class="py-3 px-4 text-center font-mono tabular-nums">%d</td>
+        <td class="py-2 px-4 text-center font-mono tabular-nums">%d</td>
+        <td class="py-2 px-4 text-center font-mono tabular-nums">%.1f</td>
+        <td class="py-2 px-4 text-center font-mono tabular-nums">%s</td>
+        <td class="py-2 px-4 text-center font-mono tabular-nums">%s</td>
+        <td class="py-2 px-4 text-center font-mono tabular-nums">%d</td>
       </tr>|html}
       rank_badge
       impact.ooi_player_id
@@ -1285,13 +1285,13 @@ let on_off_impact_table (impacts: Domain.on_off_impact list) : string =
         <table class="w-full text-sm">
           <thead class="bg-slate-50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-300">
             <tr>
-              <th class="py-3 px-4 text-center font-semibold w-16">#</th>
-              <th class="py-3 px-4 text-left font-semibold">Player</th>
-              <th class="py-3 px-4 text-center font-semibold">GP</th>
-              <th class="py-3 px-4 text-center font-semibold">MIN</th>
-              <th class="py-3 px-4 text-center font-semibold">+/- AVG</th>
-              <th class="py-3 px-4 text-center font-semibold">+/- Total</th>
-              <th class="py-3 px-4 text-center font-semibold">Games w/ +/-</th>
+              <th class="py-2 px-4 text-center font-semibold w-16">#</th>
+              <th class="py-2 px-4 text-left font-semibold">Player</th>
+              <th class="py-2 px-4 text-center font-semibold">GP</th>
+              <th class="py-2 px-4 text-center font-semibold">MIN</th>
+              <th class="py-2 px-4 text-center font-semibold">+/- AVG</th>
+              <th class="py-2 px-4 text-center font-semibold">+/- Total</th>
+              <th class="py-2 px-4 text-center font-semibold">Games w/ +/-</th>
             </tr>
           </thead>
           <tbody class="text-slate-700 dark:text-slate-300">
@@ -1324,7 +1324,7 @@ let on_off_impact_page
           %s
         </select>
       </div>
-      <button type="submit" class="px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-sm font-medium transition">
+      <button type="submit" class="px-3 py-2 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-sm font-medium transition">
         Apply Filter
       </button>
     </form>|html}
