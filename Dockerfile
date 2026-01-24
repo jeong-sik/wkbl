@@ -25,12 +25,13 @@ RUN opam update
 ARG CACHEBUST=2026012411
 
 # Pin private dependencies from GitHub (not in opam)
-# Test: grpc-direct only (without grpc-direct-core explicit pin)
+# grpc-direct repo has multiple packages - both must be pinned explicitly
+RUN opam pin add grpc-direct-core https://github.com/jeong-sik/grpc-direct.git#main -y --no-action
 RUN opam pin add grpc-direct https://github.com/jeong-sik/grpc-direct.git#main -y --no-action
 RUN opam pin add ocaml-webrtc https://github.com/jeong-sik/ocaml-webrtc.git#main -y --no-action
 RUN opam pin add kirin https://github.com/jeong-sik/kirin.git#main -y --no-action
 # Force fetch latest commits from pinned repos (opam caches git repos)
-RUN opam update grpc-direct ocaml-webrtc kirin
+RUN opam update grpc-direct-core grpc-direct ocaml-webrtc kirin
 RUN opam install kirin -y
 
 # Copy opam file first to leverage Docker layer caching
