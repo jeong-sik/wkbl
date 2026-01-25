@@ -1,5 +1,6 @@
 # Nixpacks configuration for Railway deployment
 # Adds ImageMagick for SVG→PNG card generation
+# Cache bust: 2026-01-26
 
 [phases.setup]
 aptPkgs = ["imagemagick"]
