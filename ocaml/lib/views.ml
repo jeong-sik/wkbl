@@ -462,6 +462,70 @@ let boxscore_player_table (title: string) (players: boxscore_player_stat list) =
     {html|<div class="space-y-3"><h3 class="text-lg font-bold text-slate-900 dark:text-slate-200 flex items-center gap-2"><span class="w-1 h-6 bg-orange-500 rounded-full"></span>%s</h3><div class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto overflow-y-hidden shadow-lg"><table class="min-w-[560px] sm:min-w-[720px] lg:min-w-[980px] w-full text-sm font-mono table-auto"><thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider"><tr><th class="px-3 py-2 text-left font-sans">Player</th><th class="px-3 py-2 text-right w-[56px] sm:w-[60px] hidden sm:table-cell">MP</th><th class="px-3 py-2 text-right text-orange-600 dark:text-orange-400 w-[56px] sm:w-[60px]">PTS</th><th class="px-3 py-2 text-right w-[56px] sm:w-[60px] hidden sm:table-cell">+/-</th><th class="px-3 py-2 text-right w-[56px] sm:w-[60px]">TRB</th><th class="px-3 py-2 text-right w-[56px] sm:w-[60px]">AST</th><th class="px-3 py-2 text-right w-[56px] sm:w-[60px] hidden md:table-cell">STL</th><th class="px-3 py-2 text-right w-[56px] sm:w-[60px] hidden md:table-cell">BLK</th><th class="px-3 py-2 text-right w-[56px] sm:w-[60px] hidden md:table-cell">TOV</th><th class="px-3 py-2 text-right w-[120px] hidden lg:table-cell">FG</th><th class="px-3 py-2 text-right w-[120px] hidden lg:table-cell">3P</th><th class="px-3 py-2 text-right w-[120px] hidden lg:table-cell">FT</th></tr></thead><tbody>%s</tbody></table></div></div>|html}
     (escape_html title) rows
 
+(** Render quarter flow section for boxscore page *)
+let quarter_flow_section ~home_name ~away_name (quarters: quarter_score list) =
+  if quarters = [] then "" else
+  let rows = List.mapi (fun i q ->
+    let prev_home = if i = 0 then 0 else (List.nth quarters (i-1)).qs_home_score in
+    let prev_away = if i = 0 then 0 else (List.nth quarters (i-1)).qs_away_score in
+    let home_q = q.qs_home_score - prev_home in
+    let away_q = q.qs_away_score - prev_away in
+    let diff = home_q - away_q in
+    let flow_indicator =
+      if diff > 5 then Printf.sprintf {html|<span class="text-sky-500">🔵 +%d</span>|html} diff
+      else if diff > 0 then Printf.sprintf {html|<span class="text-sky-400">▲ +%d</span>|html} diff
+      else if diff < -5 then Printf.sprintf {html|<span class="text-orange-500">🔴 %d</span>|html} diff
+      else if diff < 0 then Printf.sprintf {html|<span class="text-orange-400">▼ %d</span>|html} diff
+      else {html|<span class="text-slate-400">━</span>|html}
+    in
+    let period_label = match q.qs_period with
+      | "Q1" -> "1Q" | "Q2" -> "2Q" | "Q3" -> "3Q" | "Q4" -> "4Q"
+      | "X1" -> "OT1" | "X2" -> "OT2" | p -> p
+    in
+    Printf.sprintf
+      {html|<tr class="border-b border-slate-200 dark:border-slate-700/50">
+        <td class="px-3 py-2 font-bold text-slate-700 dark:text-slate-300">%s</td>
+        <td class="px-3 py-2 text-right font-mono text-sky-600 dark:text-sky-400">%d</td>
+        <td class="px-3 py-2 text-right font-mono text-orange-600 dark:text-orange-400">%d</td>
+        <td class="px-3 py-2 text-center text-slate-500 dark:text-slate-400">-</td>
+        <td class="px-3 py-2 text-right font-mono text-sky-600 dark:text-sky-400">%d</td>
+        <td class="px-3 py-2 text-right font-mono text-orange-600 dark:text-orange-400">%d</td>
+        <td class="px-3 py-2 text-center">%s</td>
+      </tr>|html}
+      period_label q.qs_home_score q.qs_away_score home_q away_q flow_indicator
+  ) quarters in
+  Printf.sprintf
+    {html|<div class="max-w-2xl mx-auto bg-white dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-800 p-4">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="text-lg">📊</span>
+        <span class="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">쿼터별 흐름</span>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="text-xs uppercase text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700">
+            <tr>
+              <th class="px-3 py-2 text-left">QTR</th>
+              <th class="px-3 py-2 text-right text-sky-600 dark:text-sky-400" colspan="2">%s</th>
+              <th class="px-3 py-2 text-center"></th>
+              <th class="px-3 py-2 text-right text-orange-600 dark:text-orange-400" colspan="2">%s</th>
+              <th class="px-3 py-2 text-center">흐름</th>
+            </tr>
+            <tr class="text-[10px]">
+              <th></th>
+              <th class="px-3 py-1 text-right">누적</th>
+              <th class="px-3 py-1 text-right">Q득점</th>
+              <th></th>
+              <th class="px-3 py-1 text-right">누적</th>
+              <th class="px-3 py-1 text-right">Q득점</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>%s</tbody>
+        </table>
+      </div>
+    </div>|html}
+    (escape_html home_name) (escape_html away_name) (String.concat "" rows)
+
 let boxscore_page (bs: game_boxscore) =
   let gi = bs.boxscore_game in
   let margin = gi.gi_home_score - gi.gi_away_score in
@@ -520,6 +584,12 @@ let boxscore_page (bs: game_boxscore) =
   in
   let home_table = boxscore_player_table gi.gi_home_team_name bs.boxscore_home_players in
   let away_table = boxscore_player_table gi.gi_away_team_name bs.boxscore_away_players in
+  (* Quarter flow from PBP data *)
+  let quarters = match Db.get_quarter_scores gi.gi_game_id with
+    | Ok qs -> qs
+    | Error _ -> []
+  in
+  let quarter_section = quarter_flow_section ~home_name:gi.gi_home_team_name ~away_name:gi.gi_away_team_name quarters in
   (* AI Game Summary *)
   let ai_summary = Ai.generate_game_summary bs in
   let ai_summary_section =
@@ -535,7 +605,7 @@ let boxscore_page (bs: game_boxscore) =
   in
   layout ~title:(Printf.sprintf "Boxscore: %s vs %s" gi.gi_home_team_name gi.gi_away_team_name)
     ~content:(Printf.sprintf
-      {html|<div class="space-y-8 animate-fade-in"><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-2xl"><div class="flex flex-col items-center gap-6"><div class="text-slate-600 dark:text-slate-400 font-mono text-sm uppercase tracking-widest">%s</div><div class="flex items-center justify-between w-full max-w-2xl gap-2 sm:gap-6"><div class="flex flex-col items-center gap-2 sm:gap-3 flex-shrink-0"><div class="text-sm sm:text-2xl font-black text-slate-900 dark:text-slate-200 flex items-center gap-1 sm:gap-3">%s<a href="/team/%s" class="hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 transition-colors whitespace-nowrap">%s</a></div><div class="text-[10px] sm:text-sm text-slate-600 dark:text-slate-400">HOME</div></div><div class="flex items-center gap-2 sm:gap-8"><div class="text-3xl sm:text-5xl font-black text-slate-900 dark:text-slate-200">%d</div><div class="flex flex-col items-center gap-1 sm:gap-2"><div class="text-base sm:text-2xl text-slate-700 dark:text-slate-300 font-light">vs</div><div class="flex flex-wrap items-center justify-center gap-1 sm:gap-2">%s%s%s%s</div></div><div class="text-3xl sm:text-5xl font-black text-slate-900 dark:text-slate-200">%d</div></div><div class="flex flex-col items-center gap-2 sm:gap-3 flex-shrink-0"><div class="text-sm sm:text-2xl font-black text-slate-900 dark:text-slate-200 flex items-center gap-1 sm:gap-3"><a href="/team/%s" class="hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 transition-colors whitespace-nowrap">%s</a>%s</div><div class="text-[10px] sm:text-sm text-slate-600 dark:text-slate-400">AWAY</div></div></div></div></div>%s%s<div class="grid grid-cols-1 gap-8">%s%s</div><div class="flex justify-center"><a href="/games" class="text-slate-600 dark:text-slate-400 hover:text-orange-500 transition text-sm">← Back to Games</a></div></div>|html}
+      {html|<div class="space-y-8 animate-fade-in"><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-2xl"><div class="flex flex-col items-center gap-6"><div class="text-slate-600 dark:text-slate-400 font-mono text-sm uppercase tracking-widest">%s</div><div class="flex items-center justify-between w-full max-w-2xl gap-2 sm:gap-6"><div class="flex flex-col items-center gap-2 sm:gap-3 flex-shrink-0"><div class="text-sm sm:text-2xl font-black text-slate-900 dark:text-slate-200 flex items-center gap-1 sm:gap-3">%s<a href="/team/%s" class="hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 transition-colors whitespace-nowrap">%s</a></div><div class="text-[10px] sm:text-sm text-slate-600 dark:text-slate-400">HOME</div></div><div class="flex items-center gap-2 sm:gap-8"><div class="text-3xl sm:text-5xl font-black text-slate-900 dark:text-slate-200">%d</div><div class="flex flex-col items-center gap-1 sm:gap-2"><div class="text-base sm:text-2xl text-slate-700 dark:text-slate-300 font-light">vs</div><div class="flex flex-wrap items-center justify-center gap-1 sm:gap-2">%s%s%s%s</div></div><div class="text-3xl sm:text-5xl font-black text-slate-900 dark:text-slate-200">%d</div></div><div class="flex flex-col items-center gap-2 sm:gap-3 flex-shrink-0"><div class="text-sm sm:text-2xl font-black text-slate-900 dark:text-slate-200 flex items-center gap-1 sm:gap-3"><a href="/team/%s" class="hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 transition-colors whitespace-nowrap">%s</a>%s</div><div class="text-[10px] sm:text-sm text-slate-600 dark:text-slate-400">AWAY</div></div></div></div></div>%s%s%s<div class="grid grid-cols-1 gap-8">%s%s</div><div class="flex justify-center"><a href="/games" class="text-slate-600 dark:text-slate-400 hover:text-orange-500 transition text-sm">← Back to Games</a></div></div>|html}
       (escape_html gi.gi_game_date)
       (team_logo_tag ~class_name:"w-10 h-10 sm:w-16 sm:h-16" gi.gi_home_team_name) (Uri.pct_encode gi.gi_home_team_name) (escape_html gi.gi_home_team_name)
       gi.gi_home_score
@@ -546,6 +616,7 @@ let boxscore_page (bs: game_boxscore) =
       gi.gi_away_score
       (Uri.pct_encode gi.gi_away_team_name) (escape_html gi.gi_away_team_name) (team_logo_tag ~class_name:"w-10 h-10 sm:w-16 sm:h-16" gi.gi_away_team_name)
       ai_summary_section
+      quarter_section
       data_notes
       home_table away_table) ()
 

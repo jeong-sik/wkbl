@@ -1040,9 +1040,24 @@ let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="")
           | Ok (Some d) -> Some d
           | _ -> None
     in
-    match fresh_date with
-    | Some date -> Printf.sprintf {html|<div class="mb-2 text-xs text-slate-500 dark:text-slate-500">📊 데이터: %s 경기까지 반영</div>|html} (escape_html date)
-    | None -> ""
+    (* Get schedule progress from DB *)
+    let schedule_progress =
+      match Db.get_schedule_progress ~season_code:"046" () with
+      | Ok (Some (completed, total)) -> Some (completed, total)
+      | _ -> None
+    in
+    let date_html = match fresh_date with
+      | Some date -> Printf.sprintf {html|📊 데이터: %s 경기까지 반영|html} (escape_html date)
+      | None -> ""
+    in
+    let progress_html = match schedule_progress with
+      | Some (completed, total) ->
+          let pct = if total > 0 then completed * 100 / total else 0 in
+          Printf.sprintf {html| · 🏀 시즌: %d/%d경기 (%d%%)|html} completed total pct
+      | None -> ""
+    in
+    if date_html = "" && progress_html = "" then ""
+    else Printf.sprintf {html|<div class="mb-2 text-xs text-slate-500 dark:text-slate-500">%s%s</div>|html} date_html progress_html
   in
   Printf.sprintf
     {html|<!DOCTYPE html>
