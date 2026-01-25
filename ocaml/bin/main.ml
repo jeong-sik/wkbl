@@ -1138,6 +1138,41 @@ Sitemap: https://wkbl.win/sitemap.xml
       | Ok report -> Kirin.html (Views_tools.qa_dashboard_page report ~markdown ())
       | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
     );
+    (* PBP Data Quality API - verifies T2=HOME pattern
+       Usage: /qa/pbp              - normal check (200 always)
+              /qa/pbp?ci=1         - CI mode (500 if below 50% threshold)
+              /qa/pbp?ci=1&threshold=60 - CI mode with custom threshold *)
+    Kirin.get "/qa/pbp" (fun request ->
+      match Db.get_pbp_data_quality () with
+      | Ok pq ->
+          let verified_pct = if pq.pq_total_pbp_games > 0 then
+            100.0 *. (float_of_int pq.pq_t2_home_count /. float_of_int pq.pq_total_pbp_games)
+          else 0.0 in
+          let threshold = match Kirin.query_opt "threshold" request with
+            | Some s -> (try float_of_string s with _ -> 50.0)
+            | None -> 50.0
+          in
+          let ci_mode = Kirin.query_opt "ci" request |> Option.is_some in
+          let pass = verified_pct >= threshold in
+          let health = if pass then "healthy" else "critical" in
+          let json = Printf.sprintf
+            {|{"status":"%s","t2_home_verified":%d,"incomplete":%d,"no_match":%d,"total_pbp_games":%d,"pattern":"T2=HOME (team2_score = home_score)","verified_pct":%.1f,"threshold":%.1f,"ci_mode":%b}|}
+            health
+            pq.pq_t2_home_count
+            pq.pq_incomplete_count
+            pq.pq_no_match_count
+            pq.pq_total_pbp_games
+            verified_pct
+            threshold
+            ci_mode
+          in
+          (* CI mode: return error status in JSON if below threshold *)
+          if ci_mode && not pass then
+            Kirin.json_string (Printf.sprintf {|{"error":"PBP quality check failed","verified_pct":%.1f,"threshold":%.1f,"details":%s}|} verified_pct threshold json)
+          else
+            Kirin.json_string json
+      | Error e -> Kirin.json_string (Printf.sprintf {|{"error":"%s"}|} (Db.show_db_error e))
+    );
     Kirin.get "/health" (fun _ -> Kirin.json_string "{\"status\": \"ok\", \"engine\": \"OCaml/Kirin\"}");
 
     (* Player Search API for Command Palette *)
