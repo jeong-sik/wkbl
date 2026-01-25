@@ -1331,3 +1331,18 @@ let zone_label = function
   | Paint -> "페인트존"
   | MidRange -> "미드레인지"
   | ThreePoint -> "3점"
+
+(** Quarter score for game flow analysis *)
+type quarter_score = {
+  qs_period: string;      (* Q1, Q2, Q3, Q4, OT *)
+  qs_home_score: int;     (* Cumulative home score at end of quarter *)
+  qs_away_score: int;     (* Cumulative away score at end of quarter *)
+}
+
+(** Game flow summary from PBP data *)
+type game_flow = {
+  gf_quarters: quarter_score list;
+  gf_lead_changes: int;
+  gf_largest_lead_home: int;
+  gf_largest_lead_away: int;
+}

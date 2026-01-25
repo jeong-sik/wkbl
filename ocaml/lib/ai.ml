@@ -66,31 +66,68 @@ let build_prediction_prompt ~(home: string) ~(away: string) (output: prediction_
     (b.pb_stats_prob *. 100.0)
     context_text
 
-(** Call LLM via HTTP to llm-mcp server *)
+(** Call LLM via MCP JSON-RPC to llm-mcp server *)
 let call_llm_http ~prompt =
   try
-    (* Use curl to call llm-mcp Gemini endpoint *)
+    (* Build MCP JSON-RPC request for gemini tool *)
+    let mcp_request = Yojson.Safe.to_string (`Assoc [
+      ("jsonrpc", `String "2.0");
+      ("method", `String "tools/call");
+      ("id", `Int 1);
+      ("params", `Assoc [
+        ("name", `String "gemini");
+        ("arguments", `Assoc [
+          ("prompt", `String prompt);
+          ("max_tokens", `Int 200);
+        ]);
+      ]);
+    ]) in
+    (* Escape single quotes in JSON for shell *)
+    let escaped = String.concat "'\\''" (String.split_on_char '\'' mcp_request) in
     let cmd = Printf.sprintf
-      "curl -s -X POST http://localhost:8932/gemini -H 'Content-Type: application/json' -d '%s' 2>/dev/null"
-      (Yojson.Safe.to_string (`Assoc [
-        ("prompt", `String prompt);
-        ("response_format", `String "compact");
-        ("max_tokens", `Int 200);
-      ]))
+      "curl -s -m 30 -X POST http://localhost:8932/mcp -H 'Content-Type: application/json' -d '%s' 2>/dev/null"
+      escaped
     in
     let ic = Unix.open_process_in cmd in
     let response = In_channel.input_all ic in
     let _ = Unix.close_process_in ic in
 
-    (* Parse JSON response *)
+    (* Parse MCP JSON-RPC response *)
     match Yojson.Safe.from_string response with
     | `Assoc fields ->
-        (match List.assoc_opt "content" fields with
-        | Some (`String content) -> Ok content
+        (match List.assoc_opt "result" fields with
+        | Some (`Assoc result_fields) ->
+            (match List.assoc_opt "isError" result_fields with
+            | Some (`Bool true) -> Error "LLM returned error"
+            | _ ->
+                match List.assoc_opt "content" result_fields with
+                | Some (`List contents) ->
+                    (* Extract text from first content item *)
+                    let texts = List.filter_map (function
+                      | `Assoc c ->
+                          (match List.assoc_opt "text" c with
+                          | Some (`String t) ->
+                              (* Remove [Extra] metadata if present *)
+                              let t = match String.index_opt t '\n' with
+                                | Some i when String.length t > i + 1 &&
+                                    String.sub t (i+1) (min 7 (String.length t - i - 1)) = "[Extra]" ->
+                                    String.sub t 0 i
+                                | _ -> t
+                              in Some (String.trim t)
+                          | _ -> None)
+                      | _ -> None
+                    ) contents in
+                    (match texts with
+                    | t :: _ -> Ok t
+                    | [] -> Error "No text in response")
+                | _ -> Error "No content array in result")
         | _ ->
-            match List.assoc_opt "response" fields with
-            | Some (`String content) -> Ok content
-            | _ -> Error "No content in response")
+            match List.assoc_opt "error" fields with
+            | Some (`Assoc err) ->
+                let msg = match List.assoc_opt "message" err with
+                  | Some (`String m) -> m | _ -> "Unknown error" in
+                Error msg
+            | _ -> Error "Invalid MCP response")
     | _ -> Error "Invalid JSON response"
   with
   | e -> Error (Printexc.to_string e)
@@ -188,8 +225,61 @@ let find_top_performer (players: boxscore_player_stat list) =
       ) (List.hd players) players in
       Some best
 
+(** Format quarter scores for prompt *)
+let format_quarter_flow (quarters: quarter_score list) home_name away_name =
+  if quarters = [] then ""
+  else
+    let lines = List.map (fun q ->
+      Printf.sprintf "- %s: %s %d - %s %d"
+        q.qs_period home_name q.qs_home_score away_name q.qs_away_score
+    ) quarters in
+    String.concat "\n" lines
+
+(** Analyze game flow from quarter scores *)
+let analyze_flow (quarters: quarter_score list) =
+  match quarters with
+  | [] -> ""
+  | _ ->
+      (* Find momentum shifts *)
+      let rec find_shifts prev_diff = function
+        | [] -> []
+        | q :: rest ->
+            let diff = q.qs_home_score - q.qs_away_score in
+            let shift = if prev_diff * diff < 0 then [q.qs_period] else [] in
+            shift @ find_shifts diff rest
+      in
+      let shifts = match quarters with
+        | q :: rest -> find_shifts (q.qs_home_score - q.qs_away_score) rest
+        | [] -> []
+      in
+      (* Calculate quarter-by-quarter scoring *)
+      let q_scores = List.mapi (fun i q ->
+        let prev_home = if i = 0 then 0 else (List.nth quarters (i-1)).qs_home_score in
+        let prev_away = if i = 0 then 0 else (List.nth quarters (i-1)).qs_away_score in
+        (q.qs_period, q.qs_home_score - prev_home, q.qs_away_score - prev_away)
+      ) quarters in
+      (* Find best quarter *)
+      let best_q = List.fold_left (fun acc (period, home_q, away_q) ->
+        let diff = abs (home_q - away_q) in
+        match acc with
+        | None -> Some (period, diff, home_q > away_q)
+        | Some (_, best_diff, _) -> if diff > best_diff then Some (period, diff, home_q > away_q) else acc
+      ) None q_scores in
+      let flow_text = match shifts with
+        | [] -> "한 팀이 시종일관 리드"
+        | [_] -> "역전이 있었음"
+        | _ -> Printf.sprintf "%d번의 리드 체인지" (List.length shifts)
+      in
+      let best_text = match best_q with
+        | Some (period, diff, is_home) ->
+            Printf.sprintf ", %s에서 %s%s %d점 차 아웃스코어"
+              period (if is_home then "홈팀" else "어웨이팀") (if is_home then "이" else "이") diff
+        | None -> ""
+      in
+      flow_text ^ best_text
+
 (** Generate game summary prompt for LLM *)
-let build_game_summary_prompt (bs: game_boxscore) =
+let build_game_summary_prompt ?(quarters=[]) (bs: game_boxscore) =
   let gi = bs.boxscore_game in
   let margin = gi.gi_home_score - gi.gi_away_score in
   let winner =
@@ -214,6 +304,13 @@ let build_game_summary_prompt (bs: game_boxscore) =
     | _ -> ""
   in
 
+  (* Quarter flow section *)
+  let quarter_section = if quarters = [] then "" else
+    Printf.sprintf "\n\n## 쿼터별 점수\n%s\n\n## 경기 흐름\n%s"
+      (format_quarter_flow quarters gi.gi_home_team_name gi.gi_away_team_name)
+      (analyze_flow quarters)
+  in
+
   Printf.sprintf
 {|당신은 한국 여자프로농구(WKBL) 전문 기자입니다. 다음 경기 결과를 바탕으로 3문장 이내의 간결한 경기 요약을 작성하세요.
 
@@ -224,19 +321,19 @@ let build_game_summary_prompt (bs: game_boxscore) =
 - 승자: %s (점수차: %d점)
 
 ## 주요 선수
-%s
+%s%s
 
 ## 요청
 - 첫 문장: 승패 결과와 점수차
 - 둘째 문장: MVP 후보의 활약
-- 셋째 문장: 경기 특징 (예: 접전, 대승, 역전 등)
+- 셋째 문장: 경기 흐름/특징 (예: 접전, 대승, 역전, 3쿼터 폭발 등)
 - 팀명은 정식 명칭 사용
 - 3문장 이내로 작성|}
     gi.gi_game_date
     gi.gi_home_team_name gi.gi_home_score
     gi.gi_away_team_name gi.gi_away_score
     winner (abs margin)
-    mvp_text
+    mvp_text quarter_section
 
 (** Fallback game summary when AI is unavailable *)
 let fallback_game_summary (bs: game_boxscore) =
@@ -299,7 +396,12 @@ let generate_game_summary (bs: game_boxscore) =
   | Some cached -> cached
   | None ->
       let summary =
-        let prompt = build_game_summary_prompt bs in
+        (* Fetch quarter scores for game flow analysis *)
+        let quarters = match Db.get_quarter_scores key with
+          | Ok qs -> qs
+          | Error _ -> []
+        in
+        let prompt = build_game_summary_prompt ~quarters bs in
         match call_llm_http ~prompt with
         | Ok explanation ->
             Hashtbl.replace game_summary_cache key explanation;
