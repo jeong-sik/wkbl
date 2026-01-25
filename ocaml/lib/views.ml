@@ -1818,6 +1818,111 @@ let clutch_page ~season ~seasons (stats: clutch_stats list) =
   in
   layout ~title:"Clutch Time Leaders - WKBL" ~content ()
 
+let live_page () =
+  let content = {html|
+    <div class="space-y-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-200">🔴 Live Scores</h1>
+          <p class="text-slate-600 dark:text-slate-400">실시간 경기 점수</p>
+        </div>
+        <div id="connection-status" class="flex items-center gap-2">
+          <span class="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></span>
+          <span class="text-sm text-slate-600 dark:text-slate-400">Connecting...</span>
+        </div>
+      </div>
+
+      <div id="live-games" class="grid gap-4 md:grid-cols-2">
+        <div class="bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-6 text-center">
+          <div class="animate-pulse space-y-3">
+            <div class="h-4 bg-slate-200 dark:bg-slate-700 rounded w-3/4 mx-auto"></div>
+            <div class="h-8 bg-slate-200 dark:bg-slate-700 rounded w-1/2 mx-auto"></div>
+            <div class="h-4 bg-slate-200 dark:bg-slate-700 rounded w-2/3 mx-auto"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="text-xs text-slate-500 dark:text-slate-400 text-center">
+        Updates automatically via Server-Sent Events (SSE)
+      </div>
+    </div>
+
+    <script>
+    (function() {
+      const gamesContainer = document.getElementById('live-games');
+      const statusEl = document.getElementById('connection-status');
+
+      function updateStatus(connected) {
+        statusEl.innerHTML = connected
+          ? '<span class="w-2 h-2 bg-green-500 rounded-full"></span><span class="text-sm text-slate-600 dark:text-slate-400">Connected</span>'
+          : '<span class="w-2 h-2 bg-red-500 rounded-full"></span><span class="text-sm text-slate-600 dark:text-slate-400">Disconnected</span>';
+      }
+
+      function renderGame(game) {
+        const isScheduled = game.status === 'scheduled';
+        const scoreHtml = isScheduled
+          ? '<div class="text-2xl font-bold text-slate-400 dark:text-slate-500">vs</div>'
+          : `<div class="flex items-center justify-center gap-4 text-3xl font-bold">
+               <span class="${game.home_score > game.away_score ? 'text-orange-500' : 'text-slate-900 dark:text-slate-200'}">${game.home_score}</span>
+               <span class="text-slate-400">-</span>
+               <span class="${game.away_score > game.home_score ? 'text-orange-500' : 'text-slate-900 dark:text-slate-200'}">${game.away_score}</span>
+             </div>`;
+
+        return `
+          <a href="/game/${game.game_id}" class="block bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-6 hover:border-orange-400 transition-colors">
+            <div class="flex justify-between items-center mb-4">
+              <span class="text-lg font-semibold text-slate-900 dark:text-slate-200">${game.home}</span>
+              <span class="text-xs px-2 py-1 rounded ${isScheduled ? 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400' : 'bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400'}">
+                ${isScheduled ? 'Scheduled' : 'Final'}
+              </span>
+              <span class="text-lg font-semibold text-slate-900 dark:text-slate-200">${game.away}</span>
+            </div>
+            ${scoreHtml}
+          </a>
+        `;
+      }
+
+      function renderGames(data) {
+        if (data.games.length === 0) {
+          gamesContainer.innerHTML = `
+            <div class="col-span-2 bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-12 text-center">
+              <span class="text-4xl mb-4 block">🏀</span>
+              <p class="text-slate-600 dark:text-slate-400">No games scheduled for today (${data.date})</p>
+              <a href="/games" class="text-orange-500 hover:underline mt-2 inline-block">View all games →</a>
+            </div>
+          `;
+        } else {
+          gamesContainer.innerHTML = data.games.map(renderGame).join('');
+        }
+      }
+
+      // Connect to SSE
+      const evtSource = new EventSource('/api/live/scores');
+
+      evtSource.addEventListener('scores', function(e) {
+        updateStatus(true);
+        const data = JSON.parse(e.data);
+        renderGames(data);
+      });
+
+      evtSource.addEventListener('error', function(e) {
+        console.error('SSE Error:', e);
+        updateStatus(false);
+      });
+
+      evtSource.onerror = function() {
+        updateStatus(false);
+        // Reconnect after 5 seconds
+        setTimeout(function() {
+          location.reload();
+        }, 5000);
+      };
+    })();
+    </script>
+  |html}
+  in
+  layout ~title:"Live Scores - WKBL" ~content ()
+
 let error_page message = layout ~title:"Error" ~content:(Printf.sprintf {html|<div class="flex flex-col items-center justify-center py-20"><span class="text-6xl mb-4">😵</span><h2 class="text-xl font-bold text-slate-900 dark:text-slate-200 mb-2">Something went wrong</h2><p class="text-slate-600 dark:text-slate-400">%s</p><a href="/" class="mt-4 text-orange-500 hover:underline">← Back to home</a></div>|html} (escape_html message)) ()
 
 (* Re-export common functions for external access *)
