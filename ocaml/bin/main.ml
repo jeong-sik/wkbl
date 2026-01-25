@@ -1258,4 +1258,48 @@ Sitemap: https://wkbl.win/sitemap.xml
       | Ok entries -> Kirin.html (Views_history.player_career_page ~player_name entries)
       | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
     );
+
+    (* AI Prediction API: Get match prediction with explanation *)
+    Kirin.get "/api/predict" (fun request ->
+      let home = Kirin.query_opt "home" request |> Option.value ~default:"" in
+      let away = Kirin.query_opt "away" request |> Option.value ~default:"" in
+      let season = Kirin.query_opt "season" request |> Option.value ~default:"046" in
+      if home = "" || away = "" then
+        Kirin.with_status `Bad_request
+        @@ Kirin.json_string {|{"error":"home and away parameters required"}|}
+      else
+        match Db.get_team_stats ~season (), Db.get_standings ~season (), Db.get_games ~season () with
+        | Ok teams, Ok standings, Ok games ->
+            let find_stats name = List.find_opt (fun (t: Domain.team_stats) -> t.team = name) teams in
+            let find_standing name = List.find_opt (fun (s: Domain.team_standing) -> s.team_name = name) standings in
+            (match find_stats home, find_stats away, find_standing home, find_standing away with
+            | Some home_stats, Some away_stats, Some home_st, Some away_st ->
+                let output = Prediction.predict_match_nerd
+                  ~context:None ~season ~is_neutral:false ~games
+                  ~home:home_stats ~away:away_stats
+                  ~home_win_pct:home_st.win_pct ~away_win_pct:away_st.win_pct
+                  ~name_home:home ~name_away:away
+                in
+                let explanation = Ai.get_explanation ~home ~away output in
+                let r = output.result in
+                let json = Printf.sprintf
+                  {|{"winner":"%s","probability":%.1f,"explanation":"%s","breakdown":{"elo_home":%.0f,"elo_away":%.0f,"elo_prob":%.1f}}|}
+                  r.winner
+                  (r.prob_a *. 100.0)
+                  (String.escaped explanation)
+                  output.breakdown.pb_elo_home
+                  output.breakdown.pb_elo_away
+                  (output.breakdown.pb_elo_prob *. 100.0)
+                in
+                Kirin.with_header "Cache-Control" "public, max-age=300"
+                @@ Kirin.json_string json
+            | None, _, _, _ | _, None, _, _ ->
+                Kirin.with_status `Not_found
+                @@ Kirin.json_string {|{"error":"Team stats not found"}|}
+            | _, _, None, _ | _, _, _, None ->
+                Kirin.with_status `Not_found
+                @@ Kirin.json_string {|{"error":"Team standings not found"}|})
+        | Error e, _, _ | _, Error e, _ | _, _, Error e ->
+            Kirin.server_error ~body:(Db.show_db_error e) ()
+    );
   ]
