@@ -933,7 +933,7 @@ let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2 w-[120px] sm
         </div>
       </td>
       %s
-      <td class="px-3 py-2 text-right text-slate-500 dark:text-slate-400 whitespace-nowrap hidden sm:table-cell">%d</td>
+      <td class="px-3 py-2 text-right whitespace-nowrap hidden sm:table-cell"><div class="flex flex-col items-end leading-tight"><span class="text-slate-500 dark:text-slate-400 font-mono">%d</span><span class="text-slate-500 dark:text-slate-400 text-[10px] font-mono whitespace-nowrap">GP</span></div></td>
       %s%s%s%s%s%s%s%s%s
     </tr>|html}
     rank
