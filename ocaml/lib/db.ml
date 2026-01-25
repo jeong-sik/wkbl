@@ -3348,15 +3348,57 @@ module Queries = struct
     LIMIT 1
   |}
 
-  (** Quarter scores from PBP for game flow analysis *)
+  (** Quarter scores from PBP for game flow analysis
+      Note: In PBP data, team2 = HOME, team1 = AWAY (verified pattern) *)
   let quarter_scores_by_game = (string ->* t3 string int int) {|
     SELECT period_code,
-           COALESCE(MAX(team1_score), 0) as home_score,
-           COALESCE(MAX(team2_score), 0) as away_score
+           COALESCE(MAX(team2_score), 0) as home_score,
+           COALESCE(MAX(team1_score), 0) as away_score
     FROM play_by_play_events
     WHERE game_id = ? AND team1_score IS NOT NULL
     GROUP BY period_code
     ORDER BY period_code
+  |}
+
+  (** PBP data quality verification
+      Returns: (pattern, count) where pattern is T2=HOME, SCORE_MISSING, or MISMATCH
+      Note: Properly handles NULL scores (common in older seasons) *)
+  let pbp_data_quality = (unit ->* t2 string int) {|
+    WITH pbp_final AS (
+      SELECT game_id, MAX(team1_score) as t1, MAX(team2_score) as t2
+      FROM play_by_play_events WHERE team1_score IS NOT NULL
+      GROUP BY game_id
+    ),
+    comparison AS (
+      SELECT
+        CASE
+          WHEN g.home_score IS NULL OR g.away_score IS NULL
+               OR g.home_score = 0 OR g.away_score = 0 THEN 'SCORE_MISSING'
+          WHEN g.home_score = p.t2 AND g.away_score = p.t1 THEN 'T2=HOME'
+          ELSE 'MISMATCH'
+        END as pattern
+      FROM games g JOIN pbp_final p ON g.game_id = p.game_id
+    )
+    SELECT pattern, COUNT(*)::int as cnt FROM comparison GROUP BY pattern ORDER BY cnt DESC
+  |}
+
+  (** Games with incomplete PBP data (for re-scraping) *)
+  let games_with_incomplete_pbp = (unit ->* t4 string string string string) {|
+    WITH pbp_final AS (
+      SELECT game_id, MAX(team1_score) as t1, MAX(team2_score) as t2
+      FROM play_by_play_events WHERE team1_score IS NOT NULL
+      GROUP BY game_id
+    )
+    SELECT g.game_id, g.season_code, g.game_date::text,
+           CASE
+             WHEN g.home_score = 0 OR g.away_score = 0 THEN 'SCORE_MISSING'
+             ELSE 'PBP_INCOMPLETE'
+           END as issue_type
+    FROM games g JOIN pbp_final p ON g.game_id = p.game_id
+    WHERE NOT (g.home_score = p.t2 AND g.away_score = p.t1)
+      AND g.home_score > 0 AND g.away_score > 0
+    ORDER BY g.season_code DESC, g.game_date DESC
+    LIMIT 100
   |}
 
   (** UPSERT schedule entry - inserts or updates based on unique constraint *)
@@ -3442,6 +3484,8 @@ end
   let get_historical_seasons (module Db : Caqti_eio.CONNECTION) = Db.collect_list Queries.all_historical_seasons ()
   let get_legend_players (module Db : Caqti_eio.CONNECTION) = Db.collect_list Queries.all_legend_players ()
   let get_quarter_scores_raw (module Db : Caqti_eio.CONNECTION) game_id = Db.collect_list Queries.quarter_scores_by_game game_id
+  let get_pbp_data_quality (module Db : Caqti_eio.CONNECTION) = Db.collect_list Queries.pbp_data_quality ()
+  let get_games_with_incomplete_pbp (module Db : Caqti_eio.CONNECTION) = Db.collect_list Queries.games_with_incomplete_pbp ()
   let get_coaches (module Db : Caqti_eio.CONNECTION) = Db.collect_list Queries.all_coaches ()
   let get_player_career ~player_name (module Db : Caqti_eio.CONNECTION) = Db.collect_list Queries.player_career_by_name player_name
   let get_player_by_name ~name ~season (module Db : Caqti_eio.CONNECTION) = let s = if season = "" then "ALL" else season in Db.find_opt Queries.player_by_name (name, (s, s))
@@ -4801,6 +4845,54 @@ let get_game_flow game_id =
         gf_largest_lead_home = !largest_home;
         gf_largest_lead_away = !largest_away;
       }
+
+(* ========== PBP Data Quality Verification ========== *)
+
+type pbp_quality_result = {
+  pq_t2_home_count: int;      (** Games where T2=HOME pattern verified *)
+  pq_incomplete_count: int;   (** Games with missing scores in games table *)
+  pq_no_match_count: int;     (** Games where PBP doesn't match (data quality issue) *)
+  pq_total_pbp_games: int;    (** Total games with PBP data *)
+}
+
+(** Get PBP data quality summary - verifies T2=HOME pattern consistency *)
+let get_pbp_data_quality () =
+  match with_db (fun db -> Repo.get_pbp_data_quality db) with
+  | Error e -> Error e
+  | Ok rows ->
+      let t2_home = ref 0 in
+      let score_missing = ref 0 in
+      let mismatch = ref 0 in
+      List.iter (fun (pattern, cnt) ->
+        match pattern with
+        | "T2=HOME" -> t2_home := cnt
+        | "SCORE_MISSING" -> score_missing := cnt
+        | "MISMATCH" -> mismatch := cnt
+        | _ -> ()
+      ) rows;
+      Ok {
+        pq_t2_home_count = !t2_home;
+        pq_incomplete_count = !score_missing;  (* games with NULL/0 scores *)
+        pq_no_match_count = !mismatch;         (* actual PBP mismatches *)
+        pq_total_pbp_games = !t2_home + !score_missing + !mismatch;
+      }
+
+type incomplete_game = {
+  ig_game_id: string;
+  ig_season: string;
+  ig_date: string;
+  ig_issue: string;
+}
+
+(** Get list of games with incomplete PBP data (for re-scraping) *)
+let get_incomplete_pbp_games () =
+  match with_db (fun db -> Repo.get_games_with_incomplete_pbp db) with
+  | Error e -> Error e
+  | Ok rows ->
+      let games = List.map (fun (gid, season, date, issue) ->
+        { ig_game_id = gid; ig_season = season; ig_date = date; ig_issue = issue }
+      ) rows in
+      Ok games
 
 (** Get schedule progress: (completed_count, total_count) for a season *)
 let get_schedule_progress ~season_code () =
