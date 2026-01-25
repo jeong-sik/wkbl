@@ -1282,15 +1282,17 @@ Sitemap: https://wkbl.win/sitemap.xml
                 in
                 let explanation = Ai.get_explanation ~home ~away output in
                 let r = output.result in
-                let json = Printf.sprintf
-                  {|{"winner":"%s","probability":%.1f,"explanation":"%s","breakdown":{"elo_home":%.0f,"elo_away":%.0f,"elo_prob":%.1f}}|}
-                  r.winner
-                  (r.prob_a *. 100.0)
-                  (String.escaped explanation)
-                  output.breakdown.pb_elo_home
-                  output.breakdown.pb_elo_away
-                  (output.breakdown.pb_elo_prob *. 100.0)
-                in
+                let json_obj = `Assoc [
+                  ("winner", `String r.winner);
+                  ("probability", `Float (r.prob_a *. 100.0));
+                  ("explanation", `String explanation);
+                  ("breakdown", `Assoc [
+                    ("elo_home", `Float output.breakdown.pb_elo_home);
+                    ("elo_away", `Float output.breakdown.pb_elo_away);
+                    ("elo_prob", `Float (output.breakdown.pb_elo_prob *. 100.0));
+                  ]);
+                ] in
+                let json = Yojson.Basic.to_string json_obj in
                 Kirin.with_header "Cache-Control" "public, max-age=300"
                 @@ Kirin.json_string json
             | None, _, _, _ | _, None, _, _ ->
