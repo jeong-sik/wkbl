@@ -680,3 +680,241 @@ let zone_shot_chart_partial (chart: player_shot_chart) =
     chart.psc_mid.zs_made chart.psc_mid.zs_attempts
     (zone_pct_color chart.psc_three.zs_pct) chart.psc_three.zs_pct
     chart.psc_three.zs_made chart.psc_three.zs_attempts
+
+(* ============================================================================
+   Phase 3.3: New Charts
+   ============================================================================ *)
+
+(** Team Comparison Stacked Bar Chart - 팀별 공격/수비 스탯 비교 *)
+let team_comparison_bar_chart (teams: team_stats list) =
+  let width = 600 in
+  let height = 320 in
+  let bar_height = 28 in
+  let padding_left = 80 in
+  let padding_top = 40 in
+  let chart_width = width - padding_left - 40 in
+
+  (* Sort by efficiency *)
+  let sorted = List.sort (fun (a: team_stats) (b: team_stats) -> compare b.eff a.eff) teams in
+  let max_pts = List.fold_left (fun acc (t: team_stats) -> Float.max acc t.pts) 0.0 sorted in
+
+  let bars = sorted |> List.mapi (fun i (t: team_stats) ->
+    let y = padding_top + (i * (bar_height + 8)) in
+    let pts_width = int_of_float (t.pts /. max_pts *. float_of_int chart_width) in
+    let ast_width = int_of_float (t.ast /. max_pts *. float_of_int chart_width *. 0.3) in
+    let reb_width = int_of_float (t.reb /. max_pts *. float_of_int chart_width *. 0.3) in
+    let delay = float_of_int i *. 0.1 in
+    Printf.sprintf {|
+      <text x="%d" y="%d" class="fill-slate-600 dark:fill-slate-300 text-xs" text-anchor="end">%s</text>
+      <g class="bar-group" style="animation: bar-grow 0.6s ease-out forwards; animation-delay: %.2fs; opacity: 0; transform: scaleX(0); transform-origin: left;">
+        <rect x="%d" y="%d" width="%d" height="%d" fill="#f97316" rx="4"/>
+        <rect x="%d" y="%d" width="%d" height="%d" fill="#22c55e" rx="4" opacity="0.8"/>
+        <rect x="%d" y="%d" width="%d" height="%d" fill="#3b82f6" rx="4" opacity="0.8"/>
+      </g>
+      <text x="%d" y="%d" class="fill-slate-500 dark:fill-slate-400 text-xs">%.1f</text>
+    |}
+      (padding_left - 8) (y + bar_height / 2 + 4) t.team
+      delay
+      padding_left y pts_width bar_height
+      (padding_left + pts_width + 2) y ast_width bar_height
+      (padding_left + pts_width + ast_width + 4) y reb_width bar_height
+      (padding_left + pts_width + ast_width + reb_width + 12) (y + bar_height / 2 + 4) t.eff
+  ) |> String.concat "\n" in
+
+  Printf.sprintf {|
+<svg viewBox="0 0 %d %d" class="w-full h-auto" preserveAspectRatio="xMidYMid meet">
+  <style>
+    @keyframes bar-grow {
+      from { opacity: 0; transform: scaleX(0); }
+      to { opacity: 1; transform: scaleX(1); }
+    }
+  </style>
+  <!-- Title -->
+  <text x="%d" y="20" class="fill-slate-700 dark:fill-slate-200 text-sm font-medium">팀별 공격력 비교</text>
+
+  <!-- Legend -->
+  <g transform="translate(%d, 8)">
+    <rect x="0" y="0" width="12" height="12" fill="#f97316" rx="2"/>
+    <text x="16" y="10" class="fill-slate-500 dark:fill-slate-400 text-xs">득점</text>
+    <rect x="50" y="0" width="12" height="12" fill="#22c55e" rx="2"/>
+    <text x="66" y="10" class="fill-slate-500 dark:fill-slate-400 text-xs">어시스트</text>
+    <rect x="120" y="0" width="12" height="12" fill="#3b82f6" rx="2"/>
+    <text x="136" y="10" class="fill-slate-500 dark:fill-slate-400 text-xs">리바운드</text>
+  </g>
+
+  <!-- Bars -->
+  %s
+</svg>
+  |} width height padding_left (width - 200) bars
+
+(** Quarter Performance Heatmap - 쿼터별 퍼포먼스 히트맵
+    Takes a list of (quarter, stat_value) pairs *)
+type quarter_stat = {
+  qs_quarter: string;  (* "Q1", "Q2", "Q3", "Q4", "OT" *)
+  qs_pts: float;
+  qs_fg_pct: float;
+  qs_turnovers: float;
+}
+
+let quarter_heatmap (quarters: quarter_stat list) =
+  let width = 400 in
+  let height = 120 in
+  let cell_width = 70 in
+  let cell_height = 24 in
+  let padding_left = 80 in
+  let padding_top = 32 in
+
+  (* Normalize to 0-1 for color intensity *)
+  let max_pts = List.fold_left (fun acc q -> Float.max acc q.qs_pts) 1.0 quarters in
+  let max_fg = List.fold_left (fun acc q -> Float.max acc q.qs_fg_pct) 1.0 quarters in
+
+  let cells = quarters |> List.mapi (fun i q ->
+    let x = padding_left + (i * (cell_width + 4)) in
+    (* PTS row *)
+    let pts_intensity = q.qs_pts /. max_pts in
+    let pts_color = Printf.sprintf "rgba(249, 115, 22, %.2f)" (0.3 +. pts_intensity *. 0.7) in
+    (* FG% row *)
+    let fg_intensity = q.qs_fg_pct /. max_fg in
+    let fg_color = Printf.sprintf "rgba(34, 197, 94, %.2f)" (0.3 +. fg_intensity *. 0.7) in
+    Printf.sprintf {|
+      <!-- %s header -->
+      <text x="%d" y="%d" class="fill-slate-600 dark:fill-slate-300 text-xs font-medium" text-anchor="middle">%s</text>
+      <!-- PTS cell -->
+      <rect x="%d" y="%d" width="%d" height="%d" fill="%s" rx="4"/>
+      <text x="%d" y="%d" class="fill-white text-xs font-medium" text-anchor="middle">%.1f</text>
+      <!-- FG%% cell -->
+      <rect x="%d" y="%d" width="%d" height="%d" fill="%s" rx="4"/>
+      <text x="%d" y="%d" class="fill-white text-xs font-medium" text-anchor="middle">%.1f%%</text>
+    |}
+      q.qs_quarter
+      (x + cell_width / 2) (padding_top - 8) q.qs_quarter
+      x padding_top cell_width cell_height pts_color
+      (x + cell_width / 2) (padding_top + cell_height / 2 + 4) q.qs_pts
+      x (padding_top + cell_height + 4) cell_width cell_height fg_color
+      (x + cell_width / 2) (padding_top + cell_height + 4 + cell_height / 2 + 4) q.qs_fg_pct
+  ) |> String.concat "\n" in
+
+  Printf.sprintf {|
+<svg viewBox="0 0 %d %d" class="w-full h-auto" preserveAspectRatio="xMidYMid meet">
+  <!-- Row labels -->
+  <text x="%d" y="%d" class="fill-slate-500 dark:fill-slate-400 text-xs" text-anchor="end">득점</text>
+  <text x="%d" y="%d" class="fill-slate-500 dark:fill-slate-400 text-xs" text-anchor="end">FG%%</text>
+
+  <!-- Cells -->
+  %s
+</svg>
+  |} width height
+    (padding_left - 8) (padding_top + cell_height / 2 + 4)
+    (padding_left - 8) (padding_top + cell_height + 4 + cell_height / 2 + 4)
+    cells
+
+(** Win Rate Trend Chart - 승률 추이 라인 차트
+    Takes a list of (date, win_rate) pairs *)
+type win_rate_point = {
+  wrp_date: string;
+  wrp_win_rate: float;  (* 0.0 to 100.0 *)
+  wrp_wins: int;
+  wrp_losses: int;
+}
+
+let win_rate_trend_chart (points: win_rate_point list) =
+  let width = 500.0 in
+  let height = 200.0 in
+  let padding_left = 50.0 in
+  let padding_right = 20.0 in
+  let padding_top = 30.0 in
+  let padding_bottom = 40.0 in
+  let plot_width = width -. padding_left -. padding_right in
+  let plot_height = height -. padding_top -. padding_bottom in
+
+  let n = List.length points in
+  if n = 0 then "<div class='text-slate-500 text-center p-4'>데이터 없음</div>"
+  else
+    let x_step = plot_width /. float_of_int (max 1 (n - 1)) in
+
+    (* Generate path and points *)
+    let path_points = points |> List.mapi (fun i p ->
+      let x = padding_left +. (float_of_int i *. x_step) in
+      let y = padding_top +. plot_height -. (p.wrp_win_rate /. 100.0 *. plot_height) in
+      (i, x, y, p)
+    ) in
+
+    let path_d = path_points
+      |> List.map (fun (i, x, y, _) ->
+          if i = 0 then Printf.sprintf "M%.2f,%.2f" x y
+          else Printf.sprintf " L%.2f,%.2f" x y)
+      |> String.concat "" in
+
+    let circles = path_points |> List.map (fun (i, x, y, p) ->
+      let delay = 0.8 +. (float_of_int i *. 0.05) in
+      Printf.sprintf {|
+        <circle cx="%.2f" cy="%.2f" r="5"
+                class="fill-orange-500 stroke-white dark:stroke-slate-900 cursor-pointer win-point"
+                stroke-width="2" style="animation-delay: %.2fs">
+          <title>%s
+승률: %.1f%% (%d승 %d패)</title>
+        </circle>
+      |} x y delay p.wrp_date p.wrp_win_rate p.wrp_wins p.wrp_losses
+    ) |> String.concat "\n" in
+
+    (* X-axis labels (show every nth) *)
+    let label_step = max 1 (n / 5) in
+    let x_labels = path_points
+      |> List.filteri (fun i _ -> i mod label_step = 0 || i = n - 1)
+      |> List.map (fun (_, x, _, p) ->
+          let short_date = if String.length p.wrp_date >= 5
+            then String.sub p.wrp_date (String.length p.wrp_date - 5) 5
+            else p.wrp_date in
+          Printf.sprintf {|<text x="%.2f" y="%.2f" class="fill-slate-500 dark:fill-slate-400 text-xs" text-anchor="middle">%s</text>|}
+            x (height -. 10.0) short_date)
+      |> String.concat "\n" in
+
+    Printf.sprintf {|
+<svg viewBox="0 0 %.0f %.0f" class="w-full h-auto" preserveAspectRatio="xMidYMid meet">
+  <style>
+    @keyframes win-line-draw {
+      from { stroke-dashoffset: 1500; }
+      to { stroke-dashoffset: 0; }
+    }
+    .win-line { stroke-dasharray: 1500; animation: win-line-draw 1s ease-out forwards; }
+    .win-point { opacity: 0; animation: fade-in 0.3s ease-out forwards; }
+    @keyframes fade-in {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+  </style>
+
+  <!-- Y-axis grid lines -->
+  <line x1="%.2f" y1="%.2f" x2="%.2f" y2="%.2f" stroke="#e2e8f0" stroke-dasharray="4" class="dark:stroke-slate-700"/>
+  <line x1="%.2f" y1="%.2f" x2="%.2f" y2="%.2f" stroke="#e2e8f0" stroke-dasharray="4" class="dark:stroke-slate-700"/>
+  <line x1="%.2f" y1="%.2f" x2="%.2f" y2="%.2f" stroke="#f97316" stroke-dasharray="4" opacity="0.5"/>
+
+  <!-- Y-axis labels -->
+  <text x="%.2f" y="%.2f" class="fill-slate-500 dark:fill-slate-400 text-xs" text-anchor="end">100%%</text>
+  <text x="%.2f" y="%.2f" class="fill-orange-500 text-xs font-medium" text-anchor="end">50%%</text>
+  <text x="%.2f" y="%.2f" class="fill-slate-500 dark:fill-slate-400 text-xs" text-anchor="end">0%%</text>
+
+  <!-- Title -->
+  <text x="%.2f" y="18" class="fill-slate-700 dark:fill-slate-200 text-sm font-medium">승률 추이</text>
+
+  <!-- Trend line -->
+  <path d="%s" fill="none" class="stroke-orange-500 win-line" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Data points -->
+  %s
+
+  <!-- X-axis labels -->
+  %s
+</svg>
+    |} width height
+    (* Grid lines: 100%, 50%, 0% *)
+    padding_left padding_top (width -. padding_right) padding_top
+    padding_left (padding_top +. plot_height /. 2.0) (width -. padding_right) (padding_top +. plot_height /. 2.0)
+    padding_left (padding_top +. plot_height) (width -. padding_right) (padding_top +. plot_height)
+    (* Y labels *)
+    (padding_left -. 8.0) (padding_top +. 4.0)
+    (padding_left -. 8.0) (padding_top +. plot_height /. 2.0 +. 4.0)
+    (padding_left -. 8.0) (padding_top +. plot_height +. 4.0)
+    (* Title *)
+    padding_left
+    path_d circles x_labels

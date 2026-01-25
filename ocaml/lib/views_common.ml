@@ -1031,7 +1031,16 @@ let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="")
     let ld = if json_ld = "" then default_json_ld else json_ld in
     Printf.sprintf {html|  <script type="application/ld+json">%s</script>|html} ld
   in
-  let data_freshness_html = match data_freshness with
+  let data_freshness_html =
+    let fresh_date = match data_freshness with
+      | Some d -> Some d
+      | None ->
+          (* Fetch from DB if not provided *)
+          match Db.get_latest_game_date () with
+          | Ok (Some d) -> Some d
+          | _ -> None
+    in
+    match fresh_date with
     | Some date -> Printf.sprintf {html|<div class="mb-2 text-xs text-slate-500 dark:text-slate-500">📊 데이터: %s 경기까지 반영</div>|html} (escape_html date)
     | None -> ""
   in
