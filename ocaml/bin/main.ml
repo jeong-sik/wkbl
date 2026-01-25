@@ -1304,4 +1304,48 @@ Sitemap: https://wkbl.win/sitemap.xml
         | Error e, _, _ | _, Error e, _ | _, _, Error e ->
             Kirin.server_error ~body:(Db.show_db_error e) ()
     );
+
+    (* SSE: Live scores endpoint *)
+    Kirin.get "/api/live/scores" (fun _request ->
+      (* Get today's date in YYYY-MM-DD format *)
+      let today =
+        let tm = Unix.localtime (Unix.time ()) in
+        Printf.sprintf "%04d-%02d-%02d"
+          (tm.Unix.tm_year + 1900)
+          (tm.Unix.tm_mon + 1)
+          tm.Unix.tm_mday
+      in
+      (* Get games for current season *)
+      match Db.get_games ~season:"046" () with
+      | Ok games ->
+          (* Filter today's games *)
+          let today_games = List.filter (fun (g: Domain.game_summary) ->
+            String.sub g.game_date 0 10 = today
+          ) games in
+          (* Convert to JSON *)
+          let game_to_json (g: Domain.game_summary) = `Assoc [
+            ("game_id", `String g.game_id);
+            ("home", `String g.home_team);
+            ("away", `String g.away_team);
+            ("home_score", match g.home_score with Some s -> `Int s | None -> `Null);
+            ("away_score", match g.away_score with Some s -> `Int s | None -> `Null);
+            ("status", `String (if g.home_score = None then "scheduled" else "final"));
+          ] in
+          let json_obj = `Assoc [
+            ("timestamp", `String (string_of_float (Unix.time ())));
+            ("date", `String today);
+            ("games", `List (List.map game_to_json today_games));
+          ] in
+          (* Return as SSE event *)
+          let event = Kirin.Sse.event ~event_type:"scores" (Yojson.Basic.to_string json_obj) in
+          Kirin.Sse.response [event]
+      | Error e ->
+          let err_event = Kirin.Sse.event ~event_type:"error" (Db.show_db_error e) in
+          Kirin.Sse.response [err_event]
+    );
+
+    (* Live scores page *)
+    Kirin.get "/live" (fun _request ->
+      Kirin.html (Views.live_page ())
+    );
   ]
