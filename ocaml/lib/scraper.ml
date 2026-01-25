@@ -686,6 +686,32 @@ let team_codes_json = [
 let team_name_from_code code =
   List.assoc_opt code team_codes_json |> Option.value ~default:code
 
+(** Comprehensive team name → code mapping (includes historical teams)
+    Used for syncing scraped schedule data to database *)
+let team_name_to_code = [
+  (* Modern teams (active) *)
+  ("KB스타즈", "01"); ("KB 스타즈", "01");
+  ("삼성생명", "03");
+  ("우리은행", "05");
+  ("신한은행", "07");
+  ("하나은행", "09"); ("하나원큐", "09");
+  ("BNK썸", "11"); ("BNK 썸", "11");
+  (* Historical teams (defunct/renamed) *)
+  ("금호생명", "02");  (* 2003-2011, became 하나외환 *)
+  ("신세계", "04");    (* 1998-2011 *)
+  ("현대", "06");      (* 1998-2011, became 하나외환 *)
+  ("국민은행", "01");  (* Pre-KB era name *)
+  ("삼성화재", "03");  (* Alternate name *)
+  ("농협", "08");      (* 2003-2004 briefly *)
+  ("LG", "12");        (* 1998-2001 *)
+  ("한화", "13");      (* 1998-2000 *)
+]
+
+(** Convert team name to code for database sync *)
+let code_from_team_name name =
+  List.assoc_opt name team_name_to_code
+  |> Option.value ~default:(Printf.sprintf "XX_%s" (String.sub name 0 (min 3 (String.length name))))
+
 (** DataLab uses different season codes (offset by +2 from main site)
     Main site: 044 = 2025-2026
     DataLab:   046 = 2025-2026
@@ -1532,3 +1558,258 @@ let print_schedule_csv entries =
       e.sch_venue
       e.sch_season
   )
+
+(* ============================================================
+   FULL HISTORY SCRAPER (1998-2026)
+   Uses the main site schedule API: /game/sch/inc_list_1_new.asp
+   ============================================================ *)
+
+(** Complete season code mapping from 1998 to 2026
+    Discovered from WKBL main site dropdown menu.
+    Note: Some codes are skipped (004, 010, 014) *)
+let all_season_codes = [
+  (* Modern era: Regular seasons (Oct-Mar) *)
+  ("046", "2025-2026");
+  ("045", "2024-2025");
+  ("044", "2023-2024");
+  ("043", "2022-2023");
+  ("042", "2021-2022");
+  ("041", "2020-2021");
+  ("040", "2019-2020");
+  ("039", "2018-2019");
+  ("038", "2017-2018");
+  ("037", "2016-2017");
+  ("036", "2015-2016");
+  ("035", "2014-2015");
+  ("034", "2013-2014");
+  ("033", "2012-2013");
+  ("032", "2011-2012");
+  ("031", "2010-2011");
+  (* Transition era: Mixed formats *)
+  ("030", "2010퓨처스");
+  ("029", "2009-2010");
+  ("028", "2009퓨처스");
+  ("027", "2008-2009");
+  ("026", "2008퓨처스");
+  ("025", "2007-2008");
+  ("024", "2007퓨처스");
+  ("023", "2007겨울");
+  ("022", "2006퓨처스");
+  ("021", "2006여름");
+  ("020", "2006겨울");
+  ("019", "2005여름");
+  ("018", "2005퓨처스");
+  ("017", "2005겨울");
+  ("016", "2004퓨처스");
+  ("015", "2004겨울");
+  (* Early era: Summer/Winter leagues *)
+  ("013", "2003여름");
+  ("012", "2003겨울");
+  ("011", "2002여름");
+  ("009", "2002겨울");
+  ("008", "2001여름");
+  ("007", "2001겨울");
+  ("006", "2000여름");
+  ("005", "2000겨울");
+  ("003", "1999여름");
+  ("002", "1999겨울");
+  ("001", "1998여름");
+]
+
+(** Get approximate date range for a season
+    Returns list of (year, month) tuples to query
+
+    NOTE: Early-era (pre-2007) winter leagues had different schedules:
+    - 겨울 1999-2006: Dec (Y-1), Jan-Feb Y, May Y (playoffs)
+    - 겨울 2007+: Nov Y → Mar Y+1 (spanning two years) *)
+let season_date_range season_name =
+  (* Parse season name to determine date range *)
+  if String.length season_name >= 9 && season_name.[4] = '-' then
+    (* Format: "YYYY-YYYY" - Regular season (Oct to Mar) *)
+    let start_year = int_of_string (String.sub season_name 0 4) in
+    [(start_year, 10); (start_year, 11); (start_year, 12);
+     (start_year + 1, 1); (start_year + 1, 2); (start_year + 1, 3)]
+  else if String.length season_name >= 6 then
+    let year_str = String.sub season_name 0 4 in
+    let year = try int_of_string year_str with _ -> 2000 in
+    if String.length season_name > 4 then
+      let suffix = String.sub season_name 4 (String.length season_name - 4) in
+      if suffix = "여름" then
+        (* Summer league: Jun-Sep *)
+        [(year, 6); (year, 7); (year, 8); (year, 9)]
+      else if suffix = "퓨처스" then
+        (* Futures league: Jun-Oct (some like 2006 only have Oct games) *)
+        [(year, 6); (year, 7); (year, 8); (year, 9); (year, 10)]
+      else if suffix = "겨울" then
+        (* Winter league: different pattern based on era *)
+        if year <= 2007 then
+          (* Early era: Dec(Y-1), Jan-Mar Y, May Y (playoffs) *)
+          [(year - 1, 12); (year, 1); (year, 2); (year, 3); (year, 5)]
+        else
+          (* Modern era (2008+): Nov Y → Mar Y+1 *)
+          [(year, 11); (year, 12); (year + 1, 1); (year + 1, 2); (year + 1, 3)]
+      else
+        (* Default: full year *)
+        [(year, 1); (year, 2); (year, 3); (year, 6); (year, 7); (year, 8);
+         (year, 10); (year, 11); (year, 12)]
+    else
+      [(year, 1); (year, 2); (year, 3); (year, 10); (year, 11); (year, 12)]
+  else
+    []
+
+(** Fetch schedule from new API endpoint
+    URL: /game/sch/inc_list_1_new.asp?season_gu={code}&ym={YYYYMM}&viewType=1&gun=1
+    Requires Referer header for authentication *)
+let fetch_schedule_api ~sw ~env ~season_code ~ym =
+  let url = Printf.sprintf "%s/game/sch/inc_list_1_new.asp?season_gu=%s&ym=%s&viewType=1&gun=1"
+    base_url season_code ym in
+  let net = Eio.Stdenv.net env in
+  let headers = Cohttp.Header.of_list [
+    ("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) WKBL-Stats-Bot/1.0");
+    ("Accept", "text/html,application/xhtml+xml");
+    ("Accept-Language", "ko-KR,ko;q=0.9");
+    ("Referer", "https://www.wkbl.or.kr/game/sch/schedule1.asp");
+    ("X-Requested-With", "XMLHttpRequest");
+  ] in
+  let uri = Uri.of_string url in
+  let client = Cohttp_eio.Client.make ~https:(Some https_wrapper) net in
+  match Cohttp_eio.Client.get ~sw client ~headers uri with
+  | resp, body ->
+      let code = resp |> Cohttp.Response.status |> Cohttp.Code.code_of_status in
+      if code >= 200 && code < 300 then
+        Eio.Buf_read.(parse_exn take_all) body ~max_size:max_int
+      else begin
+        Printf.eprintf "HTTP %d for schedule API (season=%s, ym=%s)\n" code season_code ym;
+        ""
+      end
+  | exception exn ->
+      Printf.eprintf "HTTP error for schedule API: %s\n" (Printexc.to_string exn);
+      ""
+
+(** Parse schedule HTML from new API
+    Extracts: date, teams, scores, venue from team_versus divs *)
+let parse_schedule_api_html ~season_code ~season_name:_ html =
+  let open Soup in
+  let soup = parse html in
+  let rows = soup $$ "tr[id]" |> to_list in
+  rows |> List.filter_map (fun row ->
+    try
+      (* Extract date from first td *)
+      let date_td = row $ "td" in
+      let date_text = texts date_td |> String.concat "" |> String.trim in
+
+      (* Extract teams and scores from team_versus div *)
+      let team_div = row $ ".team_versus" in
+      let away_team = team_div $ ".away .team_name" |> R.leaf_text in
+      let home_team = team_div $ ".home .team_name" |> R.leaf_text in
+
+      (* Extract scores - may not exist for scheduled games *)
+      let away_score = try
+        let s = team_div $ ".away .txt_score" |> R.leaf_text in
+        if s = "" then None else Some (int_of_string s)
+      with _ -> None in
+      let home_score = try
+        let s = team_div $ ".home .txt_score" |> R.leaf_text in
+        if s = "" then None else Some (int_of_string s)
+      with _ -> None in
+
+      (* Extract venue - third td *)
+      let tds = row $$ "td" |> to_list in
+      let venue = if List.length tds >= 3 then
+        List.nth tds 2 |> texts |> String.concat "" |> String.trim
+      else "" in
+
+      (* Extract time - fourth td *)
+      let time = if List.length tds >= 4 then
+        List.nth tds 3 |> texts |> String.concat "" |> String.trim
+      else "" in
+
+      Some {
+        sch_season = season_code;
+        sch_date = date_text;
+        sch_day = "";  (* Could extract from date_text *)
+        sch_time = time;
+        sch_home_team = home_team;
+        sch_away_team = away_team;
+        sch_home_score = home_score;
+        sch_away_score = away_score;
+        sch_venue = venue;
+      }
+    with _ -> None
+  )
+
+(** Fetch full schedule for a season using new API *)
+let fetch_full_season_schedule ~sw ~env ~season_code ~season_name =
+  let clock = Eio.Stdenv.clock env in
+  let date_range = season_date_range season_name in
+  Printf.printf "Fetching %s (%s) - %d months...\n%!" season_name season_code (List.length date_range);
+
+  date_range |> List.concat_map (fun (year, month) ->
+    let ym = Printf.sprintf "%04d%02d" year month in
+    let html = fetch_schedule_api ~sw ~env ~season_code ~ym in
+    (* Rate limiting *)
+    Eio.Time.sleep clock 0.3;
+    if String.length html > 100 then
+      parse_schedule_api_html ~season_code ~season_name html
+    else
+      []
+  )
+
+(** Fetch all historical schedules (1998-2026)
+    @param seasons Optional subset of seasons to fetch *)
+let fetch_all_historical_schedules ~sw ~env ?(seasons=all_season_codes) () =
+  Printf.printf "=== WKBL Full History Scraper ===\n";
+  Printf.printf "Fetching %d seasons (1998-2026)...\n\n%!" (List.length seasons);
+
+  let clock = Eio.Stdenv.clock env in
+  let all_entries = ref [] in
+
+  seasons |> List.iter (fun (code, name) ->
+    let entries = fetch_full_season_schedule ~sw ~env ~season_code:code ~season_name:name in
+    Printf.printf "  %s: %d games\n%!" name (List.length entries);
+    all_entries := entries @ !all_entries;
+    (* Rate limiting between seasons *)
+    Eio.Time.sleep clock 0.5
+  );
+
+  Printf.printf "\n=== Total: %d games across %d seasons ===\n%!"
+    (List.length !all_entries) (List.length seasons);
+  !all_entries
+
+(** Convert schedule_entry date format for database
+    Input: "1/10(월)" or "12/25(일)" → Output: "2000-01-10" *)
+let normalize_schedule_date ~season_code date_str =
+  (* Extract season year from season_code *)
+  let season_name = List.assoc_opt season_code all_season_codes |> Option.value ~default:"2025-2026" in
+  let base_year =
+    if String.length season_name >= 4 then
+      try int_of_string (String.sub season_name 0 4) with _ -> 2025
+    else 2025
+  in
+  (* Parse "M/D(day)" format *)
+  try
+    let paren_pos = String.index date_str '(' in
+    let date_part = String.sub date_str 0 paren_pos in
+    let slash_pos = String.index date_part '/' in
+    let month = int_of_string (String.sub date_part 0 slash_pos) in
+    let day = int_of_string (String.sub date_part (slash_pos + 1) (String.length date_part - slash_pos - 1)) in
+    (* Determine actual year based on month and season type *)
+    let year =
+      if String.length season_name >= 9 && season_name.[4] = '-' then
+        (* Regular season: Oct-Mar spans two years *)
+        if month >= 10 then base_year else base_year + 1
+      else if String.sub season_name 4 (String.length season_name - 4) = "겨울" then
+        (* Winter: Dec spans into next year, Jan-Mar is next year *)
+        if month = 12 then base_year - 1 else base_year
+      else
+        base_year
+    in
+    Printf.sprintf "%04d-%02d-%02d" year month day
+  with _ -> Printf.sprintf "%04d-01-01" base_year  (* fallback *)
+
+(** Get schedule status from scores *)
+let schedule_status_from_scores home_score away_score =
+  match home_score, away_score with
+  | Some _, Some _ -> "completed"
+  | None, None -> "scheduled"
+  | _ -> "in_progress"

@@ -714,18 +714,53 @@ let team_code_of_string team_name =
         loop 0
   in
   match key with
+  (* Modern teams (active) *)
   | "아산 우리은행 우리WON" | "우리은행" | "우리WON" | "WO" -> Some "WO"
   | "용인 삼성생명 블루밍스" | "삼성생명" | "SS" -> Some "SS"
   | "인천 신한은행 에스버드" | "신한은행" | "SH" -> Some "SH"
   | "청주 KB스타즈" | "KB스타즈" | "KB" -> Some "KB"
   | "부천 하나은행" | "하나은행" | "HN" -> Some "HN"
   | "부산 BNK 썸" | "BNK 썸" | "BNK썸" | "BNK" | "BN" -> Some "BN"
+  (* Historical teams (defunct/renamed) *)
+  | "금호생명" | "GH" -> Some "GH"    (* 2003-2011 *)
+  | "신세계" | "SG" -> Some "SG"       (* 1998-2011 *)
+  | "현대" | "HD" -> Some "HD"         (* 1998-2011 *)
+  | "국민은행" -> Some "KB"            (* Pre-KB era *)
+  | "농협" | "NH" -> Some "NH"         (* 2003-2004 *)
+  | "LG" -> Some "LG"                  (* 1998-2001 *)
+  | "한화" | "HW" -> Some "HW"         (* 1998-2000 *)
+  | "하나외환" -> Some "HN"            (* 2011-2015, merged to 하나은행 *)
+  | "KEB하나" -> Some "HN"             (* 2015-2018 era name *)
+  | "KDB생명" | "KDB" -> Some "KD"     (* 2012-2016 *)
+  | "OK저축은행" | "OK" -> Some "OK"   (* 2018-2019 special events *)
+  | "흥국생명" -> Some "HK"            (* 2016-2020 *)
+  (* Special events / All-Star - map to special codes *)
+  | "팀 포니블" | "팀 유니블" -> Some "AS"  (* All-Star *)
+  | "블루스타" | "핑크스타" -> Some "AS"
+  | "남부선발" | "중부선발" -> Some "AS"
+  | "희망팀" | "사랑팀" -> Some "AS"
+  | "질풍가도" | "여유만만" -> Some "AS"
+  (* Contains matching *)
   | _ when contains "우리은행" -> Some "WO"
   | _ when contains "삼성생명" -> Some "SS"
   | _ when contains "신한은행" -> Some "SH"
   | _ when contains "하나은행" -> Some "HN"
+  | _ when contains "하나외환" -> Some "HN"
+  | _ when contains "KEB하나" -> Some "HN"
   | _ when contains "BNK" -> Some "BN"
   | _ when contains "KB" -> Some "KB"
+  | _ when contains "금호생명" -> Some "GH"
+  | _ when contains "신세계" -> Some "SG"
+  | _ when contains "현대" -> Some "HD"
+  | _ when contains "KDB" -> Some "KD"
+  | _ when contains "흥국" -> Some "HK"
+  (* International / exhibition games - skip these *)
+  | _ when contains "CHANSON" -> None
+  | _ when contains "JOMO" -> None
+  | _ when contains "중국" -> None
+  | _ when contains "일본" -> None
+  | _ when contains "북경" -> None
+  | _ when contains "한국 올스타" -> Some "AS"
   | _ -> None
 
 let team_code_to_color = function
