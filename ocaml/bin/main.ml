@@ -355,15 +355,7 @@ Sitemap: https://wkbl.win/sitemap.xml
       | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
     );
 
-    (* Boxscore Detail *)
-    Kirin.get "/boxscore/:id" (fun request ->
-      let game_id = Kirin.param "id" request in
-      match Db.get_boxscore ~game_id () with
-      | Ok bs -> Kirin.html (Views.boxscore_page bs)
-      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
-    );
-
-    (* Play-by-Play (PBP) Detail *)
+    (* Play-by-Play (PBP) Detail - MUST come before /boxscore/:id *)
     Kirin.get "/boxscore/:id/pbp" (fun request ->
       let game_id = Kirin.param "id" request in
       let period_opt = query_nonempty request "period" in
@@ -485,6 +477,14 @@ Sitemap: https://wkbl.win/sitemap.xml
               (* Extract score flow and render chart *)
               let flow_points = Domain.extract_score_flow all_events in
               Kirin.html (Views_tools.game_flow_page ~game:bs.boxscore_game flow_points))
+    );
+
+    (* Boxscore Detail - MUST come AFTER more specific /boxscore/:id/* routes *)
+    Kirin.get "/boxscore/:id" (fun request ->
+      let game_id = Kirin.param "id" request in
+      match Db.get_boxscore ~game_id () with
+      | Ok bs -> Kirin.html (Views.boxscore_page bs)
+      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
     );
 
     (* Leaders *)
