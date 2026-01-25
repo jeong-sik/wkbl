@@ -4801,3 +4801,18 @@ let get_game_flow game_id =
         gf_largest_lead_home = !largest_home;
         gf_largest_lead_away = !largest_away;
       }
+
+(** Get schedule progress: (completed_count, total_count) for a season *)
+let get_schedule_progress ~season_code () =
+  let completed = with_db (fun db ->
+    Repo.count_schedule_by_status ~season_code ~status:"completed" db
+  ) in
+  let scheduled = with_db (fun db ->
+    Repo.count_schedule_by_status ~season_code ~status:"scheduled" db
+  ) in
+  match (completed, scheduled) with
+  | Ok (Some c), Ok (Some s) -> Ok (Some (c, c + s))
+  | Ok None, Ok (Some s) -> Ok (Some (0, s))
+  | Ok (Some c), Ok None -> Ok (Some (c, c))
+  | _ -> Ok None
+
