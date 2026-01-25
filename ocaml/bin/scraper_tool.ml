@@ -38,7 +38,11 @@ Usage:
   scraper_tool allstar --stats         Show all-star MVP statistics (통계 분석)
   scraper_tool schedule [--csv]        Fetch season schedule (경기 일정)
   scraper_tool schedule --month=YYYYMM Fetch specific month schedule
-  scraper_tool sync schedule           Sync schedule to Supabase database
+  scraper_tool sync schedule           Sync current season schedule to database
+  scraper_tool sync history            Sync ALL historical games to database (1998-2026)
+  scraper_tool sync history --season=X Sync specific season to database
+  scraper_tool history [--csv]         Fetch ALL historical games (1998-2026, 43 seasons!)
+  scraper_tool history --season=CODE   Fetch specific season from full history
   scraper_tool --help                  Show this help
 
 Examples:
@@ -394,6 +398,88 @@ let run_sync_schedule ~sw ~env =
       Printf.printf "Season 046: %d completed, %d scheduled (Total: %d)\n" c s (c + s)
   | _ -> ())
 
+(** Sync ALL historical schedules (1998-2026) to database *)
+let run_sync_history ~sw ~env ~season_filter =
+  (* Get DB URL *)
+  let db_url = match get_db_url () with
+    | Some url -> url
+    | None ->
+        Printf.eprintf "Error: DATABASE_URL or WKBL_DATABASE_URL not set\n";
+        exit 1
+  in
+
+  (* Initialize DB pool *)
+  Printf.printf "Connecting to database...\n";
+  (match Db.init_pool ~sw ~stdenv:(env :> Caqti_eio.stdenv) db_url with
+  | Ok () -> Printf.printf "Database connected.\n"
+  | Error e ->
+      Printf.eprintf "Database connection failed: %s\n" (Db.show_db_error e);
+      exit 1);
+
+  (* Determine which seasons to sync *)
+  let seasons = match season_filter with
+    | Some code ->
+        let name = List.assoc_opt code Scraper.all_season_codes
+          |> Option.value ~default:"Unknown" in
+        [(code, name)]
+    | None -> Scraper.all_season_codes
+  in
+
+  Printf.printf "Syncing %d seasons to database...\n\n" (List.length seasons);
+
+  let total_success = ref 0 in
+  let total_error = ref 0 in
+
+  seasons |> List.iter (fun (season_code, season_name) ->
+    Printf.printf "=== %s (%s) ===\n" season_name season_code;
+
+    (* Fetch schedule for this season *)
+    let entries = Scraper.fetch_full_season_schedule ~sw ~env ~season_code ~season_name in
+    Printf.printf "Fetched %d games. Syncing...\n" (List.length entries);
+
+    let success = ref 0 in
+    let errors = ref 0 in
+
+    entries |> List.iter (fun (e : Scraper.schedule_entry) ->
+      (* Convert team names to codes *)
+      let home_code = Domain.team_code_of_string e.sch_home_team in
+      let away_code = Domain.team_code_of_string e.sch_away_team in
+      match (home_code, away_code) with
+      | Some hc, Some ac ->
+          let status = match (e.sch_home_score, e.sch_away_score) with
+            | Some _, Some _ -> "completed"
+            | _ -> "scheduled"
+          in
+          (* Normalize date format: "1/10(월)" → "2000-01-10" *)
+          let game_date = Scraper.normalize_schedule_date ~season_code e.sch_date in
+          let result = Db.with_db (fun db ->
+            Db.Repo.upsert_schedule_entry
+              ~game_date
+              ~game_time:(Some e.sch_time)
+              ~season_code
+              ~home_team_code:hc
+              ~away_team_code:ac
+              ~venue:(Some e.sch_venue)
+              ~status
+              db
+          ) in
+          (match result with
+          | Ok () -> incr success
+          | Error _ -> incr errors)
+      | _ ->
+          incr errors;
+          if !errors <= 3 then  (* Only show first few errors per season *)
+            Printf.eprintf "  ✗ Unknown team: %s or %s\n" e.sch_home_team e.sch_away_team
+    );
+
+    Printf.printf "  ✓ %d synced, %d errors\n\n" !success !errors;
+    total_success := !total_success + !success;
+    total_error := !total_error + !errors
+  );
+
+  Printf.printf "\n=== History Sync Complete ===\n";
+  Printf.printf "Total: %d synced, %d errors\n" !total_success !total_error
+
 let () =
   let args = Array.to_list Sys.argv |> List.tl in
 
@@ -473,9 +559,38 @@ let () =
   | "sync" :: "schedule" :: _ ->
       run_with_rng @@ fun ~sw ~env ->
       run_sync_schedule ~sw ~env
+  | "sync" :: "history" :: _ ->
+      run_with_rng @@ fun ~sw ~env ->
+      run_sync_history ~sw ~env ~season_filter
   | "sync" :: _ ->
-      Printf.eprintf "Unknown sync subcommand. Use 'schedule'\n%s" usage;
+      Printf.eprintf "Unknown sync subcommand. Use 'schedule' or 'history'\n%s" usage;
       exit 1
+  | "history" :: _ ->
+      run_with_rng @@ fun ~sw ~env ->
+      let seasons = match season_filter with
+        | Some code ->
+            let name = List.assoc_opt code Scraper.all_season_codes
+              |> Option.value ~default:"Unknown" in
+            [(code, name)]
+        | None -> Scraper.all_season_codes
+      in
+      let entries = Scraper.fetch_all_historical_schedules ~sw ~env ~seasons () in
+      Printf.printf "\n=== Fetched %d historical games ===\n\n" (List.length entries);
+      if csv_output then
+        Scraper.print_schedule_csv entries
+      else
+        entries |> List.iter (fun (e : Scraper.schedule_entry) ->
+          let score_str = match (e.sch_away_score, e.sch_home_score) with
+            | Some a, Some h -> Printf.sprintf "[%d - %d]" a h
+            | _ -> "[예정]"
+          in
+          Printf.printf "%s %s vs %s %s @ %s\n"
+            e.sch_date
+            e.sch_away_team
+            e.sch_home_team
+            score_str
+            e.sch_venue
+        )
   | cmd :: _ ->
       Printf.eprintf "Unknown command: %s\n%s" cmd usage;
       exit 1
