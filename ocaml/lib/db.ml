@@ -1233,7 +1233,7 @@ module Queries = struct
   let all_seasons = (unit ->* Types.season_info) "SELECT season_code, season_name FROM seasons ORDER BY season_code"
 
   (** Latest game date for data freshness display *)
-  let latest_game_date = (unit ->? string) "SELECT MAX(game_date) FROM boxscores WHERE home_score IS NOT NULL"
+  let latest_game_date = (unit ->? string) "SELECT MAX(game_date) FROM games WHERE home_score IS NOT NULL"
 
   (** Historical seasons with champion and MVP data *)
   let all_historical_seasons = (unit ->* Types.historical_season) {|
