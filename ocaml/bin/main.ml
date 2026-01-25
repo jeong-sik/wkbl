@@ -388,6 +388,82 @@ Sitemap: https://wkbl.win/sitemap.xml
               | Error e -> Kirin.html (Views.error_page (Db.show_db_error e)))
     );
 
+    (* AI Game Summary *)
+    Kirin.get "/boxscore/:id/summary" (fun request ->
+      let game_id = Kirin.param "id" request in
+      match Db.get_boxscore ~game_id () with
+      | Error e -> Kirin.json_string (Printf.sprintf {|{"error": "%s"}|} (Db.show_db_error e))
+      | Ok bs ->
+          let game = bs.Domain.boxscore_game in
+          let home_players = bs.Domain.boxscore_home_players in
+          let away_players = bs.Domain.boxscore_away_players in
+          (* Calculate EFF: PTS + REB + AST + STL + BLK - (FGA-FGM) - (FTA-FTM) - TOV *)
+          let calc_eff (p : Domain.boxscore_player_stat) =
+            float_of_int (p.bs_pts + p.bs_reb + p.bs_ast + p.bs_stl + p.bs_blk
+              - (p.bs_fg_att - p.bs_fg_made) - (p.bs_ft_att - p.bs_ft_made) - p.bs_tov)
+          in
+          (* Find MVP: player with highest EFF *)
+          let find_mvp players =
+            List.fold_left (fun best p ->
+              let eff = calc_eff p in
+              match best with
+              | None -> Some (p, eff)
+              | Some (_, best_eff) -> if eff > best_eff then Some (p, eff) else best
+            ) None players
+          in
+          let home_mvp = find_mvp home_players in
+          let away_mvp = find_mvp away_players in
+          let mvp = match home_mvp, away_mvp with
+            | Some (h, h_eff), Some (_, a_eff) when h_eff >= a_eff -> Some (h, h_eff, true)
+            | Some _, Some (a, a_eff) -> Some (a, a_eff, false)
+            | Some (h, h_eff), None -> Some (h, h_eff, true)
+            | None, Some (a, a_eff) -> Some (a, a_eff, false)
+            | None, None -> None
+          in
+          (* Generate summary *)
+          let winner, loser, w_score, l_score =
+            if game.gi_home_score > game.gi_away_score then
+              (game.gi_home_team_name, game.gi_away_team_name, game.gi_home_score, game.gi_away_score)
+            else
+              (game.gi_away_team_name, game.gi_home_team_name, game.gi_away_score, game.gi_home_score)
+          in
+          let margin = abs (game.gi_home_score - game.gi_away_score) in
+          let game_desc =
+            if margin >= 20 then "압도적인 경기력으로"
+            else if margin >= 10 then "안정적인 경기 운영으로"
+            else if margin >= 5 then "치열한 접전 끝에"
+            else "손에 땀을 쥐게 하는 초접전 끝에"
+          in
+          let mvp_desc = match mvp with
+            | Some (p, _, is_home) ->
+                Printf.sprintf "%s(%s)가 %d득점 %d리바운드 %d어시스트로 맹활약했습니다."
+                  p.bs_player_name
+                  (if is_home then game.gi_home_team_name else game.gi_away_team_name)
+                  p.bs_pts p.bs_reb p.bs_ast
+            | None -> ""
+          in
+          let summary = Printf.sprintf
+            "%s이(가) %s %d-%d로 %s을(를) 꺾었습니다. %s"
+            winner game_desc w_score l_score loser mvp_desc
+          in
+          let json = `Assoc [
+            ("summary", `String summary);
+            ("winner", `String winner);
+            ("loser", `String loser);
+            ("margin", `Int margin);
+            ("mvp", match mvp with
+              | Some (p, eff, _) -> `Assoc [
+                  ("name", `String p.bs_player_name);
+                  ("pts", `Int p.bs_pts);
+                  ("reb", `Int p.bs_reb);
+                  ("ast", `Int p.bs_ast);
+                  ("eff", `Float eff);
+                ]
+              | None -> `Null);
+          ] in
+          Kirin.json_string (Yojson.Basic.to_string json)
+    );
+
     (* Game Flow Chart *)
     Kirin.get "/boxscore/:id/flow" (fun request ->
       let game_id = Kirin.param "id" request in
