@@ -1508,6 +1508,7 @@ let fetch_season_schedule ~sw ~env ~season_code =
     (start_year + 1, 1);  (* January *)
     (start_year + 1, 2);  (* February *)
     (start_year + 1, 3);  (* March *)
+    (start_year + 1, 4);  (* April - regular season ends early April *)
   ] in
   Printf.printf "Fetching season schedule for %s (%d months)...\n\n" season_code (List.length months);
 
