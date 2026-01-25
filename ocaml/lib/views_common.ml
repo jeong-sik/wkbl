@@ -346,10 +346,15 @@ let team_badge ?(max_width="max-w-[130px] sm:max-w-[200px]") team_name =
     (escape_html display)
 
 
-(** Stat cell with formatting *)
-let stat_cell ?(highlight=false) ?(extra_classes="") value =
+(** Stat cell with formatting - two-line for visual consistency *)
+let stat_cell ?(highlight=false) ?(extra_classes="") ?(label="") value =
   let class_name = if highlight then "text-orange-600 dark:text-orange-400 font-bold" else "text-slate-700 dark:text-slate-300" in
-  Printf.sprintf {html|<td class="px-3 py-2 text-right %s font-mono %s">%.1f</td>|html} class_name extra_classes value
+  if label = "" then
+    Printf.sprintf {html|<td class="px-3 py-2 text-right %s font-mono %s">%.1f</td>|html} class_name extra_classes value
+  else
+    Printf.sprintf
+      {html|<td class="px-3 py-2 text-right %s"><div class="flex flex-col items-end leading-tight"><span class="%s font-mono">%.1f</span><span class="text-slate-500 dark:text-slate-400 text-[10px] font-mono whitespace-nowrap">%s</span></div></td>|html}
+      extra_classes class_name value label
 
 let format_int_commas n =
   let abs_n = abs n in
@@ -390,7 +395,7 @@ let points_total_cell ?(extra_classes="") (avg_points: float) (total_points: int
     avg_points
     total_str
 
-(** Margin cell (signed, colored) *)
+(** Margin cell (signed, colored) - two-line for visual consistency *)
 let margin_cell ?(extra_classes="") value =
   let class_name =
     if value > 0.0 then "text-sky-600 dark:text-sky-400 font-bold"
@@ -400,7 +405,9 @@ let margin_cell ?(extra_classes="") value =
   let value_str =
     if value > 0.0 then Printf.sprintf "+%.1f" value else Printf.sprintf "%.1f" value
   in
-  Printf.sprintf {html|<td class="px-3 py-2 text-right %s font-mono %s">%s</td>|html} class_name extra_classes (escape_html value_str)
+  Printf.sprintf
+    {html|<td class="px-3 py-2 text-right %s"><div class="flex flex-col items-end leading-tight"><span class="%s font-mono">%s</span><span class="text-slate-500 dark:text-slate-400 text-[10px] font-mono whitespace-nowrap">MG</span></div></td>|html}
+    extra_classes class_name (escape_html value_str)
 
 let wkbl_official_game_result_url (game_id : string) =
   match String.split_on_char '-' (String.trim game_id) with
@@ -944,8 +951,8 @@ let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2 w-[120px] sm
     (stat_total_cell ~extra_classes:"hidden lg:table-cell" p.avg_steals p.total_steals)
     (stat_total_cell ~extra_classes:"hidden lg:table-cell" p.avg_blocks p.total_blocks)
     (stat_total_cell ~extra_classes:"hidden lg:table-cell" p.avg_turnovers p.total_turnovers)
-    (stat_cell ~highlight:true p.efficiency)
-    (stat_cell ~extra_classes:"hidden sm:table-cell" per)
+    (stat_cell ~highlight:true ~label:"EFF" p.efficiency)
+    (stat_cell ~extra_classes:"hidden sm:table-cell" ~label:"PER" per)
 
 (** Players table - HTMX partial *)
 let players_table (players: player_aggregate list) =
