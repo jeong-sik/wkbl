@@ -3347,6 +3347,41 @@ module Queries = struct
     WHERE p.player_id = $1
     LIMIT 1
   |}
+
+  (** Quarter scores from PBP for game flow analysis *)
+  let quarter_scores_by_game = (string ->* t3 string int int) {|
+    SELECT period_code,
+           COALESCE(MAX(team1_score), 0) as home_score,
+           COALESCE(MAX(team2_score), 0) as away_score
+    FROM play_by_play_events
+    WHERE game_id = ? AND team1_score IS NOT NULL
+    GROUP BY period_code
+    ORDER BY period_code
+  |}
+
+  (** UPSERT schedule entry - inserts or updates based on unique constraint *)
+  let upsert_schedule =
+    (t2 string                    (* game_date *)
+      (t2 (option string)         (* game_time *)
+        (t2 string                (* season_code *)
+          (t2 string              (* home_team_code *)
+            (t2 string            (* away_team_code *)
+              (t2 (option string) (* venue *)
+                string            (* status: 'scheduled' or 'completed' *)
+              ))))) ->. unit) {|
+    INSERT INTO schedule (game_date, game_time, season_code, home_team_code, away_team_code, venue, status)
+    VALUES ($1, $2, $3, $4, $5, $6, $7)
+    ON CONFLICT (game_date, home_team_code, away_team_code)
+    DO UPDATE SET
+      game_time = COALESCE(EXCLUDED.game_time, schedule.game_time),
+      venue = COALESCE(EXCLUDED.venue, schedule.venue),
+      status = EXCLUDED.status
+  |}
+
+  (** Count schedule entries by season and status *)
+  let count_schedule_by_status = (t2 string string ->? int) {|
+    SELECT COUNT(*) FROM schedule WHERE season_code = $1 AND status = $2
+  |}
 end
 
 (** Database operations *)
@@ -3406,6 +3441,7 @@ end
   let get_latest_game_date (module Db : Caqti_eio.CONNECTION) = Db.find_opt Queries.latest_game_date ()
   let get_historical_seasons (module Db : Caqti_eio.CONNECTION) = Db.collect_list Queries.all_historical_seasons ()
   let get_legend_players (module Db : Caqti_eio.CONNECTION) = Db.collect_list Queries.all_legend_players ()
+  let get_quarter_scores_raw (module Db : Caqti_eio.CONNECTION) game_id = Db.collect_list Queries.quarter_scores_by_game game_id
   let get_coaches (module Db : Caqti_eio.CONNECTION) = Db.collect_list Queries.all_coaches ()
   let get_player_career ~player_name (module Db : Caqti_eio.CONNECTION) = Db.collect_list Queries.player_career_by_name player_name
   let get_player_by_name ~name ~season (module Db : Caqti_eio.CONNECTION) = let s = if season = "" then "ALL" else season in Db.find_opt Queries.player_by_name (name, (s, s))
@@ -3476,6 +3512,14 @@ end
 
   let get_schedule_by_date_range ~start_date ~end_date ~status (module Db : Caqti_eio.CONNECTION) =
     Db.collect_list Queries.get_schedule_by_date_range (start_date, (end_date, (status, status)))
+
+  (** Upsert a single schedule entry *)
+  let upsert_schedule_entry ~game_date ~game_time ~season_code ~home_team_code ~away_team_code ~venue ~status (module Db : Caqti_eio.CONNECTION) =
+    Db.exec Queries.upsert_schedule (game_date, (game_time, (season_code, (home_team_code, (away_team_code, (venue, status))))))
+
+  (** Count schedule entries by season and status *)
+  let count_schedule_by_status ~season_code ~status (module Db : Caqti_eio.CONNECTION) =
+    Db.find_opt Queries.count_schedule_by_status (season_code, status)
 
   let get_players_base ~season ~include_mismatch (module Db : Caqti_eio.CONNECTION) =
     let s = if String.trim season = "" then "ALL" else season in
@@ -4713,3 +4757,47 @@ let get_lineup_chemistry ~season ~team_name () : (Domain.lineup_chemistry, db_er
     lc_frequent_lineups = by_minutes;
     lc_synergies = top_synergies;
   }
+
+(* ========== Play-by-Play / Quarter Scores ========== *)
+
+(** Get quarter scores for a game from PBP data *)
+let get_quarter_scores game_id =
+  match with_db (fun db -> Repo.get_quarter_scores_raw db game_id) with
+  | Error e -> Error e
+  | Ok rows ->
+      let quarters = List.map (fun (period, home, away) ->
+        { qs_period = period; qs_home_score = home; qs_away_score = away }
+      ) rows in
+      Ok quarters
+
+(** Get game flow summary including lead changes *)
+let get_game_flow game_id =
+  match get_quarter_scores game_id with
+  | Error e -> Error e
+  | Ok quarters ->
+      (* Calculate lead changes and largest leads from quarter data *)
+      let lead_changes = ref 0 in
+      let largest_home = ref 0 in
+      let largest_away = ref 0 in
+      let prev_leader = ref 0 in  (* -1=away, 0=tie, 1=home *)
+
+      List.iter (fun q ->
+        let diff = q.qs_home_score - q.qs_away_score in
+        let current_leader = if diff > 0 then 1 else if diff < 0 then -1 else 0 in
+
+        (* Track lead changes *)
+        if !prev_leader <> 0 && current_leader <> 0 && !prev_leader <> current_leader then
+          incr lead_changes;
+        if current_leader <> 0 then prev_leader := current_leader;
+
+        (* Track largest leads *)
+        if diff > !largest_home then largest_home := diff;
+        if diff < 0 && abs diff > !largest_away then largest_away := abs diff;
+      ) quarters;
+
+      Ok {
+        gf_quarters = quarters;
+        gf_lead_changes = !lead_changes;
+        gf_largest_lead_home = !largest_home;
+        gf_largest_lead_away = !largest_away;
+      }
