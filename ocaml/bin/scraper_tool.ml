@@ -5,9 +5,16 @@
       scraper_tool draft --season=044      Fetch specific season
       scraper_tool awards stats [--csv]    Fetch statistical awards
       scraper_tool awards best5 [--csv]    Fetch BEST5 awards
+      scraper_tool sync schedule           Sync schedule to database
 *)
 
 open Wkbl
+
+(** Get database URL from environment *)
+let get_db_url () =
+  match Sys.getenv_opt "WKBL_DATABASE_URL" with
+  | Some url -> Some url
+  | None -> Sys.getenv_opt "DATABASE_URL"
 
 let usage = {|
 WKBL Scraper Tool
@@ -31,6 +38,7 @@ Usage:
   scraper_tool allstar --stats         Show all-star MVP statistics (통계 분석)
   scraper_tool schedule [--csv]        Fetch season schedule (경기 일정)
   scraper_tool schedule --month=YYYYMM Fetch specific month schedule
+  scraper_tool sync schedule           Sync schedule to Supabase database
   scraper_tool --help                  Show this help
 
 Examples:
@@ -312,6 +320,80 @@ let run_schedule ~sw ~env ~month_filter ~csv_output =
         e.sch_venue
     )
 
+(** Sync schedule data to Supabase database *)
+let run_sync_schedule ~sw ~env =
+  (* Get DB URL *)
+  let db_url = match get_db_url () with
+    | Some url -> url
+    | None ->
+        Printf.eprintf "Error: DATABASE_URL or WKBL_DATABASE_URL not set\n";
+        exit 1
+  in
+
+  (* Initialize DB pool *)
+  Printf.printf "Connecting to database...\n";
+  (match Db.init_pool ~sw ~stdenv:(env :> Caqti_eio.stdenv) db_url with
+  | Ok () -> Printf.printf "Database connected.\n"
+  | Error e ->
+      Printf.eprintf "Database connection failed: %s\n" (Db.show_db_error e);
+      exit 1);
+
+  (* Fetch schedule from WKBL website *)
+  Printf.printf "Fetching schedule from WKBL...\n";
+  let entries = Scraper.fetch_season_schedule ~sw ~env ~season_code:"046" in
+  Printf.printf "Fetched %d schedule entries.\n\n" (List.length entries);
+
+  (* Sync each entry *)
+  let success_count = ref 0 in
+  let error_count = ref 0 in
+  entries |> List.iter (fun (e : Scraper.schedule_entry) ->
+    (* Convert team names to team codes *)
+    let home_code = Domain.team_code_of_string e.sch_home_team in
+    let away_code = Domain.team_code_of_string e.sch_away_team in
+    match (home_code, away_code) with
+    | Some hc, Some ac ->
+        let status = match (e.sch_home_score, e.sch_away_score) with
+          | Some _, Some _ -> "completed"
+          | _ -> "scheduled"
+        in
+        let result = Db.with_db (fun db ->
+          Db.Repo.upsert_schedule_entry
+            ~game_date:e.sch_date
+            ~game_time:(Some e.sch_time)
+            ~season_code:e.sch_season
+            ~home_team_code:hc
+            ~away_team_code:ac
+            ~venue:(Some e.sch_venue)
+            ~status
+            db
+        ) in
+        (match result with
+        | Ok () ->
+            incr success_count;
+            Printf.printf "  ✓ %s: %s vs %s (%s)\n" e.sch_date e.sch_away_team e.sch_home_team status
+        | Error db_err ->
+            incr error_count;
+            Printf.eprintf "  ✗ %s: %s\n" e.sch_date (Db.show_db_error db_err))
+    | _ ->
+        incr error_count;
+        Printf.eprintf "  ✗ %s: Unknown team - %s or %s\n" e.sch_date e.sch_home_team e.sch_away_team
+  );
+
+  Printf.printf "\n=== Sync Complete ===\n";
+  Printf.printf "Success: %d, Errors: %d\n" !success_count !error_count;
+
+  (* Show summary - count from schedule table *)
+  let completed_result = Db.with_db (fun db ->
+    Db.Repo.count_schedule_by_status ~season_code:"046" ~status:"completed" db
+  ) in
+  let scheduled_result = Db.with_db (fun db ->
+    Db.Repo.count_schedule_by_status ~season_code:"046" ~status:"scheduled" db
+  ) in
+  (match (completed_result, scheduled_result) with
+  | Ok (Some c), Ok (Some s) ->
+      Printf.printf "Season 046: %d completed, %d scheduled (Total: %d)\n" c s (c + s)
+  | _ -> ())
+
 let () =
   let args = Array.to_list Sys.argv |> List.tl in
 
@@ -388,6 +470,12 @@ let () =
   | "schedule" :: _ ->
       run_with_rng @@ fun ~sw ~env ->
       run_schedule ~sw ~env ~month_filter ~csv_output
+  | "sync" :: "schedule" :: _ ->
+      run_with_rng @@ fun ~sw ~env ->
+      run_sync_schedule ~sw ~env
+  | "sync" :: _ ->
+      Printf.eprintf "Unknown sync subcommand. Use 'schedule'\n%s" usage;
+      exit 1
   | cmd :: _ ->
       Printf.eprintf "Unknown command: %s\n%s" cmd usage;
       exit 1
