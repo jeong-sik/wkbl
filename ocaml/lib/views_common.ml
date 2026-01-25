@@ -714,14 +714,15 @@ let career_trajectory_chart (stats: season_stats list) =
             let y = scale_y v in
             let stats = List.nth sorted_stats i in
             let is_career_high = v = max_pts && v > 0.0 in
+            let delay = 0.6 +. (float_of_int i *. 0.08) in (* staggered delay after lines *)
             let marker = if is_career_high then
-              Printf.sprintf {svg|<text x="%.2f" y="%.2f" class="fill-orange-600 dark:fill-orange-400" font-size="8" text-anchor="middle">★</text>|svg}
-                x (y -. 10.0)
+              Printf.sprintf {svg|<text x="%.2f" y="%.2f" class="fill-orange-600 dark:fill-orange-400 career-point" font-size="8" text-anchor="middle" style="animation-delay: %.2fs">★</text>|svg}
+                x (y -. 10.0) delay
             else "" in
             Printf.sprintf
-              {svg|%s<circle cx="%.2f" cy="%.2f" r="5" class="fill-orange-500 stroke-white dark:stroke-slate-900 cursor-pointer transition-transform hover:scale-150" stroke-width="2" data-season="%s" data-pts="%.1f" data-reb="%.1f" data-ast="%.1f" data-eff="%.1f"><title>%s
+              {svg|%s<circle cx="%.2f" cy="%.2f" r="5" class="fill-orange-500 stroke-white dark:stroke-slate-900 cursor-pointer transition-transform hover:scale-150 career-point" stroke-width="2" style="animation-delay: %.2fs" data-season="%s" data-pts="%.1f" data-reb="%.1f" data-ast="%.1f" data-eff="%.1f"><title>%s
 PTS: %.1f | REB: %.1f | AST: %.1f | EFF: %.1f</title></circle>|svg}
-              marker x y
+              marker x y delay
               (escape_html stats.ss_season_name) stats.ss_avg_points stats.ss_avg_rebounds stats.ss_avg_assists stats.ss_efficiency
               (escape_html stats.ss_season_name) stats.ss_avg_points stats.ss_avg_rebounds stats.ss_avg_assists stats.ss_efficiency)
         |> String.concat "\n"
@@ -735,14 +736,15 @@ PTS: %.1f | REB: %.1f | AST: %.1f | EFF: %.1f</title></circle>|svg}
             let y = scale_y v in
             let stats = List.nth sorted_stats i in
             let is_career_high = v = max_eff && v > 0.0 in
+            let delay = 0.5 +. (float_of_int i *. 0.08) in
             let marker = if is_career_high then
-              Printf.sprintf {svg|<text x="%.2f" y="%.2f" class="fill-emerald-600 dark:fill-emerald-400" font-size="8" text-anchor="middle">★</text>|svg}
-                x (y -. 10.0)
+              Printf.sprintf {svg|<text x="%.2f" y="%.2f" class="fill-emerald-600 dark:fill-emerald-400 career-point" font-size="8" text-anchor="middle" style="animation-delay: %.2fs">★</text>|svg}
+                x (y -. 10.0) delay
             else "" in
             Printf.sprintf
-              {svg|%s<circle cx="%.2f" cy="%.2f" r="5" class="fill-emerald-500 stroke-white dark:stroke-slate-900 cursor-pointer transition-transform hover:scale-150" stroke-width="2"><title>%s
+              {svg|%s<circle cx="%.2f" cy="%.2f" r="5" class="fill-emerald-500 stroke-white dark:stroke-slate-900 cursor-pointer transition-transform hover:scale-150 career-point" stroke-width="2" style="animation-delay: %.2fs"><title>%s
 PTS: %.1f | REB: %.1f | AST: %.1f | EFF: %.1f</title></circle>|svg}
-              marker x y
+              marker x y delay
               (escape_html stats.ss_season_name) stats.ss_avg_points stats.ss_avg_rebounds stats.ss_avg_assists stats.ss_efficiency)
         |> String.concat "\n"
       in
@@ -838,14 +840,30 @@ PTS: %.1f | REB: %.1f | AST: %.1f | EFF: %.1f</title></circle>|svg}
           </h3>
           <div class="relative">
             <svg viewBox="0 0 %.0f %.0f" class="w-full h-auto" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Career statistics trend chart">
+              <style>
+                @keyframes line-draw {
+                  from { stroke-dashoffset: 2000; }
+                  to { stroke-dashoffset: 0; }
+                }
+                @keyframes fade-in {
+                  from { opacity: 0; }
+                  to { opacity: 1; }
+                }
+                .career-line { stroke-dasharray: 2000; animation: line-draw 1.2s ease-out forwards; }
+                .career-line-1 { animation-delay: 0s; }
+                .career-line-2 { animation-delay: 0.15s; }
+                .career-line-3 { animation-delay: 0.3s; }
+                .career-line-4 { animation-delay: 0.45s; }
+                .career-point { opacity: 0; animation: fade-in 0.3s ease-out forwards; }
+              </style>
               <!-- Grid -->
               %s
 
               <!-- Lines (back to front: AST, REB, EFF, PTS) -->
-              <path d="%s" fill="none" class="stroke-violet-400/60" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="%s" fill="none" class="stroke-sky-400/60" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="%s" fill="none" class="stroke-emerald-500" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="%s" fill="none" class="stroke-orange-500" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="%s" fill="none" class="stroke-violet-400/60 career-line career-line-1" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="%s" fill="none" class="stroke-sky-400/60 career-line career-line-2" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="%s" fill="none" class="stroke-emerald-500 career-line career-line-3" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="%s" fill="none" class="stroke-orange-500 career-line career-line-4" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
 
               <!-- Data points -->
               %s
@@ -975,7 +993,7 @@ let players_table (players: player_aggregate list) =
 
 (** Main layout *)
 let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="")
-    ?og_title ?og_description ?og_image ~content () =
+    ?og_title ?og_description ?og_image ?data_freshness ~content () =
   let v = escape_html asset_version in
   let cf_wa_script =
     match Sys.getenv_opt "CF_WEB_ANALYTICS_TOKEN" |> Option.map String.trim with
@@ -1012,6 +1030,10 @@ let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="")
   let json_ld_script =
     let ld = if json_ld = "" then default_json_ld else json_ld in
     Printf.sprintf {html|  <script type="application/ld+json">%s</script>|html} ld
+  in
+  let data_freshness_html = match data_freshness with
+    | Some date -> Printf.sprintf {html|<div class="mb-2 text-xs text-slate-500 dark:text-slate-500">📊 데이터: %s 경기까지 반영</div>|html} (escape_html date)
+    | None -> ""
   in
   Printf.sprintf
     {html|<!DOCTYPE html>
@@ -1129,6 +1151,7 @@ let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="")
   </header>
   <main id="main-content" class="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 pb-24 md:pb-8" tabindex="-1">%s</main>
   <footer class="border-t border-slate-200 dark:border-slate-800 py-6 text-center text-slate-600 dark:text-slate-400 text-sm mb-20 md:mb-0">
+    %s
     <a href="mailto:contact@wkbl.win" class="hover:text-slate-700 dark:hover:text-slate-300 transition-colors">📧 contact@wkbl.win</a>
   </footer>
 
@@ -1243,6 +1266,6 @@ let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="")
   </script>
 </body>
 </html>|html}
-    (escape_html title) (escape_html meta_desc) (escape_html og_title_val) (escape_html og_desc_val) (escape_html og_image_val) (escape_html canonical_url) (escape_html og_title_val) (escape_html og_desc_val) (escape_html og_image_val) (escape_html canonical_url) v v v v v v v v v v v v json_ld_script cf_wa_script content
+    (escape_html title) (escape_html meta_desc) (escape_html og_title_val) (escape_html og_desc_val) (escape_html og_image_val) (escape_html canonical_url) (escape_html og_title_val) (escape_html og_desc_val) (escape_html og_image_val) (escape_html canonical_url) v v v v v v v v v v v v json_ld_script cf_wa_script content data_freshness_html
 
 (** Home page *)

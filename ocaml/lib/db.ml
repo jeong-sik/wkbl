@@ -1232,6 +1232,9 @@ module Queries = struct
   let all_teams = (unit ->* Types.team_info) "SELECT team_code, team_name_kr FROM teams ORDER BY team_name_kr"
   let all_seasons = (unit ->* Types.season_info) "SELECT season_code, season_name FROM seasons ORDER BY season_code"
 
+  (** Latest game date for data freshness display *)
+  let latest_game_date = (unit ->? string) "SELECT MAX(game_date) FROM boxscores WHERE home_score IS NOT NULL"
+
   (** Historical seasons with champion and MVP data *)
   let all_historical_seasons = (unit ->* Types.historical_season) {|
     SELECT
@@ -3400,6 +3403,7 @@ end
       Db.exec Queries.refresh_score_mismatch ()
   let get_teams (module Db : Caqti_eio.CONNECTION) = Db.collect_list Queries.all_teams ()
   let get_seasons (module Db : Caqti_eio.CONNECTION) = Db.collect_list Queries.all_seasons ()
+  let get_latest_game_date (module Db : Caqti_eio.CONNECTION) = Db.find_opt Queries.latest_game_date ()
   let get_historical_seasons (module Db : Caqti_eio.CONNECTION) = Db.collect_list Queries.all_historical_seasons ()
   let get_legend_players (module Db : Caqti_eio.CONNECTION) = Db.collect_list Queries.all_legend_players ()
   let get_coaches (module Db : Caqti_eio.CONNECTION) = Db.collect_list Queries.all_coaches ()
@@ -3822,6 +3826,7 @@ let team_sort_key = function
 
 let seasons_cache = Cache.create ~ttl:(60.0 *. 60.0 *. 6.0) ~max_entries:4
 let teams_cache = Cache.create ~ttl:(60.0 *. 60.0 *. 6.0) ~max_entries:4
+let data_freshness_cache = Cache.create ~ttl:300.0 ~max_entries:1  (* 5분 캐시 *)
 let standings_cache = Cache.create ~ttl:120.0 ~max_entries:16
 let games_cache = Cache.create ~ttl:120.0 ~max_entries:16
 let scored_games_cache = Cache.create ~ttl:120.0 ~max_entries:16
@@ -3964,6 +3969,9 @@ let get_all_teams () =
   cached teams_cache "all" (fun () -> with_db (fun db -> Repo.get_teams db))
 let get_seasons () =
   cached seasons_cache "all" (fun () -> with_db (fun db -> Repo.get_seasons db))
+let get_latest_game_date () =
+  cached data_freshness_cache "latest" (fun () ->
+    with_db (fun db -> Repo.get_latest_game_date db))
 let get_player_by_name ?(season="ALL") name = with_db (fun db -> Repo.get_player_by_name ~name ~season db)
 let get_player_aggregate_by_id ~player_id ?(season="ALL") () =
   with_db (fun db -> Repo.get_player_aggregate_by_id ~player_id ~season db)
