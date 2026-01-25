@@ -8,7 +8,19 @@
 
 let base_url = "https://www.wkbl.or.kr"
 
-(** HTTP fetch with User-Agent - Eio-based *)
+(** TLS authenticator - lazily initialized once *)
+let tls_authenticator = lazy (Ca_certs.authenticator () |> Result.get_ok)
+
+(** HTTPS wrapper for cohttp-eio *)
+let https_wrapper uri socket =
+  let host = Uri.host uri |> Option.map (fun h ->
+    Domain_name.(of_string_exn h |> host_exn)
+  ) in
+  let authenticator = Lazy.force tls_authenticator in
+  let tls_config = Tls.Config.client ~authenticator () |> Result.get_ok in
+  Tls_eio.client_of_flow tls_config ?host socket
+
+(** HTTP/HTTPS fetch with User-Agent - Eio-based with TLS support *)
 let fetch_url ~sw ~env url =
   let net = Eio.Stdenv.net env in
   let headers = Cohttp.Header.of_list [
@@ -17,7 +29,7 @@ let fetch_url ~sw ~env url =
     ("Accept-Language", "ko-KR,ko;q=0.9");
   ] in
   let uri = Uri.of_string url in
-  let client = Cohttp_eio.Client.make ~https:None net in
+  let client = Cohttp_eio.Client.make ~https:(Some https_wrapper) net in
   match Cohttp_eio.Client.get ~sw client ~headers uri with
   | resp, body ->
       let code = resp |> Cohttp.Response.status |> Cohttp.Code.code_of_status in
@@ -1379,3 +1391,143 @@ let print_allstar_analysis records =
   );
 
   Printf.printf "\n"
+
+(** =========================== SCHEDULE SCRAPER ========================== *)
+
+(** Schedule entry type *)
+type schedule_entry = {
+  sch_date: string;         (* e.g., "2026-01-25" *)
+  sch_day: string;          (* e.g., "일" *)
+  sch_time: string;         (* e.g., "16:00" *)
+  sch_home_team: string;    (* Home team name *)
+  sch_away_team: string;    (* Away team name *)
+  sch_home_score: int option;  (* Home score (None if not played) *)
+  sch_away_score: int option;  (* Away score (None if not played) *)
+  sch_venue: string;        (* e.g., "부천체육관" *)
+  sch_season: string;       (* e.g., "046" *)
+}
+
+(** Parse schedule HTML from inc_list_1_new.asp
+    Returns list of schedule entries
+*)
+let parse_schedule_html ~season ~ym html =
+  let soup = Soup.parse html in
+  let games = ref [] in
+
+  (* Extract year from ym (e.g., "202601" -> "2026") *)
+  let year = String.sub ym 0 4 in
+
+  (* Each game is in a <tr id="YYYYMMDD"> *)
+  let rows = soup |> Soup.select "tbody tr" |> Soup.to_list in
+  rows |> List.iter (fun row ->
+    try
+      (* Get date from tr id attribute *)
+      let date_id = Soup.attribute "id" row |> Option.value ~default:"" in
+      if String.length date_id >= 8 then begin
+        let date = Printf.sprintf "%s-%s-%s"
+          (String.sub date_id 0 4)
+          (String.sub date_id 4 2)
+          (String.sub date_id 6 2) in
+
+        (* Get day of week from first td *)
+        let tds = row |> Soup.select "td" |> Soup.to_list in
+        if List.length tds >= 4 then begin
+          let day_cell = List.nth tds 0 in
+          let day = day_cell |> Soup.select "span.language" |> Soup.to_list
+            |> List.hd |> Soup.texts |> String.concat "" |> String.trim in
+
+          (* Get teams and scores *)
+          let away_team = row |> Soup.select ".info_team.away .team_name"
+            |> Soup.to_list |> List.hd |> Soup.texts |> String.concat "" |> String.trim in
+          let home_team = row |> Soup.select ".info_team.home .team_name"
+            |> Soup.to_list |> List.hd |> Soup.texts |> String.concat "" |> String.trim in
+
+          let away_score =
+            try
+              let s = row |> Soup.select ".info_team.away .txt_score"
+                |> Soup.to_list |> List.hd |> Soup.texts |> String.concat "" |> String.trim in
+              if String.length s > 0 then Some (int_of_string s) else None
+            with _ -> None in
+
+          let home_score =
+            try
+              let s = row |> Soup.select ".info_team.home .txt_score"
+                |> Soup.to_list |> List.hd |> Soup.texts |> String.concat "" |> String.trim in
+              if String.length s > 0 then Some (int_of_string s) else None
+            with _ -> None in
+
+          (* Get venue (3rd td) *)
+          let venue = List.nth tds 2 |> Soup.texts |> String.concat "" |> String.trim in
+
+          (* Get time (4th td) *)
+          let time = List.nth tds 3 |> Soup.texts |> String.concat "" |> String.trim in
+
+          let entry = {
+            sch_date = date;
+            sch_day = day;
+            sch_time = time;
+            sch_home_team = home_team;
+            sch_away_team = away_team;
+            sch_home_score = home_score;
+            sch_away_score = away_score;
+            sch_venue = venue;
+            sch_season = season;
+          } in
+          games := entry :: !games
+        end
+      end
+    with _ -> ()
+  );
+  let _ = year in  (* suppress unused warning *)
+  List.rev !games
+
+(** Fetch schedule for a specific month
+    @param ym Year-month in YYYYMM format (e.g., "202601")
+    @param season Season code (e.g., "046")
+*)
+let fetch_schedule_month ~sw ~env ~ym ~season =
+  let url = Printf.sprintf
+    "https://www.wkbl.or.kr/game/sch/inc_list_1_new.asp?season_gu=%s&ym=%s&viewType=&gun=1"
+    season ym in
+  Printf.eprintf "  Fetching schedule: %s...\n%!" ym;
+  let html = fetch_url ~sw ~env url in
+  if String.length html > 0 then
+    parse_schedule_html ~season ~ym html
+  else
+    []
+
+(** Fetch full season schedule (October to March)
+    @param season_code e.g., "046" for 2025-2026 season
+*)
+let fetch_season_schedule ~sw ~env ~season_code =
+  let start_year = 2025 in  (* For season 046, starts in 2025 *)
+  let months = [
+    (start_year, 10);     (* October *)
+    (start_year, 11);     (* November *)
+    (start_year, 12);     (* December *)
+    (start_year + 1, 1);  (* January *)
+    (start_year + 1, 2);  (* February *)
+    (start_year + 1, 3);  (* March *)
+  ] in
+  Printf.printf "Fetching season schedule for %s (%d months)...\n\n" season_code (List.length months);
+
+  months |> List.concat_map (fun (year, month) ->
+    let ym = Printf.sprintf "%04d%02d" year month in
+    fetch_schedule_month ~sw ~env ~ym ~season:season_code
+  )
+
+(** Print schedule as CSV *)
+let print_schedule_csv entries =
+  Printf.printf "date,day,time,home_team,away_team,home_score,away_score,venue,season\n";
+  entries |> List.iter (fun e ->
+    Printf.printf "%s,%s,%s,%s,%s,%s,%s,%s,%s\n"
+      e.sch_date
+      e.sch_day
+      e.sch_time
+      e.sch_home_team
+      e.sch_away_team
+      (match e.sch_home_score with Some s -> string_of_int s | None -> "")
+      (match e.sch_away_score with Some s -> string_of_int s | None -> "")
+      e.sch_venue
+      e.sch_season
+  )

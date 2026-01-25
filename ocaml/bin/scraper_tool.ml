@@ -29,6 +29,8 @@ Usage:
   scraper_tool championship --stats    Show championship statistics (통계 분석)
   scraper_tool allstar [--csv]         Fetch all-star game history (올스타 역사)
   scraper_tool allstar --stats         Show all-star MVP statistics (통계 분석)
+  scraper_tool schedule [--csv]        Fetch season schedule (경기 일정)
+  scraper_tool schedule --month=YYYYMM Fetch specific month schedule
   scraper_tool --help                  Show this help
 
 Examples:
@@ -46,7 +48,17 @@ Examples:
   scraper_tool versus --csv > versus_records.csv
   scraper_tool championship --csv > championships.csv
   scraper_tool allstar --csv > allstars.csv
+  scraper_tool schedule --csv > schedule.csv
+  scraper_tool schedule --month=202601 --csv
 |}
+
+(** Run with Eio + RNG initialized for TLS/HTTPS *)
+let run_with_rng f =
+  (* Initialize RNG for TLS - must be done before any TLS operations *)
+  Mirage_crypto_rng_unix.use_default ();
+  Eio_main.run @@ fun env ->
+  Eio.Switch.run @@ fun sw ->
+  f ~sw ~env
 
 let run_draft ~sw ~env ~season_filter ~csv_output =
   let entries = match season_filter with
@@ -273,6 +285,33 @@ let run_allstar ~sw ~env ~csv_output ~stats_output =
         a.as_mvp
     )
 
+let run_schedule ~sw ~env ~month_filter ~csv_output =
+  let entries = match month_filter with
+    | Some ym ->
+        Printf.printf "Fetching schedule for %s...\n\n" ym;
+        Scraper.fetch_schedule_month ~sw ~env ~ym ~season:"046"
+    | None ->
+        Scraper.fetch_season_schedule ~sw ~env ~season_code:"046"
+  in
+  Printf.printf "\n=== Fetched %d schedule entries ===\n\n" (List.length entries);
+  if csv_output then
+    Scraper.print_schedule_csv entries
+  else
+    entries |> List.iter (fun (e : Scraper.schedule_entry) ->
+      let score_str = match (e.sch_away_score, e.sch_home_score) with
+        | Some a, Some h -> Printf.sprintf "[%d - %d]" a h
+        | _ -> "[예정]"
+      in
+      Printf.printf "%s(%s) %s %s vs %s %s @ %s\n"
+        e.sch_date
+        e.sch_day
+        e.sch_time
+        e.sch_away_team
+        e.sch_home_team
+        score_str
+        e.sch_venue
+    )
+
 let () =
   let args = Array.to_list Sys.argv |> List.tl in
 
@@ -282,6 +321,13 @@ let () =
     args |> List.find_map (fun arg ->
       if String.length arg > 9 && String.sub arg 0 9 = "--season=" then
         Some (String.sub arg 9 (String.length arg - 9))
+      else None
+    )
+  in
+  let month_filter =
+    args |> List.find_map (fun arg ->
+      if String.length arg > 8 && String.sub arg 0 8 = "--month=" then
+        Some (String.sub arg 8 (String.length arg - 8))
       else None
     )
   in
@@ -321,8 +367,7 @@ let () =
       Eio.Switch.run @@ fun sw ->
       run_records ~sw ~env ~csv_output
   | "games" :: _ ->
-      Eio_main.run @@ fun env ->
-      Eio.Switch.run @@ fun sw ->
+      run_with_rng @@ fun ~sw ~env ->
       run_games ~sw ~env ~season_filter ~csv_output
   | "teamstats" :: _ ->
       Eio_main.run @@ fun env ->
@@ -340,6 +385,9 @@ let () =
       Eio_main.run @@ fun env ->
       Eio.Switch.run @@ fun sw ->
       run_allstar ~sw ~env ~csv_output ~stats_output
+  | "schedule" :: _ ->
+      run_with_rng @@ fun ~sw ~env ->
+      run_schedule ~sw ~env ~month_filter ~csv_output
   | cmd :: _ ->
       Printf.eprintf "Unknown command: %s\n%s" cmd usage;
       exit 1
