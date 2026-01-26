@@ -593,7 +593,7 @@ let player_season_stats_table ~scope (stats: season_stats list) =
     @ (stats |> List.map row_html)
     |> String.concat "\n"
   in
-  Printf.sprintf {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-lg animate-fade-in"><table class="season-stats-table min-w-[520px] sm:min-w-[720px] w-full text-sm font-mono table-fixed" aria-label="시즌별 선수 스탯">
+  Printf.sprintf {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 scroll-shadow shadow-lg animate-fade-in"><table class="season-stats-table min-w-[520px] sm:min-w-[720px] w-full text-sm font-mono table-fixed" aria-label="시즌별 선수 스탯">
     <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-xs whitespace-nowrap">
       <tr>
         <th scope="col" class="px-3 py-2 text-left font-sans">Season</th>
@@ -1162,6 +1162,7 @@ let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="")
   <script src="/static/js/table-sort.js?v=%s" defer data-cfasync="false"></script>
   <script src="/static/js/a11y-utils.js?v=%s" defer data-cfasync="false"></script>
   <script src="/static/js/notifications.js?v=%s" defer data-cfasync="false"></script>
+  <script src="/static/js/scroll-shadow.js?v=%s" defer data-cfasync="false"></script>
   <script src="https://cdn.tailwindcss.com" data-cfasync="false"></script>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/css/styles.css?v=%s">
@@ -1365,6 +1366,6 @@ let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="")
   </script>
 </body>
 </html>|html}
-    (escape_html title) (escape_html meta_desc) (escape_html og_title_val) (escape_html og_desc_val) (escape_html og_image_val) (escape_html canonical_url) (escape_html og_title_val) (escape_html og_desc_val) (escape_html og_image_val) (escape_html canonical_url) v v v v v v v v v v v v json_ld_script cf_wa_script content data_freshness_html
+    (escape_html title) (escape_html meta_desc) (escape_html og_title_val) (escape_html og_desc_val) (escape_html og_image_val) (escape_html canonical_url) (escape_html og_title_val) (escape_html og_desc_val) (escape_html og_image_val) (escape_html canonical_url) v v v v v v v v v v v v v json_ld_script cf_wa_script content data_freshness_html
 
 (** Home page *)

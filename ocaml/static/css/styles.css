@@ -284,6 +284,65 @@ button:active:not(:disabled),
 }
 
 /* ===========================================
+   7.05 Scroll Shadow Indicators
+   =========================================== */
+
+/* Scroll shadow wrapper - shows gradient edges when content overflows */
+.scroll-shadow {
+  position: relative;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Left/right gradient shadows using pseudo-elements */
+.scroll-shadow::before,
+.scroll-shadow::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 24px;
+  pointer-events: none;
+  z-index: 5;
+  opacity: 0;
+  transition: opacity 200ms ease-out;
+}
+
+.scroll-shadow::before {
+  left: 0;
+  background: linear-gradient(90deg, rgba(255,255,255,0.95) 0%, transparent 100%);
+}
+
+.scroll-shadow::after {
+  right: 0;
+  background: linear-gradient(270deg, rgba(255,255,255,0.95) 0%, transparent 100%);
+}
+
+/* Dark mode gradients */
+.dark .scroll-shadow::before {
+  background: linear-gradient(90deg, rgba(15,23,42,0.95) 0%, transparent 100%);
+}
+
+.dark .scroll-shadow::after {
+  background: linear-gradient(270deg, rgba(15,23,42,0.95) 0%, transparent 100%);
+}
+
+/* JS toggles these classes based on scroll position */
+.scroll-shadow.can-scroll-left::before {
+  opacity: 1;
+}
+
+.scroll-shadow.can-scroll-right::after {
+  opacity: 1;
+}
+
+/* Alternative: always-visible subtle shadow (no JS needed) */
+.scroll-shadow-always::before,
+.scroll-shadow-always::after {
+  opacity: 0.6;
+}
+
+/* ===========================================
    7.1 Mobile Responsive Tables
    =========================================== */
 
