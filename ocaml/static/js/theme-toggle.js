@@ -30,8 +30,8 @@
 
     if (animate) {
       html.classList.add(TRANSITION_CLASS);
-      // Remove transition class after animation completes
-      setTimeout(() => html.classList.remove(TRANSITION_CLASS), 350);
+      // Remove transition class after animation completes (350ms + 100ms stagger delay)
+      setTimeout(() => html.classList.remove(TRANSITION_CLASS), 450);
     }
 
     html.classList.toggle(DARK_CLASS, theme === 'dark');
