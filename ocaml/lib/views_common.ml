@@ -376,11 +376,20 @@ let format_int_commas n =
     let res = Buffer.contents buf in
     if n < 0 then "-" ^ res else res
 
+(** Compact number format for table cells: 999 -> "999", 1234 -> "1.2K" *)
+let format_int_compact n =
+  let abs_n = abs n in
+  let result =
+    if abs_n < 1000 then string_of_int abs_n
+    else Printf.sprintf "%.1fK" (float_of_int abs_n /. 1000.0)
+  in
+  if n < 0 then "-" ^ result else result
+
 let stat_total_cell ?(highlight=false) ?(extra_classes="") (avg_value: float) (total_value: int) =
   let class_name = if highlight then "text-orange-600 dark:text-orange-400 font-bold" else "text-slate-700 dark:text-slate-300" in
-  let total_str = format_int_commas total_value in
+  let total_str = format_int_compact total_value in
   Printf.sprintf
-    {html|<td class="px-3 py-2 text-right %s"><div class="flex flex-col items-end leading-tight"><span class="%s font-mono">%.1f</span><span class="text-slate-500 dark:text-slate-400 text-[10px] font-mono whitespace-nowrap">TOT %s</span></div></td>|html}
+    {html|<td class="px-3 py-2 text-right %s"><div class="flex flex-col items-end leading-tight"><span class="%s font-mono">%.1f</span><span class="text-slate-500 dark:text-slate-400 text-[10px] font-mono whitespace-nowrap">Σ%s</span></div></td>|html}
     extra_classes
     class_name
     avg_value
@@ -388,9 +397,9 @@ let stat_total_cell ?(highlight=false) ?(extra_classes="") (avg_value: float) (t
 
 (** Points cell with career total *)
 let points_total_cell ?(extra_classes="") (avg_points: float) (total_points: int) =
-  let total_str = format_int_commas total_points in
+  let total_str = format_int_compact total_points in
   Printf.sprintf
-    {html|<td class="px-3 py-2 text-right %s"><div class="flex flex-col items-end leading-tight"><span class="text-orange-600 dark:text-orange-400 font-bold font-mono">%.1f</span><span class="text-slate-500 dark:text-slate-400 text-[10px] font-mono whitespace-nowrap">TOT %s</span></div></td>|html}
+    {html|<td class="px-3 py-2 text-right %s"><div class="flex flex-col items-end leading-tight"><span class="text-orange-600 dark:text-orange-400 font-bold font-mono">%.1f</span><span class="text-slate-500 dark:text-slate-400 text-[10px] font-mono whitespace-nowrap">Σ%s</span></div></td>|html}
     extra_classes
     avg_points
     total_str
