@@ -94,6 +94,23 @@ let player_id_badge player_id =
     (escape_html player_id)
     (escape_html short)
 
+(** EFF badge with color-coded value (Gemini UX feedback: MVP 핵심 지표 강조)
+    - 20+ purple (elite)
+    - 15+ red (star)
+    - 10+ green (solid)
+    - <10 slate (role player) *)
+let eff_badge ?(show_label=false) eff =
+  let (bg, text) =
+    if eff >= 20.0 then ("bg-purple-500/20 border-purple-500/40", "text-purple-500")
+    else if eff >= 15.0 then ("bg-red-500/20 border-red-500/40", "text-red-500")
+    else if eff >= 10.0 then ("bg-green-500/20 border-green-500/40", "text-green-500")
+    else ("bg-slate-500/10 border-slate-500/20", "text-slate-500")
+  in
+  let label = if show_label then "EFF " else "" in
+  Printf.sprintf
+    {html|<span class="inline-flex items-center px-1.5 py-0.5 rounded border text-[10px] font-mono font-bold %s %s" title="Efficiency: %.1f">%s%.1f</span>|html}
+    bg text eff label eff
+
 (** Empty state component with icon - consistent UX for no-data scenarios *)
 type empty_state_icon =
   | SearchIcon

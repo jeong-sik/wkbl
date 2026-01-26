@@ -834,7 +834,10 @@ let player_profile_page ?(leaderboards=None) (profile: player_profile) ~scope ~(
           
           <div class="text-center md:text-left space-y-4 flex-1">
             <div class="space-y-1">
-              <h1 class="text-4xl sm:text-6xl font-black text-white tracking-tighter drop-shadow-lg">%s</h1>
+              <div class="flex items-center gap-3 justify-center md:justify-start flex-wrap">
+                <h1 class="text-4xl sm:text-6xl font-black text-white tracking-tighter drop-shadow-lg">%s</h1>
+                %s
+              </div>
               <div class="text-white/80 text-lg sm:text-xl font-medium tracking-wide flex items-center justify-center md:justify-start gap-3">
                 %s <span class="w-1.5 h-1.5 rounded-full bg-white/40"></span> %s
               </div>
@@ -897,6 +900,7 @@ let player_profile_page ?(leaderboards=None) (profile: player_profile) ~scope ~(
           (player_img_tag ~class_name:"w-32 h-32 sm:w-48 sm:h-48 border-[6px] border-white/20 dark:border-slate-700/30 shadow-2xl transition-transform duration-500 group-hover:scale-105" p.id p.name)
           (escape_html p.id)
           (escape_html display_name)
+          (eff_badge ~show_label:true avg.efficiency)
           info_text
           birth_chip
           team_badge_html
