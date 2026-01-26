@@ -239,19 +239,20 @@ let games_table (games : game_summary list) =
               (escape_html g.game_id)
         in
         Printf.sprintf
-          {html|<div class="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-lg p-3 shadow-sm space-y-2">
+          {html|<div class="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-orange-300 dark:hover:border-orange-700 rounded-lg p-3 shadow-sm hover:shadow-md space-y-2 transition-all duration-200 cursor-pointer group" onclick="window.location='/boxscore/%s'">
   <div class="flex items-center justify-between text-[11px] text-slate-600 dark:text-slate-400 font-mono">
     <span>#%d · %s</span>
     %s
   </div>
   <div class="flex items-center justify-between gap-3">
     <div class="flex flex-col gap-1 min-w-0">
-      <div class="flex items-center gap-2 text-sm font-medium">%s<a href="/team/%s" class="hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 transition-colors truncate">%s</a></div>
-      <div class="flex items-center gap-2 text-sm font-medium">%s<a href="/team/%s" class="hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 transition-colors truncate">%s</a></div>
+      <div class="flex items-center gap-2 text-sm font-medium">%s<a href="/team/%s" class="group-hover:text-orange-600 dark:text-orange-400 dark:group-hover:text-orange-300 transition-colors truncate">%s</a></div>
+      <div class="flex items-center gap-2 text-sm font-medium">%s<a href="/team/%s" class="group-hover:text-orange-600 dark:text-orange-400 dark:group-hover:text-orange-300 transition-colors truncate">%s</a></div>
     </div>
-    <div class="text-right font-mono text-sm %s whitespace-nowrap">%s - %s</div>
+    <div class="text-right font-mono text-sm %s whitespace-nowrap group-hover:scale-110 transition-transform">%s - %s</div>
   </div>
 </div>|html}
+          (escape_html g.game_id)
           (i + 1)
           (escape_html g.game_date)
           action_html
@@ -273,7 +274,7 @@ let games_table (games : game_summary list) =
         let score_b = match g.away_score with Some s -> string_of_int s | None -> "-" in
         let status_class = if g.home_score = None then "text-slate-600 dark:text-slate-400" else "text-slate-900 dark:text-slate-200" in
         Printf.sprintf
-          {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:bg-slate-800/30 transition-colors %s"><td class="px-4 py-3 text-slate-600 dark:text-slate-400 font-mono text-sm hidden sm:table-cell">%d</td><td class="px-4 py-3 text-slate-600 dark:text-slate-400 font-mono text-sm w-[90px] sm:w-32 whitespace-nowrap">%s</td><td class="px-4 py-3 font-medium" style="width: max-content; white-space: nowrap;"><span class="inline-flex items-center gap-2" style="white-space: nowrap;">%s<a href="/team/%s" class="team-name hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 transition-colors" style="white-space: nowrap;">%s</a></span></td><td class="px-4 py-3 text-center font-bold text-orange-600 dark:text-orange-400 font-mono">%s - %s</td><td class="px-4 py-3 text-right font-medium" style="width: max-content; white-space: nowrap;"><span class="inline-flex items-center justify-end gap-2" style="white-space: nowrap;"><a href="/team/%s" class="team-name hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 transition-colors" style="white-space: nowrap;">%s</a>%s</span></td><td class="px-4 py-3 text-right w-[64px] sm:w-24"><a href="/boxscore/%s" class="text-[10px] sm:text-xs bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-2 py-1 rounded text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition">Boxscore</a></td></tr>|html}
+          {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors group %s"><td class="px-4 py-3 text-slate-600 dark:text-slate-400 font-mono text-sm hidden sm:table-cell group-hover:text-slate-900 dark:group-hover:text-slate-200 transition-colors">%d</td><td class="px-4 py-3 text-slate-600 dark:text-slate-400 font-mono text-sm w-[90px] sm:w-32 whitespace-nowrap group-hover:text-slate-900 dark:group-hover:text-slate-200 transition-colors">%s</td><td class="px-4 py-3 font-medium" style="width: max-content; white-space: nowrap;"><span class="inline-flex items-center gap-2" style="white-space: nowrap;">%s<a href="/team/%s" class="team-name group-hover:text-orange-600 dark:text-orange-400 dark:group-hover:text-orange-300 transition-colors" style="white-space: nowrap;">%s</a></span></td><td class="px-4 py-3 text-center font-bold text-orange-600 dark:text-orange-400 font-mono group-hover:scale-110 transition-transform">%s - %s</td><td class="px-4 py-3 text-right font-medium" style="width: max-content; white-space: nowrap;"><span class="inline-flex items-center justify-end gap-2" style="white-space: nowrap;"><a href="/team/%s" class="team-name group-hover:text-orange-600 dark:text-orange-400 dark:group-hover:text-orange-300 transition-colors" style="white-space: nowrap;">%s</a>%s</span></td><td class="px-4 py-3 text-right w-[64px] sm:w-24"><a href="/boxscore/%s" class="text-[10px] sm:text-xs bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-2 py-1 rounded text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition group-hover:ring-2 group-hover:ring-orange-500/50">Boxscore</a></td></tr>|html}
           status_class (i + 1) (escape_html g.game_date) (team_logo_tag ~class_name:"w-4 h-4" g.home_team) (Uri.pct_encode g.home_team) (escape_html g.home_team) score_a score_b (Uri.pct_encode g.away_team) (escape_html g.away_team) (team_logo_tag ~class_name:"w-4 h-4" g.away_team) (escape_html g.game_id))
     |> String.concat "\n"
   in
@@ -799,9 +800,12 @@ let compare_stat_row ?(signed=false) label val1 val2 =
     (escape_html (value_str val1)) (escape_html label) (escape_html (value_str val2)) pct1 pct2
 
 let h2h_game_row (g: h2h_game) =
+  let diff_color = if g.score_diff > 0 then "bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400"
+                   else if g.score_diff < 0 then "bg-sky-100 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400"
+                   else "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400" in
   Printf.sprintf
-    {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:bg-slate-800/30 font-mono transition-colors">
-      <td class="px-3 py-2 text-slate-600 dark:text-slate-400 text-xs w-[100px] truncate">%s</td>
+    {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/50 font-mono transition-colors group">
+      <td class="px-3 py-2 text-slate-600 dark:text-slate-400 text-xs w-[100px] truncate group-hover:text-slate-900 dark:group-hover:text-slate-200 transition-colors">%s</td>
       <td class="px-3 py-2 text-right text-slate-900 dark:text-slate-200 w-[60px] font-bold">%d</td>
       <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[60px]">%d</td>
       <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[60px]">%d</td>
@@ -809,9 +813,9 @@ let h2h_game_row (g: h2h_game) =
       <td class="px-3 py-2 text-left text-slate-900 dark:text-slate-200 w-[60px] font-bold">%d</td>
       <td class="px-3 py-2 text-left text-slate-700 dark:text-slate-300 w-[60px]">%d</td>
       <td class="px-3 py-2 text-left text-slate-700 dark:text-slate-300 w-[60px]">%d</td>
-      <td class="px-3 py-2 text-right text-xs font-sans w-[80px]"><span class="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">DIFF %d</span></td>
+      <td class="px-3 py-2 text-right text-xs font-sans w-[80px]"><span class="px-1.5 py-0.5 rounded %s font-bold">%+d</span></td>
     </tr>|html}
-    (escape_html g.game_date) g.player1_pts g.player1_reb g.player1_ast g.player2_pts g.player2_reb g.player2_ast g.score_diff
+    (escape_html g.game_date) g.player1_pts g.player1_reb g.player1_ast g.player2_pts g.player2_reb g.player2_ast diff_color g.score_diff
 
 let h2h_game_table (p1_name: string) (p2_name: string) (games: h2h_game list) =
   let rows = games |> List.map h2h_game_row |> String.concat "\n" in
@@ -1532,24 +1536,24 @@ let leader_card ?(value_fmt=(fun v -> Printf.sprintf "%.1f" v)) title (leaders: 
     in
     (* Podium item: rank 1=gold/large, 2=silver/left, 3=bronze/right *)
     let podium_item rank (l: leader_entry) =
-      let (bg, ring, size, mt) = match rank with
-        | 1 -> ("bg-amber-400/20", "ring-amber-400", "w-14 h-14", "mt-0")
-        | 2 -> ("bg-slate-300/20", "ring-slate-400", "w-11 h-11", "mt-4")
-        | _ -> ("bg-amber-700/20", "ring-amber-700", "w-11 h-11", "mt-6")
+      let (bg, ring, size, mt, hover_scale) = match rank with
+        | 1 -> ("bg-amber-400/20", "ring-amber-400", "w-14 h-14", "mt-0", "hover:scale-110")
+        | 2 -> ("bg-slate-300/20", "ring-slate-400", "w-11 h-11", "mt-4", "hover:scale-105")
+        | _ -> ("bg-amber-700/20", "ring-amber-700", "w-11 h-11", "mt-6", "hover:scale-105")
       in
       let id_badge = if show_id l then player_id_badge l.le_player_id else "" in
       Printf.sprintf
-        {html|<div class="flex flex-col items-center %s">
-          <div class="relative"><div class="%s rounded-full %s ring-2 overflow-hidden">%s</div>
-            <div class="absolute -bottom-1 left-1/2 -translate-x-1/2 %s text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center text-white">%d</div>
+        {html|<a href="/player/%s" class="flex flex-col items-center %s group cursor-pointer transition-transform duration-200 %s">
+          <div class="relative"><div class="%s rounded-full %s ring-2 overflow-hidden group-hover:ring-4 transition-all duration-200">%s</div>
+            <div class="absolute -bottom-1 left-1/2 -translate-x-1/2 %s text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center text-white group-hover:scale-110 transition-transform">%d</div>
           </div>
-          <div class="text-lg font-bold text-slate-900 dark:text-slate-200 mt-2">%s</div>
-          <a href="/player/%s" class="text-xs text-slate-600 dark:text-slate-400 hover:text-orange-500 truncate max-w-[80px]">%s</a>%s
-        </div>|html}
-        mt size bg (player_img_tag ~class_name:(size ^ " object-cover") l.le_player_id l.le_player_name)
+          <div class="text-lg font-bold text-slate-900 dark:text-slate-200 mt-2 group-hover:text-orange-500 transition-colors">%s</div>
+          <span class="text-xs text-slate-600 dark:text-slate-400 truncate max-w-[80px]">%s</span>%s
+        </a>|html}
+        l.le_player_id mt hover_scale size bg (player_img_tag ~class_name:(size ^ " object-cover") l.le_player_id l.le_player_name)
         ring rank
         (escape_html (value_fmt l.le_stat_value))
-        l.le_player_id (escape_html (normalize_name l.le_player_name)) id_badge
+        (escape_html (normalize_name l.le_player_name)) id_badge
     in
     (* Podium layout: 2nd | 1st | 3rd *)
     let podium_html = match top3 with
@@ -1566,21 +1570,22 @@ let leader_card ?(value_fmt=(fun v -> Printf.sprintf "%.1f" v)) title (leaders: 
     let others_rows =
       rest |> List.mapi (fun i l ->
           let id_badge = if show_id l then Printf.sprintf {html|<span class="ml-1">%s</span>|html} (player_id_badge l.le_player_id) else "" in
-          Printf.sprintf {html|<div class="flex items-center justify-between py-1.5 border-b border-slate-200/50 dark:border-slate-800/40 last:border-0">
+          Printf.sprintf {html|<a href="/player/%s" class="flex items-center justify-between py-1.5 border-b border-slate-200/50 dark:border-slate-800/40 last:border-0 hover:bg-slate-100 dark:hover:bg-slate-800/50 -mx-2 px-2 rounded transition-colors group">
             <div class="flex items-center gap-2">
-              <span class="text-slate-500 dark:text-slate-500 font-mono text-xs w-4">%d</span>
+              <span class="text-slate-500 dark:text-slate-500 font-mono text-xs w-4 group-hover:text-orange-500 transition-colors">%d</span>
               %s
-              <a href="/player/%s" class="text-xs text-slate-700 dark:text-slate-300 hover:text-orange-500 truncate">%s</a>%s
+              <span class="text-xs text-slate-700 dark:text-slate-300 group-hover:text-orange-500 truncate transition-colors">%s</span>%s
             </div>
-            <span class="font-mono text-xs text-slate-600 dark:text-slate-400">%s</span>
-          </div>|html}
+            <span class="font-mono text-xs text-slate-600 dark:text-slate-400 group-hover:font-bold transition-all">%s</span>
+          </a>|html}
+            l.le_player_id
             (i + 4) (player_img_tag ~class_name:"w-6 h-6" l.le_player_id l.le_player_name)
-            l.le_player_id (escape_html (normalize_name l.le_player_name)) id_badge
+            (escape_html (normalize_name l.le_player_name)) id_badge
             (escape_html (value_fmt l.le_stat_value)))
       |> String.concat "\n"
     in
     Printf.sprintf
-      {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-lg">
+      {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-lg hover:shadow-xl hover:border-orange-300 dark:hover:border-orange-700 transition-all duration-300">
         <h3 class="text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider text-[10px] mb-3 text-center">%s</h3>
         %s
         <div class="space-y-0">%s</div>
