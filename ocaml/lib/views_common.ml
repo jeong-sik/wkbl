@@ -363,69 +363,21 @@ let team_badge ?(max_width="max-w-[130px] sm:max-w-[200px]") team_name =
     (escape_html display)
 
 
-(** Stat cell with formatting - two-line for visual consistency *)
+(** Stat cell with formatting - clean single-line or subtle two-line *)
 let stat_cell ?(highlight=false) ?(extra_classes="") ?(label="") value =
   let class_name = if highlight then "text-orange-600 dark:text-orange-400 font-bold" else "text-slate-700 dark:text-slate-300" in
   if label = "" then
     Printf.sprintf {html|<td class="px-3 py-2 text-right %s font-mono %s">%.1f</td>|html} class_name extra_classes value
   else
     Printf.sprintf
-      {html|<td class="px-3 py-2 text-right %s"><div class="flex flex-col items-end leading-tight"><span class="%s font-mono">%.1f</span><span class="text-slate-500 dark:text-slate-400 text-[10px] font-mono whitespace-nowrap">%s</span></div></td>|html}
+      {html|<td class="px-3 py-2 text-right %s"><div class="flex flex-col items-end leading-tight"><span class="%s font-mono">%.1f</span><span class="text-slate-400 dark:text-slate-500 text-[9px] font-mono whitespace-nowrap">%s</span></div></td>|html}
       extra_classes class_name value label
-
-let format_int_commas n =
-  let abs_n = abs n in
-  let s = string_of_int abs_n in
-  let len = String.length s in
-  if len <= 3 then
-    if n < 0 then "-" ^ s else s
-  else
-    let buf = Buffer.create (len + (len / 3)) in
-    let first = len mod 3 in
-    let first = if first = 0 then 3 else first in
-    Buffer.add_substring buf s 0 first;
-    let i = ref first in
-    while !i < len do
-      Buffer.add_char buf ',';
-      Buffer.add_substring buf s !i 3;
-      i := !i + 3
-    done;
-    let res = Buffer.contents buf in
-    if n < 0 then "-" ^ res else res
-
-(** Compact number format for table cells: 999 -> "999", 1234 -> "1.2K"
-    Returns a span with aria-label for accessibility (screen readers get full number) *)
-let format_int_compact ?(with_aria=false) n =
-  let abs_n = abs n in
-  let compact =
-    if abs_n < 1000 then string_of_int abs_n
-    else Printf.sprintf "%.1fK" (float_of_int abs_n /. 1000.0)
-  in
-  let display = if n < 0 then "-" ^ compact else compact in
-  if with_aria && abs_n >= 1000 then
-    (* Wrap in span with aria-label for screen readers and title for hover tooltip *)
-    Printf.sprintf {html|<span aria-label="%d" title="%s">%s</span>|html}
-      n (Printf.sprintf "%d" n |> fun s ->
-         (* Add thousands separator for readability *)
-         let rec add_commas acc i s =
-           if i < 0 then acc
-           else
-             let c = String.make 1 s.[i] in
-             let pos_from_end = String.length s - 1 - i in
-             if pos_from_end > 0 && pos_from_end mod 3 = 0 then
-               add_commas ("," ^ c ^ acc) (i - 1) s
-             else
-               add_commas (c ^ acc) (i - 1) s
-         in
-         add_commas "" (String.length s - 1) s) display
-  else
-    display
 
 let stat_total_cell ?(highlight=false) ?(extra_classes="") (avg_value: float) (total_value: int) =
   let class_name = if highlight then "text-orange-600 dark:text-orange-400 font-bold" else "text-slate-700 dark:text-slate-300" in
-  let total_str = format_int_compact ~with_aria:true total_value in
+  let total_str = format_int_compact total_value in
   Printf.sprintf
-    {html|<td class="px-3 py-2 text-right %s"><div class="flex flex-col items-end leading-tight"><span class="%s font-mono">%.1f</span><span class="text-slate-500 dark:text-slate-400 text-[10px] font-mono whitespace-nowrap" title="통산 합계 (Career Total)">Σ%s</span></div></td>|html}
+    {html|<td class="px-3 py-2 text-right %s"><div class="flex flex-col items-end leading-tight"><span class="%s font-mono">%.1f</span><span class="text-slate-400 dark:text-slate-500 text-[9px] font-mono whitespace-nowrap" title="Career Total">Σ%s</span></div></td>|html}
     extra_classes
     class_name
     avg_value
@@ -433,14 +385,14 @@ let stat_total_cell ?(highlight=false) ?(extra_classes="") (avg_value: float) (t
 
 (** Points cell with career total *)
 let points_total_cell ?(extra_classes="") (avg_points: float) (total_points: int) =
-  let total_str = format_int_compact ~with_aria:true total_points in
+  let total_str = format_int_compact total_points in
   Printf.sprintf
-    {html|<td class="px-3 py-2 text-right %s"><div class="flex flex-col items-end leading-tight"><span class="text-orange-600 dark:text-orange-400 font-bold font-mono">%.1f</span><span class="text-slate-500 dark:text-slate-400 text-[10px] font-mono whitespace-nowrap" title="통산 합계 (Career Total)">Σ%s</span></div></td>|html}
+    {html|<td class="px-3 py-2 text-right %s"><div class="flex flex-col items-end leading-tight"><span class="text-orange-600 dark:text-orange-400 font-bold font-mono">%.1f</span><span class="text-slate-400 dark:text-slate-500 text-[9px] font-mono whitespace-nowrap" title="Career Total">Σ%s</span></div></td>|html}
     extra_classes
     avg_points
     total_str
 
-(** Margin cell (signed, colored) - two-line for visual consistency *)
+(** Margin cell (signed, colored) *)
 let margin_cell ?(extra_classes="") value =
   let class_name =
     if value > 0.0 then "text-sky-600 dark:text-sky-400 font-bold"
@@ -451,7 +403,7 @@ let margin_cell ?(extra_classes="") value =
     if value > 0.0 then Printf.sprintf "+%.1f" value else Printf.sprintf "%.1f" value
   in
   Printf.sprintf
-    {html|<td class="px-3 py-2 text-right %s"><div class="flex flex-col items-end leading-tight"><span class="%s font-mono">%s</span><span class="text-slate-500 dark:text-slate-400 text-[10px] font-mono whitespace-nowrap">MG</span></div></td>|html}
+    {html|<td class="px-3 py-2 text-right %s %s font-mono">%s</td>|html}
     extra_classes class_name (escape_html value_str)
 
 let wkbl_official_game_result_url (game_id : string) =
@@ -966,9 +918,9 @@ let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2 w-[120px] sm
       ""
   in
   Printf.sprintf
-    {html|<tr class="group border-b border-slate-200 dark:border-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-all duration-200 hover:scale-[1.01] hover:shadow-md relative z-0 hover:z-10">
-      <td class="px-3 py-2 w-12 text-slate-500 dark:text-slate-500 text-sm whitespace-nowrap">%d</td>
-      <td class="px-3 py-2 font-medium text-slate-900 dark:text-white w-[220px] sm:w-[260px]">
+    {html|<tr class="group border-b border-slate-200 dark:border-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-all duration-200 hover:scale-[1.01] hover:shadow-md relative z-0 hover:z-10 font-mono tabular-nums">
+      <td class="px-3 py-2 w-12 text-slate-500 dark:text-slate-500 text-sm text-right pr-4">%d</td>
+      <td class="px-3 py-2 font-medium text-slate-900 dark:text-white w-[220px] sm:w-[260px] font-sans">
         <div class="flex items-center gap-3 min-w-0">
           %s
           <div class="flex items-center gap-2 min-w-0">
@@ -978,7 +930,7 @@ let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2 w-[120px] sm
         </div>
       </td>
       %s
-      <td class="px-3 py-2 text-right whitespace-nowrap hidden sm:table-cell"><div class="flex flex-col items-end leading-tight"><span class="text-slate-500 dark:text-slate-400 font-mono">%d</span><span class="text-slate-500 dark:text-slate-400 text-[10px] font-mono whitespace-nowrap">GP</span></div></td>
+      <td class="px-3 py-2 text-right whitespace-nowrap hidden sm:table-cell text-slate-500 dark:text-slate-400">%d</td>
       %s%s%s%s%s%s%s%s%s
     </tr>|html}
     rank
@@ -996,8 +948,8 @@ let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2 w-[120px] sm
     (stat_total_cell ~extra_classes:"hidden lg:table-cell" p.avg_steals p.total_steals)
     (stat_total_cell ~extra_classes:"hidden lg:table-cell" p.avg_blocks p.total_blocks)
     (stat_total_cell ~extra_classes:"hidden lg:table-cell" p.avg_turnovers p.total_turnovers)
-    (stat_cell ~highlight:true ~label:"EFF" p.efficiency)
-    (stat_cell ~extra_classes:"hidden sm:table-cell" ~label:"PER" per)
+    (stat_cell ~highlight:true p.efficiency)
+    (stat_cell ~extra_classes:"hidden sm:table-cell" per)
 
 (** Players table - HTMX partial *)
 let players_table (players: player_aggregate list) =
@@ -1022,21 +974,21 @@ let players_table (players: player_aggregate list) =
   Printf.sprintf
     {html|<div class="overflow-x-auto max-h-[75vh] overflow-y-auto">
     <table class="min-w-[680px] sm:min-w-[860px] lg:min-w-[980px] w-full text-xs sm:text-sm font-mono tabular-nums table-fixed" aria-label="선수 스탯 순위">
-      <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 text-[10px] sm:text-xs uppercase tracking-wider whitespace-nowrap">
+      <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 text-[10px] sm:text-xs uppercase tracking-wider whitespace-nowrap font-mono">
         <tr>
-          <th scope="col" class="px-3 py-2 text-left w-12" title="Rank">#</th>
-          <th scope="col" class="px-3 py-2 text-left w-[220px] sm:w-[260px]">Player</th>
-          <th scope="col" class="px-3 py-2 text-left w-[120px] sm:w-[160px]">Team</th>
-          <th scope="col" class="px-3 py-2 text-right w-[60px] hidden sm:table-cell" title="Games Played">GP</th>
-          <th scope="col" class="px-3 py-2 text-right w-[72px] cursor-pointer hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300" title="Points" hx-get="/players/table?sort=pts" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter">PTS</th>
-          <th scope="col" class="px-3 py-2 text-right w-[72px] cursor-pointer hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 hidden md:table-cell" title="MG: 팀 득실마진(출전시간 가중 평균)" hx-get="/players/table?sort=mg" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter">MG</th>
-          <th scope="col" class="px-3 py-2 text-right w-[72px] cursor-pointer hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300" title="Rebounds" hx-get="/players/table?sort=reb" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter">REB</th>
-          <th scope="col" class="px-3 py-2 text-right w-[72px] cursor-pointer hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 hidden md:table-cell" title="Assists" hx-get="/players/table?sort=ast" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter">AST</th>
-          <th scope="col" class="px-3 py-2 text-right w-[72px] hidden lg:table-cell" title="Steals">STL</th>
-          <th scope="col" class="px-3 py-2 text-right w-[72px] hidden lg:table-cell" title="Blocks">BLK</th>
-          <th scope="col" class="px-3 py-2 text-right w-[72px] hidden lg:table-cell" title="Turnovers">TO</th>
-          <th scope="col" class="px-3 py-2 text-right w-[72px] cursor-pointer hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300" title="Efficiency" hx-get="/players/table?sort=eff" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter">EFF</th>
-          <th scope="col" class="px-3 py-2 text-right w-[72px] hidden sm:table-cell" title="Player Efficiency Rating (분당 효율 정규화)">PER</th>
+          <th scope="col" class="px-3 py-2 text-left w-12">#</th>
+          <th scope="col" class="px-3 py-2 text-left w-[220px] sm:w-[260px] font-sans">Player</th>
+          <th scope="col" class="px-3 py-2 text-left w-[120px] sm:w-[160px] font-sans">Team</th>
+          <th scope="col" class="px-3 py-2 text-right w-[60px] hidden sm:table-cell">GP</th>
+          <th scope="col" class="px-3 py-2 text-right w-[72px] cursor-pointer hover:text-orange-600 dark:text-orange-400" hx-get="/players/table?sort=pts" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter">PTS</th>
+          <th scope="col" class="px-3 py-2 text-right w-[72px] cursor-pointer hover:text-orange-600 dark:text-orange-400 hidden md:table-cell" hx-get="/players/table?sort=mg" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter">MG</th>
+          <th scope="col" class="px-3 py-2 text-right w-[72px] cursor-pointer hover:text-orange-600 dark:text-orange-400" hx-get="/players/table?sort=reb" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter">REB</th>
+          <th scope="col" class="px-3 py-2 text-right w-[72px] cursor-pointer hover:text-orange-600 dark:text-orange-400 hidden md:table-cell" hx-get="/players/table?sort=ast" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter">AST</th>
+          <th scope="col" class="px-3 py-2 text-right w-[72px] hidden lg:table-cell">STL</th>
+          <th scope="col" class="px-3 py-2 text-right w-[72px] hidden lg:table-cell">BLK</th>
+          <th scope="col" class="px-3 py-2 text-right w-[72px] hidden lg:table-cell">TO</th>
+          <th scope="col" class="px-3 py-2 text-right w-[72px] cursor-pointer text-orange-600 dark:text-orange-400 border-b-2 border-orange-500/50 bg-orange-500/5" hx-get="/players/table?sort=eff" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter">EFF ↓</th>
+          <th scope="col" class="px-3 py-2 text-right w-[72px] hidden sm:table-cell">PER</th>
         </tr>
       </thead>
       <tbody id="players-body">%s</tbody>
