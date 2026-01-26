@@ -93,6 +93,71 @@
         '</div>' +
         '<div class="skeleton-box h-64 rounded-xl"></div>' +
       '</div>';
+    },
+
+    // Player profile header skeleton
+    playerProfile: function() {
+      return '<div class="skeleton-profile animate-pulse flex flex-col md:flex-row gap-6 p-6">' +
+        '<div class="skeleton-box w-32 h-32 rounded-full mx-auto md:mx-0"></div>' +
+        '<div class="flex-1 space-y-4 text-center md:text-left">' +
+          '<div class="skeleton-box h-8 w-48 mx-auto md:mx-0"></div>' +
+          '<div class="skeleton-box h-4 w-32 mx-auto md:mx-0"></div>' +
+          '<div class="flex gap-4 justify-center md:justify-start">' +
+            '<div class="skeleton-box h-6 w-20 rounded-full"></div>' +
+            '<div class="skeleton-box h-6 w-24 rounded-full"></div>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    },
+
+    // Game score card skeleton
+    gameScore: function() {
+      return '<div class="skeleton-game animate-pulse bg-white dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700">' +
+        '<div class="flex items-center justify-between">' +
+          '<div class="flex items-center gap-3">' +
+            '<div class="skeleton-box w-12 h-12 rounded-lg"></div>' +
+            '<div class="skeleton-box h-5 w-24"></div>' +
+          '</div>' +
+          '<div class="skeleton-box h-8 w-12 rounded-lg"></div>' +
+          '<div class="skeleton-box h-4 w-8"></div>' +
+          '<div class="skeleton-box h-8 w-12 rounded-lg"></div>' +
+          '<div class="flex items-center gap-3">' +
+            '<div class="skeleton-box h-5 w-24"></div>' +
+            '<div class="skeleton-box w-12 h-12 rounded-lg"></div>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    },
+
+    // Leader podium skeleton
+    podium: function() {
+      return '<div class="skeleton-podium animate-pulse flex items-end justify-center gap-4 py-6">' +
+        '<div class="flex flex-col items-center">' +
+          '<div class="skeleton-box w-16 h-16 rounded-full mb-2"></div>' +
+          '<div class="skeleton-box h-4 w-20 mb-1"></div>' +
+          '<div class="skeleton-box h-6 w-12"></div>' +
+          '<div class="skeleton-box w-20 h-24 rounded-t-lg mt-2"></div>' +
+        '</div>' +
+        '<div class="flex flex-col items-center">' +
+          '<div class="skeleton-box w-20 h-20 rounded-full mb-2"></div>' +
+          '<div class="skeleton-box h-5 w-24 mb-1"></div>' +
+          '<div class="skeleton-box h-7 w-14"></div>' +
+          '<div class="skeleton-box w-24 h-32 rounded-t-lg mt-2"></div>' +
+        '</div>' +
+        '<div class="flex flex-col items-center">' +
+          '<div class="skeleton-box w-14 h-14 rounded-full mb-2"></div>' +
+          '<div class="skeleton-box h-4 w-18 mb-1"></div>' +
+          '<div class="skeleton-box h-5 w-10"></div>' +
+          '<div class="skeleton-box w-18 h-20 rounded-t-lg mt-2"></div>' +
+        '</div>' +
+      '</div>';
+    },
+
+    // Inline stat value skeleton (for partial updates)
+    inlineStat: function() {
+      return '<span class="skeleton-inline animate-pulse inline-block">' +
+        '<span class="skeleton-box inline-block h-5 w-12 align-middle rounded"></span>' +
+      '</span>';
     }
   };
 
@@ -129,6 +194,22 @@
 
       case 'chart':
         return '<div class="skeleton-container">' + SKELETONS.chart() + '</div>';
+
+      case 'player-profile':
+        return '<div class="skeleton-container">' + SKELETONS.playerProfile() + '</div>';
+
+      case 'game-score':
+        let games = '';
+        for (let i = 0; i < count; i++) {
+          games += SKELETONS.gameScore();
+        }
+        return '<div class="skeleton-container space-y-4">' + games + '</div>';
+
+      case 'podium':
+        return '<div class="skeleton-container">' + SKELETONS.podium() + '</div>';
+
+      case 'inline':
+        return SKELETONS.inlineStat();
 
       default:
         return '<div class="skeleton-container">' + SKELETONS.page() + '</div>';
