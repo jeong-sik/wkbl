@@ -136,24 +136,30 @@ let team_stat_row ~season (row: team_stats) =
   in
   let margin_color = if row.margin >= 0.0 then "text-sky-600 dark:text-sky-400 font-bold" else "text-rose-600 dark:text-rose-400 font-bold" in
   let margin_str = if row.margin > 0.0 then Printf.sprintf "+%.1f" row.margin else format_float row.margin in
-  let name_cell = Printf.sprintf {html|<td class="px-3 py-2 font-medium text-slate-900 dark:text-slate-200 flex items-center gap-2 whitespace-nowrap break-keep">%s<a href="%s" class="hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 transition-colors">%s</a></td>|html} (team_logo_tag ~class_name:"w-5 h-5" row.team) (escape_html team_href) (escape_html row.team) in
-  let gp_cell = Printf.sprintf {html|<td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-600 dark:text-slate-400 font-mono">%d</span><span class="text-slate-500 dark:text-slate-400 text-[10px] font-mono">GP</span></div></td>|html} row.gp in
+  let name_cell = Printf.sprintf {html|<td class="px-3 py-2 font-medium text-slate-900 dark:text-slate-200 flex items-center gap-2 whitespace-nowrap break-keep w-[14%%]"><div class="truncate">%s<a href="%s" class="hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 transition-colors ml-2">%s</a></div></td>|html} (team_logo_tag ~class_name:"w-5 h-5 shrink-0" row.team) (escape_html team_href) (escape_html row.team) in
+  let gp_cell = Printf.sprintf {html|<td class="px-3 py-2 text-right w-[5%%]"><span class="text-slate-600 dark:text-slate-400 font-mono">%d</span></td>|html} row.gp in
+  
+  (* Helper for clean stat cells *)
+  let cell ?(hide="") ?(color="text-slate-700 dark:text-slate-300") ?(width="w-[5%%]") value =
+    Printf.sprintf {html|<td class="px-3 py-2 text-right %s %s"><span class="%s font-mono">%s</span></td>|html} hide width color value
+  in
+
   let cells = String.concat "" [
-    team_cell ~hide:"hidden md:table-cell" "MIN" (format_float row.min_total);
-    team_cell "PTS" (format_float row.pts);
-    team_cell ~color:margin_color "MG" margin_str;
-    team_cell ~hide:"hidden md:table-cell" "PA" (format_float row.pts_against);
-    team_cell ~hide:"hidden sm:table-cell" "REB" (format_float row.reb);
-    team_cell ~hide:"hidden sm:table-cell" "AST" (format_float row.ast);
-    team_cell ~hide:"hidden md:table-cell" "STL" (format_float row.stl);
-    team_cell ~hide:"hidden md:table-cell" "BLK" (format_float row.blk);
-    team_cell ~hide:"hidden md:table-cell" "TO" (format_float row.turnovers);
-    team_cell ~hide:"hidden lg:table-cell" "FG%" (format_float row.fg_pct);
-    team_cell ~hide:"hidden lg:table-cell" "3P%" (format_float row.fg3_pct);
-    team_cell ~hide:"hidden lg:table-cell" "FT%" (format_float row.ft_pct);
-    team_cell ~hide:"hidden lg:table-cell" "eFG%" (format_float row.efg_pct);
-    team_cell ~hide:"hidden lg:table-cell" ~color:"text-emerald-600 dark:text-emerald-400" "TS%" (format_float row.ts_pct);
-    team_cell ~color:"text-orange-600 dark:text-orange-400 font-bold" "EFF" (format_float row.eff);
+    cell ~hide:"hidden md:table-cell" ~width:"w-[5%%]" (format_float row.min_total);
+    cell ~width:"w-[5%%]" (format_float row.pts);
+    cell ~color:margin_color ~width:"w-[5%%]" margin_str;
+    cell ~hide:"hidden md:table-cell" ~width:"w-[5%%]" (format_float row.pts_against);
+    cell ~hide:"hidden sm:table-cell" ~width:"w-[5%%]" (format_float row.reb);
+    cell ~hide:"hidden sm:table-cell" ~width:"w-[5%%]" (format_float row.ast);
+    cell ~hide:"hidden md:table-cell" ~width:"w-[5%%]" (format_float row.stl);
+    cell ~hide:"hidden md:table-cell" ~width:"w-[5%%]" (format_float row.blk);
+    cell ~hide:"hidden md:table-cell" ~width:"w-[5%%]" (format_float row.turnovers);
+    cell ~hide:"hidden lg:table-cell" ~width:"w-[6%%]" (format_float row.fg_pct);
+    cell ~hide:"hidden lg:table-cell" ~width:"w-[6%%]" (format_float row.fg3_pct);
+    cell ~hide:"hidden lg:table-cell" ~width:"w-[6%%]" (format_float row.ft_pct);
+    cell ~hide:"hidden lg:table-cell" ~width:"w-[6%%]" (format_float row.efg_pct);
+    cell ~hide:"hidden lg:table-cell" ~color:"text-emerald-600 dark:text-emerald-400" ~width:"w-[6%%]" (format_float row.ts_pct);
+    cell ~color:"text-orange-600 dark:text-orange-400 font-bold" ~width:"w-[6%%]" (format_float row.eff);
   ] in
   Printf.sprintf {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors">%s%s%s</tr>|html} name_cell gp_cell cells
 
@@ -424,61 +430,52 @@ let boxscore_player_table (title: string) (players: boxscore_player_stat list) =
   let rows =
     players
     |> List.map (fun (p: boxscore_player_stat) ->
-        let pos_badge =
-          match p.bs_position with
-          | Some pos when String.trim pos <> "" ->
-              Printf.sprintf
-                {html|<span class="ml-2 px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[10px] font-sans">%s</span>|html}
-                (escape_html pos)
-          | _ -> ""
+        (* Clean plus/minus string *)
+        let pm_str, pm_cls = match p.bs_plus_minus with
+          | Some v when v > 0 -> (Printf.sprintf "+%d" v, "text-sky-600 dark:text-sky-400 font-bold")
+          | Some v when v < 0 -> (Printf.sprintf "%d" v, "text-rose-600 dark:text-rose-400 font-bold")
+          | Some 0 -> ("0", "text-slate-500 dark:text-slate-500")
+          | None -> ("-", "text-slate-400 dark:text-slate-600")
+          | _ -> ("0", "text-slate-500 dark:text-slate-500")
         in
-        let show_player_id =
-          match Hashtbl.find_opt name_counts (normalize_name p.bs_player_name) with
-          | Some c when c > 1 -> true
-          | _ -> false
-        in
-        let id_badge =
-          if show_player_id then
-            Printf.sprintf {html|<span class="ml-2">%s</span>|html} (player_id_badge p.bs_player_id)
-          else
-            ""
-        in
-        let pm_class, pm_str =
-          match p.bs_plus_minus with
-          | None -> ("text-slate-600 dark:text-slate-400", "-")
-          | Some v ->
-              let cls =
-                if v > 0 then "text-sky-600 dark:text-sky-400"
-                else if v < 0 then "text-rose-600 dark:text-rose-400"
-                else "text-slate-600 dark:text-slate-400"
-              in
-              let s = if v > 0 then Printf.sprintf "+%d" v else string_of_int v in
-              (cls, s)
-        in
+        
         Printf.sprintf
-          {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors"><td class="px-3 py-2 font-medium text-slate-900 dark:text-slate-200 flex items-center gap-3 min-w-[160px]">%s<a href="/player/%s" class="hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 transition-colors">%s</a>%s</td><td class="px-3 py-2 text-right text-slate-600 dark:text-slate-400 font-mono text-sm w-[56px] sm:w-[60px] hidden sm:table-cell">%.1f</td><td class="px-3 py-2 text-right text-slate-900 dark:text-slate-200 font-bold w-[56px] sm:w-[60px]">%d</td><td class="px-3 py-2 text-right font-mono w-[56px] sm:w-[60px] %s hidden sm:table-cell">%s</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[56px] sm:w-[60px]">%d</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[56px] sm:w-[60px]">%d</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[56px] sm:w-[60px] hidden md:table-cell">%d</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[56px] sm:w-[60px] hidden md:table-cell">%d</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[56px] sm:w-[60px] hidden md:table-cell">%d</td><td class="px-3 py-2 text-right text-slate-600 dark:text-slate-400 text-xs font-mono w-[120px] hidden lg:table-cell">%d-%d (%.1f%%)</td><td class="px-3 py-2 text-right text-slate-600 dark:text-slate-400 text-xs font-mono w-[120px] hidden lg:table-cell">%d-%d (%.1f%%)</td><td class="px-3 py-2 text-right text-slate-600 dark:text-slate-400 text-xs font-mono w-[120px] hidden lg:table-cell">%d-%d (%.1f%%)</td></tr>|html}
-          (player_img_tag ~class_name:"w-6 h-6" p.bs_player_id p.bs_player_name)
+          {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors font-mono tabular-nums">
+            <td class="px-3 py-2 font-medium text-slate-900 dark:text-slate-200 flex items-center gap-3 min-w-[160px] font-sans">
+              %s
+              <div class="flex flex-col min-w-0">
+                <a href="/player/%s" class="hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 transition-colors truncate">%s</a>
+                <span class="text-[10px] text-slate-500 dark:text-slate-400 font-normal">%s</span>
+              </div>
+            </td>
+            <td class="px-3 py-2 text-right text-slate-600 dark:text-slate-400 text-sm w-[56px] sm:w-[60px] hidden sm:table-cell">%.1f</td>
+            <td class="px-3 py-2 text-right text-slate-900 dark:text-slate-200 font-bold w-[56px] sm:w-[60px]">%d</td>
+            <td class="px-3 py-2 text-right w-[56px] sm:w-[60px] %s hidden sm:table-cell">%s</td>
+            <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[56px] sm:w-[60px]">%d</td>
+            <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[56px] sm:w-[60px]">%d</td>
+            <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[56px] sm:w-[60px] hidden md:table-cell">%d</td>
+            <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[56px] sm:w-[60px] hidden md:table-cell">%d</td>
+            <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[56px] sm:w-[60px] hidden md:table-cell">%d</td>
+            <td class="px-3 py-2 text-right text-slate-600 dark:text-slate-400 text-xs w-[120px] hidden lg:table-cell">%d-%d (%.1f%%)</td>
+            <td class="px-3 py-2 text-right text-slate-600 dark:text-slate-400 text-xs w-[120px] hidden lg:table-cell">%d-%d (%.1f%%)</td>
+            <td class="px-3 py-2 text-right text-slate-600 dark:text-slate-400 text-xs w-[120px] hidden lg:table-cell">%d-%d (%.1f%%)</td>
+          </tr>|html}
+          (player_img_tag ~class_name:"w-8 h-8 rounded-full object-cover bg-slate-100 dark:bg-slate-800" p.bs_player_id p.bs_player_name)
           p.bs_player_id
           (escape_html (normalize_name p.bs_player_name))
-          (pos_badge ^ id_badge)
+          (escape_html (Option.value ~default:"-" p.bs_position))
           p.bs_minutes
           p.bs_pts
-          pm_class
+          pm_cls
           (escape_html pm_str)
           p.bs_reb
           p.bs_ast
           p.bs_stl
           p.bs_blk
           p.bs_tov
-          p.bs_fg_made
-          p.bs_fg_att
-          p.bs_fg_pct
-          p.bs_fg3_made
-          p.bs_fg3_att
-          p.bs_fg3_pct
-          p.bs_ft_made
-          p.bs_ft_att
-          p.bs_ft_pct)
+          p.bs_fg_made p.bs_fg_att p.bs_fg_pct
+          p.bs_fg3_made p.bs_fg3_att p.bs_fg3_pct
+          p.bs_ft_made p.bs_ft_att p.bs_ft_pct)
     |> String.concat "\n"
   in
   Printf.sprintf
