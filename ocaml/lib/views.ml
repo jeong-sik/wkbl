@@ -1585,7 +1585,7 @@ let leader_card ?(value_fmt=(fun v -> Printf.sprintf "%.1f" v)) title (leaders: 
       |> String.concat "\n"
     in
     Printf.sprintf
-      {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-lg hover:shadow-xl hover:border-orange-300 dark:hover:border-orange-700 transition-all duration-300">
+      {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-lg hover:shadow-xl hover:border-orange-300 dark:hover:border-orange-700 transition-all duration-300 card-enter">
         <h3 class="text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider text-[10px] mb-3 text-center">%s</h3>
         %s
         <div class="space-y-0">%s</div>
