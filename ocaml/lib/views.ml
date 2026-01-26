@@ -121,6 +121,11 @@ let players_page ~season ~seasons ~search ~sort ~include_mismatch players =
 
 let format_float ?(digits=1) value = Printf.sprintf "%.*f" digits value
 
+(** Two-line stat cell helper for team tables *)
+let team_cell ?(hide="") ?(color="text-slate-700 dark:text-slate-300") label value =
+  Printf.sprintf {html|<td class="px-3 py-2 text-right %s"><div class="flex flex-col items-end leading-tight"><span class="%s font-mono">%s</span><span class="text-slate-500 dark:text-slate-400 text-[10px] font-mono">%s</span></div></td>|html}
+    hide color value label
+
 (** Team stat row component to avoid too many sprintf arguments *)
 let team_stat_row ~season (row: team_stats) =
   let team_href =
@@ -129,14 +134,28 @@ let team_stat_row ~season (row: team_stats) =
     else
       Printf.sprintf "/team/%s?season=%s" (Uri.pct_encode row.team) (Uri.pct_encode season)
   in
+  let margin_color = if row.margin >= 0.0 then "text-sky-600 dark:text-sky-400 font-bold" else "text-rose-600 dark:text-rose-400 font-bold" in
+  let margin_str = if row.margin > 0.0 then Printf.sprintf "+%.1f" row.margin else format_float row.margin in
   let name_cell = Printf.sprintf {html|<td class="px-3 py-2 font-medium text-slate-900 dark:text-slate-200 flex items-center gap-2 whitespace-nowrap break-keep">%s<a href="%s" class="hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 transition-colors">%s</a></td>|html} (team_logo_tag ~class_name:"w-5 h-5" row.team) (escape_html team_href) (escape_html row.team) in
-  let gp_cell = Printf.sprintf {html|<td class="px-3 py-2 text-right text-slate-600 dark:text-slate-400">%d</td>|html} row.gp in
-  let stats_part1 = Printf.sprintf {html|<td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 hidden md:table-cell">%s</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300">%s</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300">%s</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 hidden md:table-cell">%s</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 hidden sm:table-cell">%s</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 hidden sm:table-cell">%s</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 hidden md:table-cell">%s</td>|html}
-    (format_float row.min_total) (format_float row.pts) (format_float row.margin) (format_float row.pts_against) (format_float row.reb) (format_float row.ast) (format_float row.stl) in
-  let stats_part2 = Printf.sprintf {html|<td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 hidden md:table-cell">%s</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 hidden md:table-cell">%s</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 hidden lg:table-cell">%s</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 hidden lg:table-cell">%s</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 hidden lg:table-cell">%s</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 hidden lg:table-cell">%s</td><td class="px-3 py-2 text-right text-emerald-600 dark:text-emerald-400 hidden lg:table-cell">%s</td><td class="px-3 py-2 text-right text-orange-600 dark:text-orange-400 font-bold">%s</td>|html}
-    (format_float row.blk) (format_float row.turnovers) (format_float row.fg_pct) (format_float row.fg3_pct) (format_float row.ft_pct) (format_float row.efg_pct) (format_float row.ts_pct) (format_float row.eff)
-  in
-  Printf.sprintf {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:bg-slate-800/30 transition-colors">%s%s%s%s</tr>|html} name_cell gp_cell stats_part1 stats_part2
+  let gp_cell = Printf.sprintf {html|<td class="px-3 py-2 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-600 dark:text-slate-400 font-mono">%d</span><span class="text-slate-500 dark:text-slate-400 text-[10px] font-mono">GP</span></div></td>|html} row.gp in
+  let cells = String.concat "" [
+    team_cell ~hide:"hidden md:table-cell" "MIN" (format_float row.min_total);
+    team_cell "PTS" (format_float row.pts);
+    team_cell ~color:margin_color "MG" margin_str;
+    team_cell ~hide:"hidden md:table-cell" "PA" (format_float row.pts_against);
+    team_cell ~hide:"hidden sm:table-cell" "REB" (format_float row.reb);
+    team_cell ~hide:"hidden sm:table-cell" "AST" (format_float row.ast);
+    team_cell ~hide:"hidden md:table-cell" "STL" (format_float row.stl);
+    team_cell ~hide:"hidden md:table-cell" "BLK" (format_float row.blk);
+    team_cell ~hide:"hidden md:table-cell" "TO" (format_float row.turnovers);
+    team_cell ~hide:"hidden lg:table-cell" "FG%" (format_float row.fg_pct);
+    team_cell ~hide:"hidden lg:table-cell" "3P%" (format_float row.fg3_pct);
+    team_cell ~hide:"hidden lg:table-cell" "FT%" (format_float row.ft_pct);
+    team_cell ~hide:"hidden lg:table-cell" "eFG%" (format_float row.efg_pct);
+    team_cell ~hide:"hidden lg:table-cell" ~color:"text-emerald-600 dark:text-emerald-400" "TS%" (format_float row.ts_pct);
+    team_cell ~color:"text-orange-600 dark:text-orange-400 font-bold" "EFF" (format_float row.eff);
+  ] in
+  Printf.sprintf {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:bg-slate-800/30 transition-colors">%s%s%s</tr>|html} name_cell gp_cell cells
 
 let teams_table ~season ~scope (stats: team_stats list) =
   let rows =
@@ -184,9 +203,11 @@ let standings_table ~season (standings : team_standing list) =
         else
           "px-4 py-3 text-slate-600 dark:text-slate-400 font-mono text-sm"
         in
+        let diff_color = if s.diff >= 0.0 then "text-emerald-600 dark:text-emerald-400" else "text-rose-600 dark:text-rose-400" in
+        let diff_str = if s.diff > 0.0 then Printf.sprintf "+%.1f" s.diff else Printf.sprintf "%.1f" s.diff in
         Printf.sprintf
-          {html|<tr class="%s"><td class="%s">%d</td><td class="px-4 py-3 font-bold text-slate-900 dark:text-slate-200" style="width: max-content; white-space: nowrap; word-break: keep-all;"><span class="inline-flex items-center gap-2" style="white-space: nowrap;">%s<a href="%s" class="team-name hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 transition-colors" style="white-space: nowrap; word-break: keep-all;">%s</a></span></td><td class="px-4 py-3 text-right text-slate-700 dark:text-slate-300">%d</td><td class="px-4 py-3 text-right text-slate-700 dark:text-slate-300">%d</td><td class="px-4 py-3 text-right text-slate-700 dark:text-slate-300">%d</td><td class="px-4 py-3 text-right text-orange-600 dark:text-orange-400 font-bold">%s</td><td class="px-4 py-3 text-right text-slate-600 dark:text-slate-400 hidden sm:table-cell">%s</td><td class="px-4 py-3 text-right text-slate-700 dark:text-slate-300 font-mono hidden md:table-cell">%.1f</td><td class="px-4 py-3 text-right text-slate-700 dark:text-slate-300 font-mono hidden md:table-cell">%.1f</td><td class="px-4 py-3 text-right %s font-mono font-bold hidden sm:table-cell">%.1f</td></tr>|html}
-          row_class rank_class (i + 1) (team_logo_tag ~class_name:"w-5 h-5" s.team_name) (escape_html team_href) (escape_html s.team_name) s.games_played s.wins s.losses win_pct_fmt gb_fmt s.avg_pts s.avg_opp_pts (if s.diff >= 0.0 then "text-emerald-600 dark:text-emerald-400" else "text-rose-600 dark:text-rose-400") s.diff)
+          {html|<tr class="%s"><td class="%s">%d</td><td class="px-4 py-3 font-bold text-slate-900 dark:text-slate-200" style="width: max-content; white-space: nowrap; word-break: keep-all;"><span class="inline-flex items-center gap-2" style="white-space: nowrap;">%s<a href="%s" class="team-name hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 transition-colors" style="white-space: nowrap; word-break: keep-all;">%s</a></span></td><td class="px-4 py-3 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-700 dark:text-slate-300 font-mono">%d</span><span class="text-slate-500 dark:text-slate-400 text-[10px] font-mono">GP</span></div></td><td class="px-4 py-3 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-700 dark:text-slate-300 font-mono">%d</span><span class="text-slate-500 dark:text-slate-400 text-[10px] font-mono">W</span></div></td><td class="px-4 py-3 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-700 dark:text-slate-300 font-mono">%d</span><span class="text-slate-500 dark:text-slate-400 text-[10px] font-mono">L</span></div></td><td class="px-4 py-3 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-orange-600 dark:text-orange-400 font-bold font-mono">%s</span><span class="text-slate-500 dark:text-slate-400 text-[10px] font-mono">PCT</span></div></td><td class="px-4 py-3 text-right hidden sm:table-cell"><div class="flex flex-col items-end leading-tight"><span class="text-slate-600 dark:text-slate-400 font-mono">%s</span><span class="text-slate-500 dark:text-slate-400 text-[10px] font-mono">GB</span></div></td><td class="px-4 py-3 text-right hidden md:table-cell"><div class="flex flex-col items-end leading-tight"><span class="text-slate-700 dark:text-slate-300 font-mono">%.1f</span><span class="text-slate-500 dark:text-slate-400 text-[10px] font-mono">PS/G</span></div></td><td class="px-4 py-3 text-right hidden md:table-cell"><div class="flex flex-col items-end leading-tight"><span class="text-slate-700 dark:text-slate-300 font-mono">%.1f</span><span class="text-slate-500 dark:text-slate-400 text-[10px] font-mono">PA/G</span></div></td><td class="px-4 py-3 text-right hidden sm:table-cell"><div class="flex flex-col items-end leading-tight"><span class="%s font-mono font-bold">%s</span><span class="text-slate-500 dark:text-slate-400 text-[10px] font-mono">DIFF</span></div></td></tr>|html}
+          row_class rank_class (i + 1) (team_logo_tag ~class_name:"w-5 h-5" s.team_name) (escape_html team_href) (escape_html s.team_name) s.games_played s.wins s.losses win_pct_fmt gb_fmt s.avg_pts s.avg_opp_pts diff_color diff_str)
     |> String.concat "\n"
   in
   Printf.sprintf

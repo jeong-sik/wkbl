@@ -27,6 +27,11 @@ let rank_badge rank =
     bg_class text_class rank
 
 (** MVP candidate row for the table *)
+(** Two-line stat cell for MVP table *)
+let mvp_cell ?(hide="") ?(color="text-slate-700 dark:text-slate-300") label value =
+  Printf.sprintf {html|<td class="px-3 py-2 text-right %s"><div class="flex flex-col items-end leading-tight"><span class="%s font-mono">%s</span><span class="text-slate-500 dark:text-slate-400 text-[10px] font-mono">%s</span></div></td>|html}
+    hide color value label
+
 let mvp_candidate_row (candidate: mvp_candidate) =
   let player_href = Printf.sprintf "/player/%s" (Uri.pct_encode candidate.mvp_player_id) in
   let team_code = match candidate.mvp_team_code with Some c -> c | None -> "" in
@@ -44,15 +49,10 @@ let mvp_candidate_row (candidate: mvp_candidate) =
           </div>
         </div>
       </td>
-      <td class="px-3 py-2 text-center text-slate-600 dark:text-slate-400">%d</td>
-      <td class="px-3 py-2 text-right font-mono text-slate-700 dark:text-slate-300">%s</td>
-      <td class="px-3 py-2 text-right font-mono text-slate-700 dark:text-slate-300 hidden md:table-cell">%s</td>
-      <td class="px-3 py-2 text-right font-mono text-slate-700 dark:text-slate-300 hidden md:table-cell">%s</td>
-      <td class="px-3 py-2 text-right font-mono text-slate-700 dark:text-slate-300 hidden lg:table-cell">%s</td>
-      <td class="px-3 py-2 text-right font-mono text-slate-700 dark:text-slate-300 hidden lg:table-cell">%s</td>
-      <td class="px-3 py-2 text-right font-mono text-orange-600 dark:text-orange-400 font-bold hidden sm:table-cell">%s</td>
-      <td class="px-3 py-2 text-center text-xs text-slate-500 dark:text-slate-400 hidden sm:table-cell">%s</td>
-      <td class="px-3 py-2 text-right font-mono font-bold text-sky-600 dark:text-sky-400" title="%s">%s</td>
+      <td class="px-3 py-2 text-center"><div class="flex flex-col items-center leading-tight"><span class="text-slate-600 dark:text-slate-400 font-mono">%d</span><span class="text-slate-500 dark:text-slate-400 text-[10px] font-mono">GP</span></div></td>
+      %s%s%s%s%s%s
+      <td class="px-3 py-2 text-center hidden sm:table-cell"><div class="flex flex-col items-center leading-tight"><span class="text-xs text-slate-500 dark:text-slate-400 font-mono">%s</span><span class="text-slate-500 dark:text-slate-400 text-[10px] font-mono">REC</span></div></td>
+      <td class="px-3 py-2 text-right" title="%s"><div class="flex flex-col items-end leading-tight"><span class="font-mono font-bold text-sky-600 dark:text-sky-400">%s</span><span class="text-slate-500 dark:text-slate-400 text-[10px] font-mono">SCORE</span></div></td>
     </tr>|html}
     (rank_badge candidate.mvp_rank)
     (player_img_tag ~class_name:"w-10 h-10 rounded-full" candidate.mvp_player_id candidate.mvp_player_name)
@@ -61,12 +61,12 @@ let mvp_candidate_row (candidate: mvp_candidate) =
     (escape_html team_href)
     (escape_html candidate.mvp_team_name)
     candidate.mvp_games_played
-    (format_float candidate.mvp_ppg)
-    (format_float candidate.mvp_rpg)
-    (format_float candidate.mvp_apg)
-    (format_float candidate.mvp_spg)
-    (format_float candidate.mvp_bpg)
-    (format_float candidate.mvp_efficiency)
+    (mvp_cell "PPG" (format_float candidate.mvp_ppg))
+    (mvp_cell ~hide:"hidden md:table-cell" "RPG" (format_float candidate.mvp_rpg))
+    (mvp_cell ~hide:"hidden md:table-cell" "APG" (format_float candidate.mvp_apg))
+    (mvp_cell ~hide:"hidden lg:table-cell" "SPG" (format_float candidate.mvp_spg))
+    (mvp_cell ~hide:"hidden lg:table-cell" "BPG" (format_float candidate.mvp_bpg))
+    (mvp_cell ~hide:"hidden sm:table-cell" ~color:"text-orange-600 dark:text-orange-400 font-bold" "EFF" (format_float candidate.mvp_efficiency))
     (format_record candidate.mvp_team_wins candidate.mvp_team_losses)
     (escape_html tooltip)
     (format_float candidate.mvp_final_score)
