@@ -376,20 +376,39 @@ let format_int_commas n =
     let res = Buffer.contents buf in
     if n < 0 then "-" ^ res else res
 
-(** Compact number format for table cells: 999 -> "999", 1234 -> "1.2K" *)
-let format_int_compact n =
+(** Compact number format for table cells: 999 -> "999", 1234 -> "1.2K"
+    Returns a span with aria-label for accessibility (screen readers get full number) *)
+let format_int_compact ?(with_aria=false) n =
   let abs_n = abs n in
-  let result =
+  let compact =
     if abs_n < 1000 then string_of_int abs_n
     else Printf.sprintf "%.1fK" (float_of_int abs_n /. 1000.0)
   in
-  if n < 0 then "-" ^ result else result
+  let display = if n < 0 then "-" ^ compact else compact in
+  if with_aria && abs_n >= 1000 then
+    (* Wrap in span with aria-label for screen readers and title for hover tooltip *)
+    Printf.sprintf {html|<span aria-label="%d" title="%s">%s</span>|html}
+      n (Printf.sprintf "%d" n |> fun s ->
+         (* Add thousands separator for readability *)
+         let rec add_commas acc i s =
+           if i < 0 then acc
+           else
+             let c = String.make 1 s.[i] in
+             let pos_from_end = String.length s - 1 - i in
+             if pos_from_end > 0 && pos_from_end mod 3 = 0 then
+               add_commas ("," ^ c ^ acc) (i - 1) s
+             else
+               add_commas (c ^ acc) (i - 1) s
+         in
+         add_commas "" (String.length s - 1) s) display
+  else
+    display
 
 let stat_total_cell ?(highlight=false) ?(extra_classes="") (avg_value: float) (total_value: int) =
   let class_name = if highlight then "text-orange-600 dark:text-orange-400 font-bold" else "text-slate-700 dark:text-slate-300" in
-  let total_str = format_int_compact total_value in
+  let total_str = format_int_compact ~with_aria:true total_value in
   Printf.sprintf
-    {html|<td class="px-3 py-2 text-right %s"><div class="flex flex-col items-end leading-tight"><span class="%s font-mono">%.1f</span><span class="text-slate-500 dark:text-slate-400 text-[10px] font-mono whitespace-nowrap">Σ%s</span></div></td>|html}
+    {html|<td class="px-3 py-2 text-right %s"><div class="flex flex-col items-end leading-tight"><span class="%s font-mono">%.1f</span><span class="text-slate-500 dark:text-slate-400 text-[10px] font-mono whitespace-nowrap" title="통산 합계 (Career Total)">Σ%s</span></div></td>|html}
     extra_classes
     class_name
     avg_value
@@ -397,9 +416,9 @@ let stat_total_cell ?(highlight=false) ?(extra_classes="") (avg_value: float) (t
 
 (** Points cell with career total *)
 let points_total_cell ?(extra_classes="") (avg_points: float) (total_points: int) =
-  let total_str = format_int_compact total_points in
+  let total_str = format_int_compact ~with_aria:true total_points in
   Printf.sprintf
-    {html|<td class="px-3 py-2 text-right %s"><div class="flex flex-col items-end leading-tight"><span class="text-orange-600 dark:text-orange-400 font-bold font-mono">%.1f</span><span class="text-slate-500 dark:text-slate-400 text-[10px] font-mono whitespace-nowrap">Σ%s</span></div></td>|html}
+    {html|<td class="px-3 py-2 text-right %s"><div class="flex flex-col items-end leading-tight"><span class="text-orange-600 dark:text-orange-400 font-bold font-mono">%.1f</span><span class="text-slate-500 dark:text-slate-400 text-[10px] font-mono whitespace-nowrap" title="통산 합계 (Career Total)">Σ%s</span></div></td>|html}
     extra_classes
     avg_points
     total_str
