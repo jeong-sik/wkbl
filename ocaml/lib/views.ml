@@ -1690,6 +1690,8 @@ let leaders_page ~season ~seasons ~scope (leaders_by_category: (string * leader_
   in
   layout
     ~title:"WKBL Leaders"
+    ~canonical_path:"/leaders"
+    ~description:"WKBL 여자농구 리더보드 - 득점, 리바운드, 어시스트, 슛 퍼센트 등 부문별 선두 선수 순위"
     ~content:(Printf.sprintf
       {html|<div class="space-y-8 animate-fade-in"><div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3"><div><h2 class="text-3xl font-black text-slate-900 dark:text-slate-200">League Leaders</h2><p class="text-slate-600 dark:text-slate-400">Basketball-reference style leaderboards.</p></div><form action="/leaders" method="get" class="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full md:w-auto"><select name="season" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none w-full sm:w-48" onchange="this.form.submit()">%s</select><select name="scope" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none w-full sm:w-48" onchange="this.form.submit()">%s</select></form></div>%s</div>|html}
       season_options scope_options content)
@@ -1731,6 +1733,8 @@ let awards_page ~(season: string) ~(seasons: season_info list) ~(include_mismatc
   in
   layout
     ~title:"WKBL Awards"
+    ~canonical_path:"/awards"
+    ~description:"WKBL 여자농구 시상 - MVP, MIP 등 시즌별 통계 기반 어워드 추정 순위"
     ~content:(Printf.sprintf
       {html|<div class="space-y-8 animate-fade-in"><div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3"><div><h2 class="text-3xl font-black text-slate-900 dark:text-slate-200">Awards</h2><p class="text-slate-600 dark:text-slate-400">Stat-based awards for quick reference.</p></div><form action="/awards" method="get" class="flex flex-wrap items-center gap-3"><select name="season" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none w-40" onchange="this.form.submit()">%s</select><label class="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400"><input type="checkbox" name="include_mismatch" value="1" %s class="h-4 w-4 rounded border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 accent-orange-500" onchange="this.form.submit()" title="Final score != sum(points) 경기 포함"><span>Mismatch 포함</span></label></form></div><div class="grid grid-cols-1 md:grid-cols-2 gap-6">%s%s</div>%s</div>|html}
       season_options
