@@ -1,13 +1,19 @@
 /**
  * Chart Tooltip Enhancement
  * Rich tooltips for SVG charts with follow cursor and auto-positioning
+ *
+ * @accessibility Keyboard navigation, aria-describedby, focus management
+ * @performance Optimized event delegation on specific containers
  */
 (() => {
+  'use strict';
+
   const OFFSET = 12;
   const TOOLTIP_ID = 'chart-tooltip';
 
   let tooltip = null;
   let currentTarget = null;
+  let tooltipIdCounter = 0;
 
   const createTooltip = () => {
     if (tooltip) return tooltip;
@@ -24,6 +30,11 @@
       'border border-slate-700 dark:border-slate-300'
     ].join(' ');
     tooltip.style.willChange = 'transform, opacity';
+
+    // Accessibility attributes
+    tooltip.setAttribute('role', 'tooltip');
+    tooltip.setAttribute('aria-hidden', 'true');
+
     document.body.appendChild(tooltip);
     return tooltip;
   };
@@ -123,6 +134,13 @@
 
     tooltip.innerHTML = html;
     tooltip.style.opacity = '1';
+    tooltip.setAttribute('aria-hidden', 'false');
+
+    // Link target to tooltip for screen readers
+    const tooltipInstanceId = `${TOOLTIP_ID}-${++tooltipIdCounter}`;
+    tooltip.id = tooltipInstanceId;
+    target.setAttribute('aria-describedby', tooltipInstanceId);
+
     positionTooltip(x, y);
     currentTarget = target;
   };
@@ -130,11 +148,16 @@
   const hideTooltip = () => {
     if (!tooltip) return;
     tooltip.style.opacity = '0';
+    tooltip.setAttribute('aria-hidden', 'true');
 
-    // Restore original title
-    if (currentTarget?.dataset.originalTitle) {
-      currentTarget.setAttribute('title', currentTarget.dataset.originalTitle);
-      delete currentTarget.dataset.originalTitle;
+    // Remove aria link and restore original title
+    if (currentTarget) {
+      currentTarget.removeAttribute('aria-describedby');
+
+      if (currentTarget.dataset.originalTitle) {
+        currentTarget.setAttribute('title', currentTarget.dataset.originalTitle);
+        delete currentTarget.dataset.originalTitle;
+      }
     }
     currentTarget = null;
   };
@@ -145,21 +168,88 @@
     }
   };
 
+  const TOOLTIP_SELECTOR = '[data-tooltip], [data-tooltip-value], svg [title]';
+
   const init = () => {
-    // Delegate event handling for chart elements
+    // Find chart containers for scoped event handling (performance optimization)
+    const setupContainerEvents = (container) => {
+      container.addEventListener('mouseenter', (e) => {
+        const target = e.target.closest(TOOLTIP_SELECTOR);
+        if (target) {
+          showTooltip(target, e.clientX, e.clientY);
+        }
+      }, true);
+
+      container.addEventListener('mouseleave', (e) => {
+        const target = e.target.closest(TOOLTIP_SELECTOR);
+        if (target) {
+          hideTooltip();
+        }
+      }, true);
+
+      // Keyboard accessibility: show on focus, hide on blur
+      container.addEventListener('focusin', (e) => {
+        const target = e.target.closest(TOOLTIP_SELECTOR);
+        if (target) {
+          const rect = target.getBoundingClientRect();
+          showTooltip(target, rect.left + rect.width / 2, rect.bottom);
+        }
+      });
+
+      container.addEventListener('focusout', (e) => {
+        const target = e.target.closest(TOOLTIP_SELECTOR);
+        if (target) {
+          hideTooltip();
+        }
+      });
+    };
+
+    // Setup on existing chart containers
+    const chartContainers = document.querySelectorAll('.chart-container, [data-chart], svg, .stat-card, [data-tooltip-container]');
+    chartContainers.forEach(setupContainerEvents);
+
+    // Fallback: document-level for elements outside containers
     document.addEventListener('mouseenter', (e) => {
-      const target = e.target.closest('[data-tooltip], [data-tooltip-value], svg [title]');
+      // Skip if already handled by container
+      if (e.target.closest('.chart-container, [data-chart], svg, .stat-card, [data-tooltip-container]')) return;
+
+      const target = e.target.closest(TOOLTIP_SELECTOR);
       if (target) {
         showTooltip(target, e.clientX, e.clientY);
       }
     }, true);
 
     document.addEventListener('mouseleave', (e) => {
-      const target = e.target.closest('[data-tooltip], [data-tooltip-value], svg [title]');
+      if (e.target.closest('.chart-container, [data-chart], svg, .stat-card, [data-tooltip-container]')) return;
+
+      const target = e.target.closest(TOOLTIP_SELECTOR);
       if (target) {
         hideTooltip();
       }
     }, true);
+
+    // Keyboard accessibility at document level
+    document.addEventListener('focusin', (e) => {
+      const target = e.target.closest(TOOLTIP_SELECTOR);
+      if (target) {
+        const rect = target.getBoundingClientRect();
+        showTooltip(target, rect.left + rect.width / 2, rect.bottom);
+      }
+    });
+
+    document.addEventListener('focusout', (e) => {
+      const target = e.target.closest(TOOLTIP_SELECTOR);
+      if (target) {
+        hideTooltip();
+      }
+    });
+
+    // Escape key to dismiss tooltip
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && currentTarget) {
+        hideTooltip();
+      }
+    });
 
     document.addEventListener('mousemove', handleMouseMove, { passive: true });
 
@@ -168,7 +258,7 @@
 
     // Handle touch devices - show on touch, hide on touchend
     document.addEventListener('touchstart', (e) => {
-      const target = e.target.closest('[data-tooltip], [data-tooltip-value]');
+      const target = e.target.closest(TOOLTIP_SELECTOR);
       if (target) {
         const touch = e.touches[0];
         showTooltip(target, touch.clientX, touch.clientY);
@@ -180,6 +270,22 @@
     document.addEventListener('touchend', () => {
       setTimeout(hideTooltip, 1500); // Keep visible briefly on touch
     }, { passive: true });
+
+    // MutationObserver for dynamically added containers
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        mutation.addedNodes.forEach((node) => {
+          if (node.nodeType === 1) {
+            if (node.matches?.('.chart-container, [data-chart], [data-tooltip-container]')) {
+              setupContainerEvents(node);
+            }
+            node.querySelectorAll?.('.chart-container, [data-chart], [data-tooltip-container]')
+              .forEach(setupContainerEvents);
+          }
+        });
+      });
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
   };
 
   // Export for programmatic use

@@ -3,9 +3,26 @@
  * - Automatic skeleton injection during htmx:beforeRequest
  * - Graceful fade-out when content arrives
  * - Reusable skeleton templates for common patterns
+ *
+ * @accessibility aria-busy, aria-live, role="status" for screen readers
+ * @performance Fixed dimensions prevent layout shift (CLS optimization)
  */
 (function() {
   'use strict';
+
+  // Minimum heights for layout shift prevention (CLS)
+  const MIN_HEIGHTS = {
+    tableRow: 48,    // px per row
+    card: 180,
+    statsGrid: 100,
+    listItem: 64,
+    chart: 280,
+    page: 400,
+    playerProfile: 200,
+    gameScore: 80,
+    podium: 240,
+    inlineStat: 24
+  };
 
   // Skeleton templates for different content types
   const SKELETONS = {
@@ -216,16 +233,38 @@
     }
   }
 
+  // Calculate min-height for layout shift prevention
+  function getMinHeight(type, count) {
+    count = count || 1;
+    const base = MIN_HEIGHTS[type] || MIN_HEIGHTS.page;
+    return type === 'table' || type === 'list' ? base * count : base;
+  }
+
   // Show skeleton before HTMX request
   function showSkeleton(event) {
     const target = event.detail.target;
     if (!target || !target.hasAttribute('data-skeleton')) return;
 
-    // Store original content
-    target.setAttribute('data-original-content', target.innerHTML);
+    const type = target.getAttribute('data-skeleton') || 'page';
+    const count = parseInt(target.getAttribute('data-skeleton-count') || '3', 10);
 
-    // Inject skeleton
-    target.innerHTML = createSkeleton(target);
+    // Store original content and dimensions
+    target.setAttribute('data-original-content', target.innerHTML);
+    target.setAttribute('data-original-height', target.style.minHeight || '');
+
+    // Set minimum height to prevent layout shift
+    target.style.minHeight = getMinHeight(type, count) + 'px';
+
+    // Accessibility: indicate loading state
+    target.setAttribute('aria-busy', 'true');
+    target.setAttribute('aria-live', 'polite');
+
+    // Inject skeleton with accessible label
+    const skeleton = createSkeleton(target);
+    target.innerHTML = '<div role="status" aria-label="콘텐츠 로딩 중">' +
+      '<span class="sr-only">로딩 중...</span>' +
+      skeleton +
+    '</div>';
     target.classList.add('is-loading');
   }
 
@@ -236,8 +275,18 @@
 
     target.classList.remove('is-loading');
 
+    // Restore original min-height
+    const originalHeight = target.getAttribute('data-original-height');
+    if (originalHeight !== null) {
+      target.style.minHeight = originalHeight;
+      target.removeAttribute('data-original-height');
+    }
+
+    // Accessibility: indicate loading complete
+    target.setAttribute('aria-busy', 'false');
+
     // Add fade-in animation to new content
-    const content = target.querySelector(':scope > *:not(.skeleton-container)');
+    const content = target.querySelector(':scope > *:not(.skeleton-container):not([role="status"])');
     if (content) {
       content.classList.add('skeleton-fade-in');
       setTimeout(function() {

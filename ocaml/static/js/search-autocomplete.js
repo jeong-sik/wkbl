@@ -1,9 +1,14 @@
 /**
  * Search Autocomplete
  * Fuzzy search with keyboard navigation for player/team names
+ *
+ * @accessibility aria-activedescendant for screen readers, loading state
+ * @performance Debounced search (200ms)
  */
 (() => {
-  const DEBOUNCE_MS = 150;
+  'use strict';
+
+  const DEBOUNCE_MS = 200;  // Increased from 150 for better UX
   const MIN_CHARS = 1;
   const MAX_RESULTS = 8;
 
@@ -183,8 +188,21 @@
         el.classList.toggle('bg-slate-100', isSelected);
         el.classList.toggle('dark:bg-slate-700', isSelected);
         el.setAttribute('aria-selected', isSelected);
-        if (isSelected) el.scrollIntoView({ block: 'nearest' });
+
+        // Set unique ID for aria-activedescendant
+        el.id = `${dropdown.id}-option-${i}`;
+
+        if (isSelected) {
+          el.scrollIntoView({ block: 'nearest' });
+          // Update aria-activedescendant for screen readers
+          input.setAttribute('aria-activedescendant', el.id);
+        }
       });
+
+      // Clear aria-activedescendant if nothing selected
+      if (selectedIndex === -1) {
+        input.removeAttribute('aria-activedescendant');
+      }
     };
 
     // Event listeners
