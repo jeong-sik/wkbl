@@ -1,13 +1,18 @@
 /**
  * WKBL Notification Manager
  * Web Push notification subscription and management
+ *
+ * @accessibility Clear permission state feedback
+ * @security Always checks permission before sending notifications
  */
+'use strict';
 
 const WKBLNotifications = {
   // State
   isSupported: false,
   permission: 'default',
   subscription: null,
+  _permissionChecked: false,
 
   // Default notification preferences
   defaultPrefs: {
@@ -39,6 +44,27 @@ const WKBLNotifications = {
     this.savePrefs(prefs);
   },
 
+  // Verify current permission state (may change outside app)
+  _verifyPermission() {
+    if (!this.isSupported) return false;
+
+    // Re-check permission in case it was revoked
+    const currentPermission = Notification.permission;
+    if (currentPermission !== this.permission) {
+      console.log('[Notify] Permission changed:', this.permission, '->', currentPermission);
+      this.permission = currentPermission;
+      this.updateUI();
+    }
+
+    this._permissionChecked = true;
+    return this.permission === 'granted';
+  },
+
+  // Check if we can send notifications
+  canNotify() {
+    return this.isSupported && this._verifyPermission();
+  },
+
   // Initialize notification system
   async init() {
     // Check browser support
@@ -50,6 +76,7 @@ const WKBLNotifications = {
     }
 
     this.permission = Notification.permission;
+    this._permissionChecked = true;
     console.log('[Notify] Permission:', this.permission);
 
     // Update UI based on permission
@@ -60,6 +87,13 @@ const WKBLNotifications = {
     if (enabled && this.permission === 'granted') {
       await this.subscribe();
     }
+
+    // Listen for visibility change to re-verify permission
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        this._verifyPermission();
+      }
+    });
 
     return true;
   },
@@ -238,7 +272,7 @@ const WKBLNotifications = {
   async notifyGameStart(homeTeam, awayTeam, gameUrl) {
     const prefs = this.getPrefs();
     if (!prefs.gameStart) return;
-    if (this.permission !== 'granted') return;
+    if (!this.canNotify()) return;
 
     try {
       const registration = await navigator.serviceWorker.ready;
@@ -260,7 +294,7 @@ const WKBLNotifications = {
   async notifyGameEnd(homeTeam, homeScore, awayTeam, awayScore, gameUrl) {
     const prefs = this.getPrefs();
     if (!prefs.gameEnd) return;
-    if (this.permission !== 'granted') return;
+    if (!this.canNotify()) return;
 
     const winner = homeScore > awayScore ? homeTeam : awayTeam;
 
@@ -284,7 +318,7 @@ const WKBLNotifications = {
   async notifyLiveScore(homeTeam, homeScore, awayTeam, awayScore, quarter, gameUrl) {
     const prefs = this.getPrefs();
     if (!prefs.liveScore) return;
-    if (this.permission !== 'granted') return;
+    if (!this.canNotify()) return;
 
     try {
       const registration = await navigator.serviceWorker.ready;

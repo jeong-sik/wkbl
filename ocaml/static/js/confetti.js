@@ -1,11 +1,16 @@
 /**
  * Confetti Celebration Effect
  * Lightweight confetti animation for game results
- * Uses CSS transforms for performance
+ * Uses CSS transforms + requestAnimationFrame for performance
+ *
+ * @accessibility prefers-reduced-motion respected
+ * @performance Uses animationend events instead of setTimeout
  */
-(() => {
+const ConfettiModule = (() => {
+  'use strict';
+
   const PARTICLE_COUNT = 80;
-  const COLORS = [
+  const COLORS = Object.freeze([
     '#f97316', // orange-500
     '#eab308', // yellow-500
     '#22c55e', // green-500
@@ -13,16 +18,39 @@
     '#a855f7', // purple-500
     '#ec4899', // pink-500
     '#ef4444', // red-500
-  ];
-  const SHAPES = ['square', 'circle', 'ribbon'];
+  ]);
+  const SHAPES = Object.freeze(['square', 'circle', 'ribbon']);
+
+  // Check for reduced motion preference
+  const prefersReducedMotion = () =>
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   const random = (min, max) => Math.random() * (max - min) + min;
   const randomFrom = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
-  const createParticle = (container, index) => {
-    const particle = document.createElement('div');
+  // Particle pool for memory efficiency
+  const particlePool = [];
+  const MAX_POOL_SIZE = 100;
+
+  const getParticle = () => {
+    return particlePool.pop() || document.createElement('div');
+  };
+
+  const releaseParticle = (particle) => {
+    if (particlePool.length < MAX_POOL_SIZE) {
+      particle.className = '';
+      particle.style.cssText = '';
+      particle.removeAttribute('style');
+      particlePool.push(particle);
+    }
+  };
+
+  const createParticle = (container, index, colors = COLORS) => {
+    if (prefersReducedMotion()) return null;
+
+    const particle = getParticle();
     const shape = randomFrom(SHAPES);
-    const color = randomFrom(COLORS);
+    const color = randomFrom(colors);
     const size = random(8, 14);
     const startX = random(0, 100);
     const startY = random(-20, -10);
@@ -40,6 +68,7 @@
     }
 
     particle.className = 'confetti-particle';
+    particle.setAttribute('aria-hidden', 'true');
     particle.style.cssText = `
       position: absolute;
       width: ${size}px;
@@ -57,10 +86,18 @@
       ${shapeStyle}
     `;
 
-    container.appendChild(particle);
+    // Use animationend event instead of setTimeout for accurate cleanup
+    const handleAnimationEnd = () => {
+      particle.removeEventListener('animationend', handleAnimationEnd);
+      if (particle.parentNode) {
+        particle.parentNode.removeChild(particle);
+      }
+      releaseParticle(particle);
+    };
+    particle.addEventListener('animationend', handleAnimationEnd, { once: true });
 
-    // Remove after animation
-    setTimeout(() => particle.remove(), (duration + delay) * 1000 + 100);
+    container.appendChild(particle);
+    return particle;
   };
 
   const createContainer = () => {
@@ -112,58 +149,73 @@
 
   // Main confetti burst function
   const burst = (options = {}) => {
+    if (prefersReducedMotion()) {
+      // Show a simple visual feedback for reduced motion users
+      console.log('[Confetti] Animation skipped (prefers-reduced-motion)');
+      return;
+    }
+
     const {
       particleCount = PARTICLE_COUNT,
-      duration = 3000
+      duration = 3000,
+      colors = COLORS
     } = options;
 
     addKeyframes();
     const container = createContainer();
 
-    // Create particles
-    for (let i = 0; i < particleCount; i++) {
-      createParticle(container, i);
-    }
+    // Batch particle creation using requestAnimationFrame for smoother performance
+    let created = 0;
+    const batchSize = 20;
 
-    // Cleanup container after all animations
+    const createBatch = () => {
+      const end = Math.min(created + batchSize, particleCount);
+      for (let i = created; i < end; i++) {
+        createParticle(container, i, colors);
+      }
+      created = end;
+
+      if (created < particleCount) {
+        requestAnimationFrame(createBatch);
+      }
+    };
+
+    requestAnimationFrame(createBatch);
+
+    // Cleanup container after all animations (fallback)
     setTimeout(() => {
-      if (container.children.length === 0) {
+      if (container && container.children.length === 0) {
         container.remove();
       }
-    }, duration + 1000);
+    }, duration + 2000);
   };
 
-  // Team-colored confetti
-  const teamColors = {
-    'KB스타즈': ['#002868', '#FFFFFF'],
-    '우리은행': ['#005EB8', '#FFFFFF'],
-    '삼성생명': ['#1428A0', '#FFFFFF'],
-    '신한은행': ['#0046FF', '#FFFFFF'],
-    'BNK': ['#E31937', '#FFFFFF'],
-    '하나원큐': ['#00A651', '#FFFFFF'],
-  };
+  // Team-colored confetti (WKBL teams)
+  const teamColors = Object.freeze({
+    'KB스타즈': ['#002868', '#FFFFFF', '#f97316'],
+    '우리은행': ['#005EB8', '#FFFFFF', '#fbbf24'],
+    '삼성생명': ['#1428A0', '#FFFFFF', '#22c55e'],
+    '신한은행': ['#0046FF', '#FFFFFF', '#f97316'],
+    'BNK': ['#E31937', '#FFFFFF', '#fbbf24'],
+    '하나원큐': ['#00A651', '#FFFFFF', '#22c55e'],
+  });
 
   const burstTeamColors = (teamName, options = {}) => {
-    const colors = teamColors[teamName] || COLORS;
-    const originalColors = [...COLORS];
+    // Get team colors or fall back to default
+    const colors = teamColors[teamName]
+      ? [...teamColors[teamName], '#f97316', '#fbbf24']
+      : [...COLORS];
 
-    // Temporarily replace colors
-    COLORS.length = 0;
-    colors.forEach(c => COLORS.push(c));
-    // Add some complementary colors
-    COLORS.push('#f97316', '#fbbf24', '#22c55e');
-
-    burst(options);
-
-    // Restore original colors
-    setTimeout(() => {
-      COLORS.length = 0;
-      originalColors.forEach(c => COLORS.push(c));
-    }, 100);
+    burst({ ...options, colors });
   };
 
   // Sad effect for losses (fewer, slower particles falling down)
   const sadEffect = (options = {}) => {
+    if (prefersReducedMotion()) {
+      console.log('[Confetti] Sad animation skipped (prefers-reduced-motion)');
+      return;
+    }
+
     addKeyframes();
     const container = createContainer();
     const count = options.particleCount || 20;
@@ -187,13 +239,14 @@
     }
 
     for (let i = 0; i < count; i++) {
-      const particle = document.createElement('div');
+      const particle = getParticle();
       const size = random(6, 10);
       const startX = random(0, 100);
       const duration = random(3, 5);
       const delay = random(0, 1);
 
       particle.className = 'confetti-particle';
+      particle.setAttribute('aria-hidden', 'true');
       particle.style.cssText = `
         position: absolute;
         width: ${size}px;
@@ -207,13 +260,20 @@
         animation: confetti-sad-fall ${duration}s ease-in ${delay}s forwards;
       `;
 
+      // Use animationend for cleanup
+      particle.addEventListener('animationend', () => {
+        if (particle.parentNode) {
+          particle.parentNode.removeChild(particle);
+        }
+        releaseParticle(particle);
+      }, { once: true });
+
       container.appendChild(particle);
-      setTimeout(() => particle.remove(), (duration + delay) * 1000 + 100);
     }
   };
 
-  // Expose API
-  window.Confetti = {
+  // Public API
+  const api = Object.freeze({
     burst,
     burstTeamColors,
     sadEffect,
@@ -221,21 +281,26 @@
     // Convenience methods
     win(teamName) {
       if (teamName) {
-        this.burstTeamColors(teamName, { particleCount: 100 });
+        burstTeamColors(teamName, { particleCount: 100 });
       } else {
-        this.burst({ particleCount: 100 });
+        burst({ particleCount: 100 });
       }
     },
 
     lose() {
-      this.sadEffect({ particleCount: 15 });
+      sadEffect({ particleCount: 15 });
     },
 
     // For testing
     test() {
-      this.burst({ particleCount: 50 });
+      burst({ particleCount: 50 });
+    },
+
+    // Check if animations are enabled
+    isEnabled() {
+      return !prefersReducedMotion();
     }
-  };
+  });
 
   // Auto-trigger on game result pages
   const autoTrigger = () => {
@@ -247,9 +312,9 @@
 
     if (result === 'win') {
       // Slight delay for dramatic effect
-      setTimeout(() => Confetti.win(teamName), 500);
+      setTimeout(() => api.win(teamName), 500);
     } else if (result === 'lose') {
-      setTimeout(() => Confetti.lose(), 500);
+      setTimeout(() => api.lose(), 500);
     }
   };
 
@@ -258,4 +323,10 @@
   } else {
     autoTrigger();
   }
+
+  return api;
 })();
+
+// Expose to global scope for backward compatibility
+// Use ConfettiModule directly for module-style access
+window.Confetti = ConfettiModule;

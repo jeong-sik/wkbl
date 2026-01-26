@@ -707,6 +707,35 @@ body.menu-open {
   border: 0;
 }
 
+/* Focus-visible state for sr-only skip links */
+.sr-only.focus\:not-sr-only:focus,
+.focus\:not-sr-only:focus {
+  position: fixed;
+  width: auto;
+  height: auto;
+  padding: 0.5rem 1rem;
+  margin: 0;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+  z-index: 9999;
+}
+
+/* Forced colors mode (Windows High Contrast) */
+@media (forced-colors: active) {
+  .skeleton-box {
+    forced-color-adjust: none;
+    background: GrayText !important;
+  }
+
+  button:focus,
+  a:focus,
+  [tabindex]:focus {
+    outline: 3px solid Highlight !important;
+    outline-offset: 2px !important;
+  }
+}
+
 /* ===========================================
    13. Empty State Component
    =========================================== */
