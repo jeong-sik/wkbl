@@ -935,21 +935,20 @@ let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2 w-[120px] sm
     </tr>|html}
     rank
     (player_img_tag ~class_name:"w-8 h-8 shrink-0" p.player_id p.name)
-    p.player_id
     (escape_html display_name)
     (if show_player_id then "opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity" else "hidden")
     id_badge
     team_cell
     p.games_played
-    (points_total_cell p.avg_points p.total_points)
-    (margin_cell ~extra_classes:"hidden md:table-cell" p.avg_margin)
-    (stat_total_cell p.avg_rebounds p.total_rebounds)
-    (stat_total_cell ~extra_classes:"hidden md:table-cell" p.avg_assists p.total_assists)
-    (stat_total_cell ~extra_classes:"hidden lg:table-cell" p.avg_steals p.total_steals)
-    (stat_total_cell ~extra_classes:"hidden lg:table-cell" p.avg_blocks p.total_blocks)
-    (stat_total_cell ~extra_classes:"hidden lg:table-cell" p.avg_turnovers p.total_turnovers)
-    (stat_cell ~highlight:true p.efficiency)
-    (stat_cell ~extra_classes:"hidden sm:table-cell" per)
+    (points_total_cell ~extra_classes:"w-[72px]" p.avg_points p.total_points)
+    (margin_cell ~extra_classes:"hidden md:table-cell w-[72px]" p.avg_margin)
+    (stat_total_cell ~extra_classes:"w-[72px]" p.avg_rebounds p.total_rebounds)
+    (stat_total_cell ~extra_classes:"hidden md:table-cell w-[72px]" p.avg_assists p.total_assists)
+    (stat_total_cell ~extra_classes:"hidden lg:table-cell w-[72px]" p.avg_steals p.total_steals)
+    (stat_total_cell ~extra_classes:"hidden lg:table-cell w-[72px]" p.avg_blocks p.total_blocks)
+    (stat_total_cell ~extra_classes:"hidden lg:table-cell w-[72px]" p.avg_turnovers p.total_turnovers)
+    (stat_cell ~highlight:true ~extra_classes:"w-[72px]" p.efficiency)
+    (stat_cell ~extra_classes:"hidden sm:table-cell w-[72px]" per)
 
 (** Players table - HTMX partial *)
 let players_table (players: player_aggregate list) =
