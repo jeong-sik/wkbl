@@ -9,6 +9,36 @@ const WKBLNotifications = {
   permission: 'default',
   subscription: null,
 
+  // Default notification preferences
+  defaultPrefs: {
+    gameStart: true,
+    gameEnd: true,
+    liveScore: false,
+    favoriteTeams: []
+  },
+
+  // Get preferences from localStorage
+  getPrefs() {
+    try {
+      const stored = localStorage.getItem('wkbl-notify-prefs');
+      return stored ? { ...this.defaultPrefs, ...JSON.parse(stored) } : this.defaultPrefs;
+    } catch {
+      return this.defaultPrefs;
+    }
+  },
+
+  // Save preferences
+  savePrefs(prefs) {
+    localStorage.setItem('wkbl-notify-prefs', JSON.stringify(prefs));
+  },
+
+  // Set a single preference
+  setPref(key, value) {
+    const prefs = this.getPrefs();
+    prefs[key] = value;
+    this.savePrefs(prefs);
+  },
+
   // Initialize notification system
   async init() {
     // Check browser support
@@ -200,6 +230,115 @@ const WKBLNotifications = {
         setTimeout(() => toast.remove(), 300);
       }, 3000);
     }
+  },
+
+  // === Game-specific notifications ===
+
+  // Notify game start
+  async notifyGameStart(homeTeam, awayTeam, gameUrl) {
+    const prefs = this.getPrefs();
+    if (!prefs.gameStart) return;
+    if (this.permission !== 'granted') return;
+
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      registration.showNotification('🏀 경기 시작!', {
+        body: `${homeTeam} vs ${awayTeam}`,
+        icon: '/static/images/favicon-512.png',
+        badge: '/static/images/favicon-32.png',
+        tag: `game-start-${Date.now()}`,
+        data: { url: gameUrl, type: 'gameStart' },
+        vibrate: [200, 100, 200],
+        requireInteraction: false
+      });
+    } catch (err) {
+      console.error('[Notify] Game start notification failed:', err);
+    }
+  },
+
+  // Notify game end
+  async notifyGameEnd(homeTeam, homeScore, awayTeam, awayScore, gameUrl) {
+    const prefs = this.getPrefs();
+    if (!prefs.gameEnd) return;
+    if (this.permission !== 'granted') return;
+
+    const winner = homeScore > awayScore ? homeTeam : awayTeam;
+
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      registration.showNotification('🎉 경기 종료!', {
+        body: `${homeTeam} ${homeScore} - ${awayScore} ${awayTeam}\n${winner} 승리!`,
+        icon: '/static/images/favicon-512.png',
+        badge: '/static/images/favicon-32.png',
+        tag: `game-end-${Date.now()}`,
+        data: { url: gameUrl, type: 'gameEnd' },
+        vibrate: [200, 100, 200, 100, 200],
+        requireInteraction: false
+      });
+    } catch (err) {
+      console.error('[Notify] Game end notification failed:', err);
+    }
+  },
+
+  // Notify live score update
+  async notifyLiveScore(homeTeam, homeScore, awayTeam, awayScore, quarter, gameUrl) {
+    const prefs = this.getPrefs();
+    if (!prefs.liveScore) return;
+    if (this.permission !== 'granted') return;
+
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      registration.showNotification(`📊 ${quarter}쿼터 스코어`, {
+        body: `${homeTeam} ${homeScore} - ${awayScore} ${awayTeam}`,
+        icon: '/static/images/favicon-512.png',
+        badge: '/static/images/favicon-32.png',
+        tag: `live-score`,  // Same tag to replace previous
+        data: { url: gameUrl, type: 'liveScore' },
+        silent: true,
+        requireInteraction: false
+      });
+    } catch (err) {
+      console.error('[Notify] Live score notification failed:', err);
+    }
+  },
+
+  // Get settings panel HTML
+  getSettingsPanel() {
+    const prefs = this.getPrefs();
+    const enabled = localStorage.getItem('wkbl-notifications') === 'true';
+    const granted = this.permission === 'granted';
+
+    return `
+      <div class="space-y-3">
+        <label class="flex items-center gap-3 cursor-pointer ${!enabled || !granted ? 'opacity-50' : ''}">
+          <input type="checkbox" ${prefs.gameStart ? 'checked' : ''} ${!enabled || !granted ? 'disabled' : ''}
+            onchange="WKBLNotifications.setPref('gameStart', this.checked)"
+            class="w-4 h-4 rounded border-slate-300 text-orange-500 focus:ring-orange-500">
+          <div>
+            <div class="font-medium text-sm">경기 시작 알림</div>
+            <div class="text-xs text-slate-500">경기 시작 시 알림을 받습니다</div>
+          </div>
+        </label>
+        <label class="flex items-center gap-3 cursor-pointer ${!enabled || !granted ? 'opacity-50' : ''}">
+          <input type="checkbox" ${prefs.gameEnd ? 'checked' : ''} ${!enabled || !granted ? 'disabled' : ''}
+            onchange="WKBLNotifications.setPref('gameEnd', this.checked)"
+            class="w-4 h-4 rounded border-slate-300 text-orange-500 focus:ring-orange-500">
+          <div>
+            <div class="font-medium text-sm">경기 종료 알림</div>
+            <div class="text-xs text-slate-500">경기 결과를 알려드립니다</div>
+          </div>
+        </label>
+        <label class="flex items-center gap-3 cursor-pointer ${!enabled || !granted ? 'opacity-50' : ''}">
+          <input type="checkbox" ${prefs.liveScore ? 'checked' : ''} ${!enabled || !granted ? 'disabled' : ''}
+            onchange="WKBLNotifications.setPref('liveScore', this.checked)"
+            class="w-4 h-4 rounded border-slate-300 text-orange-500 focus:ring-orange-500">
+          <div>
+            <div class="font-medium text-sm">실시간 스코어</div>
+            <div class="text-xs text-slate-500">쿼터별 점수 업데이트</div>
+          </div>
+        </label>
+      </div>
+    `;
   }
 };
 
