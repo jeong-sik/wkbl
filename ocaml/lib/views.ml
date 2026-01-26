@@ -461,7 +461,6 @@ let boxscore_player_table (title: string) (players: boxscore_player_stat list) =
             <td class="px-3 py-2 text-right text-slate-600 dark:text-slate-400 text-xs w-[120px] hidden lg:table-cell">%d-%d (%.1f%%)</td>
           </tr>|html}
           (player_img_tag ~class_name:"w-8 h-8 rounded-full object-cover bg-slate-100 dark:bg-slate-800" p.bs_player_id p.bs_player_name)
-          p.bs_player_id
           (escape_html (normalize_name p.bs_player_name))
           (escape_html (Option.value ~default:"-" p.bs_position))
           p.bs_minutes
