@@ -1187,7 +1187,7 @@ let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="")
       <div class="flex items-center justify-between w-full sm:w-auto">
         <a href="/" class="flex items-center gap-3 shrink-0" aria-label="WKBL Analytics 홈으로 이동">
           <span class="text-2xl" aria-hidden="true">🏀</span>
-          <span class="text-lg font-bold text-slate-900 dark:text-slate-200">WKBL <span class="text-orange-500">Analytics</span></span>
+          <span class="text-lg font-bold text-slate-900 dark:text-slate-200">WKBL <span class="text-orange-600 dark:text-orange-400">Analytics</span></span>
         </a>
         <div class="flex items-center gap-2 md:hidden">
           <button data-notify-toggle onclick="WKBLNotifications.toggle()" class="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-orange-500 dark:hover:text-orange-400 transition" aria-label="알림 설정" aria-pressed="false">
