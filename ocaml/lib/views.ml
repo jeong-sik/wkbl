@@ -1512,70 +1512,85 @@ let predict_page ~season ~seasons ~teams ~home ~away ~is_neutral ~context_enable
       (if include_mismatch then "checked" else "")
       result_html) ()
 
+(** Podium-style leader card (Gemini UX feedback: 1-2-3위 시각적 강조) *)
 let leader_card ?(value_fmt=(fun v -> Printf.sprintf "%.1f" v)) title (leaders: leader_entry list) =
   if leaders = [] then ""
   else
     let name_counts : (string, int) Hashtbl.t = Hashtbl.create 16 in
-    leaders
-    |> List.iter (fun (l: leader_entry) ->
+    leaders |> List.iter (fun (l: leader_entry) ->
         let key = normalize_name l.le_player_name in
-        let prev = Hashtbl.find_opt name_counts key |> Option.value ~default:0 in
-        Hashtbl.replace name_counts key (prev + 1));
+        Hashtbl.replace name_counts key ((Hashtbl.find_opt name_counts key |> Option.value ~default:0) + 1));
     let show_id (l: leader_entry) =
-      match Hashtbl.find_opt name_counts (normalize_name l.le_player_name) with
-      | Some c when c > 1 -> true
-      | _ -> false
+      Hashtbl.find_opt name_counts (normalize_name l.le_player_name) |> Option.map (fun c -> c > 1) |> Option.value ~default:false
     in
-    let top = List.hd leaders in
-    let top_id_badge =
-      if show_id top then Printf.sprintf {html|<span class="ml-2">%s</span>|html} (player_id_badge top.le_player_id) else ""
+    (* Split into podium (1-3) and rest (4+) *)
+    let top3, rest = match leaders with
+      | a :: b :: c :: tl -> ([a; b; c], tl)
+      | a :: b :: tl -> ([a; b], tl)
+      | a :: tl -> ([a], tl)
+      | [] -> ([], [])
     in
-    let others = List.tl leaders in
+    (* Podium item: rank 1=gold/large, 2=silver/left, 3=bronze/right *)
+    let podium_item rank (l: leader_entry) =
+      let (bg, ring, size, mt) = match rank with
+        | 1 -> ("bg-amber-400/20", "ring-amber-400", "w-14 h-14", "mt-0")
+        | 2 -> ("bg-slate-300/20", "ring-slate-400", "w-11 h-11", "mt-4")
+        | _ -> ("bg-amber-700/20", "ring-amber-700", "w-11 h-11", "mt-6")
+      in
+      let id_badge = if show_id l then player_id_badge l.le_player_id else "" in
+      Printf.sprintf
+        {html|<div class="flex flex-col items-center %s">
+          <div class="relative"><div class="%s rounded-full %s ring-2 overflow-hidden">%s</div>
+            <div class="absolute -bottom-1 left-1/2 -translate-x-1/2 %s text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center text-white">%d</div>
+          </div>
+          <div class="text-lg font-bold text-slate-900 dark:text-slate-200 mt-2">%s</div>
+          <a href="/player/%s" class="text-xs text-slate-600 dark:text-slate-400 hover:text-orange-500 truncate max-w-[80px]">%s</a>%s
+        </div>|html}
+        mt size bg (player_img_tag ~class_name:(size ^ " object-cover") l.le_player_id l.le_player_name)
+        ring rank
+        (escape_html (value_fmt l.le_stat_value))
+        l.le_player_id (escape_html (normalize_name l.le_player_name)) id_badge
+    in
+    (* Podium layout: 2nd | 1st | 3rd *)
+    let podium_html = match top3 with
+      | [first] -> Printf.sprintf {html|<div class="flex justify-center mb-4">%s</div>|html} (podium_item 1 first)
+      | [first; second] ->
+          Printf.sprintf {html|<div class="flex justify-center items-end gap-4 mb-4">%s%s</div>|html}
+            (podium_item 2 second) (podium_item 1 first)
+      | [first; second; third] ->
+          Printf.sprintf {html|<div class="flex justify-center items-end gap-3 mb-4">%s%s%s</div>|html}
+            (podium_item 2 second) (podium_item 1 first) (podium_item 3 third)
+      | _ -> ""
+    in
+    (* 4th and beyond as compact list *)
     let others_rows =
-      others
-      |> List.mapi (fun i l ->
-          let id_badge = if show_id l then Printf.sprintf {html|<span class="ml-2">%s</span>|html} (player_id_badge l.le_player_id) else "" in
-          Printf.sprintf {html|<div class="flex items-center justify-between py-2 border-b border-slate-200 dark:border-slate-800/60 last:border-0"><div class="flex items-center gap-3"><span class="text-slate-600 dark:text-slate-400 font-mono text-sm w-4">%d</span>%s<div class="flex flex-col"><div class="text-sm font-medium text-slate-700 dark:text-slate-300"><a href="/player/%s" class="hover:text-orange-600 dark:text-orange-400 transition-colors">%s</a>%s</div><div class="flex items-center gap-1 text-xs text-slate-600 dark:text-slate-400">%s</div></div></div><div class="font-mono font-bold text-slate-600 dark:text-slate-400">%s</div></div>|html} (i + 2) (player_img_tag ~class_name:"w-8 h-8" l.le_player_id l.le_player_name) l.le_player_id (escape_html (normalize_name l.le_player_name)) id_badge (team_logo_tag ~class_name:"w-4 h-4" l.le_team_name) (escape_html (value_fmt l.le_stat_value)))
+      rest |> List.mapi (fun i l ->
+          let id_badge = if show_id l then Printf.sprintf {html|<span class="ml-1">%s</span>|html} (player_id_badge l.le_player_id) else "" in
+          Printf.sprintf {html|<div class="flex items-center justify-between py-1.5 border-b border-slate-200/50 dark:border-slate-800/40 last:border-0">
+            <div class="flex items-center gap-2">
+              <span class="text-slate-500 dark:text-slate-500 font-mono text-xs w-4">%d</span>
+              %s
+              <a href="/player/%s" class="text-xs text-slate-700 dark:text-slate-300 hover:text-orange-500 truncate">%s</a>%s
+            </div>
+            <span class="font-mono text-xs text-slate-600 dark:text-slate-400">%s</span>
+          </div>|html}
+            (i + 4) (player_img_tag ~class_name:"w-6 h-6" l.le_player_id l.le_player_name)
+            l.le_player_id (escape_html (normalize_name l.le_player_name)) id_badge
+            (escape_html (value_fmt l.le_stat_value)))
       |> String.concat "\n"
     in
-    Printf.sprintf {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 shadow-lg"><h3 class="text-slate-600 dark:text-slate-400 font-bold uppercase tracking-wider text-xs mb-4">%s</h3><div class="flex items-center gap-4 mb-6 pb-6 border-b border-slate-200 dark:border-slate-800"><div class="relative">%s<div class="absolute -top-2 -right-2 bg-orange-500 text-slate-900 dark:text-slate-200 text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center border-2 border-slate-900">1</div></div><div><div class="text-3xl font-black text-slate-900 dark:text-slate-200">%s</div><div class="font-bold text-orange-600 dark:text-orange-400 flex items-center flex-wrap"><a href="/player/%s" class="hover:text-slate-900 dark:hover:text-white dark:text-slate-200 transition-colors">%s</a>%s</div><div class="text-xs text-slate-600 dark:text-slate-400">%s</div></div></div><div class="space-y-1">%s</div></div>|html} (escape_html title) (player_img_tag ~class_name:"w-16 h-16" top.le_player_id top.le_player_name) (escape_html (value_fmt top.le_stat_value)) top.le_player_id (escape_html (normalize_name top.le_player_name)) top_id_badge (team_logo_tag ~class_name:"w-4 h-4" top.le_team_name) others_rows
+    Printf.sprintf
+      {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-lg">
+        <h3 class="text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider text-[10px] mb-3 text-center">%s</h3>
+        %s
+        <div class="space-y-0">%s</div>
+      </div>|html}
+      (escape_html title) podium_html others_rows
 
-let leader_card_signed title (leaders: leader_entry list) =
-  if leaders = [] then ""
-  else
-    let name_counts : (string, int) Hashtbl.t = Hashtbl.create 16 in
-    leaders
-    |> List.iter (fun (l: leader_entry) ->
-        let key = normalize_name l.le_player_name in
-        let prev = Hashtbl.find_opt name_counts key |> Option.value ~default:0 in
-        Hashtbl.replace name_counts key (prev + 1));
-    let show_id (l: leader_entry) =
-      match Hashtbl.find_opt name_counts (normalize_name l.le_player_name) with
-      | Some c when c > 1 -> true
-      | _ -> false
-    in
-    let signed v = if v > 0.0 then Printf.sprintf "+%.1f" v else Printf.sprintf "%.1f" v in
-    let top = List.hd leaders in
-    let top_id_badge =
-      if show_id top then Printf.sprintf {html|<span class="ml-2">%s</span>|html} (player_id_badge top.le_player_id) else ""
-    in
-    let others = List.tl leaders in
-    let others_rows =
-      others
-      |> List.mapi (fun i l ->
-          let id_badge = if show_id l then Printf.sprintf {html|<span class="ml-2">%s</span>|html} (player_id_badge l.le_player_id) else "" in
-          Printf.sprintf {html|<div class="flex items-center justify-between py-2 border-b border-slate-200 dark:border-slate-800/60 last:border-0"><div class="flex items-center gap-3"><span class="text-slate-600 dark:text-slate-400 font-mono text-sm w-4">%d</span>%s<div class="flex flex-col"><div class="text-sm font-medium text-slate-700 dark:text-slate-300"><a href="/player/%s" class="hover:text-orange-600 dark:text-orange-400 transition-colors">%s</a>%s</div><div class="flex items-center gap-1 text-xs text-slate-600 dark:text-slate-400">%s</div></div></div><div class="font-mono font-bold text-slate-600 dark:text-slate-400">%s</div></div>|html} (i + 2) (player_img_tag ~class_name:"w-8 h-8" l.le_player_id l.le_player_name) l.le_player_id (escape_html (normalize_name l.le_player_name)) id_badge (team_logo_tag ~class_name:"w-4 h-4" l.le_team_name) (escape_html (signed l.le_stat_value)))
-      |> String.concat "\n"
-    in
-    Printf.sprintf {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 shadow-lg"><h3 class="text-slate-600 dark:text-slate-400 font-bold uppercase tracking-wider text-xs mb-4">%s</h3><div class="flex items-center gap-4 mb-6 pb-6 border-b border-slate-200 dark:border-slate-800"><div class="relative">%s<div class="absolute -top-2 -right-2 bg-orange-500 text-slate-900 dark:text-slate-200 text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center border-2 border-slate-900">1</div></div><div><div class="text-3xl font-black text-slate-900 dark:text-slate-200">%s</div><div class="font-bold text-orange-600 dark:text-orange-400 flex items-center flex-wrap"><a href="/player/%s" class="hover:text-slate-900 dark:hover:text-white dark:text-slate-200 transition-colors">%s</a>%s</div><div class="text-xs text-slate-600 dark:text-slate-400">%s</div></div></div><div class="space-y-1">%s</div></div>|html}
-      (escape_html title)
-      (player_img_tag ~class_name:"w-16 h-16" top.le_player_id top.le_player_name)
-      (escape_html (signed top.le_stat_value))
-      top.le_player_id
-      (escape_html (normalize_name top.le_player_name))
-      top_id_badge
-      (team_logo_tag ~class_name:"w-4 h-4" top.le_team_name)
-      others_rows
+(** Signed value format for +/- stats (reuses podium style) *)
+let leader_card_signed title leaders =
+  let signed v = if v > 0.0 then Printf.sprintf "+%.1f" v else Printf.sprintf "%.1f" v in
+  leader_card ~value_fmt:signed title leaders
 
 let leaders_page ~season ~seasons ~scope (leaders_by_category: (string * leader_entry list) list) =
   let season_options =
