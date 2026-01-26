@@ -284,7 +284,8 @@ let games_table (games : game_summary list) =
 let games_page ~season ~seasons games =
   let season_options = let base = seasons |> List.map (fun (s: season_info) -> let selected = if s.code = season then "selected" else "" in Printf.sprintf {html|<option value="%s" %s>%s</option>|html} s.code selected (escape_html s.name)) |> String.concat "\n" in Printf.sprintf {html|<option value="ALL" %s>All Seasons</option>%s|html} (if season = "ALL" then "selected" else "") base in
   let table = games_table games in
-  layout ~title:"WKBL Games"
+  layout ~title:"WKBL Games" ~canonical_path:"/games"
+    ~description:"WKBL 여자농구 경기 일정 - 시즌별 경기 결과와 스케줄을 확인하세요."
     ~content:(Printf.sprintf
       {html|<div class="space-y-6"><div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3"><div><h2 class="text-2xl font-bold text-slate-900 dark:text-slate-200">Games</h2><p class="text-slate-600 dark:text-slate-400 text-sm">Season schedule and results.</p></div></div><form id="games-filter" class="flex gap-3" hx-get="/games/table" hx-target="#games-table" hx-trigger="change"><select name="season" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none w-48">%s</select></form><div id="games-table" data-skeleton="cards" data-skeleton-count="8">%s</div></div>|html}
       season_options table) ()
@@ -1175,7 +1176,8 @@ let compare_page
           h2h_html
     | _ -> ""
   in
-  layout ~title:"WKBL Compare"
+  layout ~title:"WKBL Compare" ~canonical_path:"/compare"
+    ~description:"WKBL 여자농구 선수 비교 - 두 선수의 스탯을 레이더 차트로 비교하세요."
     ~content:(Printf.sprintf
       {html|<div class="space-y-8">
         <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
@@ -1468,7 +1470,8 @@ let predict_page ~season ~seasons ~teams ~home ~away ~is_neutral ~context_enable
         {html|<div class="text-slate-600 dark:text-slate-400 text-sm">Select teams to see a prediction.</div>|html}
   in
   let upcoming_html = upcoming_games_section upcoming in
-  layout ~title:"WKBL Predict"
+  layout ~title:"WKBL Predict" ~canonical_path:"/predict"
+    ~description:"WKBL 여자농구 경기 예측 - AI 기반 승률 예측과 분석을 확인하세요."
     ~content:(Printf.sprintf
       {html|<div class="space-y-6 animate-fade-in">
         <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
@@ -1837,7 +1840,9 @@ let clutch_page ~season ~seasons (stats: clutch_stats list) =
     </div>|html}
     season_options table_html
   in
-  layout ~title:"Clutch Time Leaders - WKBL" ~content ()
+  layout ~title:"Clutch Time Leaders - WKBL" ~canonical_path:"/clutch"
+    ~description:"WKBL 여자농구 클러치 타임 리더 - 4쿼터 5분 이내 접전 상황에서의 득점 기록."
+    ~content ()
 
 let live_page () =
   let content = {html|
@@ -1942,7 +1947,9 @@ let live_page () =
     </script>
   |html}
   in
-  layout ~title:"Live Scores - WKBL" ~content ()
+  layout ~title:"Live Scores - WKBL" ~canonical_path:"/live"
+    ~description:"WKBL 여자농구 실시간 스코어 - 오늘 경기 라이브 점수를 확인하세요."
+    ~content ()
 
 let error_page message = layout ~title:"Error" ~content:(Printf.sprintf {html|<div class="flex flex-col items-center justify-center py-20"><span class="text-6xl mb-4">😵</span><h2 class="text-xl font-bold text-slate-900 dark:text-slate-200 mb-2">Something went wrong</h2><p class="text-slate-600 dark:text-slate-400">%s</p><a href="/" class="mt-4 text-orange-500 hover:underline">← Back to home</a></div>|html} (escape_html message)) ()
 
