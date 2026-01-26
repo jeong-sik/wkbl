@@ -373,6 +373,19 @@ let stat_cell ?(highlight=false) ?(extra_classes="") ?(label="") value =
       {html|<td class="px-3 py-2 text-right %s"><div class="flex flex-col items-end leading-tight"><span class="%s font-mono">%.1f</span><span class="text-slate-400 dark:text-slate-500 text-[9px] font-mono whitespace-nowrap">%s</span></div></td>|html}
       extra_classes class_name value label
 
+(** Compact number format for table cells: 999 -> "999", 1234 -> "1.2K" *)
+let format_int_compact ?(with_aria=false) n =
+  let abs_n = abs n in
+  let compact =
+    if abs_n < 1000 then string_of_int abs_n
+    else Printf.sprintf "%.1fK" (float_of_int abs_n /. 1000.0)
+  in
+  let display = if n < 0 then "-" ^ compact else compact in
+  if with_aria && abs_n >= 1000 then
+    Printf.sprintf {html|<span aria-label="%d" title="%d">%s</span>|html} n n display
+  else
+    display
+
 let stat_total_cell ?(highlight=false) ?(extra_classes="") (avg_value: float) (total_value: int) =
   let class_name = if highlight then "text-orange-600 dark:text-orange-400 font-bold" else "text-slate-700 dark:text-slate-300" in
   let total_str = format_int_compact total_value in
@@ -924,7 +937,7 @@ let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2 w-[120px] sm
         <div class="flex items-center gap-3 min-w-0">
           %s
           <div class="flex items-center gap-2 min-w-0">
-            <a href="/player/%s" class="player-name hover:text-orange-600 dark:hover:text-orange-400 transition-colors truncate break-keep min-w-0">%s</a>
+            <a href="/player/%s" class="player-name hover:text-orange-600 dark:text-orange-400 transition-colors truncate break-keep min-w-0">%s</a>
             <span class="%s">%s</span>
           </div>
         </div>
@@ -935,6 +948,7 @@ let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2 w-[120px] sm
     </tr>|html}
     rank
     (player_img_tag ~class_name:"w-8 h-8 shrink-0" p.player_id p.name)
+    p.player_id
     (escape_html display_name)
     (if show_player_id then "opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity" else "hidden")
     id_badge
