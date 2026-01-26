@@ -16,61 +16,85 @@ let team_gradient team_name =
   | "BNK썸" -> ("#D6001C", "#9a0014")     (* Red *)
   | _ -> ("#1e293b", "#0f172a")           (* Default - Slate *)
 
-(** Generate player card SVG from player_aggregate *)
+(** Player image URL - WKBL official site *)
+let player_img_url player_id =
+  Printf.sprintf "https://www.wkbl.or.kr/static/images/player/pimg/m_%s.jpg" player_id
+
+(** EFF badge color based on value *)
+let eff_color eff =
+  if eff >= 20.0 then "#a855f7"  (* purple-500 *)
+  else if eff >= 15.0 then "#ef4444"  (* red-500 *)
+  else if eff >= 10.0 then "#22c55e"  (* green-500 *)
+  else "#94a3b8"  (* slate-400 *)
+
+(** Generate player card SVG from player_aggregate
+    Gemini UX feedback applied:
+    - EFF prominently displayed (WKBL MVP criteria)
+    - Core stats: PTS, EFF, REB, AST
+    - Profile image with circular clip *)
 let player_card (p : Domain.player_aggregate) =
   let (color1, color2) = team_gradient p.team_name in
+  let img_url = player_img_url p.player_id in
+  let eff_col = eff_color p.efficiency in
   Printf.sprintf {|<?xml version="1.0" encoding="UTF-8"?>
-<svg width="%d" height="%d" xmlns="http://www.w3.org/2000/svg">
+<svg width="%d" height="%d" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
   <defs>
     <linearGradient id="bg" x1="0%%" y1="0%%" x2="100%%" y2="100%%">
       <stop offset="0%%" style="stop-color:%s"/>
       <stop offset="100%%" style="stop-color:%s"/>
     </linearGradient>
+    <clipPath id="avatarClip">
+      <circle cx="100" cy="100" r="90"/>
+    </clipPath>
   </defs>
   <rect width="%d" height="%d" fill="url(#bg)"/>
-  <!-- Decorative circles -->
-  <circle cx="1100" cy="100" r="300" fill="white" fill-opacity="0.05"/>
-  <circle cx="-50" cy="580" r="200" fill="white" fill-opacity="0.05"/>
-  <circle cx="200" cy="315" r="150" fill="white" fill-opacity="0.2"/>
+  <!-- Decorative elements -->
+  <circle cx="1150" cy="50" r="250" fill="white" fill-opacity="0.03"/>
+  <circle cx="-30" cy="600" r="180" fill="white" fill-opacity="0.03"/>
+  <!-- Profile image -->
+  <g transform="translate(80, 80)">
+    <circle cx="100" cy="100" r="95" fill="white" fill-opacity="0.2"/>
+    <image x="10" y="10" width="180" height="180" clip-path="url(#avatarClip)"
+           href="%s" preserveAspectRatio="xMidYMid slice"/>
+    <circle cx="100" cy="100" r="90" fill="none" stroke="white" stroke-width="4" stroke-opacity="0.5"/>
+  </g>
   <!-- Player name and team -->
-  <text x="100" y="120" font-family="sans-serif" font-size="72" font-weight="bold" fill="white">%s</text>
-  <text x="100" y="180" font-family="sans-serif" font-size="36" fill="white" fill-opacity="0.8">%s</text>
-  <!-- Stats boxes -->
-  <g transform="translate(100, 280)">
-    <rect width="200" height="120" rx="12" fill="white" fill-opacity="0.15"/>
-    <text x="100" y="50" font-size="24" fill="white" fill-opacity="0.7" text-anchor="middle">득점</text>
-    <text x="100" y="100" font-size="48" font-weight="bold" fill="white" text-anchor="middle">%.1f</text>
+  <text x="320" y="140" font-family="sans-serif" font-size="64" font-weight="bold" fill="white">%s</text>
+  <text x="320" y="200" font-family="sans-serif" font-size="32" fill="white" fill-opacity="0.8">%s · %d경기</text>
+  <!-- EFF highlight (primary metric) -->
+  <g transform="translate(80, 320)">
+    <rect width="240" height="160" rx="16" fill="%s" fill-opacity="0.25"/>
+    <rect width="240" height="160" rx="16" fill="none" stroke="%s" stroke-width="3" stroke-opacity="0.6"/>
+    <text x="120" y="60" font-size="24" fill="white" text-anchor="middle">효율</text>
+    <text x="120" y="130" font-size="72" font-weight="bold" fill="%s" text-anchor="middle">%.1f</text>
   </g>
-  <g transform="translate(320, 280)">
-    <rect width="200" height="120" rx="12" fill="white" fill-opacity="0.15"/>
-    <text x="100" y="50" font-size="24" fill="white" fill-opacity="0.7" text-anchor="middle">리바운드</text>
-    <text x="100" y="100" font-size="48" font-weight="bold" fill="white" text-anchor="middle">%.1f</text>
+  <!-- Other stats: PTS, REB, AST -->
+  <g transform="translate(360, 320)">
+    <rect width="200" height="160" rx="12" fill="white" fill-opacity="0.12"/>
+    <text x="100" y="55" font-size="22" fill="white" fill-opacity="0.7" text-anchor="middle">득점</text>
+    <text x="100" y="120" font-size="56" font-weight="bold" fill="white" text-anchor="middle">%.1f</text>
   </g>
-  <g transform="translate(540, 280)">
-    <rect width="200" height="120" rx="12" fill="white" fill-opacity="0.15"/>
-    <text x="100" y="50" font-size="24" fill="white" fill-opacity="0.7" text-anchor="middle">어시스트</text>
-    <text x="100" y="100" font-size="48" font-weight="bold" fill="white" text-anchor="middle">%.1f</text>
+  <g transform="translate(590, 320)">
+    <rect width="200" height="160" rx="12" fill="white" fill-opacity="0.12"/>
+    <text x="100" y="55" font-size="22" fill="white" fill-opacity="0.7" text-anchor="middle">리바운드</text>
+    <text x="100" y="120" font-size="56" font-weight="bold" fill="white" text-anchor="middle">%.1f</text>
   </g>
-  <g transform="translate(760, 280)">
-    <rect width="200" height="120" rx="12" fill="white" fill-opacity="0.15"/>
-    <text x="100" y="50" font-size="24" fill="white" fill-opacity="0.7" text-anchor="middle">스틸</text>
-    <text x="100" y="100" font-size="48" font-weight="bold" fill="white" text-anchor="middle">%.1f</text>
+  <g transform="translate(820, 320)">
+    <rect width="200" height="160" rx="12" fill="white" fill-opacity="0.12"/>
+    <text x="100" y="55" font-size="22" fill="white" fill-opacity="0.7" text-anchor="middle">어시스트</text>
+    <text x="100" y="120" font-size="56" font-weight="bold" fill="white" text-anchor="middle">%.1f</text>
   </g>
-  <g transform="translate(980, 280)">
-    <rect width="200" height="120" rx="12" fill="white" fill-opacity="0.15"/>
-    <text x="100" y="50" font-size="24" fill="white" fill-opacity="0.7" text-anchor="middle">블록</text>
-    <text x="100" y="100" font-size="48" font-weight="bold" fill="white" text-anchor="middle">%.1f</text>
-  </g>
-  <!-- Games played -->
-  <text x="100" y="480" font-size="28" fill="white" fill-opacity="0.6">%d경기 · 효율 %.1f</text>
   <!-- Branding -->
-  <text x="100" y="580" font-size="24" fill="white" fill-opacity="0.5">wkbl.win</text>
+  <text x="80" y="560" font-size="22" fill="white" fill-opacity="0.4">wkbl.win</text>
+  <rect x="0" y="618" width="%d" height="12" fill="%s"/>
 </svg>|}
     card_width card_height color1 color2
     card_width card_height
-    p.name p.team_name
-    p.avg_points p.avg_rebounds p.avg_assists p.avg_steals p.avg_blocks
-    p.games_played p.efficiency
+    img_url
+    p.name p.team_name p.games_played
+    eff_col eff_col eff_col p.efficiency
+    p.avg_points p.avg_rebounds p.avg_assists
+    card_width eff_col
 
 (** Generate game result card SVG *)
 let game_card_svg ~date ~venue ~home_team ~away_team ~home_score ~away_score
