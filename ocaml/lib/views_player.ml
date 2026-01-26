@@ -805,10 +805,19 @@ let player_profile_page ?(leaderboards=None) (profile: player_profile) ~scope ~(
   let canonical = Printf.sprintf "/player/%s" p.id in
   let seo_desc = Printf.sprintf "%s (%s) - PPG %.1f, RPG %.1f, APG %.1f, EFF %.1f | WKBL 여자농구 선수 통계"
     display_name current_team avg.avg_points avg.avg_rebounds avg.avg_assists avg.efficiency in
+  (* JSON-LD structured data for Person schema *)
+  let json_ld_data =
+    let height_val = match p.height with Some h when h > 0 -> Printf.sprintf {|,"height":{"@type":"QuantitativeValue","value":%d,"unitCode":"CMT"}|} h | _ -> "" in
+    let birth_val = match p.birth_date with Some d when String.trim d <> "" -> Printf.sprintf {|,"birthDate":"%s"|} (escape_html d) | _ -> "" in
+    let team_val = if current_team <> "" then Printf.sprintf {|,"memberOf":{"@type":"SportsTeam","name":"%s"}|} (escape_html current_team) else "" in
+    Printf.sprintf {|{"@context":"https://schema.org","@type":"Person","name":"%s","url":"https://wkbl.win%s","image":"%s","jobTitle":"Professional Basketball Player"%s%s%s}|}
+      (escape_html display_name) canonical og_card_url height_val birth_val team_val
+  in
   layout ~title:(display_name ^ " | WKBL Profile")
     ~canonical_path:canonical
     ~description:seo_desc
     ~og_image:og_card_url
+    ~json_ld:json_ld_data
     ~content:(Printf.sprintf {html|<div class="space-y-6 sm:space-y-8 animate-fade-in">
       <!-- 히어로 섹션 개편 -->
       <div class="relative overflow-hidden rounded-3xl shadow-2xl border border-white/20 dark:border-slate-800/50">
