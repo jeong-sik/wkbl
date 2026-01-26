@@ -16,7 +16,7 @@ let live_scores_widget (games: Live.live_game list) =
     let game_cards = games |> List.map (fun (g: Live.live_game) ->
       let status_badge =
         if g.is_live then
-          {html|<span class="px-2 py-0.5 rounded-full bg-red-500 text-white text-[10px] font-bold animate-pulse">LIVE</span>|html}
+          {html|<span class="live-badge"><span class="live-dot"></span>LIVE</span>|html}
         else
           Printf.sprintf {html|<span class="px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-[10px]">%s</span>|html}
             (escape_html g.quarter)
