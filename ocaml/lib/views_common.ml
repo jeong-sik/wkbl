@@ -561,7 +561,7 @@ let player_season_stats_table ~scope (stats: season_stats list) =
     let margin_str = if s.ss_margin > 0.0 then Printf.sprintf "+%.1f" s.ss_margin else Printf.sprintf "%.1f" s.ss_margin in
     let row_class =
       if highlight then "bg-slate-100 dark:bg-slate-800/40 border-b border-slate-300 dark:border-slate-700/60"
-      else "border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:bg-slate-800/30 transition-colors"
+      else "border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors"
     in
     let name_class = if highlight then "text-slate-900 dark:text-slate-200 font-black" else "text-slate-900 dark:text-slate-200 font-medium" in
         Printf.sprintf {html|<tr class="%s">

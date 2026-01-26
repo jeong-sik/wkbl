@@ -32,7 +32,7 @@ let qa_dashboard_page (report: Db.qa_db_report) ?(markdown=None) () =
       let home_delta = delta_or_dash row.qsm_home_score row.qsm_home_sum in
       let away_delta = delta_or_dash row.qsm_away_score row.qsm_away_sum in
       Printf.sprintf
-        {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:bg-slate-800/30 transition-colors"><td class="px-3 py-2 text-slate-500 dark:text-slate-400 font-mono text-xs whitespace-nowrap">%s</td><td class="px-3 py-2 text-slate-900 dark:text-slate-200 font-mono text-xs"><a class="hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300" href="/boxscore/%s">%s</a></td><td class="px-3 py-2 text-slate-700 dark:text-slate-300 text-xs">%s</td><td class="px-3 py-2 text-right font-mono text-xs text-slate-900 dark:text-slate-200 tabular-nums">%s</td><td class="px-3 py-2 text-right font-mono text-xs text-slate-900 dark:text-slate-200 tabular-nums">%s</td><td class="px-3 py-2 text-right font-mono text-xs text-slate-500 dark:text-slate-400 tabular-nums">%s</td><td class="px-3 py-2 text-right font-mono text-xs text-slate-500 dark:text-slate-400 tabular-nums">%s</td></tr>|html}
+        {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors"><td class="px-3 py-2 text-slate-500 dark:text-slate-400 font-mono text-xs whitespace-nowrap">%s</td><td class="px-3 py-2 text-slate-900 dark:text-slate-200 font-mono text-xs"><a class="hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300" href="/boxscore/%s">%s</a></td><td class="px-3 py-2 text-slate-700 dark:text-slate-300 text-xs">%s</td><td class="px-3 py-2 text-right font-mono text-xs text-slate-900 dark:text-slate-200 tabular-nums">%s</td><td class="px-3 py-2 text-right font-mono text-xs text-slate-900 dark:text-slate-200 tabular-nums">%s</td><td class="px-3 py-2 text-right font-mono text-xs text-slate-500 dark:text-slate-400 tabular-nums">%s</td><td class="px-3 py-2 text-right font-mono text-xs text-slate-500 dark:text-slate-400 tabular-nums">%s</td></tr>|html}
         (escape_html row.qsm_game_date)
         (Uri.pct_encode row.qsm_game_id)
         (escape_html row.qsm_game_id)
@@ -47,7 +47,7 @@ let qa_dashboard_page (report: Db.qa_db_report) ?(markdown=None) () =
     report.qdr_team_count_anomaly_sample
     |> List.map (fun (row: Db.qa_team_count_anomaly) ->
       Printf.sprintf
-        {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:bg-slate-800/30 transition-colors"><td class="px-3 py-2 text-slate-900 dark:text-slate-200 font-mono text-xs"><a class="hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300" href="/boxscore/%s">%s</a></td><td class="px-3 py-2 text-right font-mono text-xs text-slate-900 dark:text-slate-200 tabular-nums">%d</td></tr>|html}
+        {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors"><td class="px-3 py-2 text-slate-900 dark:text-slate-200 font-mono text-xs"><a class="hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300" href="/boxscore/%s">%s</a></td><td class="px-3 py-2 text-right font-mono text-xs text-slate-900 dark:text-slate-200 tabular-nums">%d</td></tr>|html}
         (Uri.pct_encode row.qtca_game_id)
         (escape_html row.qtca_game_id)
         row.qtca_team_count)
@@ -57,7 +57,7 @@ let qa_dashboard_page (report: Db.qa_db_report) ?(markdown=None) () =
     report.qdr_duplicate_player_row_sample
     |> List.map (fun (row: Db.qa_duplicate_player_row) ->
       Printf.sprintf
-        {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:bg-slate-800/30 transition-colors"><td class="px-3 py-2 text-slate-900 dark:text-slate-200 font-mono text-xs"><a class="hover:text-orange-600 dark:text-orange-400" href="/boxscore/%s">%s</a></td><td class="px-3 py-2 text-xs">%s</td><td class="px-3 py-2 text-xs"><a class="hover:text-orange-600 dark:text-orange-400" href="/player/%s">%s</a></td><td class="px-3 py-2 text-right font-mono text-xs text-slate-900 dark:text-slate-200 tabular-nums">%d</td></tr>|html}
+        {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors"><td class="px-3 py-2 text-slate-900 dark:text-slate-200 font-mono text-xs"><a class="hover:text-orange-600 dark:text-orange-400" href="/boxscore/%s">%s</a></td><td class="px-3 py-2 text-xs">%s</td><td class="px-3 py-2 text-xs"><a class="hover:text-orange-600 dark:text-orange-400" href="/player/%s">%s</a></td><td class="px-3 py-2 text-right font-mono text-xs text-slate-900 dark:text-slate-200 tabular-nums">%d</td></tr>|html}
         (Uri.pct_encode row.qdpr_game_id)
         (escape_html row.qdpr_game_id)
         (team_badge row.qdpr_team_name)
@@ -75,7 +75,7 @@ let qa_dashboard_page (report: Db.qa_db_report) ?(markdown=None) () =
         |> String.concat " "
       in
       Printf.sprintf
-        {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:bg-slate-800/30 transition-colors"><td class="px-3 py-2 text-slate-900 dark:text-slate-200 text-xs">%s</td><td class="px-3 py-2 text-right font-mono text-xs text-slate-900 dark:text-slate-200 tabular-nums">%d</td><td class="px-3 py-2">%s</td></tr>|html}
+        {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors"><td class="px-3 py-2 text-slate-900 dark:text-slate-200 text-xs">%s</td><td class="px-3 py-2 text-right font-mono text-xs text-slate-900 dark:text-slate-200 tabular-nums">%d</td><td class="px-3 py-2">%s</td></tr>|html}
         (escape_html row.qdpn_player_name)
         row.qdpn_id_count
         ids)
@@ -210,7 +210,7 @@ let transactions_page
                 | Some t -> team_badge t
               in
               Printf.sprintf
-                {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:bg-slate-800/30 transition-colors">
+                {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors">
   <td class="px-3 py-2 text-slate-500 dark:text-slate-400 font-mono whitespace-nowrap w-[72px]">%s</td>
   <td class="px-3 py-2 text-slate-700 dark:text-slate-300 font-mono whitespace-nowrap w-[140px]">%s</td>
   <td class="px-3 py-2 min-w-0"><a class="text-slate-900 dark:text-slate-200 hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 font-bold truncate block" href="/player/%s">%s</a><div class="mt-1 text-[11px] text-slate-500 dark:text-slate-400 font-mono">%s</div></td>
