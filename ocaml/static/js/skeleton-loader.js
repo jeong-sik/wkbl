@@ -34,7 +34,7 @@
       let cells = '';
       for (let i = 0; i < cols; i++) {
         const width = widths[i % widths.length];
-        cells += '<td class="px-3 py-3"><div class="skeleton-box h-4" style="width: ' + width + '"></div></td>';
+        cells += '<td class="px-3 py-3"><div class="skeleton-box h-4 bg-slate-200/50 dark:bg-slate-800/50 rounded" style="width: ' + width + '"></div></td>';
       }
       return '<tr class="skeleton-row animate-pulse">' + cells + '</tr>';
     },

@@ -174,6 +174,7 @@
     // Find chart containers for scoped event handling (performance optimization)
     const setupContainerEvents = (container) => {
       container.addEventListener('mouseenter', (e) => {
+        if (!e.target || typeof e.target.closest !== 'function') return;
         const target = e.target.closest(TOOLTIP_SELECTOR);
         if (target) {
           showTooltip(target, e.clientX, e.clientY);
@@ -181,6 +182,7 @@
       }, true);
 
       container.addEventListener('mouseleave', (e) => {
+        if (!e.target || typeof e.target.closest !== 'function') return;
         const target = e.target.closest(TOOLTIP_SELECTOR);
         if (target) {
           hideTooltip();
@@ -189,6 +191,7 @@
 
       // Keyboard accessibility: show on focus, hide on blur
       container.addEventListener('focusin', (e) => {
+        if (!e.target || typeof e.target.closest !== 'function') return;
         const target = e.target.closest(TOOLTIP_SELECTOR);
         if (target) {
           const rect = target.getBoundingClientRect();
@@ -197,6 +200,7 @@
       });
 
       container.addEventListener('focusout', (e) => {
+        if (!e.target || typeof e.target.closest !== 'function') return;
         const target = e.target.closest(TOOLTIP_SELECTOR);
         if (target) {
           hideTooltip();
@@ -210,6 +214,7 @@
 
     // Fallback: document-level for elements outside containers
     document.addEventListener('mouseenter', (e) => {
+      if (!e.target || typeof e.target.closest !== 'function') return;
       // Skip if already handled by container
       if (e.target.closest('.chart-container, [data-chart], svg, .stat-card, [data-tooltip-container]')) return;
 
@@ -220,6 +225,7 @@
     }, true);
 
     document.addEventListener('mouseleave', (e) => {
+      if (!e.target || typeof e.target.closest !== 'function') return;
       if (e.target.closest('.chart-container, [data-chart], svg, .stat-card, [data-tooltip-container]')) return;
 
       const target = e.target.closest(TOOLTIP_SELECTOR);
@@ -230,6 +236,7 @@
 
     // Keyboard accessibility at document level
     document.addEventListener('focusin', (e) => {
+      if (!e.target || typeof e.target.closest !== 'function') return;
       const target = e.target.closest(TOOLTIP_SELECTOR);
       if (target) {
         const rect = target.getBoundingClientRect();
@@ -238,6 +245,7 @@
     });
 
     document.addEventListener('focusout', (e) => {
+      if (!e.target || typeof e.target.closest !== 'function') return;
       const target = e.target.closest(TOOLTIP_SELECTOR);
       if (target) {
         hideTooltip();
@@ -258,6 +266,7 @@
 
     // Handle touch devices - show on touch, hide on touchend
     document.addEventListener('touchstart', (e) => {
+      if (!e.target || typeof e.target.closest !== 'function') return;
       const target = e.target.closest(TOOLTIP_SELECTOR);
       if (target) {
         const touch = e.touches[0];
