@@ -352,7 +352,7 @@ let team_badge ?(max_width="max-w-[130px] sm:max-w-[200px]") team_name =
     |> Option.value ~default:"#666"
   in
   Printf.sprintf
-    {html|<a href="/team/%s" class="inline-flex min-w-0 items-center gap-1.5 px-1.5 sm:px-2 py-0.5 rounded text-[11px] sm:text-xs font-medium hover:brightness-125 transition" style="background-color: %s20; color: %s; border: 1px solid %s40" title="%s">%s<span class="truncate min-w-0 %s">%s</span></a>|html}
+    {html|<a href="/team/%s" class="inline-flex min-w-0 items-center gap-1.5 px-1.5 sm:px-2 py-0.5 rounded text-[11px] sm:text-xs font-medium hover:brightness-125 transition backdrop-blur-sm shadow-sm" style="background-color: %s20; color: %s; border: 1px solid %s40" title="%s">%s<span class="truncate min-w-0 %s">%s</span></a>|html}
     (Uri.pct_encode team_name)
     color
     color
@@ -1099,17 +1099,17 @@ let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="")
       | _ -> None
     in
     let date_html = match fresh_date with
-      | Some date -> Printf.sprintf {html|📊 데이터: %s 경기까지 반영|html} (escape_html date)
+      | Some date -> Printf.sprintf {html|<span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span><span>%s 업데이트</span></span>|html} (escape_html date)
       | None -> ""
     in
     let progress_html = match schedule_progress with
       | Some (completed, total) ->
           let pct = if total > 0 then completed * 100 / total else 0 in
-          Printf.sprintf {html| · 🏀 시즌: %d/%d경기 (%d%%)|html} completed total pct
+          Printf.sprintf {html|<span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700"><span>시즌 진행률 %d%%</span><span class="text-[10px] opacity-70">(%d/%d)</span></span>|html} pct completed total
       | None -> ""
     in
     if date_html = "" && progress_html = "" then ""
-    else Printf.sprintf {html|<div class="mb-2 text-xs text-slate-500 dark:text-slate-500">%s%s</div>|html} date_html progress_html
+    else Printf.sprintf {html|<div class="mb-3 flex flex-wrap items-center gap-2 text-xs font-mono">%s%s</div>|html} date_html progress_html
   in
   Printf.sprintf
     {html|<!DOCTYPE html>
@@ -1173,9 +1173,10 @@ let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="")
   <script src="/static/js/chart-tooltip.js?v=%s" defer data-cfasync="false"></script>
   <script src="/static/js/confetti.js?v=%s" defer data-cfasync="false"></script>
   <script src="https://cdn.tailwindcss.com" data-cfasync="false"></script>
+  <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/css/styles.css?v=%s">
-  <script data-cfasync="false">tailwind.config = { darkMode: 'class', theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] } } } }</script>
+  <script data-cfasync="false">tailwind.config = { darkMode: 'class', theme: { extend: { fontFamily: { sans: ['"Pretendard Variable"', 'Pretendard', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'Roboto', '"Helvetica Neue"', '"Segoe UI"', '"Apple SD Gothic Neo"', '"Noto Sans KR"', '"Malgun Gothic"', '"Apple Color Emoji"', '"Segoe UI Emoji"', '"Segoe UI Symbol"', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] } } } }</script>
 %s
 %s
 </head>

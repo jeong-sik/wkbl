@@ -54,7 +54,9 @@
   window.addEventListener("beforeunload", show);
 
   document.addEventListener("click", (event) => {
-    const anchor = event.target.closest("a");
+    const target = event.target;
+    if (!target || typeof target.closest !== 'function') return;
+    const anchor = target.closest("a");
     if (shouldShowForLink(anchor)) {
       show();
     }

@@ -11,7 +11,7 @@ let players_table = players_table
 (** Live scores widget for homepage *)
 let live_scores_widget (games: Live.live_game list) =
   if List.length games = 0 then
-    {html|<div class="text-center text-slate-500 dark:text-slate-400 py-2 text-sm">오늘 경기가 없습니다</div>|html}
+    empty_state ~icon:BasketballIcon "오늘 경기가 없습니다" "경기 일정이 있는 날 다시 확인해주세요."
   else
     let game_cards = games |> List.map (fun (g: Live.live_game) ->
       let status_badge =
@@ -239,7 +239,7 @@ let games_table (games : game_summary list) =
               (escape_html g.game_id)
         in
         Printf.sprintf
-          {html|<div class="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-orange-300 dark:hover:border-orange-700 rounded-lg p-3 shadow-sm hover:shadow-md space-y-2 transition-all duration-200 cursor-pointer group" onclick="window.location='/boxscore/%s'">
+          {html|<div class="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-orange-300 dark:hover:border-orange-700 rounded-lg p-3 shadow-sm hover:shadow-md space-y-2 transition-all duration-200 cursor-pointer group active:scale-[0.98]" onclick="window.location='/boxscore/%s'">
   <div class="flex items-center justify-between text-[11px] text-slate-600 dark:text-slate-400 font-mono">
     <span>#%d · %s</span>
     %s

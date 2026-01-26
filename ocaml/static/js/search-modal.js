@@ -291,12 +291,14 @@
   }
 
   function handleResultClick(e) {
+    if (!e.target || typeof e.target.closest !== 'function') return;
     var li = e.target.closest('[role="option"]');
     if (li) navigateToPath(li.dataset.path);
   }
 
   function handleResultKeydown(e) {
     if (e.key === 'Enter' || e.key === ' ') {
+      if (!e.target || typeof e.target.closest !== 'function') return;
       var li = e.target.closest('[role="option"]');
       if (li) {
         e.preventDefault();
