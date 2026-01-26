@@ -81,7 +81,7 @@ let mvp_race_table (candidates: mvp_candidate list) =
   else
     let rows = candidates |> List.map mvp_candidate_row |> String.concat "\n" in
     Printf.sprintf
-      {html|<div class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto overflow-y-hidden">
+      {html|<div class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 scroll-shadow overflow-y-hidden">
         <table class="w-full min-w-[720px] text-sm table-fixed" aria-label="MVP 레이스 순위">
           <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wider">
             <tr>
