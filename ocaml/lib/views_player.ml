@@ -801,7 +801,14 @@ let player_profile_page ?(leaderboards=None) (profile: player_profile) ~scope ~(
 	  in
 
   let display_name = normalize_name p.name in
+  let og_card_url = Printf.sprintf "https://wkbl.win/card/player/png/%s" p.id in
+  let canonical = Printf.sprintf "/player/%s" p.id in
+  let seo_desc = Printf.sprintf "%s (%s) - PPG %.1f, RPG %.1f, APG %.1f, EFF %.1f | WKBL 여자농구 선수 통계"
+    display_name current_team avg.avg_points avg.avg_rebounds avg.avg_assists avg.efficiency in
   layout ~title:(display_name ^ " | WKBL Profile")
+    ~canonical_path:canonical
+    ~description:seo_desc
+    ~og_image:og_card_url
     ~content:(Printf.sprintf {html|<div class="space-y-6 sm:space-y-8 animate-fade-in">
       <!-- 히어로 섹션 개편 -->
       <div class="relative overflow-hidden rounded-3xl shadow-2xl border border-white/20 dark:border-slate-800/50">
