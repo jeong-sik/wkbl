@@ -131,10 +131,10 @@ let streak_records_table (records: streak_record list) =
       <table class="w-full min-w-[560px] text-sm table-fixed" aria-label="연속 기록 보유자">
         <colgroup>
           <col />
-          <col style="width: 140px" />
-          <col style="width: 60px" />
-          <col style="width: 80px" class="hidden sm:table-column" />
-          <col style="width: 160px" class="hidden md:table-column" />
+          <col  />
+          <col  />
+          <col  class="hidden sm:table-column" />
+          <col  class="hidden md:table-column" />
         </colgroup>
         <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wider">
           <tr>

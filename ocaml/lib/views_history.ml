@@ -56,13 +56,13 @@ let history_page (seasons: historical_season list) =
       <div class="hidden sm:block bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 table-scroll-container shadow-lg">
         <table class="w-full text-sm table-fixed" aria-label="WKBL 시즌별 역대 기록">
           <colgroup>
-            <col style="width: 100px" />
-            <col style="width: 140px" />
-            <col style="width: 140px" />
-            <col style="width: 180px" />
-            <col style="width: 180px" />
-            <col style="width: 130px" />
-            <col style="width: 130px" />
+            <col  />
+            <col  />
+            <col  />
+            <col  />
+            <col  />
+            <col  />
+            <col  />
           </colgroup>
           <thead class="bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 text-xs uppercase">
             <tr><th scope="col" class="px-3 py-2 text-left">Season</th><th scope="col" class="px-3 py-2 text-left">Champion</th><th scope="col" class="px-3 py-2 text-left">Runner-up</th><th scope="col" class="px-3 py-2 text-left" title="Most Valuable Player">MVP</th><th scope="col" class="px-3 py-2 text-left" title="Finals MVP">Finals MVP</th><th scope="col" class="px-3 py-2 text-left" title="Rookie of the Year">ROY</th><th scope="col" class="px-3 py-2 text-left" title="Scoring Leader">Scoring</th></tr>

@@ -84,17 +84,17 @@ let mvp_race_table (candidates: mvp_candidate list) =
       {html|<div class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 scroll-shadow overflow-y-hidden">
         <table class="w-full min-w-[720px] text-sm table-fixed" aria-label="MVP 레이스 순위">
           <colgroup>
-            <col style="width: 60px" />
+            <col  />
             <col />
-            <col style="width: 64px" />
-            <col style="width: 70px" />
-            <col style="width: 70px" class="hidden md:table-column" />
-            <col style="width: 70px" class="hidden md:table-column" />
-            <col style="width: 70px" class="hidden lg:table-column" />
-            <col style="width: 70px" class="hidden lg:table-column" />
-            <col style="width: 80px" class="hidden sm:table-column" />
-            <col style="width: 100px" class="hidden sm:table-column" />
-            <col style="width: 80px" />
+            <col  />
+            <col  />
+            <col  class="hidden md:table-column" />
+            <col  class="hidden md:table-column" />
+            <col  class="hidden lg:table-column" />
+            <col  class="hidden lg:table-column" />
+            <col  class="hidden sm:table-column" />
+            <col  class="hidden sm:table-column" />
+            <col  />
           </colgroup>
           <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wider">
             <tr>
