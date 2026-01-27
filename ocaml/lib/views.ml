@@ -141,7 +141,7 @@ let team_stat_row ~season (row: team_stats) =
      
        (* Helper for clean stat cells *)
      
-       let cell ?(hide="") ?(color="text-slate-700 dark:text-slate-300") ?(width="width: 80px; min-width: 80px; max-width: 80px;") value =
+       let cell ?(hide="") ?(color="text-slate-700 dark:text-slate-300") ?(width="width: 80px; min-width: 80px;") value =
      
          Printf.sprintf {html|<td class="px-3 py-2 text-right whitespace-nowrap %s" style="%s"><span class="%s font-mono">%s</span></td>|html} hide width color value
      
