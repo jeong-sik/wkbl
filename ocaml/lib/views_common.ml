@@ -966,15 +966,15 @@ let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2") ?(include_
     id_badge
     team_cell
     p.games_played
-    (points_total_cell ~extra_classes:"whitespace-nowrap" ~width_style:"width: 80px; min-width: 80px; max-width: 80px;" p.avg_points p.total_points)
-    (margin_cell ~extra_classes:"hidden md:table-cell whitespace-nowrap" ~width_style:"width: 80px; min-width: 80px; max-width: 80px;" p.avg_margin)
-    (stat_total_cell ~extra_classes:"whitespace-nowrap" ~width_style:"width: 80px; min-width: 80px; max-width: 80px;" p.avg_rebounds p.total_rebounds)
-    (stat_total_cell ~extra_classes:"hidden md:table-cell whitespace-nowrap" ~width_style:"width: 80px; min-width: 80px; max-width: 80px;" p.avg_assists p.total_assists)
-    (stat_total_cell ~extra_classes:"hidden lg:table-cell whitespace-nowrap" ~width_style:"width: 80px; min-width: 80px; max-width: 80px;" p.avg_steals p.total_steals)
-    (stat_total_cell ~extra_classes:"hidden lg:table-cell whitespace-nowrap" ~width_style:"width: 80px; min-width: 80px; max-width: 80px;" p.avg_blocks p.total_blocks)
-    (stat_total_cell ~extra_classes:"hidden lg:table-cell whitespace-nowrap" ~width_style:"width: 80px; min-width: 80px; max-width: 80px;" p.avg_turnovers p.total_turnovers)
-    (stat_cell ~highlight:true ~extra_classes:"whitespace-nowrap" ~width_style:"width: 80px; min-width: 80px; max-width: 80px;" p.efficiency)
-    (stat_cell ~extra_classes:"hidden sm:table-cell whitespace-nowrap" ~width_style:"width: 80px; min-width: 80px; max-width: 80px;" per)
+    (points_total_cell ~extra_classes:"whitespace-nowrap" ~width_style:"width: 90px; min-width: 90px;" p.avg_points p.total_points)
+    (margin_cell ~extra_classes:"hidden md:table-cell whitespace-nowrap" ~width_style:"width: 80px; min-width: 80px;" p.avg_margin)
+    (stat_total_cell ~extra_classes:"whitespace-nowrap" ~width_style:"width: 85px; min-width: 85px;" p.avg_rebounds p.total_rebounds)
+    (stat_total_cell ~extra_classes:"hidden md:table-cell whitespace-nowrap" ~width_style:"width: 85px; min-width: 85px;" p.avg_assists p.total_assists)
+    (stat_total_cell ~extra_classes:"hidden lg:table-cell whitespace-nowrap" ~width_style:"width: 85px; min-width: 85px;" p.avg_steals p.total_steals)
+    (stat_total_cell ~extra_classes:"hidden lg:table-cell whitespace-nowrap" ~width_style:"width: 85px; min-width: 85px;" p.avg_blocks p.total_blocks)
+    (stat_total_cell ~extra_classes:"hidden lg:table-cell whitespace-nowrap" ~width_style:"width: 85px; min-width: 85px;" p.avg_turnovers p.total_turnovers)
+    (stat_cell ~highlight:true ~extra_classes:"whitespace-nowrap" ~width_style:"width: 80px; min-width: 80px;" p.efficiency)
+    (stat_cell ~extra_classes:"hidden sm:table-cell whitespace-nowrap" ~width_style:"width: 80px; min-width: 80px;" per)
 
 (** Players table - HTMX partial *)
 let players_table (players: player_aggregate list) =
