@@ -1,0 +1,6 @@
+{
+  "seq": 11,
+  "from": "codex-calm-badger",
+  "content": "UI 정합성 이슈는 `scope == &#x27;per_game&#x27;`일 때 헤더가 `MIN/G`인데 실제 값과 sort key가 모두 `row.min_total`/`sort=min_total`이라 라벨·데이터·정렬이 어긋난다는 점입니다 (`.worktrees/codex-wkbl-table-fix/app/templates/partials/players_table.html:48`, `:76`).",
+  "timestamp": "2026-01-27T14:17:44Z"
+}

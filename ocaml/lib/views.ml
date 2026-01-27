@@ -451,26 +451,26 @@ let boxscore_player_table (title: string) (players: boxscore_player_stat list) =
     
     Printf.sprintf
      {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors font-mono tabular-nums">
-      <td class="px-3 py-2 font-medium text-slate-900 dark:text-slate-200 flex items-center gap-3 min-w-[160px] font-sans">
+      <td class="px-3 py-2 font-medium text-slate-900 dark:text-slate-200 flex items-center gap-3 w-[180px] font-sans">
        %s
-       <div class="flex flex-col min-w-0">
-        <a href="/player/%s" class="hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 transition-colors truncate">%s</a>
-        <span class="text-[10px] text-slate-500 dark:text-slate-400 font-normal">%s</span>
+       <div class="flex flex-col min-w-0 overflow-hidden">
+        <a href="/player/%s" class="hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 transition-colors truncate block">%s</a>
+        <span class="text-[10px] text-slate-500 dark:text-slate-400 font-normal truncate block">%s</span>
        </div>
       </td>
-      <td class="px-3 py-2 text-right text-slate-600 dark:text-slate-400 text-sm w-16 hidden sm:table-cell">%.1f</td>
-      <td class="px-3 py-2 text-right font-bold text-orange-600 dark:text-orange-400 w-16">%d</td>
-      <td class="px-3 py-2 text-right w-16 %s hidden sm:table-cell">%s</td>
-      <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-12">%d</td>
-      <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-12">%d</td>
-      <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-12">%d</td>
-      <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-12">%d</td>
-      <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-12">%d</td>
-      <td class="px-3 py-2 text-right text-slate-600 dark:text-slate-400 text-xs w-28 hidden lg:table-cell">%d-%d (%.1f%%)</td>
-      <td class="px-3 py-2 text-right text-slate-600 dark:text-slate-400 text-xs w-28 hidden lg:table-cell">%d-%d (%.1f%%)</td>
-      <td class="px-3 py-2 text-right text-slate-600 dark:text-slate-400 text-xs w-28 hidden lg:table-cell">%d-%d (%.1f%%)</td>
+      <td class="px-3 py-2 text-right text-slate-600 dark:text-slate-400 text-sm w-[60px] hidden sm:table-cell">%.1f</td>
+      <td class="px-3 py-2 text-right font-bold text-orange-600 dark:text-orange-400 w-[60px]">%d</td>
+      <td class="px-3 py-2 text-right w-[60px] %s hidden sm:table-cell">%s</td>
+      <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[60px]">%d</td>
+      <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[60px]">%d</td>
+      <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[60px] hidden md:table-cell">%d</td>
+      <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[60px] hidden md:table-cell">%d</td>
+      <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[60px] hidden md:table-cell">%d</td>
+      <td class="px-3 py-2 text-right text-slate-600 dark:text-slate-400 text-xs w-[100px] hidden lg:table-cell">%d-%d (%.1f%%)</td>
+      <td class="px-3 py-2 text-right text-slate-600 dark:text-slate-400 text-xs w-[100px] hidden lg:table-cell">%d-%d (%.1f%%)</td>
+      <td class="px-3 py-2 text-right text-slate-600 dark:text-slate-400 text-xs w-[100px] hidden lg:table-cell">%d-%d (%.1f%%)</td>
      </tr>|html}
-     (player_img_tag ~class_name:"w-8 h-8 rounded-full object-cover bg-slate-100 dark:bg-slate-800" p.bs_player_id p.bs_player_name)
+     (player_img_tag ~class_name:"w-8 h-8 rounded-full object-cover bg-slate-100 dark:bg-slate-800 flex-shrink-0" p.bs_player_id p.bs_player_name)
      p.bs_player_id
      (escape_html (normalize_name p.bs_player_name))
      (escape_html (Option.value ~default:"-" p.bs_position))
@@ -489,7 +489,7 @@ let boxscore_player_table (title: string) (players: boxscore_player_stat list) =
   |> String.concat "\n"
  in
  Printf.sprintf
-  {html|<div class="space-y-3"><h3 class="text-lg font-bold text-slate-900 dark:text-slate-200 flex items-center gap-2"><span class="w-1 h-6 bg-orange-500 rounded-full"></span>%s</h3><div class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto overflow-y-hidden shadow-lg"><table class="min-w-[560px] sm:min-w-[720px] lg:min-w-[980px] w-full text-sm font-mono table-auto" aria-label="팀별 경기 스탯"><thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider"><tr><th class="px-3 py-2 text-left font-sans">Player</th><th class="px-3 py-2 text-right w-16 hidden sm:table-cell">MP</th><th class="px-3 py-2 text-right text-orange-600 dark:text-orange-400 w-16">PTS</th><th class="px-3 py-2 text-right w-16 hidden sm:table-cell">+/-</th><th class="px-3 py-2 text-right w-16">TRB</th><th class="px-3 py-2 text-right w-16">AST</th><th class="px-3 py-2 text-right w-16 hidden md:table-cell">STL</th><th class="px-3 py-2 text-right w-16 hidden md:table-cell">BLK</th><th class="px-3 py-2 text-right w-16 hidden md:table-cell">TOV</th><th class="px-3 py-2 text-right w-28 hidden lg:table-cell">FG</th><th class="px-3 py-2 text-right w-28 hidden lg:table-cell">3P</th><th class="px-3 py-2 text-right w-28 hidden lg:table-cell">FT</th></tr></thead><tbody>%s</tbody></table></div></div>|html}
+  {html|<div class="space-y-3"><h3 class="text-lg font-bold text-slate-900 dark:text-slate-200 flex items-center gap-2"><span class="w-1 h-6 bg-orange-500 rounded-full"></span>%s</h3><div class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto overflow-y-hidden shadow-lg"><table class="min-w-[600px] sm:min-w-[760px] lg:min-w-[1020px] w-full text-sm font-mono table-fixed" aria-label="팀별 경기 스탯"><thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider"><tr><th class="px-3 py-2 text-left font-sans w-[180px]">Player</th><th class="px-3 py-2 text-right w-[60px] hidden sm:table-cell">MP</th><th class="px-3 py-2 text-right text-orange-600 dark:text-orange-400 w-[60px]">PTS</th><th class="px-3 py-2 text-right w-[60px] hidden sm:table-cell">+/-</th><th class="px-3 py-2 text-right w-[60px]">TRB</th><th class="px-3 py-2 text-right w-[60px]">AST</th><th class="px-3 py-2 text-right w-[60px] hidden md:table-cell">STL</th><th class="px-3 py-2 text-right w-[60px] hidden md:table-cell">BLK</th><th class="px-3 py-2 text-right w-[60px] hidden md:table-cell">TOV</th><th class="px-3 py-2 text-right w-[100px] hidden lg:table-cell">FG</th><th class="px-3 py-2 text-right w-[100px] hidden lg:table-cell">3P</th><th class="px-3 py-2 text-right w-[100px] hidden lg:table-cell">FT</th></tr></thead><tbody>%s</tbody></table></div></div>|html}
   (escape_html title) rows
 
 (** Render quarter flow section for boxscore page *)
