@@ -137,29 +137,29 @@ let team_stat_row ~season (row: team_stats) =
   let margin_color = if row.margin >= 0.0 then "text-sky-600 dark:text-sky-400 font-bold" else "text-rose-600 dark:text-rose-400 font-bold" in
   let margin_str = if row.margin > 0.0 then Printf.sprintf "+%.1f" row.margin else format_float row.margin in
   let name_cell = Printf.sprintf {html|<td class="px-3 py-2 font-medium text-slate-900 dark:text-slate-200 flex items-center gap-2 whitespace-nowrap break-keep w-auto"><div class="flex items-center min-w-0">%s<a href="%s" class="hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 transition-colors ml-2 truncate">%s</a></div></td>|html} (team_logo_tag ~class_name:"w-5 h-5 shrink-0" row.team) (escape_html team_href) (escape_html row.team) in
-  let gp_cell = Printf.sprintf {html|<td class="px-3 py-2 text-right w-16"><span class="text-slate-600 dark:text-slate-400 font-mono">%d</span></td>|html} row.gp in
+  let gp_cell = Printf.sprintf {html|<td class="px-3 py-2 text-right"><span class="text-slate-600 dark:text-slate-400 font-mono">%d</span></td>|html} row.gp in
   
   (* Helper for clean stat cells *)
-  let cell ?(hide="") ?(color="text-slate-700 dark:text-slate-300") ?(width="w-20") value =
+  let cell ?(hide="") ?(color="text-slate-700 dark:text-slate-300") ?(width="") value =
     Printf.sprintf {html|<td class="px-3 py-2 text-right %s %s"><span class="%s font-mono">%s</span></td>|html} hide width color value
   in
 
   let cells = String.concat "" [
-    cell ~hide:"hidden md:table-cell" ~width:"w-20" (format_float row.min_total);
-    cell ~width:"w-20" (format_float row.pts);
-    cell ~color:margin_color ~width:"w-20" margin_str;
-    cell ~hide:"hidden md:table-cell" ~width:"w-20" (format_float row.pts_against);
-    cell ~hide:"hidden sm:table-cell" ~width:"w-20" (format_float row.reb);
-    cell ~hide:"hidden sm:table-cell" ~width:"w-20" (format_float row.ast);
-    cell ~hide:"hidden md:table-cell" ~width:"w-20" (format_float row.stl);
-    cell ~hide:"hidden md:table-cell" ~width:"w-20" (format_float row.blk);
-    cell ~hide:"hidden md:table-cell" ~width:"w-20" (format_float row.turnovers);
-    cell ~hide:"hidden lg:table-cell" ~width:"w-20" (format_float row.fg_pct);
-    cell ~hide:"hidden lg:table-cell" ~width:"w-20" (format_float row.fg3_pct);
-    cell ~hide:"hidden lg:table-cell" ~width:"w-20" (format_float row.ft_pct);
-    cell ~hide:"hidden lg:table-cell" ~width:"w-20" (format_float row.efg_pct);
-    cell ~hide:"hidden lg:table-cell" ~color:"text-emerald-600 dark:text-emerald-400" ~width:"w-20" (format_float row.ts_pct);
-    cell ~color:"text-orange-600 dark:text-orange-400 font-bold" ~width:"w-20" (format_float row.eff);
+    cell ~hide:"hidden md:table-cell" (format_float row.min_total);
+    cell (format_float row.pts);
+    cell ~color:margin_color margin_str;
+    cell ~hide:"hidden md:table-cell" (format_float row.pts_against);
+    cell ~hide:"hidden sm:table-cell" (format_float row.reb);
+    cell ~hide:"hidden sm:table-cell" (format_float row.ast);
+    cell ~hide:"hidden md:table-cell" (format_float row.stl);
+    cell ~hide:"hidden md:table-cell" (format_float row.blk);
+    cell ~hide:"hidden md:table-cell" (format_float row.turnovers);
+    cell ~hide:"hidden lg:table-cell" (format_float row.fg_pct);
+    cell ~hide:"hidden lg:table-cell" (format_float row.fg3_pct);
+    cell ~hide:"hidden lg:table-cell" (format_float row.ft_pct);
+    cell ~hide:"hidden lg:table-cell" (format_float row.efg_pct);
+    cell ~hide:"hidden lg:table-cell" ~color:"text-emerald-600 dark:text-emerald-400" (format_float row.ts_pct);
+    cell ~color:"text-orange-600 dark:text-orange-400 font-bold" (format_float row.eff);
   ] in
   Printf.sprintf {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors">%s%s%s</tr>|html} name_cell gp_cell cells
 
@@ -172,26 +172,7 @@ let teams_table ~season ~scope (stats: team_stats list) =
   let min_label = if scope = PerGame then "MIN/G" else "MIN" in
   Printf.sprintf
     {html|<div class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto overflow-y-hidden"><table class="w-full min-w-[980px] text-xs sm:text-sm font-mono tabular-nums table-fixed" data-sortable id="teams-table-inner" aria-label="팀 통계 테이블">
-      <colgroup>
-        <col />
-        <col style="width: 64px" />
-        <col style="width: 80px" class="hidden md:table-column" />
-        <col style="width: 80px" />
-        <col style="width: 80px" />
-        <col style="width: 80px" class="hidden md:table-column" />
-        <col style="width: 80px" class="hidden sm:table-column" />
-        <col style="width: 80px" class="hidden sm:table-column" />
-        <col style="width: 80px" class="hidden md:table-column" />
-        <col style="width: 80px" class="hidden md:table-column" />
-        <col style="width: 80px" class="hidden md:table-column" />
-        <col style="width: 80px" class="hidden lg:table-column" />
-        <col style="width: 80px" class="hidden lg:table-column" />
-        <col style="width: 80px" class="hidden lg:table-column" />
-        <col style="width: 80px" class="hidden lg:table-column" />
-        <col style="width: 80px" class="hidden lg:table-column" />
-        <col style="width: 80px" />
-      </colgroup>
-      <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider whitespace-nowrap"><tr><th class="px-3 py-2 text-left">Team</th><th class="px-3 py-2 text-right" data-sortable data-sort-key="gp">GP</th><th class="px-3 py-2 text-right hidden md:table-cell" data-sortable data-sort-key="min">%s</th><th class="px-3 py-2 text-right" data-sortable data-sort-key="pts">PTS</th><th class="px-3 py-2 text-right" data-sortable data-sort-key="mg" title="MG: 팀 득실마진(PTS - PA)">MG</th><th class="px-3 py-2 text-right hidden md:table-cell" data-sortable data-sort-key="pa">PA</th><th class="px-3 py-2 text-right hidden sm:table-cell" data-sortable data-sort-key="reb">REB</th><th class="px-3 py-2 text-right hidden sm:table-cell" data-sortable data-sort-key="ast">AST</th><th class="px-3 py-2 text-right hidden md:table-cell" data-sortable data-sort-key="stl">STL</th><th class="px-3 py-2 text-right hidden md:table-cell" data-sortable data-sort-key="blk">BLK</th><th class="px-3 py-2 text-right hidden md:table-cell" data-sortable data-sort-key="to">TO</th><th class="px-3 py-2 text-right hidden lg:table-cell" data-sortable data-sort-key="fg">FG%%</th><th class="px-3 py-2 text-right hidden lg:table-cell" data-sortable data-sort-key="3p">3P%%</th><th class="px-3 py-2 text-right hidden lg:table-cell" data-sortable data-sort-key="ft">FT%%</th><th class="px-3 py-2 text-right hidden lg:table-cell" data-sortable data-sort-key="efg">eFG%%</th><th class="px-3 py-2 text-right hidden lg:table-cell text-emerald-600 dark:text-emerald-400" data-sortable data-sort-key="ts" title="True Shooting %%">TS%%</th><th class="px-3 py-2 text-right text-orange-600 dark:text-orange-400" data-sortable data-sort-key="eff">EFF</th></tr></thead><tbody>%s</tbody></table></div>|html}
+      <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider whitespace-nowrap"><tr><th class="px-3 py-2 text-left">Team</th><th class="px-3 py-2 text-right" data-sortable data-sort-key="gp" style="width: 64px">GP</th><th class="px-3 py-2 text-right hidden md:table-cell" data-sortable data-sort-key="min" style="width: 80px">%s</th><th class="px-3 py-2 text-right" data-sortable data-sort-key="pts" style="width: 80px">PTS</th><th class="px-3 py-2 text-right" data-sortable data-sort-key="mg" title="MG: 팀 득실마진(PTS - PA)" style="width: 80px">MG</th><th class="px-3 py-2 text-right hidden md:table-cell" data-sortable data-sort-key="pa" style="width: 80px">PA</th><th class="px-3 py-2 text-right hidden sm:table-cell" data-sortable data-sort-key="reb" style="width: 80px">REB</th><th class="px-3 py-2 text-right hidden sm:table-cell" data-sortable data-sort-key="ast" style="width: 80px">AST</th><th class="px-3 py-2 text-right hidden md:table-cell" data-sortable data-sort-key="stl" style="width: 80px">STL</th><th class="px-3 py-2 text-right hidden md:table-cell" data-sortable data-sort-key="blk" style="width: 80px">BLK</th><th class="px-3 py-2 text-right hidden md:table-cell" data-sortable data-sort-key="to" style="width: 80px">TO</th><th class="px-3 py-2 text-right hidden lg:table-cell" data-sortable data-sort-key="fg" style="width: 80px">FG%%</th><th class="px-3 py-2 text-right hidden lg:table-cell" data-sortable data-sort-key="3p" style="width: 80px">3P%%</th><th class="px-3 py-2 text-right hidden lg:table-cell" data-sortable data-sort-key="ft" style="width: 80px">FT%%</th><th class="px-3 py-2 text-right hidden lg:table-cell" data-sortable data-sort-key="efg" style="width: 80px">eFG%%</th><th class="px-3 py-2 text-right hidden lg:table-cell text-emerald-600 dark:text-emerald-400" data-sortable data-sort-key="ts" title="True Shooting %%" style="width: 80px">TS%%</th><th class="px-3 py-2 text-right text-orange-600 dark:text-orange-400" data-sortable data-sort-key="eff" style="width: 80px">EFF</th></tr></thead><tbody>%s</tbody></table></div>|html}
     min_label rows
 
 let teams_page ~season ~seasons ~scope ~sort ~include_mismatch stats =
@@ -305,7 +286,8 @@ let games_table (games : game_summary list) =
     |> String.concat "\n"
   in
   Printf.sprintf
-    {html|<div class="space-y-3 sm:hidden">%s</div><div class="hidden sm:block bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto overflow-y-hidden shadow-2xl"><table class="min-w-[720px] sm:min-w-[860px] w-full text-xs sm:text-sm font-mono tabular-nums table-fixed" aria-label="경기 일정"><thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider whitespace-nowrap"><tr><th class="px-4 py-3 text-center hidden sm:table-cell w-14">#</th><th class="px-4 py-3 text-left font-sans w-32">Date</th><th class="px-4 py-3 text-right font-sans w-auto">Home</th><th class="px-4 py-3 text-center w-28">Score</th><th class="px-4 py-3 text-left font-sans w-auto">Away</th><th class="px-4 py-3 text-right font-sans w-24">Action</th></tr></thead><tbody id="games-body">%s</tbody></table></div>|html}
+    {html|<div class="space-y-3 sm:hidden">%s</div><div class="hidden sm:block bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto overflow-y-hidden shadow-2xl"><table class="min-w-[720px] sm:min-w-[860px] w-full text-xs sm:text-sm font-mono tabular-nums table-fixed" aria-label="경기 일정">
+      <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider whitespace-nowrap"><tr><th class="px-4 py-3 text-center hidden sm:table-cell" style="width: 56px">#</th><th class="px-4 py-3 text-left font-sans" style="width: 128px">Date</th><th class="px-4 py-3 text-right font-sans">Home</th><th class="px-4 py-3 text-center" style="width: 112px">Score</th><th class="px-4 py-3 text-left font-sans">Away</th><th class="px-4 py-3 text-right font-sans" style="width: 96px">Action</th></tr></thead><tbody id="games-body">%s</tbody></table></div>|html}
     mobile_cards rows
 
 let games_page ~season ~seasons games =
@@ -375,7 +357,8 @@ let boxscores_table (games : game_summary list) =
     |> String.concat "\n"
   in
   Printf.sprintf
-    {html|<div class="space-y-3 sm:hidden">%s</div><div class="hidden sm:block bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto overflow-y-hidden shadow-2xl"><table class="min-w-[720px] sm:min-w-[900px] w-full text-xs sm:text-sm font-mono tabular-nums table-fixed" aria-label="박스스코어 목록"><thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider whitespace-nowrap"><tr><th class="px-4 py-3 text-center hidden sm:table-cell w-14">#</th><th class="px-4 py-3 text-left font-sans w-32">Date</th><th class="px-4 py-3 text-right font-sans w-auto">Home</th><th class="px-4 py-3 text-center w-20 font-sans">PTS</th><th class="px-4 py-3 text-center w-20 font-sans">PTS</th><th class="px-4 py-3 text-left font-sans w-auto">Away</th><th class="px-4 py-3 text-right font-sans hidden sm:table-cell w-20">Margin</th><th class="px-4 py-3 text-right font-sans w-20">Link</th></tr></thead><tbody id="boxscores-body">%s</tbody></table></div>|html}
+    {html|<div class="space-y-3 sm:hidden">%s</div><div class="hidden sm:block bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto overflow-y-hidden shadow-2xl"><table class="min-w-[720px] sm:min-w-[900px] w-full text-xs sm:text-sm font-mono tabular-nums table-fixed" aria-label="박스스코어 목록">
+      <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider whitespace-nowrap"><tr><th class="px-4 py-3 text-center hidden sm:table-cell" style="width: 56px">#</th><th class="px-4 py-3 text-left font-sans" style="width: 128px">Date</th><th class="px-4 py-3 text-right font-sans">Home</th><th class="px-4 py-3 text-center font-sans" style="width: 80px">PTS</th><th class="px-4 py-3 text-center font-sans" style="width: 80px">PTS</th><th class="px-4 py-3 text-left font-sans">Away</th><th class="px-4 py-3 text-right font-sans hidden sm:table-cell" style="width: 80px">Margin</th><th class="px-4 py-3 text-right font-sans" style="width: 80px">Link</th></tr></thead><tbody id="boxscores-body">%s</tbody></table></div>|html}
     mobile_cards rows
 
 let boxscores_page ~season ~seasons games =
