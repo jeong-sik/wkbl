@@ -814,7 +814,7 @@ let compare_stat_row ?(signed=false) label val1 val2 =
   if signed && v > 0.0 then Printf.sprintf "+%.1f" v else Printf.sprintf "%.1f" v
  in
  Printf.sprintf
-  {html|<div class="flex flex-col gap-1"><div class="flex justify-between text-xs font-bold uppercase tracking-tighter text-slate-600 dark:text-slate-400"><span>%s</span><span class="text-slate-600 dark:text-slate-400">%s</span><span>%s</span></div><div class="flex h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden"><div class="flex justify-end w-1/2 border-r border-slate-300 dark:border-slate-700"><div class="bg-orange-500 h-full transition-all duration-500" ></div></div><div class="flex justify-start w-1/2"><div class="bg-sky-500 h-full transition-all duration-500" ></div></div></div></div>|html}
+  {html|<div class="flex flex-col gap-1"><div class="flex justify-between text-xs font-bold uppercase tracking-tighter text-slate-600 dark:text-slate-400"><span>%s</span><span class="text-slate-600 dark:text-slate-400">%s</span><span>%s</span></div><div class="flex h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden"><div class="flex justify-end w-1/2 border-r border-slate-300 dark:border-slate-700"><div class="bg-orange-500 h-full transition-all duration-500" style="width: %.1f%%"></div></div><div class="flex justify-start w-1/2"><div class="bg-sky-500 h-full transition-all duration-500" style="width: %.1f%%"></div></div></div></div>|html}
   (escape_html (value_str val1)) (escape_html label) (escape_html (value_str val2)) pct1 pct2
 
 let h2h_game_row (g: h2h_game) =
@@ -1339,8 +1339,8 @@ let prediction_result_card ~(home: string) ~(away: string) (output: prediction_o
      <span class="text-slate-700 dark:text-slate-300">%s</span>
     </div>
     <div class="flex h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-     <div class="bg-orange-500 h-full transition-all duration-500" ></div>
-     <div class="bg-sky-500 h-full transition-all duration-500" ></div>
+     <div class="bg-orange-500 h-full transition-all duration-500" style="width: %.1f%%"></div>
+     <div class="bg-sky-500 h-full transition-all duration-500" style="width: %.1f%%"></div>
     </div>
     <div class="flex justify-between font-mono text-sm">
      <span class="text-orange-600 dark:text-orange-400 font-bold">%.1f%%</span>
