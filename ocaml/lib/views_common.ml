@@ -998,11 +998,26 @@ let players_table (players: player_aggregate list) =
   in
   Printf.sprintf
     {html|<div class="overflow-x-auto max-h-[75vh] overflow-y-auto">
-    <table class="min-w-[680px] sm:min-w-[860px] lg:min-w-[980px] w-full text-xs sm:text-sm font-mono tabular-nums table-auto" aria-label="선수 스탯 순위">
+    <table class="min-w-[680px] sm:min-w-[860px] lg:min-w-[980px] w-full text-xs sm:text-sm font-mono tabular-nums table-fixed" aria-label="선수 스탯 순위">
+      <colgroup>
+        <col style="width: 48px" />
+        <col />
+        <col style="width: 140px" />
+        <col style="width: 64px" class="hidden sm:table-column" />
+        <col style="width: 80px" />
+        <col style="width: 80px" class="hidden md:table-column" />
+        <col style="width: 80px" />
+        <col style="width: 80px" class="hidden md:table-column" />
+        <col style="width: 80px" class="hidden lg:table-column" />
+        <col style="width: 80px" class="hidden lg:table-column" />
+        <col style="width: 80px" class="hidden lg:table-column" />
+        <col style="width: 80px" />
+        <col style="width: 80px" class="hidden sm:table-column" />
+      </colgroup>
       <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 text-[10px] sm:text-xs uppercase tracking-wider whitespace-nowrap font-mono">
         <tr>
           <th scope="col" class="px-2 py-2 text-center whitespace-nowrap">#</th>
-          <th scope="col" class="px-3 py-2 text-left font-sans whitespace-nowrap min-w-[160px]">Player</th>
+          <th scope="col" class="px-3 py-2 text-left font-sans whitespace-nowrap">Player</th>
           <th scope="col" class="px-3 py-2 text-left font-sans whitespace-nowrap">Team</th>
           <th scope="col" class="px-3 py-2 text-right hidden sm:table-cell whitespace-nowrap">GP</th>
           <th scope="col" class="px-3 py-2 text-right cursor-pointer hover:text-orange-600 dark:text-orange-400 whitespace-nowrap" hx-get="/players/table?sort=pts" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter">PTS</th>

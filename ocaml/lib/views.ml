@@ -171,7 +171,26 @@ let teams_table ~season ~scope (stats: team_stats list) =
   in
   let min_label = if scope = PerGame then "MIN/G" else "MIN" in
   Printf.sprintf
-    {html|<div class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto overflow-y-hidden"><table class="w-full min-w-[980px] text-xs sm:text-sm font-mono tabular-nums table-auto" data-sortable id="teams-table-inner" aria-label="팀 통계 테이블">
+    {html|<div class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto overflow-y-hidden"><table class="w-full min-w-[980px] text-xs sm:text-sm font-mono tabular-nums table-fixed" data-sortable id="teams-table-inner" aria-label="팀 통계 테이블">
+      <colgroup>
+        <col />
+        <col style="width: 64px" />
+        <col style="width: 80px" class="hidden md:table-column" />
+        <col style="width: 80px" />
+        <col style="width: 80px" />
+        <col style="width: 80px" class="hidden md:table-column" />
+        <col style="width: 80px" class="hidden sm:table-column" />
+        <col style="width: 80px" class="hidden sm:table-column" />
+        <col style="width: 80px" class="hidden md:table-column" />
+        <col style="width: 80px" class="hidden md:table-column" />
+        <col style="width: 80px" class="hidden md:table-column" />
+        <col style="width: 80px" class="hidden lg:table-column" />
+        <col style="width: 80px" class="hidden lg:table-column" />
+        <col style="width: 80px" class="hidden lg:table-column" />
+        <col style="width: 80px" class="hidden lg:table-column" />
+        <col style="width: 80px" class="hidden lg:table-column" />
+        <col style="width: 80px" />
+      </colgroup>
       <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider whitespace-nowrap"><tr><th class="px-3 py-2 text-left whitespace-nowrap">Team</th><th class="px-3 py-2 text-right whitespace-nowrap" data-sortable data-sort-key="gp">GP</th><th class="px-3 py-2 text-right hidden md:table-cell whitespace-nowrap" data-sortable data-sort-key="min">%s</th><th class="px-3 py-2 text-right whitespace-nowrap" data-sortable data-sort-key="pts">PTS</th><th class="px-3 py-2 text-right whitespace-nowrap" data-sortable data-sort-key="mg" title="MG: 팀 득실마진(PTS - PA)">MG</th><th class="px-3 py-2 text-right hidden md:table-cell whitespace-nowrap" data-sortable data-sort-key="pa">PA</th><th class="px-3 py-2 text-right hidden sm:table-cell whitespace-nowrap" data-sortable data-sort-key="reb">REB</th><th class="px-3 py-2 text-right hidden sm:table-cell whitespace-nowrap" data-sortable data-sort-key="ast">AST</th><th class="px-3 py-2 text-right hidden md:table-cell whitespace-nowrap" data-sortable data-sort-key="stl">STL</th><th class="px-3 py-2 text-right hidden md:table-cell whitespace-nowrap" data-sortable data-sort-key="blk">BLK</th><th class="px-3 py-2 text-right hidden md:table-cell whitespace-nowrap" data-sortable data-sort-key="to">TO</th><th class="px-3 py-2 text-right hidden lg:table-cell whitespace-nowrap" data-sortable data-sort-key="fg">FG%%</th><th class="px-3 py-2 text-right hidden lg:table-cell whitespace-nowrap" data-sortable data-sort-key="3p">3P%%</th><th class="px-3 py-2 text-right hidden lg:table-cell whitespace-nowrap" data-sortable data-sort-key="ft">FT%%</th><th class="px-3 py-2 text-right hidden lg:table-cell whitespace-nowrap" data-sortable data-sort-key="efg">eFG%%</th><th class="px-3 py-2 text-right hidden lg:table-cell text-emerald-600 dark:text-emerald-400 whitespace-nowrap" data-sortable data-sort-key="ts" title="True Shooting %%">TS%%</th><th class="px-3 py-2 text-right text-orange-600 dark:text-orange-400 whitespace-nowrap" data-sortable data-sort-key="eff">EFF</th></tr></thead><tbody>%s</tbody></table></div>|html}
     min_label rows
 
@@ -286,7 +305,15 @@ let games_table (games : game_summary list) =
     |> String.concat "\n"
   in
   Printf.sprintf
-    {html|<div class="space-y-3 sm:hidden">%s</div><div class="hidden sm:block bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto overflow-y-hidden shadow-2xl"><table class="min-w-[720px] sm:min-w-[860px] w-full text-xs sm:text-sm font-mono tabular-nums table-auto" aria-label="경기 일정">
+    {html|<div class="space-y-3 sm:hidden">%s</div><div class="hidden sm:block bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto overflow-y-hidden shadow-2xl"><table class="min-w-[720px] sm:min-w-[860px] w-full text-xs sm:text-sm font-mono tabular-nums table-fixed" aria-label="경기 일정">
+      <colgroup>
+        <col style="width: 56px" class="hidden sm:table-column" />
+        <col style="width: 128px" />
+        <col />
+        <col style="width: 112px" />
+        <col />
+        <col style="width: 96px" />
+      </colgroup>
       <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider whitespace-nowrap"><tr><th class="px-4 py-3 text-center hidden sm:table-cell whitespace-nowrap">#</th><th class="px-4 py-3 text-left font-sans whitespace-nowrap">Date</th><th class="px-4 py-3 text-right font-sans whitespace-nowrap">Home</th><th class="px-4 py-3 text-center whitespace-nowrap">Score</th><th class="px-4 py-3 text-left font-sans whitespace-nowrap">Away</th><th class="px-4 py-3 text-right font-sans whitespace-nowrap">Action</th></tr></thead><tbody id="games-body">%s</tbody></table></div>|html}
     mobile_cards rows
 
@@ -357,7 +384,17 @@ let boxscores_table (games : game_summary list) =
     |> String.concat "\n"
   in
   Printf.sprintf
-    {html|<div class="space-y-3 sm:hidden">%s</div><div class="hidden sm:block bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto overflow-y-hidden shadow-2xl"><table class="min-w-[720px] sm:min-w-[900px] w-full text-xs sm:text-sm font-mono tabular-nums table-auto" aria-label="박스스코어 목록">
+    {html|<div class="space-y-3 sm:hidden">%s</div><div class="hidden sm:block bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto overflow-y-hidden shadow-2xl"><table class="min-w-[720px] sm:min-w-[900px] w-full text-xs sm:text-sm font-mono tabular-nums table-fixed" aria-label="박스스코어 목록">
+      <colgroup>
+        <col style="width: 56px" class="hidden sm:table-column" />
+        <col style="width: 128px" />
+        <col />
+        <col style="width: 80px" />
+        <col style="width: 80px" />
+        <col />
+        <col style="width: 80px" class="hidden sm:table-column" />
+        <col style="width: 80px" />
+      </colgroup>
       <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider whitespace-nowrap"><tr><th class="px-4 py-3 text-center hidden sm:table-cell whitespace-nowrap">#</th><th class="px-4 py-3 text-left font-sans whitespace-nowrap">Date</th><th class="px-4 py-3 text-right font-sans whitespace-nowrap">Home</th><th class="px-4 py-3 text-center font-sans whitespace-nowrap">PTS</th><th class="px-4 py-3 text-center font-sans whitespace-nowrap">PTS</th><th class="px-4 py-3 text-left font-sans whitespace-nowrap">Away</th><th class="px-4 py-3 text-right font-sans hidden sm:table-cell whitespace-nowrap">Margin</th><th class="px-4 py-3 text-right font-sans whitespace-nowrap">Link</th></tr></thead><tbody id="boxscores-body">%s</tbody></table></div>|html}
     mobile_cards rows
 
