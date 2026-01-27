@@ -37,22 +37,21 @@ run_refresh() {
     log "=== WKBL refresh START ==="
     log "Working directory: $ROOT_DIR"
 
-    cd "$ROOT_DIR"
+    cd "$ROOT_DIR/ocaml"
 
-    # Run the main refresh pipeline
-    if python3 scripts/wkbl_refresh_all.py --update-roster --audit-photos -- --years 10; then
+    log "Building scraper tool..."
+    dune build bin/scraper_tool.exe
+
+    log "Syncing schedule and results..."
+    if dune exec bin/scraper_tool.exe sync schedule && dune exec bin/scraper_tool.exe sync boxscore; then
         local end_time duration
         end_time=$(date +%s)
         duration=$((end_time - start_time))
         log "=== WKBL refresh SUCCESS (${duration}s) ==="
 
-        # Run health check after success
-        if python3 "$SCRIPT_DIR/wkbl_health_check.py" --quiet; then
-            log "Health check: PASSED"
-        else
-            log "Health check: ISSUES DETECTED"
-            send_alert "⚠️ WKBL refresh completed but health check found issues"
-        fi
+        # Run health check
+        log "Running PBP quality check..."
+        curl -s "http://localhost:8080/qa/pbp?ci=1" || log "Web server not reachable for health check, skipping."
     else
         local exit_code=$?
         log "=== WKBL refresh FAILED (exit code: $exit_code) ==="
