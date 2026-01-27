@@ -373,6 +373,18 @@ let stat_cell ?(highlight=false) ?(extra_classes="") ?(label="") value =
       {html|<td class="px-3 py-2 text-right %s"><div class="flex flex-col items-end leading-tight"><span class="%s font-mono">%.1f</span><span class="text-slate-400 dark:text-slate-500 text-[9px] font-mono whitespace-nowrap">%s</span></div></td>|html}
       extra_classes class_name value label
 
+(** Format integer with commas: 1000 -> "1,000" *)
+let format_int_commas n =
+  let s = string_of_int (abs n) in
+  let len = String.length s in
+  let buffer = Buffer.create (len + (len - 1) / 3) in
+  if n < 0 then Buffer.add_char buffer '-';
+  for i = 0 to len - 1 do
+    if i > 0 && (len - i) mod 3 = 0 then Buffer.add_char buffer ',';
+    Buffer.add_char buffer s.[i]
+  done;
+  Buffer.contents buffer
+
 (** Compact number format for table cells: 999 -> "999", 1234 -> "1.2K" *)
 let format_int_compact ?(with_aria=false) n =
   let abs_n = abs n in
