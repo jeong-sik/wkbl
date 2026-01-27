@@ -102,12 +102,25 @@ let team_profile_page (detail: team_full_detail) ~season ~seasons =
           p.avg_assists)
     |> String.concat "\n"
   in
-	  let roster_table_inner =
-	    Printf.sprintf
-	      {html|<table class="roster-table min-w-[820px] w-full text-xs sm:text-sm font-mono table-fixed tabular-nums" aria-label="팀 로스터"><thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px] sm:text-xs whitespace-nowrap"><tr><th scope="col" class="px-3 py-2 text-left font-sans w-12 whitespace-nowrap">#</th><th scope="col" class="px-3 py-2 text-left font-sans w-[260px] whitespace-nowrap">Player</th><th scope="col" class="px-3 py-2 text-right w-[60px] whitespace-nowrap" title="Games Played">GP</th><th scope="col" class="px-3 py-2 text-right text-orange-600 dark:text-orange-400 w-[72px] whitespace-nowrap" title="Points per game">PTS</th><th scope="col" class="px-3 py-2 text-right w-[72px] whitespace-nowrap" title="Team Margin (minutes weighted)">MG</th><th scope="col" class="px-3 py-2 text-right w-[72px] whitespace-nowrap" title="Rebounds per game">REB</th><th scope="col" class="px-3 py-2 text-right w-[72px] whitespace-nowrap" title="Assists per game">AST</th><th scope="col" class="px-3 py-2 text-right w-[72px] whitespace-nowrap" title="Steals per game">STL</th><th scope="col" class="px-3 py-2 text-right w-[72px] whitespace-nowrap" title="Blocks per game">BLK</th><th scope="col" class="px-3 py-2 text-right w-[72px] whitespace-nowrap" title="Turnovers per game">TO</th><th scope="col" class="px-3 py-2 text-right text-orange-600 dark:text-orange-400 w-[72px] whitespace-nowrap" title="Efficiency">EFF</th></tr></thead><tbody>%s</tbody></table>|html}
-	      roster_rows
-	  in
-	  let season_label =
+	            let roster_table_inner =
+	              Printf.sprintf
+	                {html|<table class="roster-table min-w-[820px] w-full text-xs sm:text-sm font-mono table-fixed tabular-nums" aria-label="팀 로스터">
+	                  <colgroup>
+	                    <col style="width: 48px" />
+	                    <col />
+	                    <col style="width: 60px" />
+	                    <col style="width: 72px" />
+	                    <col style="width: 72px" />
+	                    <col style="width: 72px" />
+	                    <col style="width: 72px" />
+	                    <col style="width: 72px" />
+	                    <col style="width: 72px" />
+	                    <col style="width: 72px" />
+	                    <col style="width: 72px" />
+	                  </colgroup>
+	                  <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px] sm:text-xs whitespace-nowrap"><tr><th scope="col" class="px-3 py-2 text-left font-sans whitespace-nowrap">#</th><th scope="col" class="px-3 py-2 text-left font-sans whitespace-nowrap">Player</th><th scope="col" class="px-3 py-2 text-right whitespace-nowrap" title="Games Played">GP</th><th scope="col" class="px-3 py-2 text-right text-orange-600 dark:text-orange-400 whitespace-nowrap" title="Points per game">PTS</th><th scope="col" class="px-3 py-2 text-right whitespace-nowrap" title="Team Margin (minutes weighted)">MG</th><th scope="col" class="px-3 py-2 text-right whitespace-nowrap" title="Rebounds per game">REB</th><th scope="col" class="px-3 py-2 text-right whitespace-nowrap" title="Assists per game">AST</th><th scope="col" class="px-3 py-2 text-right whitespace-nowrap" title="Steals per game">STL</th><th scope="col" class="px-3 py-2 text-right whitespace-nowrap" title="Blocks per game">BLK</th><th scope="col" class="px-3 py-2 text-right whitespace-nowrap" title="Turnovers per game">TO</th><th scope="col" class="px-3 py-2 text-right text-orange-600 dark:text-orange-400 whitespace-nowrap" title="Efficiency">EFF</th></tr></thead><tbody>%s</tbody></table>|html}
+	                roster_rows
+	            in	  let season_label =
 	    if season = "ALL" then
 	      "All Seasons"
 	    else
