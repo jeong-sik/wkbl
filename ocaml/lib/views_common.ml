@@ -918,7 +918,7 @@ PTS: %.1f | REB: %.1f | AST: %.1f | EFF: %.1f</title></circle>|svg}
         summary
 
 (** Player row component *)
-let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2") ?(include_team=true) (rank: int) (p: player_aggregate) =
+let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2 w-[140px]") ?(include_team=true) (rank: int) (p: player_aggregate) =
   let id_badge =
     if show_player_id then
       player_id_badge p.player_id
@@ -998,12 +998,12 @@ let players_table (players: player_aggregate list) =
   in
   Printf.sprintf
     {html|<div class="overflow-x-auto max-h-[75vh] overflow-y-auto">
-    <table class="min-w-[680px] sm:min-w-[860px] lg:min-w-[980px] w-full text-xs sm:text-sm font-mono tabular-nums table-auto" aria-label="선수 스탯 순위">
+    <table class="min-w-[680px] sm:min-w-[860px] lg:min-w-[980px] w-full text-xs sm:text-sm font-mono tabular-nums table-fixed" aria-label="선수 스탯 순위">
       <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 text-[10px] sm:text-xs uppercase tracking-wider whitespace-nowrap font-mono">
         <tr>
           <th scope="col" class="px-2 py-2 text-center w-12">#</th>
           <th scope="col" class="px-3 py-2 text-left font-sans">Player</th>
-          <th scope="col" class="px-3 py-2 text-left font-sans">Team</th>
+          <th scope="col" class="px-3 py-2 text-left font-sans w-[140px]">Team</th>
           <th scope="col" class="px-3 py-2 text-right w-16 hidden sm:table-cell">GP</th>
           <th scope="col" class="px-3 py-2 text-right w-20 cursor-pointer hover:text-orange-600 dark:text-orange-400" hx-get="/players/table?sort=pts" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter">PTS</th>
           <th scope="col" class="px-3 py-2 text-right w-20 cursor-pointer hover:text-orange-600 dark:text-orange-400 hidden md:table-cell" hx-get="/players/table?sort=mg" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter">MG</th>
