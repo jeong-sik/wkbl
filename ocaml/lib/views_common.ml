@@ -545,13 +545,13 @@ let player_season_stats_table ~scope (stats: season_stats list) =
     let name_class = if highlight then "text-slate-900 dark:text-slate-200 font-black" else "text-slate-900 dark:text-slate-200 font-medium" in
         Printf.sprintf {html|<tr class="%s">
           <td class="px-3 py-2 %s truncate whitespace-nowrap">%s</td>
-          
+          <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[80px] font-mono whitespace-nowrap hidden sm:table-cell">%d</td>
           <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[80px] font-mono whitespace-nowrap hidden sm:table-cell">%.1f</td>
           <td class="px-3 py-2 text-right font-bold text-orange-600 dark:text-orange-400 w-[80px] font-mono whitespace-nowrap">%.1f</td>
           <td class="px-3 py-2 text-right font-bold %s w-[80px] font-mono whitespace-nowrap hidden sm:table-cell">%s</td>
           <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[80px] font-mono whitespace-nowrap">%.1f</td>
           <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[80px] font-mono whitespace-nowrap hidden sm:table-cell">%.1f</td>
-          <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[80px] font-mono whitespace-nowrap">%.1f</td>
+          <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[80px] font-mono whitespace-nowrap font-bold">%.1f</td>
         </tr>|html}
       row_class
       name_class
@@ -576,7 +576,7 @@ let player_season_stats_table ~scope (stats: season_stats list) =
     <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-xs whitespace-nowrap">
       <tr>
         <th scope="col" class="px-3 py-2 text-left font-sans">Season</th>
-        
+        <th scope="col" class="px-3 py-2 text-right w-[80px] hidden sm:table-cell" title="Games Played">GP</th>
         <th scope="col" class="px-3 py-2 text-right w-[80px] hidden sm:table-cell" title="Minutes">MIN</th>
         <th scope="col" class="px-3 py-2 text-right text-orange-600 dark:text-orange-400 w-[80px]" title="Points">PTS</th>
         <th scope="col" class="px-3 py-2 text-right w-[80px] hidden sm:table-cell" title="Margin">MG</th>
