@@ -945,7 +945,7 @@ let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2") ?(include_
   Printf.sprintf
     {html|<tr class="group border-b border-slate-200 dark:border-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-all duration-200 hover:scale-[1.01] hover:shadow-md relative z-0 hover:z-10 font-mono tabular-nums">
       <td class="px-2 py-2 w-12 text-slate-500 dark:text-slate-500 text-sm text-center font-bold">%d</td>
-      <td class="px-3 py-2 font-medium text-slate-900 dark:text-white w-auto font-sans">
+      <td class="px-3 py-2 font-medium text-slate-900 dark:text-white font-sans">
         <div class="flex items-center gap-3 min-w-0">
           %s
           <div class="flex items-center gap-2 min-w-0">
@@ -998,12 +998,12 @@ let players_table (players: player_aggregate list) =
   in
   Printf.sprintf
     {html|<div class="overflow-x-auto max-h-[75vh] overflow-y-auto">
-    <table class="min-w-[680px] sm:min-w-[860px] lg:min-w-[980px] w-full text-xs sm:text-sm font-mono tabular-nums table-fixed" aria-label="선수 스탯 순위">
+    <table class="min-w-[680px] sm:min-w-[860px] lg:min-w-[980px] w-full text-xs sm:text-sm font-mono tabular-nums table-auto" aria-label="선수 스탯 순위">
       <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 text-[10px] sm:text-xs uppercase tracking-wider whitespace-nowrap font-mono">
         <tr>
           <th scope="col" class="px-2 py-2 text-center w-12">#</th>
-          <th scope="col" class="px-3 py-2 text-left w-auto font-sans">Player</th>
-          <th scope="col" class="px-3 py-2 text-left w-auto font-sans">Team</th>
+          <th scope="col" class="px-3 py-2 text-left font-sans">Player</th>
+          <th scope="col" class="px-3 py-2 text-left font-sans">Team</th>
           <th scope="col" class="px-3 py-2 text-right w-16 hidden sm:table-cell">GP</th>
           <th scope="col" class="px-3 py-2 text-right w-20 cursor-pointer hover:text-orange-600 dark:text-orange-400" hx-get="/players/table?sort=pts" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter">PTS</th>
           <th scope="col" class="px-3 py-2 text-right w-20 cursor-pointer hover:text-orange-600 dark:text-orange-400 hidden md:table-cell" hx-get="/players/table?sort=mg" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter">MG</th>
