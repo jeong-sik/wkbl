@@ -545,7 +545,7 @@ let player_season_stats_table ~scope (stats: season_stats list) =
     let name_class = if highlight then "text-slate-900 dark:text-slate-200 font-black" else "text-slate-900 dark:text-slate-200 font-medium" in
         Printf.sprintf {html|<tr class="%s">
           <td class="px-3 py-2 %s truncate whitespace-nowrap">%s</td>
-          <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[60px] font-mono whitespace-nowrap">%d</td>
+          
           <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[80px] font-mono whitespace-nowrap hidden sm:table-cell">%.1f</td>
           <td class="px-3 py-2 text-right font-bold text-orange-600 dark:text-orange-400 w-[80px] font-mono whitespace-nowrap">%.1f</td>
           <td class="px-3 py-2 text-right font-bold %s w-[80px] font-mono whitespace-nowrap hidden sm:table-cell">%s</td>
@@ -576,7 +576,7 @@ let player_season_stats_table ~scope (stats: season_stats list) =
     <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-xs whitespace-nowrap">
       <tr>
         <th scope="col" class="px-3 py-2 text-left font-sans">Season</th>
-        <th scope="col" class="px-3 py-2 text-right w-[60px]" title="Games Played">GP</th>
+        
         <th scope="col" class="px-3 py-2 text-right w-[80px] hidden sm:table-cell" title="Minutes">MIN</th>
         <th scope="col" class="px-3 py-2 text-right text-orange-600 dark:text-orange-400 w-[80px]" title="Points">PTS</th>
         <th scope="col" class="px-3 py-2 text-right w-[80px] hidden sm:table-cell" title="Margin">MG</th>
@@ -956,7 +956,7 @@ let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2") ?(include_
         </div>
       </td>
       %s
-      <td class="px-3 py-2 text-right whitespace-nowrap hidden sm:table-cell text-slate-500 dark:text-slate-400 font-mono">%d</td>
+      
       %s%s%s%s%s%s%s%s%s
     </tr>|html}
     (player_img_tag ~class_name:"w-8 h-8 shrink-0" p.player_id p.name)
@@ -965,7 +965,7 @@ let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2") ?(include_
     (if show_player_id then "opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity" else "hidden")
     id_badge
     team_cell
-    p.games_played
+    
     (points_total_cell ~extra_classes:"whitespace-nowrap" ~width_style:"width: 90px; min-width: 90px;" p.avg_points p.total_points)
     (margin_cell ~extra_classes:"hidden md:table-cell whitespace-nowrap" ~width_style:"width: 80px; min-width: 80px;" p.avg_margin)
     (stat_total_cell ~extra_classes:"whitespace-nowrap" ~width_style:"width: 85px; min-width: 85px;" p.avg_rebounds p.total_rebounds)
@@ -1003,16 +1003,16 @@ let players_table (players: player_aggregate list) =
             <tr>
               <th scope="col" class="px-3 py-2 text-left font-sans whitespace-nowrap min-w-[160px]">Player</th>
               <th scope="col" class="px-3 py-2 text-left font-sans whitespace-nowrap" >Team</th>
-              <th scope="col" class="px-3 py-2 text-right hidden sm:table-cell whitespace-nowrap" >GP</th>
-              <th scope="col" class="px-3 py-2 text-right cursor-pointer hover:text-orange-600 dark:text-orange-400 whitespace-nowrap" hx-get="/players/table?sort=pts" hx-target="#players-body" hx-swap="innerHTML" hx-include="#players-filter" >PTS</th>
-              <th scope="col" class="px-3 py-2 text-right cursor-pointer hover:text-orange-600 dark:text-orange-400 hidden md:table-cell whitespace-nowrap" hx-get="/players/table?sort=mg" hx-target="#players-body" hx-swap="innerHTML" hx-include="#players-filter" >MG</th>
-              <th scope="col" class="px-3 py-2 text-right cursor-pointer hover:text-orange-600 dark:text-orange-400 whitespace-nowrap" hx-get="/players/table?sort=reb" hx-target="#players-body" hx-swap="innerHTML" hx-include="#players-filter" >REB</th>
-              <th scope="col" class="px-3 py-2 text-right cursor-pointer hover:text-orange-600 dark:text-orange-400 hidden md:table-cell whitespace-nowrap" hx-get="/players/table?sort=ast" hx-target="#players-body" hx-swap="innerHTML" hx-include="#players-filter" >AST</th>
-              <th scope="col" class="px-3 py-2 text-right hidden lg:table-cell whitespace-nowrap" >STL</th>
-              <th scope="col" class="px-3 py-2 text-right hidden lg:table-cell whitespace-nowrap" >BLK</th>
-              <th scope="col" class="px-3 py-2 text-right hidden lg:table-cell whitespace-nowrap" >TO</th>
-              <th scope="col" class="px-3 py-2 text-right cursor-pointer text-orange-600 dark:text-orange-400 border-b-2 border-orange-500/50 bg-orange-500/5 whitespace-nowrap" hx-get="/players/table?sort=eff" hx-target="#players-body" hx-swap="innerHTML" hx-include="#players-filter" >EFF ↓</th>
-              <th scope="col" class="px-3 py-2 text-right hidden sm:table-cell whitespace-nowrap" >PER</th>
+              
+              <th scope="col" class="px-3 py-2 text-right cursor-pointer hover:text-orange-600 dark:text-orange-400 whitespace-nowrap" style="width: 90px; min-width: 90px;" hx-get="/players/table?sort=pts" hx-target="#players-body" hx-swap="innerHTML" hx-include="#players-filter" >PTS</th>
+              <th scope="col" class="px-3 py-2 text-right cursor-pointer hover:text-orange-600 dark:text-orange-400 hidden md:table-cell whitespace-nowrap" style="width: 80px; min-width: 80px;" hx-get="/players/table?sort=mg" hx-target="#players-body" hx-swap="innerHTML" hx-include="#players-filter" >MG</th>
+              <th scope="col" class="px-3 py-2 text-right cursor-pointer hover:text-orange-600 dark:text-orange-400 whitespace-nowrap" style="width: 85px; min-width: 85px;" hx-get="/players/table?sort=reb" hx-target="#players-body" hx-swap="innerHTML" hx-include="#players-filter" >REB</th>
+              <th scope="col" class="px-3 py-2 text-right cursor-pointer hover:text-orange-600 dark:text-orange-400 hidden md:table-cell whitespace-nowrap" style="width: 85px; min-width: 85px;" hx-get="/players/table?sort=ast" hx-target="#players-body" hx-swap="innerHTML" hx-include="#players-filter" >AST</th>
+              <th scope="col" class="px-3 py-2 text-right hidden lg:table-cell whitespace-nowrap" style="width: 85px; min-width: 85px;">STL</th>
+              <th scope="col" class="px-3 py-2 text-right hidden lg:table-cell whitespace-nowrap" style="width: 85px; min-width: 85px;">BLK</th>
+              <th scope="col" class="px-3 py-2 text-right hidden lg:table-cell whitespace-nowrap" style="width: 85px; min-width: 85px;">TO</th>
+              <th scope="col" class="px-3 py-2 text-right cursor-pointer text-orange-600 dark:text-orange-400 border-b-2 border-orange-500/50 bg-orange-500/5 whitespace-nowrap" style="width: 80px; min-width: 80px;" hx-get="/players/table?sort=eff" hx-target="#players-body" hx-swap="innerHTML" hx-include="#players-filter" >EFF ↓</th>
+              <th scope="col" class="px-3 py-2 text-right hidden sm:table-cell whitespace-nowrap" style="width: 80px; min-width: 80px;">PER</th>
             </tr>
           </thead>
           <tbody id="players-body">%s</tbody>

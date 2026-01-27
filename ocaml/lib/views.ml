@@ -137,7 +137,7 @@ let team_stat_row ~season (row: team_stats) =
  let margin_color = if row.margin >= 0.0 then "text-sky-600 dark:text-sky-400 font-bold" else "text-rose-600 dark:text-rose-400 font-bold" in
  let margin_str = if row.margin > 0.0 then Printf.sprintf "+%.1f" row.margin else format_float row.margin in
      let name_cell = Printf.sprintf {html|<td class="px-3 py-2 font-medium text-slate-900 dark:text-slate-200 flex items-center gap-2 whitespace-nowrap break-keep w-auto"><div class="flex items-center min-w-0">%s<a href="%s" class="hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 transition-colors ml-2 truncate">%s</a></div></td>|html} (team_logo_tag ~class_name:"w-5 h-5 shrink-0" row.team) (escape_html team_href) (escape_html row.team) in
-     let gp_cell = Printf.sprintf {html|<td class="px-3 py-2 text-right whitespace-nowrap" ><span class="text-slate-600 dark:text-slate-400 font-mono">%d</span></td>|html} row.gp in
+     let gp_cell = Printf.sprintf {html|<td class="px-3 py-2 text-right whitespace-nowrap" ><span class="text-slate-600 dark:text-slate-400 font-mono">%d</span></td>|html}  in
      
        (* Helper for clean stat cells *)
      
@@ -173,7 +173,7 @@ let teams_table ~season ~scope (stats: team_stats list) =
  let min_label = if scope = PerGame then "MIN/G" else "MIN" in
   Printf.sprintf
     {html|<div class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto overflow-y-hidden"><table class="w-full min-w-[980px] text-xs sm:text-sm font-mono tabular-nums table-auto" data-sortable id="teams-table-inner" aria-label="팀 통계 테이블">
-      <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider whitespace-nowrap"><tr><th class="px-3 py-2 text-left whitespace-nowrap">Team</th><th class="px-3 py-2 text-right whitespace-nowrap" data-sortable data-sort-key="gp">GP</th><th class="px-3 py-2 text-right hidden md:table-cell whitespace-nowrap" data-sortable data-sort-key="min">%s</th><th class="px-3 py-2 text-right whitespace-nowrap" data-sortable data-sort-key="pts">PTS</th><th class="px-3 py-2 text-right whitespace-nowrap" data-sortable data-sort-key="mg" title="MG: 팀 득실마진(PTS - PA)">MG</th><th class="px-3 py-2 text-right hidden md:table-cell whitespace-nowrap" data-sortable data-sort-key="pa">PA</th><th class="px-3 py-2 text-right hidden sm:table-cell whitespace-nowrap" data-sortable data-sort-key="reb">REB</th><th class="px-3 py-2 text-right hidden sm:table-cell whitespace-nowrap" data-sortable data-sort-key="ast">AST</th><th class="px-3 py-2 text-right hidden md:table-cell whitespace-nowrap" data-sortable data-sort-key="stl">STL</th><th class="px-3 py-2 text-right hidden md:table-cell whitespace-nowrap" data-sortable data-sort-key="blk">BLK</th><th class="px-3 py-2 text-right hidden md:table-cell whitespace-nowrap" data-sortable data-sort-key="to">TO</th><th class="px-3 py-2 text-right hidden lg:table-cell whitespace-nowrap" data-sortable data-sort-key="fg">FG%%</th><th class="px-3 py-2 text-right hidden lg:table-cell whitespace-nowrap" data-sortable data-sort-key="3p">3P%%</th><th class="px-3 py-2 text-right hidden lg:table-cell whitespace-nowrap" data-sortable data-sort-key="ft">FT%%</th><th class="px-3 py-2 text-right hidden lg:table-cell whitespace-nowrap" data-sortable data-sort-key="efg">eFG%%</th><th class="px-3 py-2 text-right hidden lg:table-cell text-emerald-600 dark:text-emerald-400 whitespace-nowrap" data-sortable data-sort-key="ts" title="True Shooting %%">TS%%</th><th class="px-3 py-2 text-right text-orange-600 dark:text-orange-400 whitespace-nowrap" data-sortable data-sort-key="eff">EFF</th></tr></thead><tbody>%s</tbody></table></div>|html}
+      <th class="px-3 py-2 text-right hidden md:table-cell whitespace-nowrap" data-sortable data-sort-key="min">%s</th><th class="px-3 py-2 text-right whitespace-nowrap" data-sortable data-sort-key="pts">PTS</th><th class="px-3 py-2 text-right whitespace-nowrap" data-sortable data-sort-key="mg" title="MG: 팀 득실마진(PTS - PA)">MG</th><th class="px-3 py-2 text-right hidden md:table-cell whitespace-nowrap" data-sortable data-sort-key="pa">PA</th><th class="px-3 py-2 text-right hidden sm:table-cell whitespace-nowrap" data-sortable data-sort-key="reb">REB</th><th class="px-3 py-2 text-right hidden sm:table-cell whitespace-nowrap" data-sortable data-sort-key="ast">AST</th><th class="px-3 py-2 text-right hidden md:table-cell whitespace-nowrap" data-sortable data-sort-key="stl">STL</th><th class="px-3 py-2 text-right hidden md:table-cell whitespace-nowrap" data-sortable data-sort-key="blk">BLK</th><th class="px-3 py-2 text-right hidden md:table-cell whitespace-nowrap" data-sortable data-sort-key="to">TO</th><th class="px-3 py-2 text-right hidden lg:table-cell whitespace-nowrap" data-sortable data-sort-key="fg">FG%%</th><th class="px-3 py-2 text-right hidden lg:table-cell whitespace-nowrap" data-sortable data-sort-key="3p">3P%%</th><th class="px-3 py-2 text-right hidden lg:table-cell whitespace-nowrap" data-sortable data-sort-key="ft">FT%%</th><th class="px-3 py-2 text-right hidden lg:table-cell whitespace-nowrap" data-sortable data-sort-key="efg">eFG%%</th><th class="px-3 py-2 text-right hidden lg:table-cell text-emerald-600 dark:text-emerald-400 whitespace-nowrap" data-sortable data-sort-key="ts" title="True Shooting %%">TS%%</th><th class="px-3 py-2 text-right text-orange-600 dark:text-orange-400 whitespace-nowrap" data-sortable data-sort-key="eff">EFF</th></tr></thead><tbody>%s</tbody></table></div>|html}
     min_label rows
 
 let teams_page ~season ~seasons ~scope ~sort ~include_mismatch stats =
@@ -214,12 +214,12 @@ let standings_table ~season (standings : team_standing list) =
     let diff_color = if s.diff >= 0.0 then "text-emerald-600 dark:text-emerald-400" else "text-rose-600 dark:text-rose-400" in
     let diff_str = if s.diff > 0.0 then Printf.sprintf "+%.1f" s.diff else Printf.sprintf "%.1f" s.diff in
     Printf.sprintf
-     {html|<tr class="%s"><td class="%s">%d</td><td class="px-4 py-3 font-bold text-slate-900 dark:text-slate-200" ><span class="inline-flex items-center gap-2" style="white-space: nowrap;">%s<a href="%s" class="team-name hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 transition-colors" style="white-space: nowrap; word-break: keep-all;">%s</a></span></td><td class="px-4 py-3 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-700 dark:text-slate-300 font-mono">%d</span><span class="text-slate-500 dark:text-slate-400 text-[10px] font-mono">GP</span></div></td><td class="px-4 py-3 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-700 dark:text-slate-300 font-mono">%d</span><span class="text-slate-500 dark:text-slate-400 text-[10px] font-mono">W</span></div></td><td class="px-4 py-3 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-700 dark:text-slate-300 font-mono">%d</span><span class="text-slate-500 dark:text-slate-400 text-[10px] font-mono">L</span></div></td><td class="px-4 py-3 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-orange-600 dark:text-orange-400 font-bold font-mono">%s</span><span class="text-slate-500 dark:text-slate-400 text-[10px] font-mono">PCT</span></div></td><td class="px-4 py-3 text-right hidden sm:table-cell"><div class="flex flex-col items-end leading-tight"><span class="text-slate-600 dark:text-slate-400 font-mono">%s</span><span class="text-slate-500 dark:text-slate-400 text-[10px] font-mono">GB</span></div></td><td class="px-4 py-3 text-right hidden md:table-cell"><div class="flex flex-col items-end leading-tight"><span class="text-slate-700 dark:text-slate-300 font-mono">%.1f</span><span class="text-slate-500 dark:text-slate-400 text-[10px] font-mono">PS/G</span></div></td><td class="px-4 py-3 text-right hidden md:table-cell"><div class="flex flex-col items-end leading-tight"><span class="text-slate-700 dark:text-slate-300 font-mono">%.1f</span><span class="text-slate-500 dark:text-slate-400 text-[10px] font-mono">PA/G</span></div></td><td class="px-4 py-3 text-right hidden sm:table-cell"><div class="flex flex-col items-end leading-tight"><span class="%s font-mono font-bold">%s</span><span class="text-slate-500 dark:text-slate-400 text-[10px] font-mono">DIFF</span></div></td></tr>|html}
+     {html|<tr class="%s"><td class="px-4 py-3 font-bold text-slate-900 dark:text-slate-200" ><span class="inline-flex items-center gap-2" style="white-space: nowrap;">%s<a href="%s" class="team-name hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 transition-colors" style="white-space: nowrap; word-break: keep-all;">%s</a></span></td><td class="px-4 py-3 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-700 dark:text-slate-300 font-mono">%d</span><span class="text-slate-500 dark:text-slate-400 text-[10px] font-mono">GP</span></div></td><td class="px-4 py-3 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-700 dark:text-slate-300 font-mono">%d</span><span class="text-slate-500 dark:text-slate-400 text-[10px] font-mono">W</span></div></td><td class="px-4 py-3 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-slate-700 dark:text-slate-300 font-mono">%d</span><span class="text-slate-500 dark:text-slate-400 text-[10px] font-mono">L</span></div></td><td class="px-4 py-3 text-right"><div class="flex flex-col items-end leading-tight"><span class="text-orange-600 dark:text-orange-400 font-bold font-mono">%s</span><span class="text-slate-500 dark:text-slate-400 text-[10px] font-mono">PCT</span></div></td><td class="px-4 py-3 text-right hidden sm:table-cell"><div class="flex flex-col items-end leading-tight"><span class="text-slate-600 dark:text-slate-400 font-mono">%s</span><span class="text-slate-500 dark:text-slate-400 text-[10px] font-mono">GB</span></div></td><td class="px-4 py-3 text-right hidden md:table-cell"><div class="flex flex-col items-end leading-tight"><span class="text-slate-700 dark:text-slate-300 font-mono">%.1f</span><span class="text-slate-500 dark:text-slate-400 text-[10px] font-mono">PS/G</span></div></td><td class="px-4 py-3 text-right hidden md:table-cell"><div class="flex flex-col items-end leading-tight"><span class="text-slate-700 dark:text-slate-300 font-mono">%.1f</span><span class="text-slate-500 dark:text-slate-400 text-[10px] font-mono">PA/G</span></div></td><td class="px-4 py-3 text-right hidden sm:table-cell"><div class="flex flex-col items-end leading-tight"><span class="%s font-mono font-bold">%s</span><span class="text-slate-500 dark:text-slate-400 text-[10px] font-mono">DIFF</span></div></td></tr>|html}
      row_class rank_class (i + 1) (team_logo_tag ~class_name:"w-5 h-5" s.team_name) (escape_html team_href) (escape_html s.team_name) s.games_played s.wins s.losses win_pct_fmt gb_fmt s.avg_pts s.avg_opp_pts diff_color diff_str)
   |> String.concat "\n"
  in
  Printf.sprintf
-  {html|<div class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto overflow-y-hidden shadow-2xl"><table class="min-w-[560px] sm:min-w-[760px] text-xs sm:text-sm font-mono tabular-nums" data-sortable id="standings-table-inner" aria-label="순위표"><thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider whitespace-nowrap"><tr><th class="px-4 py-3 text-left font-sans w-[200px] min-w-[200px]">Team</th><th class="px-4 py-3 text-right" data-sortable data-sort-key="gp">GP</th><th class="px-4 py-3 text-right" data-sortable data-sort-key="w">W</th><th class="px-4 py-3 text-right" data-sortable data-sort-key="l">L</th><th class="px-4 py-3 text-right" data-sortable data-sort-key="pct">PCT</th><th class="px-4 py-3 text-right hidden sm:table-cell" data-sortable data-sort-key="gb">GB</th><th class="px-4 py-3 text-right hidden md:table-cell" data-sortable data-sort-key="ps">PS/G</th><th class="px-4 py-3 text-right hidden md:table-cell" data-sortable data-sort-key="pa">PA/G</th><th class="px-4 py-3 text-right hidden sm:table-cell" data-sortable data-sort-key="diff">DIFF</th></tr></thead><tbody id="standings-body">%s</tbody></table></div>|html}
+  {html|<div class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto overflow-y-hidden shadow-2xl"><table class="min-w-[560px] sm:min-w-[760px] text-xs sm:text-sm font-mono tabular-nums" data-sortable id="standings-table-inner" aria-label="순위표"><th class="px-4 py-3 text-right" data-sortable data-sort-key="w">W</th><th class="px-4 py-3 text-right" data-sortable data-sort-key="l">L</th><th class="px-4 py-3 text-right" data-sortable data-sort-key="pct">PCT</th><th class="px-4 py-3 text-right hidden sm:table-cell" data-sortable data-sort-key="gb">GB</th><th class="px-4 py-3 text-right hidden md:table-cell" data-sortable data-sort-key="ps">PS/G</th><th class="px-4 py-3 text-right hidden md:table-cell" data-sortable data-sort-key="pa">PA/G</th><th class="px-4 py-3 text-right hidden sm:table-cell" data-sortable data-sort-key="diff">DIFF</th></tr></thead><tbody id="standings-body">%s</tbody></table></div>|html}
   rows
 
 let standings_page ~season ~seasons standings =
@@ -350,7 +350,7 @@ let boxscores_table (games : game_summary list) =
     if g.home_score = None then ""
     else
      Printf.sprintf
-      {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors"><td class="px-4 py-3 text-slate-600 dark:text-slate-400 font-mono text-sm whitespace-nowrap w-32">%s</td><td class="px-4 py-3 font-medium text-right w-auto"><span class="inline-flex items-center justify-end gap-2 whitespace-nowrap">%s<a href="/team/%s" class="team-name hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 transition-colors whitespace-nowrap">%s</a></span></td><td class="px-4 py-3 text-center font-bold text-slate-900 dark:text-slate-200 font-mono w-20">%d</td><td class="px-4 py-3 text-center font-bold text-slate-900 dark:text-slate-200 font-mono w-20">%d</td><td class="px-4 py-3 font-medium text-left w-auto"><span class="inline-flex items-center gap-2 whitespace-nowrap"><a href="/team/%s" class="team-name hover:text-orange-600 dark:text-orange-400 dark:group-hover:text-orange-300 transition-colors whitespace-nowrap">%s</a>%s</span></td><td class="px-4 py-3 text-right font-mono %s hidden sm:table-cell w-20">%s</td><td class="px-4 py-3 text-right w-20">
+      {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors"><td class="px-4 py-3 font-medium text-left w-auto"><span class="inline-flex items-center gap-2 whitespace-nowrap"><a href="/team/%s" class="team-name hover:text-orange-600 dark:text-orange-400 dark:group-hover:text-orange-300 transition-colors whitespace-nowrap">%s</a>%s</span></td><td class="px-4 py-3 text-right font-mono %s hidden sm:table-cell w-20">%s</td><td class="px-4 py-3 text-right w-20">
          <a href="/boxscore/%s" class="text-[10px] sm:text-xs bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-2 py-1 rounded text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition whitespace-nowrap">View</a>
         </td></tr>|html}
       (escape_html g.game_date) (team_logo_tag ~class_name:"w-4 h-4" g.home_team) (Uri.pct_encode g.home_team) (escape_html g.home_team) score_a score_b (Uri.pct_encode g.away_team) (escape_html g.away_team) (team_logo_tag ~class_name:"w-4 h-4" g.away_team) margin_color margin_str (escape_html g.game_id))
@@ -452,13 +452,13 @@ let boxscore_player_table (title: string) (players: boxscore_player_stat list) =
        </div>
       </td>
       <td class="px-3 py-2 text-right text-slate-600 dark:text-slate-400 text-sm w-16 hidden sm:table-cell">%.1f</td>
-      <td class="px-3 py-2 text-right text-slate-900 dark:text-slate-200 font-bold w-16">%d</td>
+      
       <td class="px-3 py-2 text-right w-16 %s hidden sm:table-cell">%s</td>
-      <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-16">%d</td>
-      <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-16">%d</td>
-      <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-16 hidden md:table-cell">%d</td>
-      <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-16 hidden md:table-cell">%d</td>
-      <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-16 hidden md:table-cell">%d</td>
+      
+      
+      
+      
+      
       <td class="px-3 py-2 text-right text-slate-600 dark:text-slate-400 text-xs w-28 hidden lg:table-cell">%d-%d (%.1f%%)</td>
       <td class="px-3 py-2 text-right text-slate-600 dark:text-slate-400 text-xs w-28 hidden lg:table-cell">%d-%d (%.1f%%)</td>
       <td class="px-3 py-2 text-right text-slate-600 dark:text-slate-400 text-xs w-28 hidden lg:table-cell">%d-%d (%.1f%%)</td>
@@ -508,11 +508,11 @@ let quarter_flow_section ~home_name ~away_name (quarters: quarter_score list) =
   Printf.sprintf
    {html|<tr class="border-b border-slate-200 dark:border-slate-700/50">
     <td class="px-3 py-2 font-bold text-slate-700 dark:text-slate-300">%s</td>
-    <td class="px-3 py-2 text-right font-mono text-sky-600 dark:text-sky-400">%d</td>
-    <td class="px-3 py-2 text-right font-mono text-sky-500 dark:text-sky-500">%d</td>
+    
+    
     <td class="px-3 py-2 text-center text-slate-500 dark:text-slate-400">vs</td>
-    <td class="px-3 py-2 text-right font-mono text-orange-600 dark:text-orange-400">%d</td>
-    <td class="px-3 py-2 text-right font-mono text-orange-500 dark:text-orange-500">%d</td>
+    
+    
     <td class="px-3 py-2 text-center">%s</td>
    </tr>|html}
    period_label q.qs_home_score home_q q.qs_away_score away_q flow_indicator
@@ -806,13 +806,13 @@ let h2h_game_row (g: h2h_game) =
  Printf.sprintf
   {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/50 font-mono transition-colors group">
    <td class="px-3 py-2 text-slate-600 dark:text-slate-400 text-xs w-[100px] truncate group-hover:text-slate-900 dark:group-hover:text-slate-200 transition-colors">%s</td>
-   <td class="px-3 py-2 text-right text-slate-900 dark:text-slate-200 w-[60px] font-bold">%d</td>
-   <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[60px]">%d</td>
-   <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[60px]">%d</td>
+   
+   
+   
    <td class="px-3 py-2 text-center text-slate-600 dark:text-slate-400 text-xs font-sans w-[40px]">vs</td>
-   <td class="px-3 py-2 text-left text-slate-900 dark:text-slate-200 w-[60px] font-bold">%d</td>
-   <td class="px-3 py-2 text-left text-slate-700 dark:text-slate-300 w-[60px]">%d</td>
-   <td class="px-3 py-2 text-left text-slate-700 dark:text-slate-300 w-[60px]">%d</td>
+   
+   
+   
    <td class="px-3 py-2 text-right text-xs font-sans w-[80px]"><span class="px-1.5 py-0.5 rounded %s font-bold">%+d</span></td>
   </tr>|html}
   (escape_html g.game_date) g.player1_pts g.player1_reb g.player1_ast g.player2_pts g.player2_reb g.player2_ast diff_color g.score_diff
@@ -1789,14 +1789,14 @@ let clutch_page ~season ~seasons (stats: clutch_stats list) =
     in
     Printf.sprintf
      {html|<tr class="border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50">
-      <td class="px-3 py-2 text-center font-medium text-slate-500">%d</td>
+      
       <td class="px-3 py-2"><a href="/player/%s" class="text-orange-500 hover:underline font-medium">%s</a></td>
       <td class="px-3 py-2 text-slate-600 dark:text-slate-400">%s</td>
-      <td class="px-3 py-2 text-center">%d</td>
-      <td class="px-3 py-2 text-center font-bold text-orange-500">%d</td>
+      
+      
       <td class="px-3 py-2 text-center">%d-%d</td>
       <td class="px-3 py-2 text-center">%s</td>
-      <td class="px-3 py-2 text-center">%d</td>
+      
       <td class="px-3 py-2 text-center">%d-%d</td>
      </tr>|html}
      rank
@@ -1827,7 +1827,7 @@ let clutch_page ~season ~seasons (stats: clutch_stats list) =
       
       <th class="px-3 py-2 text-left">Player</th>
       <th class="px-3 py-2 text-left">Team</th>
-      <th class="px-3 py-2 text-center" title="Clutch Games">GP</th>
+      
       <th class="px-3 py-2 text-center" title="Clutch Points">PTS</th>
       <th class="px-3 py-2 text-center" title="Field Goals Made-Attempted">FGM-A</th>
       <th class="px-3 py-2 text-center" title="Field Goal Percentage">FG%%</th>
