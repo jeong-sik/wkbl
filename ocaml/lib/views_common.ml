@@ -906,7 +906,7 @@ PTS: %.1f | REB: %.1f | AST: %.1f | EFF: %.1f</title></circle>|svg}
         summary
 
 (** Player row component *)
-let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2 w-[120px] sm:w-[160px]") ?(include_team=true) (rank: int) (p: player_aggregate) =
+let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2") ?(include_team=true) (rank: int) (p: player_aggregate) =
   let id_badge =
     if show_player_id then
       player_id_badge p.player_id
@@ -932,18 +932,18 @@ let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2 w-[120px] sm
   in
   Printf.sprintf
     {html|<tr class="group border-b border-slate-200 dark:border-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-all duration-200 hover:scale-[1.01] hover:shadow-md relative z-0 hover:z-10 font-mono tabular-nums">
-      <td class="px-3 py-2 w-12 text-slate-500 dark:text-slate-500 text-sm text-right pr-4">%d</td>
-      <td class="px-3 py-2 font-medium text-slate-900 dark:text-white w-[220px] sm:w-[260px] font-sans">
+      <td class="px-2 py-2 w-14 text-slate-500 dark:text-slate-500 text-sm text-center font-bold">%d</td>
+      <td class="px-3 py-2 font-medium text-slate-900 dark:text-white font-sans">
         <div class="flex items-center gap-3 min-w-0">
           %s
           <div class="flex items-center gap-2 min-w-0">
-            <a href="/player/%s" class="player-name hover:text-orange-600 dark:text-orange-400 transition-colors truncate break-keep min-w-0">%s</a>
+            <a href="/player/%s" class="player-name hover:text-orange-600 dark:hover:text-orange-400 transition-colors truncate break-keep min-w-0">%s</a>
             <span class="%s">%s</span>
           </div>
         </div>
       </td>
       %s
-      <td class="px-3 py-2 text-right whitespace-nowrap hidden sm:table-cell text-slate-500 dark:text-slate-400">%d</td>
+      <td class="px-3 py-2 text-right whitespace-nowrap hidden sm:table-cell text-slate-500 dark:text-slate-400 font-mono">%d</td>
       %s%s%s%s%s%s%s%s%s
     </tr>|html}
     rank
@@ -989,9 +989,9 @@ let players_table (players: player_aggregate list) =
     <table class="min-w-[680px] sm:min-w-[860px] lg:min-w-[980px] w-full text-xs sm:text-sm font-mono tabular-nums table-fixed" aria-label="선수 스탯 순위">
       <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 text-[10px] sm:text-xs uppercase tracking-wider whitespace-nowrap font-mono">
         <tr>
-          <th scope="col" class="px-3 py-2 text-left w-12">#</th>
-          <th scope="col" class="px-3 py-2 text-left w-[220px] sm:w-[260px] font-sans">Player</th>
-          <th scope="col" class="px-3 py-2 text-left w-[120px] sm:w-[160px] font-sans">Team</th>
+          <th scope="col" class="px-2 py-2 text-center w-14">#</th>
+          <th scope="col" class="px-3 py-2 text-left w-[200px] font-sans">Player</th>
+          <th scope="col" class="px-3 py-2 text-left w-[100px] font-sans">Team</th>
           <th scope="col" class="px-3 py-2 text-right w-[60px] hidden sm:table-cell">GP</th>
           <th scope="col" class="px-3 py-2 text-right w-[72px] cursor-pointer hover:text-orange-600 dark:text-orange-400" hx-get="/players/table?sort=pts" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter">PTS</th>
           <th scope="col" class="px-3 py-2 text-right w-[72px] cursor-pointer hover:text-orange-600 dark:text-orange-400 hidden md:table-cell" hx-get="/players/table?sort=mg" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter">MG</th>
