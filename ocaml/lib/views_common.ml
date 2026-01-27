@@ -918,7 +918,7 @@ PTS: %.1f | REB: %.1f | AST: %.1f | EFF: %.1f</title></circle>|svg}
         summary
 
 (** Player row component *)
-let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2 w-[140px]") ?(include_team=true) (rank: int) (p: player_aggregate) =
+let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2") ?(include_team=true) (rank: int) (p: player_aggregate) =
   let id_badge =
     if show_player_id then
       player_id_badge p.player_id
@@ -944,7 +944,7 @@ let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2 w-[140px]") 
   in
   Printf.sprintf
     {html|<tr class="group border-b border-slate-200 dark:border-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-all duration-200 hover:scale-[1.01] hover:shadow-md relative z-0 hover:z-10 font-mono tabular-nums">
-      <td class="px-2 py-2 w-12 text-slate-500 dark:text-slate-500 text-sm text-center font-bold">%d</td>
+      <td class="px-2 py-2 text-slate-500 dark:text-slate-500 text-sm text-center font-bold">%d</td>
       <td class="px-3 py-2 font-medium text-slate-900 dark:text-white font-sans">
         <div class="flex items-center gap-3 min-w-0">
           %s
@@ -955,7 +955,7 @@ let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2 w-[140px]") 
         </div>
       </td>
       %s
-      <td class="px-3 py-2 text-right whitespace-nowrap hidden sm:table-cell text-slate-500 dark:text-slate-400 font-mono w-16">%d</td>
+      <td class="px-3 py-2 text-right whitespace-nowrap hidden sm:table-cell text-slate-500 dark:text-slate-400 font-mono">%d</td>
       %s%s%s%s%s%s%s%s%s
     </tr>|html}
     rank
@@ -966,15 +966,15 @@ let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2 w-[140px]") 
     id_badge
     team_cell
     p.games_played
-    (points_total_cell ~extra_classes:"w-20" p.avg_points p.total_points)
-    (margin_cell ~extra_classes:"hidden md:table-cell w-20" p.avg_margin)
-    (stat_total_cell ~extra_classes:"w-20" p.avg_rebounds p.total_rebounds)
-    (stat_total_cell ~extra_classes:"hidden md:table-cell w-20" p.avg_assists p.total_assists)
-    (stat_total_cell ~extra_classes:"hidden lg:table-cell w-20" p.avg_steals p.total_steals)
-    (stat_total_cell ~extra_classes:"hidden lg:table-cell w-20" p.avg_blocks p.total_blocks)
-    (stat_total_cell ~extra_classes:"hidden lg:table-cell w-20" p.avg_turnovers p.total_turnovers)
-    (stat_cell ~highlight:true ~extra_classes:"w-20" p.efficiency)
-    (stat_cell ~extra_classes:"hidden sm:table-cell w-20" per)
+    (points_total_cell ~extra_classes:"" p.avg_points p.total_points)
+    (margin_cell ~extra_classes:"hidden md:table-cell" p.avg_margin)
+    (stat_total_cell ~extra_classes:"" p.avg_rebounds p.total_rebounds)
+    (stat_total_cell ~extra_classes:"hidden md:table-cell" p.avg_assists p.total_assists)
+    (stat_total_cell ~extra_classes:"hidden lg:table-cell" p.avg_steals p.total_steals)
+    (stat_total_cell ~extra_classes:"hidden lg:table-cell" p.avg_blocks p.total_blocks)
+    (stat_total_cell ~extra_classes:"hidden lg:table-cell" p.avg_turnovers p.total_turnovers)
+    (stat_cell ~highlight:true ~extra_classes:"" p.efficiency)
+    (stat_cell ~extra_classes:"hidden sm:table-cell" per)
 
 (** Players table - HTMX partial *)
 let players_table (players: player_aggregate list) =
@@ -999,36 +999,21 @@ let players_table (players: player_aggregate list) =
   Printf.sprintf
     {html|<div class="overflow-x-auto max-h-[75vh] overflow-y-auto">
     <table class="min-w-[680px] sm:min-w-[860px] lg:min-w-[980px] w-full text-xs sm:text-sm font-mono tabular-nums table-fixed" aria-label="선수 스탯 순위">
-      <colgroup>
-        <col style="width: 48px" />
-        <col />
-        <col style="width: 140px" />
-        <col style="width: 64px" class="hidden sm:table-column" />
-        <col style="width: 80px" />
-        <col style="width: 80px" class="hidden md:table-column" />
-        <col style="width: 80px" />
-        <col style="width: 80px" class="hidden md:table-column" />
-        <col style="width: 80px" class="hidden lg:table-column" />
-        <col style="width: 80px" class="hidden lg:table-column" />
-        <col style="width: 80px" class="hidden lg:table-column" />
-        <col style="width: 80px" />
-        <col style="width: 80px" class="hidden sm:table-column" />
-      </colgroup>
       <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 text-[10px] sm:text-xs uppercase tracking-wider whitespace-nowrap font-mono">
         <tr>
-          <th scope="col" class="px-2 py-2 text-center">#</th>
+          <th scope="col" class="px-2 py-2 text-center" style="width: 48px">#</th>
           <th scope="col" class="px-3 py-2 text-left font-sans">Player</th>
-          <th scope="col" class="px-3 py-2 text-left font-sans">Team</th>
-          <th scope="col" class="px-3 py-2 text-right hidden sm:table-cell">GP</th>
-          <th scope="col" class="px-3 py-2 text-right cursor-pointer hover:text-orange-600 dark:text-orange-400" hx-get="/players/table?sort=pts" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter">PTS</th>
-          <th scope="col" class="px-3 py-2 text-right cursor-pointer hover:text-orange-600 dark:text-orange-400 hidden md:table-cell" hx-get="/players/table?sort=mg" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter">MG</th>
-          <th scope="col" class="px-3 py-2 text-right cursor-pointer hover:text-orange-600 dark:text-orange-400" hx-get="/players/table?sort=reb" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter">REB</th>
-          <th scope="col" class="px-3 py-2 text-right cursor-pointer hover:text-orange-600 dark:text-orange-400 hidden md:table-cell" hx-get="/players/table?sort=ast" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter">AST</th>
-          <th scope="col" class="px-3 py-2 text-right hidden lg:table-cell">STL</th>
-          <th scope="col" class="px-3 py-2 text-right hidden lg:table-cell">BLK</th>
-          <th scope="col" class="px-3 py-2 text-right hidden lg:table-cell">TO</th>
-          <th scope="col" class="px-3 py-2 text-right cursor-pointer text-orange-600 dark:text-orange-400 border-b-2 border-orange-500/50 bg-orange-500/5" hx-get="/players/table?sort=eff" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter">EFF ↓</th>
-          <th scope="col" class="px-3 py-2 text-right hidden sm:table-cell">PER</th>
+          <th scope="col" class="px-3 py-2 text-left font-sans" style="width: 140px">Team</th>
+          <th scope="col" class="px-3 py-2 text-right hidden sm:table-cell" style="width: 64px">GP</th>
+          <th scope="col" class="px-3 py-2 text-right cursor-pointer hover:text-orange-600 dark:text-orange-400" hx-get="/players/table?sort=pts" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter" style="width: 80px">PTS</th>
+          <th scope="col" class="px-3 py-2 text-right cursor-pointer hover:text-orange-600 dark:text-orange-400 hidden md:table-cell" hx-get="/players/table?sort=mg" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter" style="width: 80px">MG</th>
+          <th scope="col" class="px-3 py-2 text-right cursor-pointer hover:text-orange-600 dark:text-orange-400" hx-get="/players/table?sort=reb" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter" style="width: 80px">REB</th>
+          <th scope="col" class="px-3 py-2 text-right cursor-pointer hover:text-orange-600 dark:text-orange-400 hidden md:table-cell" hx-get="/players/table?sort=ast" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter" style="width: 80px">AST</th>
+          <th scope="col" class="px-3 py-2 text-right hidden lg:table-cell" style="width: 80px">STL</th>
+          <th scope="col" class="px-3 py-2 text-right hidden lg:table-cell" style="width: 80px">BLK</th>
+          <th scope="col" class="px-3 py-2 text-right hidden lg:table-cell" style="width: 80px">TO</th>
+          <th scope="col" class="px-3 py-2 text-right cursor-pointer text-orange-600 dark:text-orange-400 border-b-2 border-orange-500/50 bg-orange-500/5" hx-get="/players/table?sort=eff" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter" style="width: 80px">EFF ↓</th>
+          <th scope="col" class="px-3 py-2 text-right hidden sm:table-cell" style="width: 80px">PER</th>
         </tr>
       </thead>
       <tbody id="players-body">%s</tbody>
