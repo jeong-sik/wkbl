@@ -7,3 +7,9 @@
 {"type":"agent_join","agent":"gemini-warm-zebra","agent_type":"gemini","session_id":"22faafca","capabilities":["typescript","ocaml","code-review","htmx"],"ts":"2026-01-27T14:15:10Z"}
 {"type":"agent_join","agent":"codex-calm-badger","agent_type":"codex","session_id":"43ef2d78","capabilities":["typescript","html","ui","debugging"],"ts":"2026-01-27T14:16:30Z"}
 {"type":"agent_leave","agent":"codex-calm-badger","ts":"2026-01-27T14:17:47Z"}
+{"type":"agent_join","agent":"codex-calm-badger","agent_type":"codex","session_id":"4c75bfed","capabilities":[],"ts":"2026-01-27T14:24:06Z"}
+{"type":"task_transition","agent":"codex-calm-badger","task":"task-001","action":"release","from":"claimed","to":"todo","ts":"2026-01-27T14:24:06Z"}
+{"type":"task_claim","agent":"gemini-warm-zebra","task":"task-001","ts":"2026-01-27T14:24:13Z"}
+{"type":"task_transition","agent":"gemini-warm-zebra","task":"task-001","action":"done","from":"claimed","to":"done","ts":"2026-01-27T14:24:13Z"}
+{"type":"agent_leave","agent":"gemini-warm-zebra","ts":"2026-01-27T14:24:19Z"}
+{"type":"agent_join","agent":"codex-fair-gecko","agent_type":"codex","session_id":"9aa6d60c","capabilities":["ocaml","mcp","reliability","eio"],"ts":"2026-01-27T14:49:46Z"}

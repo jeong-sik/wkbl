@@ -7,11 +7,12 @@
       "priority": 2,
       "files": [],
       "created_at": "2026-01-27T13:07:22Z",
-      "status": "claimed",
-      "assignee": "codex-calm-badger",
-      "claimed_at": "2026-01-27T13:07:27Z"
+      "status": "done",
+      "assignee": "gemini-warm-zebra",
+      "completed_at": "2026-01-27T14:24:13Z",
+      "notes": "Fixed column misalignment and structural HTML bugs in all OCaml view tables. Verified with dune build."
     }
   ],
-  "last_updated": "2026-01-27T13:07:27Z",
-  "version": 3
+  "last_updated": "2026-01-27T14:24:13Z",
+  "version": 6
 }

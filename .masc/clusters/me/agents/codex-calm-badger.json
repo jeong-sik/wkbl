@@ -1,0 +1,14 @@
+{
+  "name": "codex-calm-badger",
+  "agent_type": "codex",
+  "status": "active",
+  "capabilities": [],
+  "joined_at": "2026-01-27T14:24:06Z",
+  "last_seen": "2026-01-27T14:24:06Z",
+  "meta": {
+    "session_id": "4c75bfed",
+    "agent_type": "codex",
+    "hostname": "maladies.local",
+    "tty": "not a tty"
+  }
+}
