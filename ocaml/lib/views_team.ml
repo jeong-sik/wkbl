@@ -24,16 +24,16 @@ let team_profile_page (detail: team_full_detail) ~season ~seasons =
    let key = normalize_name p.name in
    let prev = Hashtbl.find_opt roster_name_counts key |> Option.value ~default:0 in
    Hashtbl.replace roster_name_counts key (prev + 1));
- let roster_rows =
-  detail.tfd_roster
-  |> List.mapi (fun i (p: player_aggregate) ->
+  let roster_rows =
+   detail.tfd_roster
+   |> List.mapi (fun i (p: player_aggregate) ->
     let key = normalize_name p.name in
     let show_player_id =
      match Hashtbl.find_opt roster_name_counts key with
      | Some c when c > 1 -> true
      | _ -> false
     in
-    player_row ~show_player_id ~include_team:false (i + 1) p)
+    player_row ~show_player_id ~include_team:false ~team_cell_class:"px-3 py-2" (i + 1) p)
   |> String.concat "\n"
  in
  let roster_cards =

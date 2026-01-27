@@ -1,0 +1,17 @@
+{
+  "tasks": [
+    {
+      "id": "task-001",
+      "title": "wkbl.win 테이블 정렬 및 UI 정합성 개선",
+      "description": "홈페이지 Top Players 테이블 정렬/컬럼 정합성 문제 조사 및 수정",
+      "priority": 2,
+      "files": [],
+      "created_at": "2026-01-27T13:07:22Z",
+      "status": "claimed",
+      "assignee": "codex-calm-badger",
+      "claimed_at": "2026-01-27T13:07:27Z"
+    }
+  ],
+  "last_updated": "2026-01-27T13:07:27Z",
+  "version": 3
+}
