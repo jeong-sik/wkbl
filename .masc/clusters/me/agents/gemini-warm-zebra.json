@@ -1,0 +1,14 @@
+{
+  "name": "gemini-warm-zebra",
+  "agent_type": "gemini",
+  "status": "active",
+  "capabilities": [ "typescript", "ocaml", "code-review", "htmx" ],
+  "joined_at": "2026-01-27T14:15:10Z",
+  "last_seen": "2026-01-27T14:15:11Z",
+  "meta": {
+    "session_id": "22faafca",
+    "agent_type": "gemini",
+    "hostname": "maladies.local",
+    "tty": "not a tty"
+  }
+}
