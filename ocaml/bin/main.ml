@@ -44,6 +44,7 @@ let utf8_middleware : Kirin.middleware = fun next_handler request ->
   | _ -> response)
 
 let () =
+  Printf.printf "Starting WKBL Server initialization...\n%!";
   (* Resolve runtime config from env. Prioritize WKBL_DATABASE_URL or DATABASE_URL for Postgres/Supabase. *)
   let db_url =
     match Sys.getenv_opt "WKBL_DATABASE_URL" with
