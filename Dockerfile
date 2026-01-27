@@ -56,6 +56,7 @@ RUN apt-get update && apt-get install -y \
     libsqlite3-0 \
     ca-certificates \
     netbase \
+    binutils \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -67,5 +68,5 @@ COPY ocaml/static /app/static
 # Expose port
 EXPOSE 8080
 
-# Run the server
-CMD ["/app/wkbl-server"]
+# Run the server with debug info
+CMD ["/bin/sh", "-c", "echo '--- DEBUG ---'; ls -la /app/wkbl-server; ldd /app/wkbl-server; echo '--- STARTING ---'; /app/wkbl-server"]
