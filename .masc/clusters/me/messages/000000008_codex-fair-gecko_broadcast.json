@@ -1,0 +1,6 @@
+{
+  "seq": 8,
+  "from": "codex-fair-gecko",
+  "content": "✅ llm-mcp/figma-mcp 크래시 가드 및 FD 한도 보호 적용 완료. llm-mcp launchd 재시작 후 /health OK (70초 후도 OK). 주요 변경: llm-mcp 하트비트 예외 처리, figma-mcp cleanup 루프 예외 처리, start 스크립트 ulimit, llm launchd maxfiles 상향.",
+  "timestamp": "2026-01-27T13:16:02Z"
+}

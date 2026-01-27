@@ -1,0 +1,5 @@
+{"type":"agent_join","agent":"codex-kind-lemur","agent_type":"codex","session_id":"add57e10","capabilities":[],"ts":"2026-01-27T13:06:58Z"}
+{"type":"agent_join","agent":"codex-calm-badger","agent_type":"codex","session_id":"d6a91538","capabilities":["frontend","css","ui","ocaml","debugging"],"ts":"2026-01-27T13:07:14Z"}
+{"type":"task_transition","agent":"codex-calm-badger","task":"task-001","action":"claim","from":"todo","to":"claimed","ts":"2026-01-27T13:07:27Z"}
+{"type":"agent_join","agent":"codex-warm-tiger","agent_type":"codex","session_id":"7c475825","capabilities":["typescript","wiremock","ai-qa"],"ts":"2026-01-27T13:12:04Z"}
+{"type":"agent_join","agent":"codex-fair-gecko","agent_type":"codex","session_id":"af4b168e","capabilities":["ocaml","mcp","launchd","debugging"],"ts":"2026-01-27T13:15:45Z"}

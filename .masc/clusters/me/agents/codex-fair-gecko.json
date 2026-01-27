@@ -1,0 +1,14 @@
+{
+  "name": "codex-fair-gecko",
+  "agent_type": "codex",
+  "status": "active",
+  "capabilities": [ "ocaml", "mcp", "launchd", "debugging" ],
+  "joined_at": "2026-01-27T13:15:45Z",
+  "last_seen": "2026-01-27T13:18:54Z",
+  "meta": {
+    "session_id": "af4b168e",
+    "agent_type": "codex",
+    "hostname": "maladies.local",
+    "tty": "not a tty"
+  }
+}
