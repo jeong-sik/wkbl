@@ -26,14 +26,14 @@ let team_profile_page (detail: team_full_detail) ~season ~seasons =
    Hashtbl.replace roster_name_counts key (prev + 1));
  let roster_rows =
   detail.tfd_roster
-  |> List.mapi (fun i (p: player_aggregate) ->
+  |> List.mapi (fun _i (p: player_aggregate) ->
     let key = normalize_name p.name in
     let show_player_id =
      match Hashtbl.find_opt roster_name_counts key with
      | Some c when c > 1 -> true
      | _ -> false
     in
-    player_row ~show_player_id ~include_team:false (i + 1) p)
+    player_row ~show_player_id ~include_team:false ~team_cell_class:"px-3 py-2" p)
   |> String.concat "\n"
  in
  let roster_cards =
@@ -47,7 +47,7 @@ let team_profile_page (detail: team_full_detail) ~season ~seasons =
    Printf.sprintf {html|<span class="%s font-mono font-bold tabular-nums">%s</span>|html} cls (escape_html s)
   in
   detail.tfd_roster
-  |> List.mapi (fun i (p: player_aggregate) ->
+  |> List.mapi (fun _i (p: player_aggregate) ->
     let key = normalize_name p.name in
     let show_player_id =
      match Hashtbl.find_opt roster_name_counts key with
@@ -66,7 +66,7 @@ let team_profile_page (detail: team_full_detail) ~season ~seasons =
          <div class="text-sm font-bold text-slate-900 dark:text-slate-200 truncate">
           <a href="/player/%s" class="player-name hover:text-orange-600 dark:text-orange-400 transition-colors">%s</a>%s
          </div>
-         <div class="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400 font-mono tabular-nums">#%d • GP %d • EFF %.1f</div>
+         <div class="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400 font-mono tabular-nums">GP %d • EFF %.1f</div>
         </div>
        </div>
        <div class="text-right shrink-0">
@@ -93,7 +93,6 @@ let team_profile_page (detail: team_full_detail) ~season ~seasons =
      p.player_id
      (escape_html (normalize_name p.name))
      id_badge
-     (i + 1)
      p.games_played
      p.efficiency
      p.avg_points
@@ -105,20 +104,7 @@ let team_profile_page (detail: team_full_detail) ~season ~seasons =
 	      let roster_table_inner =
 	       Printf.sprintf
 	        {html|<table class="roster-table min-w-[820px] w-full text-xs sm:text-sm font-mono table-fixed tabular-nums" aria-label="팀 로스터">
-	         <colgroup>
-	          <col />
-	          <col />
-	          <col />
-	          <col />
-	          <col />
-	          <col />
-	          <col />
-	          <col />
-	          <col />
-	          <col />
-	          <col />
-	         </colgroup>
-	         <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px] sm:text-xs whitespace-nowrap"><tr><th scope="col" class="px-3 py-2 text-left font-sans whitespace-nowrap">#</th><th scope="col" class="px-3 py-2 text-left font-sans whitespace-nowrap">Player</th><th scope="col" class="px-3 py-2 text-right whitespace-nowrap" title="Games Played">GP</th><th scope="col" class="px-3 py-2 text-right text-orange-600 dark:text-orange-400 whitespace-nowrap" title="Points per game">PTS</th><th scope="col" class="px-3 py-2 text-right whitespace-nowrap" title="Team Margin (minutes weighted)">MG</th><th scope="col" class="px-3 py-2 text-right whitespace-nowrap" title="Rebounds per game">REB</th><th scope="col" class="px-3 py-2 text-right whitespace-nowrap" title="Assists per game">AST</th><th scope="col" class="px-3 py-2 text-right whitespace-nowrap" title="Steals per game">STL</th><th scope="col" class="px-3 py-2 text-right whitespace-nowrap" title="Blocks per game">BLK</th><th scope="col" class="px-3 py-2 text-right whitespace-nowrap" title="Turnovers per game">TO</th><th scope="col" class="px-3 py-2 text-right text-orange-600 dark:text-orange-400 whitespace-nowrap" title="Efficiency">EFF</th></tr></thead><tbody>%s</tbody></table>|html}
+	         <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px] sm:text-xs whitespace-nowrap"><tr><th scope="col" class="px-3 py-2 text-left font-sans whitespace-nowrap">Player</th><th scope="col" class="px-3 py-2 text-right whitespace-nowrap" title="Games Played">GP</th><th scope="col" class="px-3 py-2 text-right text-orange-600 dark:text-orange-400 whitespace-nowrap" title="Points per game">PTS</th><th scope="col" class="px-3 py-2 text-right whitespace-nowrap" title="Team Margin (minutes weighted)">MG</th><th scope="col" class="px-3 py-2 text-right whitespace-nowrap" title="Rebounds per game">REB</th><th scope="col" class="px-3 py-2 text-right whitespace-nowrap" title="Assists per game">AST</th><th scope="col" class="px-3 py-2 text-right whitespace-nowrap" title="Steals per game">STL</th><th scope="col" class="px-3 py-2 text-right whitespace-nowrap" title="Blocks per game">BLK</th><th scope="col" class="px-3 py-2 text-right whitespace-nowrap" title="Turnovers per game">TO</th><th scope="col" class="px-3 py-2 text-right text-orange-600 dark:text-orange-400 whitespace-nowrap" title="Efficiency">EFF</th></tr></thead><tbody>%s</tbody></table>|html}
 	        roster_rows
 	      in	 let season_label =
 	  if season = "ALL" then

@@ -43,6 +43,130 @@ let fetch_url ~sw ~env url =
       Printf.eprintf "HTTP error for %s: %s\n" url (Printexc.to_string exn);
       ""
 
+(** POST request with form data *)
+let post_url ~sw ~env url body_params =
+  let net = Eio.Stdenv.net env in
+  let headers = Cohttp.Header.of_list [
+    ("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) WKBL-Stats-Bot/1.0");
+    ("Content-Type", "application/x-www-form-urlencoded");
+    ("Referer", "https://www.wkbl.or.kr/game/result.asp");
+    ("Origin", "https://www.wkbl.or.kr");
+  ] in
+  let uri = Uri.of_string url in
+  let body_str = Uri.encoded_of_query body_params in
+  let client = Cohttp_eio.Client.make ~https:(Some https_wrapper) net in
+  match Cohttp_eio.Client.post ~sw client ~headers ~body:(Cohttp_eio.Body.of_string body_str) uri with
+  | resp, body ->
+      let code = resp |> Cohttp.Response.status |> Cohttp.Code.code_of_status in
+      if code >= 200 && code < 300 then
+        Eio.Buf_read.(parse_exn take_all) body ~max_size:max_int
+      else begin
+        Printf.eprintf "HTTP %d for POST %s\n" code url;
+        ""
+      end
+  | exception exn ->
+      Printf.eprintf "HTTP error for POST %s: %s\n" url (Printexc.to_string exn);
+      ""
+
+(* ======== BOXSCORE SCRAPER ======== *)
+
+(** Player stat from game results *)
+type boxscore_entry = {
+  bs_player_id: string;
+  bs_player_name: string;
+  bs_min_seconds: int;
+  bs_fg2_m: int;
+  bs_fg2_a: int;
+  bs_fg3_m: int;
+  bs_fg3_a: int;
+  bs_ft_m: int;
+  bs_ft_a: int;
+  bs_off_reb: int;
+  bs_def_reb: int;
+  bs_tot_reb: int;
+  bs_ast: int;
+  bs_stl: int;
+  bs_blk: int;
+  bs_tov: int;
+  bs_pf: int;
+  bs_pts: int;
+}
+
+(** Parse boxscore table from AJAX HTML response *)
+let parse_boxscore_html html =
+  let open Soup in
+  let soup = parse html in
+  let rows = soup $$ "table tbody tr" |> to_list in
+  rows |> List.filter_map (fun row ->
+    try
+      let tds = row $$ "td" |> to_list in
+      (* Player name and photo usually in first/second cells *)
+      let name_cell = row $ ".name" in
+      let player_name = leaf_text name_cell |> Option.value ~default:"" |> String.trim in
+      
+      (* Extract player ID from photo URL if possible *)
+      let player_id = 
+        match row $? "img" with
+        | Some img -> 
+            let src = attribute "src" img |> Option.value ~default:"" in
+            let re = Str.regexp {|m_\([0-9]+\)\.|} in
+            if Str.string_match re src 0 then Str.matched_group 1 src else ""
+        | None -> ""
+      in
+
+      if player_name <> "" && player_id <> "" then
+        let get_int idx = 
+          if idx < List.length tds then
+            List.nth tds idx |> texts |> String.concat "" |> String.trim |> int_of_string_opt |> Option.value ~default:0
+          else 0
+        in
+        (* Standard WKBL Boxscore Column Mapping (may need adjustment) *)
+        let parse_min min_str =
+          let parts = String.split_on_char ':' min_str in
+          match parts with
+          | m :: s :: _ -> (int_of_string m * 60) + (int_of_string s)
+          | m :: _ -> (int_of_string m * 60)
+          | [] -> 0
+        in
+        let min_str = List.nth tds 2 |> texts |> String.concat "" |> String.trim in
+        
+        Some {
+          bs_player_id = player_id;
+          bs_player_name = player_name;
+          bs_min_seconds = parse_min min_str;
+          bs_fg2_m = get_int 3;  (* Simplified: need to check actual col index *)
+          bs_fg2_a = get_int 4;
+          bs_fg3_m = get_int 5;
+          bs_fg3_a = get_int 6;
+          bs_ft_m = get_int 7;
+          bs_ft_a = get_int 8;
+          bs_off_reb = get_int 9;
+          bs_def_reb = get_int 10;
+          bs_tot_reb = get_int 11;
+          bs_ast = get_int 12;
+          bs_stl = get_int 13;
+          bs_blk = get_int 14;
+          bs_tov = get_int 15;
+          bs_pf = get_int 16;
+          bs_pts = get_int 17;
+        }
+      else None
+    with _ -> None
+  )
+
+(** Fetch boxscore for a game and team *)
+let fetch_game_boxscore ~sw ~env ~game_id ~team_code =
+  let url = "https://www.wkbl.or.kr/game/ajax/ajax_game_result_2.asp" in
+  let params = [
+    ("s_pcode", [game_id]);
+    ("s_team", [team_code]);
+  ] in
+  let html = post_url ~sw ~env url params in
+  if String.length html > 0 then
+    parse_boxscore_html html
+  else
+    []
+
 (** Draft entry type *)
 type draft_entry = {
   season_code: string;      (* e.g., "044" for 2025-2026 *)

@@ -2,6 +2,7 @@
 
 module Domain = Domain
 module Db = Db
+module Db_sync = Db_sync
 module Stats = Stats
 module Views = Views
 module Views_common = Views_common
