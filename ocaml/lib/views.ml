@@ -137,12 +137,15 @@ let team_stat_row ~season (row: team_stats) =
  let margin_color = if row.margin >= 0.0 then "text-sky-600 dark:text-sky-400 font-bold" else "text-rose-600 dark:text-rose-400 font-bold" in
  let margin_str = if row.margin > 0.0 then Printf.sprintf "+%.1f" row.margin else format_float row.margin in
      let name_cell = Printf.sprintf {html|<td class="px-3 py-2 font-medium text-slate-900 dark:text-slate-200 flex items-center gap-2 whitespace-nowrap break-keep w-auto"><div class="flex items-center min-w-0">%s<a href="%s" class="hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 transition-colors ml-2 truncate">%s</a></div></td>|html} (team_logo_tag ~class_name:"w-5 h-5 shrink-0" row.team) (escape_html team_href) (escape_html row.team) in
-     let gp_cell = Printf.sprintf {html|<td class="px-3 py-2 text-right whitespace-nowrap" style="width: 60px; min-width: 60px;"><span class="text-slate-600 dark:text-slate-400 font-mono">%d</span></td>|html} row.gp in
+     let gp_cell = Printf.sprintf {html|<td class="px-3 py-2 text-right whitespace-nowrap" ><span class="text-slate-600 dark:text-slate-400 font-mono">%d</span></td>|html} row.gp in
      
-     (* Helper for clean stat cells *)
-     let cell ?(hide="") ?(color="text-slate-700 dark:text-slate-300") ?(width="width: 72px; min-width: 72px;") value =
-       Printf.sprintf {html|<td class="px-3 py-2 text-right whitespace-nowrap %s" style="%s"><span class="%s font-mono">%s</span></td>|html} hide width color value
-     in let cells = String.concat "" [
+       (* Helper for clean stat cells *)
+     
+       let cell ?(hide="") ?(color="text-slate-700 dark:text-slate-300") ?(width="width: 80px; min-width: 80px; max-width: 80px;") value =
+     
+         Printf.sprintf {html|<td class="px-3 py-2 text-right whitespace-nowrap %s" style="%s"><span class="%s font-mono">%s</span></td>|html} hide width color value
+     
+       in let cells = String.concat "" [
   cell ~hide:"hidden md:table-cell" (format_float row.min_total);
   cell (format_float row.pts);
   cell ~color:margin_color margin_str;
