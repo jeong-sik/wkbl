@@ -920,7 +920,7 @@ PTS: %.1f | REB: %.1f | AST: %.1f | EFF: %.1f</title></circle>|svg}
         summary
 
 (** Player row component *)
-let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2") ?(include_team=true) (rank: int) (p: player_aggregate) =
+let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2") ?(include_team=true) (p: player_aggregate) =
   let id_badge =
     if show_player_id then
       player_id_badge p.player_id
@@ -946,7 +946,6 @@ let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2") ?(include_
   in
   Printf.sprintf
     {html|<tr class="group border-b border-slate-200 dark:border-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-all duration-200 hover:scale-[1.01] hover:shadow-md relative z-0 hover:z-10 font-mono tabular-nums">
-      <td class="px-2 py-2 text-slate-500 dark:text-slate-500 text-sm text-center font-bold whitespace-nowrap">%d</td>
       <td class="px-3 py-2 font-medium text-slate-900 dark:text-white font-sans whitespace-nowrap">
         <div class="flex items-center gap-3 min-w-0">
           %s
@@ -960,7 +959,6 @@ let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2") ?(include_
       <td class="px-3 py-2 text-right whitespace-nowrap hidden sm:table-cell text-slate-500 dark:text-slate-400 font-mono">%d</td>
       %s%s%s%s%s%s%s%s%s
     </tr>|html}
-    rank
     (player_img_tag ~class_name:"w-8 h-8 shrink-0" p.player_id p.name)
     p.player_id
     (escape_html display_name)
@@ -988,23 +986,22 @@ let players_table (players: player_aggregate list) =
       Hashtbl.replace name_counts key (prev + 1));
   let rows =
     players
-    |> List.mapi (fun i (p: player_aggregate) ->
+    |> List.mapi (fun _i (p: player_aggregate) ->
         let key = normalize_name p.name in
         let show_player_id =
           match Hashtbl.find_opt name_counts key with
           | Some c when c > 1 -> true
           | _ -> false
         in
-        player_row ~show_player_id (i + 1) p)
+        player_row ~show_player_id ~include_team:true ~team_cell_class:"px-3 py-2" p)
     |> String.concat "\n"
   in
   Printf.sprintf
     {html|<div id="players-table-container" class="overflow-x-auto max-h-[75vh] overflow-y-auto">
-        <table class="min-w-[680px] sm:min-w-[860px] lg:min-w-[980px] w-full text-xs sm:text-sm font-mono tabular-nums table-fixed" aria-label="선수 스탯 순위">
+        <table class="min-w-[680px] sm:min-w-[860px] lg:min-w-[980px] w-full text-xs sm:text-sm font-mono tabular-nums table-auto" aria-label="선수 스탯 순위">
           <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 text-[10px] sm:text-xs uppercase tracking-wider whitespace-nowrap font-mono">
             <tr>
-              <th scope="col" class="px-3 py-2 text-center whitespace-nowrap" >#</th>
-              <th scope="col" class="px-3 py-2 text-left font-sans whitespace-nowrap">Player</th>
+              <th scope="col" class="px-3 py-2 text-left font-sans whitespace-nowrap min-w-[160px]">Player</th>
               <th scope="col" class="px-3 py-2 text-left font-sans whitespace-nowrap" >Team</th>
               <th scope="col" class="px-3 py-2 text-right hidden sm:table-cell whitespace-nowrap" >GP</th>
               <th scope="col" class="px-3 py-2 text-right cursor-pointer hover:text-orange-600 dark:text-orange-400 whitespace-nowrap" hx-get="/players/table?sort=pts" hx-target="#players-body" hx-swap="innerHTML" hx-include="#players-filter" >PTS</th>

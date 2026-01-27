@@ -39,6 +39,7 @@ Usage:
   scraper_tool schedule [--csv]        Fetch season schedule (경기 일정)
   scraper_tool schedule --month=YYYYMM Fetch specific month schedule
   scraper_tool sync schedule           Sync current season schedule to database
+  scraper_tool sync boxscore           Sync missing boxscores to database
   scraper_tool sync history            Sync ALL historical games to database (1998-2026)
   scraper_tool sync history --season=X Sync specific season to database
   scraper_tool history [--csv]         Fetch ALL historical games (1998-2026, 43 seasons!)
@@ -53,7 +54,7 @@ Examples:
   scraper_tool fa --csv > fa_results.csv
   scraper_tool salary --csv > salaries.csv
   scraper_tool crowd --csv > crowd.csv
-  scraper_tool records --csv > records.csv
+  scraper_tool records --csv > records.2csv
   scraper_tool games --csv > games.csv
   scraper_tool games --season=044 --csv
   scraper_tool teamstats --csv > team_stats.csv
@@ -71,6 +72,45 @@ let run_with_rng f =
   Eio_main.run @@ fun env ->
   Eio.Switch.run @@ fun sw ->
   f ~sw ~env
+
+(** Sync boxscore data for games that don't have stats yet *)
+let run_sync_boxscore ~sw ~env ~season_filter =
+  let db_url = match get_db_url () with
+    | Some url -> url
+    | None -> Printf.eprintf "Error: DATABASE_URL not set\n"; exit 1
+  in
+
+  (match Db.init_pool ~sw ~stdenv:(env :> Caqti_eio.stdenv) db_url with
+  | Ok () -> ()
+  | Error e -> Printf.eprintf "DB Error: %s\n" (Db.show_db_error e); exit 1);
+
+  let season = Option.value ~default:"ALL" season_filter in
+  match Db_sync.get_games_without_stats ~season () with
+  | Error e -> Printf.eprintf "Failed to fetch missing games: %s\n" (Db.show_db_error e)
+  | Ok game_ids ->
+      let total = List.length game_ids in
+      Printf.printf "Found %d games missing boxscores. Starting sync...\n%!" total;
+      
+      let clock = Eio.Stdenv.clock env in
+      game_ids |> List.iteri (fun i game_id ->
+        Printf.printf "[%d/%d] Syncing boxscore for game: %s\n%!" (i + 1) total game_id;
+        
+        match Db_sync.get_game_teams ~game_id with
+        | Ok (Some (home_code, away_code)) ->
+            (* Fetch and sync for both teams *)
+            let teams = [home_code; away_code] in
+            teams |> List.iter (fun team_code ->
+              let stats = Scraper.fetch_game_boxscore ~sw ~env ~game_id ~team_code in
+              stats |> List.iter (fun s ->
+                match Db_sync.upsert_game_stat s ~game_id ~team_code with
+                | Ok () -> ()
+                | Error e -> Printf.eprintf "  ✗ Failed to upsert stat for %s: %s\n" s.bs_player_name (Db.show_db_error e)
+              );
+              Eio.Time.sleep clock 0.2 (* Rate limit between team requests *)
+            )
+        | _ -> Printf.eprintf "  ✗ Could not find teams for game %s\n" game_id
+      );
+      Printf.printf "\n=== Boxscore Sync Complete ===\n"
 
 let run_draft ~sw ~env ~season_filter ~csv_output =
   let entries = match season_filter with
@@ -559,6 +599,9 @@ let () =
   | "sync" :: "schedule" :: _ ->
       run_with_rng @@ fun ~sw ~env ->
       run_sync_schedule ~sw ~env
+  | "sync" :: "boxscore" :: _ ->
+      run_with_rng @@ fun ~sw ~env ->
+      run_sync_boxscore ~sw ~env ~season_filter
   | "sync" :: "history" :: _ ->
       run_with_rng @@ fun ~sw ~env ->
       run_sync_history ~sw ~env ~season_filter
