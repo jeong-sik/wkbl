@@ -1003,19 +1003,19 @@ let players_table (players: player_aggregate list) =
     <table class="min-w-[680px] sm:min-w-[860px] lg:min-w-[980px] w-full text-xs sm:text-sm font-mono tabular-nums table-auto" aria-label="선수 스탯 순위">
       <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 text-[10px] sm:text-xs uppercase tracking-wider whitespace-nowrap font-mono">
         <tr>
-          <th scope="col" class="px-2 py-2 text-center" style="width: 48px; min-width: 48px; max-width: 48px;">#</th>
-          <th scope="col" class="px-3 py-2 text-left font-sans" style="min-width: 160px;">Player</th>
-          <th scope="col" class="px-3 py-2 text-left font-sans" style="width: 120px; min-width: 120px; max-width: 120px;">Team</th>
-          <th scope="col" class="px-3 py-2 text-right hidden sm:table-cell" style="width: 60px; min-width: 60px; max-width: 60px;">GP</th>
-          <th scope="col" class="px-3 py-2 text-right cursor-pointer hover:text-orange-600 dark:text-orange-400" hx-get="/players/table?sort=pts" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter" style="width: 72px; min-width: 72px; max-width: 72px;">PTS</th>
-          <th scope="col" class="px-3 py-2 text-right cursor-pointer hover:text-orange-600 dark:text-orange-400 hidden md:table-cell" hx-get="/players/table?sort=mg" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter" style="width: 72px; min-width: 72px; max-width: 72px;">MG</th>
-          <th scope="col" class="px-3 py-2 text-right cursor-pointer hover:text-orange-600 dark:text-orange-400" hx-get="/players/table?sort=reb" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter" style="width: 72px; min-width: 72px; max-width: 72px;">REB</th>
-          <th scope="col" class="px-3 py-2 text-right cursor-pointer hover:text-orange-600 dark:text-orange-400 hidden md:table-cell" hx-get="/players/table?sort=ast" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter" style="width: 72px; min-width: 72px; max-width: 72px;">AST</th>
-          <th scope="col" class="px-3 py-2 text-right hidden lg:table-cell" style="width: 72px; min-width: 72px; max-width: 72px;">STL</th>
-          <th scope="col" class="px-3 py-2 text-right hidden lg:table-cell" style="width: 72px; min-width: 72px; max-width: 72px;">BLK</th>
-          <th scope="col" class="px-3 py-2 text-right hidden lg:table-cell" style="width: 72px; min-width: 72px; max-width: 72px;">TO</th>
-          <th scope="col" class="px-3 py-2 text-right cursor-pointer text-orange-600 dark:text-orange-400 border-b-2 border-orange-500/50 bg-orange-500/5" hx-get="/players/table?sort=eff" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter" style="width: 72px; min-width: 72px; max-width: 72px;">EFF ↓</th>
-          <th scope="col" class="px-3 py-2 text-right hidden sm:table-cell" style="width: 72px; min-width: 72px; max-width: 72px;">PER</th>
+          <th scope="col" class="px-2 py-2 text-center whitespace-nowrap">#</th>
+          <th scope="col" class="px-3 py-2 text-left font-sans whitespace-nowrap min-w-[160px]">Player</th>
+          <th scope="col" class="px-3 py-2 text-left font-sans whitespace-nowrap">Team</th>
+          <th scope="col" class="px-3 py-2 text-right hidden sm:table-cell whitespace-nowrap">GP</th>
+          <th scope="col" class="px-3 py-2 text-right cursor-pointer hover:text-orange-600 dark:text-orange-400 whitespace-nowrap" hx-get="/players/table?sort=pts" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter">PTS</th>
+          <th scope="col" class="px-3 py-2 text-right cursor-pointer hover:text-orange-600 dark:text-orange-400 hidden md:table-cell whitespace-nowrap" hx-get="/players/table?sort=mg" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter">MG</th>
+          <th scope="col" class="px-3 py-2 text-right cursor-pointer hover:text-orange-600 dark:text-orange-400 whitespace-nowrap" hx-get="/players/table?sort=reb" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter">REB</th>
+          <th scope="col" class="px-3 py-2 text-right cursor-pointer hover:text-orange-600 dark:text-orange-400 hidden md:table-cell whitespace-nowrap" hx-get="/players/table?sort=ast" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter">AST</th>
+          <th scope="col" class="px-3 py-2 text-right hidden lg:table-cell whitespace-nowrap">STL</th>
+          <th scope="col" class="px-3 py-2 text-right hidden lg:table-cell whitespace-nowrap">BLK</th>
+          <th scope="col" class="px-3 py-2 text-right hidden lg:table-cell whitespace-nowrap">TO</th>
+          <th scope="col" class="px-3 py-2 text-right cursor-pointer text-orange-600 dark:text-orange-400 border-b-2 border-orange-500/50 bg-orange-500/5 whitespace-nowrap" hx-get="/players/table?sort=eff" hx-target="#players-table" hx-swap="innerHTML" hx-include="#players-filter">EFF ↓</th>
+          <th scope="col" class="px-3 py-2 text-right hidden sm:table-cell whitespace-nowrap">PER</th>
         </tr>
       </thead>
       <tbody id="players-body">%s</tbody>
