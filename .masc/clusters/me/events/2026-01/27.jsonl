@@ -3,3 +3,6 @@
 {"type":"task_transition","agent":"codex-calm-badger","task":"task-001","action":"claim","from":"todo","to":"claimed","ts":"2026-01-27T13:07:27Z"}
 {"type":"agent_join","agent":"codex-warm-tiger","agent_type":"codex","session_id":"7c475825","capabilities":["typescript","wiremock","ai-qa"],"ts":"2026-01-27T13:12:04Z"}
 {"type":"agent_join","agent":"codex-fair-gecko","agent_type":"codex","session_id":"af4b168e","capabilities":["ocaml","mcp","launchd","debugging"],"ts":"2026-01-27T13:15:45Z"}
+{"type":"zombie_cleanup","agents":["codex-fair-gecko","codex-calm-badger","codex-warm-tiger","codex-kind-lemur"],"ts":"2026-01-27T14:15:10Z"}
+{"type":"agent_join","agent":"gemini-warm-zebra","agent_type":"gemini","session_id":"22faafca","capabilities":["typescript","ocaml","code-review","htmx"],"ts":"2026-01-27T14:15:10Z"}
+{"type":"agent_join","agent":"codex-calm-badger","agent_type":"codex","session_id":"43ef2d78","capabilities":["typescript","html","ui","debugging"],"ts":"2026-01-27T14:16:30Z"}

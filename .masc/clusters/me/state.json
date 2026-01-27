@@ -2,9 +2,6 @@
   "protocol_version": "0.1.0",
   "project": "wkbl",
   "started_at": "2026-01-27T13:06:58Z",
-  "message_seq": 8,
-  "active_agents": [
-    "codex-fair-gecko", "codex-warm-tiger", "codex-calm-badger",
-    "codex-kind-lemur"
-  ]
+  "message_seq": 10,
+  "active_agents": [ "codex-calm-badger", "gemini-warm-zebra" ]
 }
