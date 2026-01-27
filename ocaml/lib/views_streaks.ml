@@ -105,17 +105,17 @@ let streak_record_row (record: streak_record) =
             <a href="/team/%s" class="hover:text-orange-600 dark:hover:text-orange-400">%s</a>
           </div>
         </td>|html}
-          (team_logo ~size:"w-5 h-5" record.sr_holder_name)
-          (Uri.pct_encode record.sr_holder_name)
+          (team_logo ~size:"w-5 h-5" (Option.value ~default:"" record.sr_team_name))
+          (Uri.pct_encode (Option.value ~default:"" record.sr_team_name))
           (escape_html record.sr_holder_name)
   in
   Printf.sprintf
-    {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-50 dark:hover:bg-slate-800/30">
+    {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors">
       %s
-      <td class="px-3 py-2 text-slate-700 dark:text-slate-300">%s</td>
-      <td class="px-3 py-2 text-right text-orange-600 dark:text-orange-400 font-bold">%d</td>
-      <td class="px-3 py-2 text-right text-slate-500 dark:text-slate-400 hidden sm:table-cell">%s</td>
-      <td class="px-3 py-2 text-right text-slate-500 dark:text-slate-400 hidden md:table-cell">%s</td>
+      <td class="px-3 py-2 text-slate-600 dark:text-slate-400 whitespace-nowrap">%s</td>
+      <td class="px-3 py-2 text-right font-bold text-orange-600 dark:text-orange-400 font-mono whitespace-nowrap">%d</td>
+      <td class="px-3 py-2 text-right text-slate-500 dark:text-slate-400 hidden sm:table-cell font-mono whitespace-nowrap">%s</td>
+      <td class="px-3 py-2 text-right text-slate-500 dark:text-slate-400 hidden md:table-cell text-xs font-mono whitespace-nowrap">%s</td>
     </tr>|html}
     holder_cell
     (escape_html (streak_type_to_label record.sr_streak_type))
@@ -129,13 +129,20 @@ let streak_records_table (records: streak_record list) =
   Printf.sprintf
     {html|<div class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto">
       <table class="w-full min-w-[560px] text-sm table-fixed" aria-label="연속 기록 보유자">
+        <colgroup>
+          <col />
+          <col style="width: 140px" />
+          <col style="width: 60px" />
+          <col style="width: 80px" class="hidden sm:table-column" />
+          <col style="width: 160px" class="hidden md:table-column" />
+        </colgroup>
         <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wider">
           <tr>
-            <th scope="col" class="px-3 py-2 text-left w-[30%%]">보유자</th>
-            <th scope="col" class="px-3 py-2 text-left w-[25%%]">기록 종류</th>
-            <th scope="col" class="px-3 py-2 text-right w-[10%%]" title="연속 기록 횟수">횟수</th>
-            <th scope="col" class="px-3 py-2 text-right hidden sm:table-cell w-[15%%]">시즌</th>
-            <th scope="col" class="px-3 py-2 text-right hidden md:table-cell w-[20%%]" title="기록 달성 기간">기간</th>
+            <th scope="col" class="px-3 py-2 text-left whitespace-nowrap">보유자</th>
+            <th scope="col" class="px-3 py-2 text-left whitespace-nowrap">기록 종류</th>
+            <th scope="col" class="px-3 py-2 text-right whitespace-nowrap" title="연속 기록 횟수">횟수</th>
+            <th scope="col" class="px-3 py-2 text-right hidden sm:table-cell whitespace-nowrap">시즌</th>
+            <th scope="col" class="px-3 py-2 text-right hidden md:table-cell whitespace-nowrap" title="기록 달성 기간">기간</th>
           </tr>
         </thead>
         <tbody>%s</tbody>
