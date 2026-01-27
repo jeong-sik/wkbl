@@ -40,3 +40,5 @@
 {"timestamp":1769523390.566864,"event":["Tool_called",{"tool_name":"masc_join","success":true,"duration_ms":147,"agent_id":null}]}
 {"timestamp":1769523396.212486,"event":["Tool_called",{"tool_name":"masc_tasks","success":true,"duration_ms":2,"agent_id":null}]}
 {"timestamp":1769523401.108169,"event":["Tool_called",{"tool_name":"masc_run_get","success":false,"duration_ms":1,"agent_id":null}]}
+{"timestamp":1769523464.309006,"event":["Tool_called",{"tool_name":"masc_broadcast","success":true,"duration_ms":3,"agent_id":null}]}
+{"timestamp":1769523467.724362,"event":["Tool_called",{"tool_name":"masc_leave","success":true,"duration_ms":1,"agent_id":null}]}
