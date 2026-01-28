@@ -134,6 +134,42 @@ let player_id_badge player_id = Printf.sprintf {html|<span class="px-2 py-0.5 ro
 let format_int_commas n = string_of_int n
 let format_int_compact n = if abs n < 1000 then string_of_int n else Printf.sprintf "%.1fK" (float_of_int n /. 1000.0)
 
+let points_total_cell ?(extra_classes="") ?(width_style="") avg total =
+  let classes = String.concat " " ["px-3 py-2 text-right"; extra_classes] in
+  Printf.sprintf
+    {html|<td class="%s" style="%s"><div class="flex flex-col items-end leading-tight"><span class="text-orange-600 dark:text-orange-400 font-bold font-mono">%.1f</span><span class="text-slate-400 dark:text-slate-500 text-[9px] font-mono whitespace-nowrap" title="Career Total">Σ%s</span></div></td>|html}
+    classes
+    width_style
+    avg
+    (format_int_compact total)
+
+let stat_total_cell ?(extra_classes="") ?(width_style="") avg total =
+  let classes = String.concat " " ["px-3 py-2 text-right"; extra_classes] in
+  Printf.sprintf
+    {html|<td class="%s" style="%s"><div class="flex flex-col items-end leading-tight"><span class="text-slate-700 dark:text-slate-300 font-mono">%.1f</span><span class="text-slate-400 dark:text-slate-500 text-[9px] font-mono whitespace-nowrap" title="Career Total">Σ%s</span></div></td>|html}
+    classes
+    width_style
+    avg
+    (format_int_compact total)
+
+let margin_cell ?(extra_classes="") ?(width_style="") value =
+  let cls =
+    if value > 0.0 then "text-sky-600 dark:text-sky-400 font-bold"
+    else if value < 0.0 then "text-rose-600 dark:text-rose-400 font-bold"
+    else "text-slate-700 dark:text-slate-300 font-bold"
+  in
+  let value_str = if value > 0.0 then Printf.sprintf "+%.1f" value else format_float value in
+  let classes = String.concat " " ["px-3 py-2 text-right font-mono"; extra_classes; cls] in
+  Printf.sprintf {html|<td class="%s" style="%s">%s</td>|html} classes width_style (escape_html value_str)
+
+let stat_cell ?(highlight=false) ?(extra_classes="") ?(width_style="") value =
+  let color_cls =
+    if highlight then "text-orange-600 dark:text-orange-400 font-bold"
+    else "text-slate-700 dark:text-slate-300"
+  in
+  let classes = String.concat " " ["px-3 py-2 text-right font-mono tabular-nums"; extra_classes; color_cls] in
+  Printf.sprintf {html|<td class="%s" style="%s">%.1f</td>|html} classes width_style value
+
 let empty_state ?icon title desc =
   let _ = icon in
   Printf.sprintf {html|<div class="text-center py-12 px-4"><div class="text-4xl mb-4">🏀</div><h3 class="text-lg font-bold text-slate-900 dark:text-slate-200">%s</h3><p class="text-slate-500 dark:text-slate-400">%s</p></div>|html} title desc
@@ -165,7 +201,60 @@ let radar_chart ?(show_league_avg=false) ~labels ~values_a ~values_b ?(color_a="
 let normalize_stat_for_radar _ _ = 0.0
 let career_trajectory_chart _ = "<!-- Chart Placeholder -->"
 let player_season_stats_component ~player_id:_ ~scope:_ _ = "<!-- Season Stats Placeholder -->"
-let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2") ?(include_team=true) _ _ =
-  let _ = show_player_id in let _ = team_cell_class in let _ = include_team in "<!-- Player Row Placeholder -->"
+let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2") ?(include_team=true) (rank: int) (p: player_aggregate) =
+  let id_badge =
+    if show_player_id then player_id_badge p.player_id else ""
+  in
+  let display_name = normalize_name p.name in
+  let per =
+    if p.total_minutes <= 0.0 then 0.0
+    else
+      let per_min = p.efficiency /. p.total_minutes in
+      let per_48 = per_min *. 48.0 in
+      let pace_factor = 40.0 /. 48.0 in
+      let normalized = per_48 *. pace_factor *. 1.2 in
+      max 0.0 (min 40.0 normalized)
+  in
+  let team_cell =
+    if include_team then
+      Printf.sprintf {html|<td class="%s whitespace-nowrap" style="width: 130px; min-width: 130px;">%s</td>|html}
+        (escape_html team_cell_class)
+        (team_badge p.team_name)
+    else
+      ""
+  in
+  Printf.sprintf
+    {html|<tr class="group border-b border-slate-200 dark:border-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors font-mono tabular-nums">
+      <td class="px-2 py-2 text-slate-500 dark:text-slate-500 text-sm text-center font-bold whitespace-nowrap" style="width: 50px; min-width: 50px;">%d</td>
+      <td class="px-3 py-2 font-medium text-slate-900 dark:text-white font-sans whitespace-nowrap" style="width: 200px; min-width: 200px;">
+        <div class="flex items-center gap-3 min-w-0">
+          %s
+          <div class="flex items-center gap-2 min-w-0">
+            <a href="/player/%s" class="player-name hover:text-orange-600 dark:text-orange-400 transition-colors truncate break-keep min-w-0">%s</a>
+            <span class="%s">%s</span>
+          </div>
+        </div>
+      </td>
+      %s
+      <td class="px-3 py-2 text-right whitespace-nowrap hidden sm:table-cell text-slate-500 dark:text-slate-400 font-mono" style="width: 60px; min-width: 60px;">%d</td>
+      %s%s%s%s%s%s%s%s%s
+    </tr>|html}
+    rank
+    (player_img_tag ~class_name:"w-8 h-8 shrink-0" p.player_id p.name)
+    p.player_id
+    (escape_html display_name)
+    (if show_player_id then "opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity" else "hidden")
+    id_badge
+    team_cell
+    p.games_played
+    (points_total_cell ~extra_classes:"whitespace-nowrap" ~width_style:"width: 90px; min-width: 90px;" p.avg_points p.total_points)
+    (margin_cell ~extra_classes:"hidden md:table-cell whitespace-nowrap" ~width_style:"width: 80px; min-width: 80px;" p.avg_margin)
+    (stat_total_cell ~extra_classes:"whitespace-nowrap" ~width_style:"width: 85px; min-width: 85px;" p.avg_rebounds p.total_rebounds)
+    (stat_total_cell ~extra_classes:"hidden md:table-cell whitespace-nowrap" ~width_style:"width: 85px; min-width: 85px;" p.avg_assists p.total_assists)
+    (stat_total_cell ~extra_classes:"hidden lg:table-cell whitespace-nowrap" ~width_style:"width: 80px; min-width: 80px;" p.avg_steals p.total_steals)
+    (stat_total_cell ~extra_classes:"hidden lg:table-cell whitespace-nowrap" ~width_style:"width: 80px; min-width: 80px;" p.avg_blocks p.total_blocks)
+    (stat_total_cell ~extra_classes:"hidden lg:table-cell whitespace-nowrap" ~width_style:"width: 80px; min-width: 80px;" p.avg_turnovers p.total_turnovers)
+    (stat_cell ~highlight:true ~extra_classes:"whitespace-nowrap" ~width_style:"width: 80px; min-width: 80px;" p.efficiency)
+    (stat_cell ~extra_classes:"hidden sm:table-cell whitespace-nowrap" ~width_style:"width: 80px; min-width: 80px;" per)
 let find_substring_from ~sub:_ _ ~from:_ = None
 let career_highs_card _ = "<!-- Career Highs Placeholder -->"

@@ -986,6 +986,69 @@ let compare_stat_row ?(signed=false) label val1 val2 =
   {html|<div class="flex flex-col gap-1"><div class="flex justify-between text-xs font-bold uppercase tracking-tighter text-slate-600 dark:text-slate-400"><span>%s</span><span class="text-slate-600 dark:text-slate-400">%s</span><span>%s</span></div><div class="flex h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden"><div class="flex justify-end w-1/2 border-r border-slate-300 dark:border-slate-700"><div class="bg-orange-500 h-full transition-all duration-500" style="width: %.1f%%"></div></div><div class="flex justify-start w-1/2"><div class="bg-sky-500 h-full transition-all duration-500" style="width: %.1f%%"></div></div></div></div>|html}
   (escape_html (value_str val1)) (escape_html label) (escape_html (value_str val2)) pct1 pct2
 
+let compare_table_empty ?(message="비교 대상을 선택하세요.") () =
+ Printf.sprintf
+  {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 text-sm text-slate-600 dark:text-slate-400">선택: %s</div>|html}
+  (escape_html message)
+
+let compare_table_row ?(signed=false) label val1 val2 =
+ let max_val = max (abs_float val1) (abs_float val2) in
+ let pct1 = if max_val = 0.0 then 0.0 else abs_float val1 /. max_val *. 100.0 in
+ let pct2 = if max_val = 0.0 then 0.0 else abs_float val2 /. max_val *. 100.0 in
+ let value_str v =
+  if signed && v > 0.0 then Printf.sprintf "+%.1f" v else Printf.sprintf "%.1f" v
+ in
+ Printf.sprintf
+  {html|<tr class="border-b border-slate-200 dark:border-slate-800/60">
+    <td class="px-3 py-2 text-left font-sans text-slate-600 dark:text-slate-400 whitespace-nowrap">%s</td>
+    <td class="px-3 py-2 text-right font-mono text-slate-900 dark:text-slate-200 whitespace-nowrap">%s</td>
+    <td class="px-3 py-2 text-right font-mono text-slate-900 dark:text-slate-200 whitespace-nowrap">%s</td>
+    <td class="px-3 py-2">
+      <div class="flex h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+        <div class="flex justify-end w-1/2 border-r border-slate-300 dark:border-slate-700">
+          <div class="bg-orange-500 h-full" style="width: %.1f%%"></div>
+        </div>
+        <div class="flex justify-start w-1/2">
+          <div class="bg-sky-500 h-full" style="width: %.1f%%"></div>
+        </div>
+      </div>
+    </td>
+  </tr>|html}
+  (escape_html label)
+  (escape_html (value_str val1))
+  (escape_html (value_str val2))
+  pct1 pct2
+
+let compare_table_fragment ~left_label ~right_label rows =
+ let rows_html =
+  rows
+  |> List.map (fun (label, v1, v2, signed) -> compare_table_row ~signed label v1 v2)
+  |> String.concat "\n"
+ in
+ Printf.sprintf
+  {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-lg">
+    <table class="w-full text-sm table-fixed font-mono tabular-nums" aria-label="비교 테이블">
+      <colgroup>
+        <col style="width: 140px;">
+        <col style="width: 90px;">
+        <col style="width: 90px;">
+        <col style="width: auto;">
+      </colgroup>
+      <thead class="bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 text-[10px] uppercase tracking-wider">
+        <tr>
+          <th class="px-3 py-2 text-left font-sans">STAT</th>
+          <th class="px-3 py-2 text-right font-sans">%s</th>
+          <th class="px-3 py-2 text-right font-sans">%s</th>
+          <th class="px-3 py-2 text-right font-sans">BAR</th>
+        </tr>
+      </thead>
+      <tbody>%s</tbody>
+    </table>
+  </div>|html}
+  (escape_html left_label)
+  (escape_html right_label)
+  rows_html
+
 let h2h_game_row (g: h2h_game) =
  let diff_color = if g.score_diff > 0 then "bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400"
           else if g.score_diff < 0 then "bg-sky-100 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400"
@@ -2068,6 +2131,8 @@ let clutch_page ~season ~seasons (stats: clutch_stats list) =
       <td class="px-3 py-2 text-right font-bold text-slate-900 dark:text-slate-200 w-16">%d</td>
       <td class="px-3 py-2 text-right text-slate-600 dark:text-slate-400 w-24">%d-%d</td>
       <td class="px-3 py-2 text-right text-slate-600 dark:text-slate-400 w-20">%s</td>
+      <td class="px-3 py-2 text-right text-slate-600 dark:text-slate-400 w-16">%d</td>
+      <td class="px-3 py-2 text-right text-slate-600 dark:text-slate-400 w-24">%d-%d</td>
      </tr>|html}
      (escape_html s.cs_player_id)
      (escape_html s.cs_player_name)
@@ -2075,12 +2140,14 @@ let clutch_page ~season ~seasons (stats: clutch_stats list) =
      s.cs_clutch_games
      s.cs_clutch_points
      s.cs_clutch_fg_made s.cs_clutch_fg_att
-     fg_pct_str) 
+     fg_pct_str
+     s.cs_clutch_3p_made
+     s.cs_clutch_ft_made s.cs_clutch_ft_att) 
   |> String.concat "\n"
  in
  let empty_row =
   if List.length stats = 0 then
-   Printf.sprintf {html|<tr><td colspan="9">%s</td></tr>|html}
+   Printf.sprintf {html|<tr><td colspan="8">%s</td></tr>|html}
     (Views_common.empty_state ~icon:BasketballIcon
      "No clutch time data"
      "Clutch time = Q4 remaining 5 min + score diff ≤ 5 pts")
@@ -2092,6 +2159,7 @@ let clutch_page ~season ~seasons (stats: clutch_stats list) =
     <colgroup>
       <col style="width: auto;"> <!-- Player -->
       <col style="width: 140px;"> <!-- Team -->
+      <col style="width: 60px;">  <!-- GP -->
       <col style="width: 60px;">  <!-- PTS -->
       <col style="width: 100px;"> <!-- FGM-A -->
       <col style="width: 80px;">  <!-- FG% -->
@@ -2102,6 +2170,7 @@ let clutch_page ~season ~seasons (stats: clutch_stats list) =
      <tr>
       <th class="px-3 py-2 text-left font-sans">Player</th>
       <th class="px-3 py-2 text-left font-sans">Team</th>
+      <th class="px-3 py-2 text-center font-sans" title="Clutch Games Played">GP</th>
       <th class="px-3 py-2 text-center font-sans" title="Clutch Points">PTS</th>
       <th class="px-3 py-2 text-center font-sans" title="Field Goals Made-Attempted">FGM-A</th>
       <th class="px-3 py-2 text-center font-sans" title="Field Goal Percentage">FG%</th>
