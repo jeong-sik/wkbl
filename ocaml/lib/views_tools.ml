@@ -107,7 +107,35 @@ let qa_dashboard_page (report: Db.qa_db_report) ?(markdown=None) () =
   in
   layout ~title:"QA | WKBL"
     ~content:(Printf.sprintf
-      {html|<div class="space-y-6 animate-fade-in"><div class="flex flex-col gap-2"><h2 class="text-2xl font-black text-slate-900 dark:text-slate-200">Data Quality (QA)</h2><div class="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">기록 신뢰도를 위해 <span class="font-mono text-slate-900 dark:text-slate-200">스코어 불일치</span>, <span class="font-mono text-slate-900 dark:text-slate-200">팀 수 이상</span>, <span class="font-mono text-slate-900 dark:text-slate-200">중복 스탯 row</span>, <span class="font-mono text-slate-900 dark:text-slate-200">중복 선수 ID</span>를 점검합니다. (Generated: <span class="font-mono">%s</span>)</div></div>%s<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">%s%s%s%s</div><div class="grid grid-cols-1 lg:grid-cols-3 gap-4">%s%s%s</div><div class="grid grid-cols-1 gap-4"><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-lg"><div class="flex items-center justify-between gap-3"><h3 class="text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-xs">Score Mismatch</h3><span class="text-[11px] text-slate-500 dark:text-slate-400 font-mono">count=%d</span></div><div class="mt-3 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed"><span class="font-mono text-slate-900 dark:text-slate-200">games.home/away_score</span> vs <span class="font-mono text-slate-900 dark:text-slate-200">SUM(game_stats.pts)</span> 비교</div><div class="mt-4 overflow-x-auto"><table class="min-w-[860px] w-full text-sm font-mono table-fixed" aria-label="스코어 불일치 목록"><thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px]"><tr><th scope="col" class="px-3 py-2 text-left w-[90px]">Date</th><th scope="col" class="px-3 py-2 text-left w-[120px]">Game</th><th scope="col" class="px-3 py-2 text-left">Matchup</th><th scope="col" class="px-3 py-2 text-right w-[120px]" title="저장된 스코어">Stored</th><th scope="col" class="px-3 py-2 text-right w-[120px]" title="합산된 스코어">Summed</th><th scope="col" class="px-3 py-2 text-right w-[80px]" title="홈팀 차이">HΔ</th><th scope="col" class="px-3 py-2 text-right w-[80px]" title="원정팀 차이">AΔ</th></tr></thead><tbody>%s</tbody></table></div></div><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-lg"><div class="flex items-center justify-between gap-3"><h3 class="text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-xs">Team Count Anomaly</h3><span class="text-[11px] text-slate-500 dark:text-slate-400 font-mono">count=%d</span></div><div class="mt-3 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">한 경기에서 <span class="font-mono text-slate-900 dark:text-slate-200">game_stats.team_code</span>가 2개가 아닌 케이스</div><div class="mt-4 overflow-x-auto"><table class="min-w-[320px] w-full text-sm font-mono table-fixed" aria-label="팀 수 이상 목록"><thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px]"><tr><th scope="col" class="px-3 py-2 text-left">Game</th><th scope="col" class="px-3 py-2 text-right w-[90px]" title="팀 수">Teams</th></tr></thead><tbody>%s</tbody></table></div></div><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-lg"><div class="flex items-center justify-between gap-3"><h3 class="text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-xs">Duplicate Player Rows</h3><span class="text-[11px] text-slate-500 dark:text-slate-400 font-mono">count=%d</span></div><div class="mt-3 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed"><span class="font-mono text-slate-900 dark:text-slate-200">(game_id, team_code, player_id)</span> 중복</div><div class="mt-4 overflow-x-auto"><table class="min-w-[720px] w-full text-sm font-mono table-fixed" aria-label="중복 선수 스탯 목록"><thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px]"><tr><th scope="col" class="px-3 py-2 text-left w-[120px]">Game</th><th scope="col" class="px-3 py-2 text-left w-[160px]">Team</th><th scope="col" class="px-3 py-2 text-left">Player</th><th scope="col" class="px-3 py-2 text-right w-[80px]" title="중복 행 수">Rows</th></tr></thead><tbody>%s</tbody></table></div></div><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-lg"><div class="flex items-center justify-between gap-3"><h3 class="text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-xs">Duplicate Player Names</h3><span class="text-[11px] text-slate-500 dark:text-slate-400 font-mono">count=%d</span></div><div class="mt-3 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">동일 이름으로 <span class="font-mono text-slate-900 dark:text-slate-200">player_id</span>가 여러 개인 케이스</div><div class="mt-4 overflow-x-auto"><table class="min-w-[720px] w-full text-sm font-mono table-fixed" aria-label="중복 선수 이름 목록"><thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px]"><tr><th scope="col" class="px-3 py-2 text-left">Name</th><th scope="col" class="px-3 py-2 text-right w-[80px]" title="ID 수">IDs</th><th scope="col" class="px-3 py-2 text-left">player_id</th></tr></thead><tbody>%s</tbody></table></div></div></div>%s</div>|html}
+      {html|<div class="space-y-6 animate-fade-in"><div class="flex flex-col gap-2"><h2 class="text-2xl font-black text-slate-900 dark:text-slate-200">Data Quality (QA)</h2><div class="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">기록 신뢰도를 위해 <span class="font-mono text-slate-900 dark:text-slate-200">스코어 불일치</span>, <span class="font-mono text-slate-900 dark:text-slate-200">팀 수 이상</span>, <span class="font-mono text-slate-900 dark:text-slate-200">중복 스탯 row</span>, <span class="font-mono text-slate-900 dark:text-slate-200">중복 선수 ID</span>를 점검합니다. (Generated: <span class="font-mono">%s</span>)</div></div>%s<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">%s%s%s%s</div><div class="grid grid-cols-1 lg:grid-cols-3 gap-4">%s%s%s</div><div class="grid grid-cols-1 gap-4"><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-lg"><div class="flex items-center justify-between gap-3"><h3 class="text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-xs">Score Mismatch</h3><span class="text-[11px] text-slate-500 dark:text-slate-400 font-mono">count=%d</span></div><div class="mt-3 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed"><span class="font-mono text-slate-900 dark:text-slate-200">games.home/away_score</span> vs <span class="font-mono text-slate-900 dark:text-slate-200">SUM(game_stats.pts)</span> 비교</div><div class="mt-4 overflow-x-auto"><table class="min-w-[860px] w-full text-sm font-mono table-fixed" aria-label="스코어 불일치 목록">
+          <colgroup>
+            <col style="width: 90px;"> <!-- Date -->
+            <col style="width: 120px;"> <!-- Game -->
+            <col style="width: auto;"> <!-- Matchup -->
+            <col style="width: 120px;"> <!-- Stored -->
+            <col style="width: 120px;"> <!-- Summed -->
+            <col style="width: 80px;"> <!-- HΔ -->
+            <col style="width: 80px;"> <!-- AΔ -->
+          </colgroup>
+          <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px]"><tr><th scope="col" class="px-3 py-2 text-left">Date</th><th scope="col" class="px-3 py-2 text-left">Game</th><th scope="col" class="px-3 py-2 text-left">Matchup</th><th scope="col" class="px-3 py-2 text-right" title="저장된 스코어">Stored</th><th scope="col" class="px-3 py-2 text-right" title="합산된 스코어">Summed</th><th scope="col" class="px-3 py-2 text-right" title="홈팀 차이">HΔ</th><th scope="col" class="px-3 py-2 text-right" title="원정팀 차이">AΔ</th></tr></thead><tbody>%s</tbody></table></div></div><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-lg"><div class="flex items-center justify-between gap-3"><h3 class="text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-xs">Team Count Anomaly</h3><span class="text-[11px] text-slate-500 dark:text-slate-400 font-mono">count=%d</span></div><div class="mt-3 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">한 경기에서 <span class="font-mono text-slate-900 dark:text-slate-200">game_stats.team_code</span>가 2개가 아닌 케이스</div><div class="mt-4 overflow-x-auto"><table class="min-w-[320px] w-full text-sm font-mono table-fixed" aria-label="팀 수 이상 목록">
+          <colgroup>
+            <col style="width: auto;"> <!-- Game -->
+            <col style="width: 90px;"> <!-- Teams -->
+          </colgroup>
+          <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px]"><tr><th scope="col" class="px-3 py-2 text-left">Game</th><th scope="col" class="px-3 py-2 text-right" title="팀 수">Teams</th></tr></thead><tbody>%s</tbody></table></div></div><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-lg"><div class="flex items-center justify-between gap-3"><h3 class="text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-xs">Duplicate Player Rows</h3><span class="text-[11px] text-slate-500 dark:text-slate-400 font-mono">count=%d</span></div><div class="mt-3 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed"><span class="font-mono text-slate-900 dark:text-slate-200">(game_id, team_code, player_id)</span> 중복</div><div class="mt-4 overflow-x-auto"><table class="min-w-[720px] w-full text-sm font-mono table-fixed" aria-label="중복 선수 스탯 목록">
+          <colgroup>
+            <col style="width: 120px;"> <!-- Game -->
+            <col style="width: 160px;"> <!-- Team -->
+            <col style="width: auto;">  <!-- Player -->
+            <col style="width: 80px;">  <!-- Rows -->
+          </colgroup>
+          <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px]"><tr><th scope="col" class="px-3 py-2 text-left">Game</th><th scope="col" class="px-3 py-2 text-left">Team</th><th scope="col" class="px-3 py-2 text-left">Player</th><th scope="col" class="px-3 py-2 text-right" title="중복 행 수">Rows</th></tr></thead><tbody>%s</tbody></table></div></div><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-lg"><div class="flex items-center justify-between gap-3"><h3 class="text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-xs">Duplicate Player Names</h3><span class="text-[11px] text-slate-500 dark:text-slate-400 font-mono">count=%d</span></div><div class="mt-3 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">동일 이름으로 <span class="font-mono text-slate-900 dark:text-slate-200">player_id</span>가 여러  개인 케이스</div><div class="mt-4 overflow-x-auto"><table class="min-w-[720px] w-full text-sm font-mono table-fixed" aria-label="중복 선수 이름 목록">
+          <colgroup>
+            <col style="width: 120px;"> <!-- Name -->
+            <col style="width: 80px;">  <!-- IDs -->
+            <col style="width: auto;">  <!-- player_id -->
+          </colgroup>
+          <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px]"><tr><th scope="col" class="px-3 py-2 text-left">Name</th><th scope="col" class="px-3 py-2 text-right" title="ID 수">IDs</th><th scope="col" class="px-3 py-2 text-left">player_id</th></tr></thead><tbody>%s</tbody></table></div></div></div>%s</div>|html}
       (escape_html report.qdr_generated_at)
       sources_block
       (kpi_card ~label:"Games" ~value_html:(int_chip report.qdr_games_total) ~hint_html:"전체 경기 수(정규/PO, 시범 제외)")
@@ -211,8 +239,8 @@ let transactions_page
               in
               Printf.sprintf
                 {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors">
-  <td class="px-3 py-2 text-slate-500 dark:text-slate-400 font-mono whitespace-nowrap w-[72px]">%s</td>
-  <td class="px-3 py-2 text-slate-700 dark:text-slate-300 font-mono whitespace-nowrap w-[140px]">%s</td>
+  <td class="px-3 py-2 text-slate-500 dark:text-slate-400 font-mono whitespace-nowrap">%s</td>
+  <td class="px-3 py-2 text-slate-700 dark:text-slate-300 font-mono whitespace-nowrap">%s</td>
   <td class="px-3 py-2 min-w-0"><a class="text-slate-900 dark:text-slate-200 hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 font-bold truncate block" href="/player/%s">%s</a><div class="mt-1 text-[11px] text-slate-500 dark:text-slate-400 font-mono">%s</div></td>
   <td class="px-3 py-2">%s</td>
   <td class="px-3 py-2 text-[11px] text-slate-700 dark:text-slate-300 font-mono whitespace-pre-line break-words">%s</td>
@@ -231,14 +259,22 @@ let transactions_page
     Printf.sprintf
       {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-lg">
   <table class="min-w-[980px] w-full text-sm table-fixed tabular-nums" aria-label="드래프트 현황">
+    <colgroup>
+      <col style="width: 72px;"> <!-- Year -->
+      <col style="width: 140px;"> <!-- Pick -->
+      <col style="width: auto;"> <!-- Player -->
+      <col style="width: 220px;"> <!-- Team -->
+      <col style="width: auto;"> <!-- Raw -->
+      <col style="width: 90px;"> <!-- Link -->
+    </colgroup>
     <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px] whitespace-nowrap">
       <tr>
-        <th scope="col" class="px-3 py-2 text-left w-[72px]">Year</th>
-        <th scope="col" class="px-3 py-2 text-left w-[140px]" title="Draft pick order">Pick</th>
+        <th scope="col" class="px-3 py-2 text-left">Year</th>
+        <th scope="col" class="px-3 py-2 text-left" title="Draft pick order">Pick</th>
         <th scope="col" class="px-3 py-2 text-left">Player</th>
-        <th scope="col" class="px-3 py-2 text-left w-[220px]">Team</th>
+        <th scope="col" class="px-3 py-2 text-left">Team</th>
         <th scope="col" class="px-3 py-2 text-left" title="Original text">Raw</th>
-        <th scope="col" class="px-3 py-2 text-left w-[90px]">Link</th>
+        <th scope="col" class="px-3 py-2 text-left">Link</th>
       </tr>
     </thead>
     <tbody>%s</tbody>
@@ -528,20 +564,34 @@ and fantasy_results_table (scores: fantasy_player_score list) =
   Printf.sprintf
     {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-lg">
   <table class="min-w-[1100px] w-full text-sm table-fixed tabular-nums" aria-label="판타지 포인트 순위">
+    <colgroup>
+      <col style="width: 60px;"> <!-- # -->
+      <col style="width: auto;"> <!-- Player -->
+      <col style="width: 180px;"> <!-- Team -->
+      <col style="width: 60px;">  <!-- GP -->
+      <col style="width: 90px;">  <!-- Total -->
+      <col style="width: 90px;">  <!-- AVG -->
+      <col style="width: 70px;">  <!-- PTS -->
+      <col style="width: 70px;">  <!-- REB -->
+      <col style="width: 70px;">  <!-- AST -->
+      <col style="width: 70px;">  <!-- STL -->
+      <col style="width: 70px;">  <!-- BLK -->
+      <col style="width: 70px;">  <!-- TOV -->
+    </colgroup>
     <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px] whitespace-nowrap">
       <tr>
-        <th scope="col" class="px-3 py-2 text-left w-[60px]">#</th>
+        <th scope="col" class="px-3 py-2 text-left">#</th>
         <th scope="col" class="px-3 py-2 text-left">Player</th>
-        <th scope="col" class="px-3 py-2 text-left w-[180px]">Team</th>
-        <th scope="col" class="px-3 py-2 text-right w-[60px]" title="Games Played">GP</th>
-        <th scope="col" class="px-3 py-2 text-right w-[90px]" title="Total Fantasy Points">Total</th>
-        <th scope="col" class="px-3 py-2 text-right w-[90px]" title="Average per game">AVG</th>
-        <th scope="col" class="px-3 py-2 text-right w-[70px]" title="Points contribution">PTS</th>
-        <th scope="col" class="px-3 py-2 text-right w-[70px]" title="Rebounds contribution">REB</th>
-        <th scope="col" class="px-3 py-2 text-right w-[70px]" title="Assists contribution">AST</th>
-        <th scope="col" class="px-3 py-2 text-right w-[70px]" title="Steals contribution">STL</th>
-        <th scope="col" class="px-3 py-2 text-right w-[70px]" title="Blocks contribution">BLK</th>
-        <th scope="col" class="px-3 py-2 text-right w-[70px]" title="Turnovers (negative)">TOV</th>
+        <th scope="col" class="px-3 py-2 text-left">Team</th>
+        <th scope="col" class="px-3 py-2 text-right" title="Games Played">GP</th>
+        <th scope="col" class="px-3 py-2 text-right" title="Total Fantasy Points">Total</th>
+        <th scope="col" class="px-3 py-2 text-right" title="Average per game">AVG</th>
+        <th scope="col" class="px-3 py-2 text-right" title="Points contribution">PTS</th>
+        <th scope="col" class="px-3 py-2 text-right" title="Rebounds contribution">REB</th>
+        <th scope="col" class="px-3 py-2 text-right" title="Assists contribution">AST</th>
+        <th scope="col" class="px-3 py-2 text-right" title="Steals contribution">STL</th>
+        <th scope="col" class="px-3 py-2 text-right" title="Blocks contribution">BLK</th>
+        <th scope="col" class="px-3 py-2 text-right" title="Turnovers (negative)">TOV</th>
       </tr>
     </thead>
     <tbody>%s</tbody>
@@ -1286,10 +1336,19 @@ let on_off_impact_table (impacts: Domain.on_off_impact list) : string =
   Printf.sprintf
     {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-lg overflow-hidden">
       <div class="overflow-x-auto">
-        <table class="w-full text-sm" aria-label="득실 차이 순위">
+        <table class="w-full text-sm table-fixed" aria-label="득실 차이 순위">
+          <colgroup>
+            <col style="width: 64px;"> <!-- # -->
+            <col style="width: auto;"> <!-- Player -->
+            <col style="width: 60px;">  <!-- GP -->
+            <col style="width: 80px;">  <!-- MIN -->
+            <col style="width: 100px;"> <!-- +/- AVG -->
+            <col style="width: 100px;"> <!-- +/- Total -->
+            <col style="width: 100px;"> <!-- Games w/ +/- -->
+          </colgroup>
           <thead class="bg-slate-50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-300">
             <tr>
-              <th scope="col" class="py-2 px-4 text-center font-semibold w-16">#</th>
+              <th scope="col" class="py-2 px-4 text-center font-semibold">#</th>
               <th scope="col" class="py-2 px-4 text-left font-semibold">Player</th>
               <th scope="col" class="py-2 px-4 text-center font-semibold" title="Games Played">GP</th>
               <th scope="col" class="py-2 px-4 text-center font-semibold" title="Minutes Played">MIN</th>

@@ -127,22 +127,22 @@ let streak_record_row (record: streak_record) =
 let streak_records_table (records: streak_record list) =
   let rows = records |> List.map streak_record_row |> String.concat "\n" in
   Printf.sprintf
-    {html|<div class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto">
-      <table class="w-full min-w-[560px] text-sm table-fixed" aria-label="연속 기록 보유자">
+    {html|<div class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-lg">
+      <table class="w-full min-w-[640px] text-sm table-fixed font-mono tabular-nums" aria-label="연속 기록 보유자">
         <colgroup>
-          <col />
-          <col  />
-          <col  />
-          <col  class="hidden sm:table-column" />
-          <col  class="hidden md:table-column" />
+          <col style="width: auto;"> <!-- 보유자 -->
+          <col style="width: 140px;"> <!-- 기록 종류 -->
+          <col style="width: 80px;">  <!-- 횟수 -->
+          <col class="hidden sm:table-column" style="width: 100px;"> <!-- 시즌 -->
+          <col class="hidden md:table-column" style="width: 180px;"> <!-- 기간 -->
         </colgroup>
-        <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wider">
+        <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 text-[10px] sm:text-xs uppercase tracking-wider">
           <tr>
-            <th scope="col" class="px-3 py-2 text-left whitespace-nowrap">보유자</th>
-            <th scope="col" class="px-3 py-2 text-left whitespace-nowrap">기록 종류</th>
-            <th scope="col" class="px-3 py-2 text-right whitespace-nowrap" title="연속 기록 횟수">횟수</th>
-            <th scope="col" class="px-3 py-2 text-right hidden sm:table-cell whitespace-nowrap">시즌</th>
-            <th scope="col" class="px-3 py-2 text-right hidden md:table-cell whitespace-nowrap" title="기록 달성 기간">기간</th>
+            <th scope="col" class="px-3 py-2 text-left font-sans whitespace-nowrap">보유자</th>
+            <th scope="col" class="px-3 py-2 text-left font-sans whitespace-nowrap">기록 종류</th>
+            <th scope="col" class="px-3 py-2 text-right font-sans whitespace-nowrap" title="연속 기록 횟수">횟수</th>
+            <th scope="col" class="px-3 py-2 text-right hidden sm:table-cell font-sans whitespace-nowrap">시즌</th>
+            <th scope="col" class="px-3 py-2 text-right hidden md:table-cell font-sans whitespace-nowrap" title="기록 달성 기간">기간</th>
           </tr>
         </thead>
         <tbody>%s</tbody>

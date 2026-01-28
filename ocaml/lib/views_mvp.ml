@@ -79,11 +79,23 @@ let mvp_race_table (candidates: mvp_candidate list) =
   else
     let rows = candidates |> List.map mvp_candidate_row |> String.concat "\n" in
     Printf.sprintf
-      {html|<div class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 scroll-shadow overflow-y-hidden">
-        <table class="w-full min-w-[720px] text-sm table-auto" aria-label="MVP 레이스 순위">
-          <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wider">
+      {html|<div class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 scroll-shadow overflow-y-hidden shadow-xl">
+        <table class="w-full min-w-[820px] text-sm font-mono table-fixed tabular-nums" aria-label="MVP 레이스 순위">
+          <colgroup>
+            <col style="width: 200px;"> <!-- Player -->
+            <col style="width: 60px;">  <!-- GP -->
+            <col style="width: 60px;">  <!-- PPG -->
+            <col class="hidden md:table-column" style="width: 60px;"> <!-- RPG -->
+            <col class="hidden md:table-column" style="width: 60px;"> <!-- APG -->
+            <col class="hidden lg:table-column" style="width: 60px;"> <!-- SPG -->
+            <col class="hidden lg:table-column" style="width: 60px;"> <!-- BPG -->
+            <col class="hidden sm:table-column" style="width: 80px;"> <!-- EFF -->
+            <col class="hidden sm:table-column" style="width: 80px;"> <!-- REC -->
+            <col style="width: 80px;">  <!-- Score -->
+          </colgroup>
+          <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 text-[10px] sm:text-xs uppercase tracking-wider whitespace-nowrap">
             <tr>
-              <th scope="col" class="px-3 py-2 text-left">Player</th>
+              <th scope="col" class="px-3 py-2 text-left font-sans">Player</th>
               <th scope="col" class="px-3 py-2 text-center" title="Games Played">GP</th>
               <th scope="col" class="px-3 py-2 text-right" title="Points Per Game">PPG</th>
               <th scope="col" class="px-3 py-2 text-right hidden md:table-cell" title="Rebounds Per Game">RPG</th>
