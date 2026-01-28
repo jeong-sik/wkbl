@@ -72,20 +72,26 @@ let render_fixed_table ~id ~min_width ~(cols : col_spec list) (rows_data : strin
     |> String.concat "\n"
     |> fun s -> Printf.sprintf {html|<thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider whitespace-nowrap"><tr>%s</tr></thead>|html} s
   in
-  (* 2. Render <tbody> - td classes must perfectly match th's responsive classes *)
+  (* 2. Render <tbody> - Apply SAME width style to td to enforce alignment *)
   let tbody =
     rows_data
     |> List.map (fun row ->
         if List.length row <> List.length cols then
-          Printf.sprintf "<!-- Row column count mismatch: expected %d, got %d -->" (List.length cols) (List.length row)
+          Printf.sprintf "<!-- Row column count mismatch -->"
         else
           let cells =
             List.map2 (fun c data ->
+              let width_style =
+                match c.width with
+                | Some w -> Printf.sprintf "width: %dpx; min-width: %dpx;" w w
+                | None -> "width: auto;"
+              in
               let base_cls = "px-3 py-2 whitespace-nowrap overflow-hidden truncate" in
               let align_cls = align_class c.align in
               let resp_cls = resp_class c.resp in
               let color_cls = if c.highlight then "text-orange-600 dark:text-orange-400 font-bold" else "text-slate-700 dark:text-slate-300" in
-              Printf.sprintf {html|<td class="%s %s %s %s">%s</td>|html} base_cls align_cls resp_cls color_cls data
+              let full_cls = String.concat " " [base_cls; align_cls; resp_cls; color_cls] in
+              Printf.sprintf {html|<td class="%s" style="%s">%s</td>|html} full_cls width_style data
             ) cols row
             |> String.concat ""
           in
