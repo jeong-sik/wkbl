@@ -595,7 +595,7 @@ Sitemap: https://wkbl.win/sitemap.xml
             | Some prev_season -> Db.get_stat_mip_eff_delta ~season ~prev_season ~include_mismatch ()
           in
           match mvp_res, mip_res with
-          | Ok mvp, Ok mip -> Kirin.html (Views.awards_page ~season ~seasons ~include_mismatch ~prev_season_name ~mvp ~mip ())
+          | Ok mvp, Ok mip -> Kirin.html (Views.awards_page ~season ~seasons ~include_mismatch ~prev_season_name ~mvp ~mip)
           | Error e, _ | _, Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
     );
 
