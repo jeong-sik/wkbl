@@ -340,7 +340,7 @@ let player_profile_page ?(leaderboards=None) (profile: player_profile) ~scope ~(
         let opponent_label = if g.is_home then "vs " ^ g.opponent else "@ " ^ g.opponent in
         let opponent_href = "/team/" ^ Uri.pct_encode g.opponent in
         Printf.sprintf
-          {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/30 transition-colors"><td class="px-3 py-2 text-slate-600 dark:text-slate-400 text-sm font-mono whitespace-nowrap w-[90px] sm:w-[110px]"><a href="/boxscore/%s" class="hover:text-orange-600 dark:hover:text-orange-400 transition-colors">%s</a></td><td class="px-3 py-2 text-slate-900 dark:text-white"><div class="flex flex-wrap items-center gap-x-3 gap-y-2"><a href="%s" class="player-name min-w-0 flex-1 hover:text-orange-600 dark:hover:text-orange-400 transition-colors">%s</a><div class="flex items-center gap-2 shrink-0">%s%s</div></div></td><td class="px-3 py-2 text-right font-mono text-slate-600 dark:text-slate-400 w-[60px] sm:w-[72px] whitespace-nowrap">%.1f</td><td class="px-3 py-2 text-right font-bold %s w-[60px] sm:w-[72px] whitespace-nowrap">%d</td><td class="px-3 py-2 text-right font-mono w-[60px] sm:w-[72px] whitespace-nowrap %s">%s</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[60px] sm:w-[72px] whitespace-nowrap">%d</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[60px] sm:w-[72px] hidden sm:table-cell">%d</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[60px] sm:w-[72px] hidden sm:table-cell">%d</td></tr>|html}
+          {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/30 transition-colors"><td class="px-3 py-2 text-slate-600 dark:text-slate-400 text-sm font-mono whitespace-nowrap w-[90px] sm:w-[110px]"><a href="/boxscore/%s" class="hover:text-orange-600 dark:hover:text-orange-400 transition-colors">%s</a></td><td class="px-3 py-2 text-slate-900 dark:text-white"><div class="flex flex-wrap items-center gap-x-3 gap-y-2"><a href="%s" class="player-name min-w-0 flex-1 hover:text-orange-600 dark:hover:text-orange-400 transition-colors">%s</a><div class="flex items-center gap-2 shrink-0">%s%s</div></div></td><td class="px-3 py-2 text-right font-mono text-slate-600 dark:text-slate-400 w-[60px] sm:w-[72px] whitespace-nowrap">%.1f</td><td class="px-3 py-2 text-right font-bold %s w-[60px] sm:w-[72px] whitespace-nowrap">%d</td><td class="px-3 py-2 text-right font-mono w-[60px] sm:w-[72px] whitespace-nowrap %s">%s</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[60px] sm:w-[72px] whitespace-nowrap">%d</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[60px] sm:w-[72px] hidden sm:table-cell">%d</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[60px] sm:w-[72px] hidden sm:table-cell">%d</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[60px] sm:w-[72px] hidden sm:table-cell">%d</td></tr>|html}
           (Uri.pct_encode g.game_id)
           (escape_html g.game_date)
           (escape_html opponent_href)
@@ -354,7 +354,8 @@ let player_profile_page ?(leaderboards=None) (profile: player_profile) ~scope ~(
           (escape_html pm_str)
           g.reb
           g.ast
-          g.stl)
+          g.stl
+          g.blk)
     |> String.concat "\n"
   in
   let birth_chip =
@@ -973,7 +974,7 @@ let player_game_logs_page (profile: player_profile) ~(season: string) ~(seasons:
   in
   let rows =
     if games = [] then
-      {html|<tr><td colspan="9" class="px-4 py-10 text-center text-slate-600 dark:text-slate-400 text-sm">No games found.</td></tr>|html}
+      {html|<tr><td colspan="5" class="sm:hidden px-4 py-10 text-center text-slate-600 dark:text-slate-400 text-sm">No games found.</td><td colspan="9" class="hidden sm:table-cell px-4 py-10 text-center text-slate-600 dark:text-slate-400 text-sm">No games found.</td></tr>|html}
     else
       games
       |> List.map (fun (g: player_game_stat) ->
@@ -1074,4 +1075,3 @@ let player_game_logs_page (profile: player_profile) ~(season: string) ~(seasons:
 
 (* Re-export from Views_history for convenient access *)
 let player_career_page = Views_history.player_career_page
-
