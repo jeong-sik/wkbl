@@ -1138,16 +1138,25 @@ let render_lineup_table ~title (lineups: Domain.lineup_stats list) : string =
           <h2 class="font-bold text-slate-900 dark:text-slate-200">%s</h2>
         </div>
         <div class="overflow-x-auto">
-          <table class="w-full text-sm" aria-label="라인업 통계">
+          <table class="w-full text-sm table-fixed font-mono tabular-nums" aria-label="라인업 통계">
+            <colgroup>
+              <col style="width: 50px;">  <!-- # -->
+              <col style="width: auto;">  <!-- Players -->
+              <col style="width: 70px;">  <!-- Games -->
+              <col style="width: 70px;">  <!-- Min -->
+              <col style="width: 60px;">  <!-- Pts -->
+              <col style="width: 60px;">  <!-- +/- -->
+              <col style="width: 80px;">  <!-- +/-/min -->
+            </colgroup>
             <thead class="bg-slate-50 dark:bg-slate-800/30">
               <tr class="text-left text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                <th scope="col" class="px-3 py-2 text-center">#</th>
-                <th scope="col" class="px-3 py-2">Players</th>
-                <th scope="col" class="px-3 py-2 text-center" title="Games Played">Games</th>
-                <th scope="col" class="px-3 py-2 text-center" title="Minutes Played">Min</th>
-                <th scope="col" class="px-3 py-2 text-center" title="Points">Pts</th>
-                <th scope="col" class="px-3 py-2 text-center" title="Plus/Minus">+/-</th>
-                <th scope="col" class="px-3 py-2 text-center" title="Plus/Minus per minute">+/-/min</th>
+                <th scope="col" class="px-3 py-2 text-center font-sans">#</th>
+                <th scope="col" class="px-3 py-2 font-sans">Players</th>
+                <th scope="col" class="px-3 py-2 text-center font-sans" title="Games Played">Games</th>
+                <th scope="col" class="px-3 py-2 text-center font-sans" title="Minutes Played">Min</th>
+                <th scope="col" class="px-3 py-2 text-center font-sans" title="Points">Pts</th>
+                <th scope="col" class="px-3 py-2 text-center font-sans" title="Plus/Minus">+/-</th>
+                <th scope="col" class="px-3 py-2 text-center font-sans" title="Plus/Minus per minute">+/-/min</th>
               </tr>
             </thead>
             <tbody class="text-slate-700 dark:text-slate-300">
@@ -1170,16 +1179,25 @@ let render_synergy_table (synergies: Domain.lineup_synergy list) : string =
           <h2 class="font-bold text-slate-900 dark:text-slate-200">Player Synergies (Top Pairs)</h2>
         </div>
         <div class="overflow-x-auto">
-          <table class="w-full text-sm" aria-label="선수 시너지 순위">
+          <table class="w-full text-sm table-fixed font-mono tabular-nums" aria-label="선수 시너지 순위">
+            <colgroup>
+              <col style="width: 50px;">  <!-- # -->
+              <col style="width: auto;">  <!-- P1 -->
+              <col style="width: auto;">  <!-- P2 -->
+              <col style="width: 70px;">  <!-- Games -->
+              <col style="width: 70px;">  <!-- Min -->
+              <col style="width: 80px;">  <!-- +/-/min -->
+              <col style="width: 80px;">  <!-- Synergy -->
+            </colgroup>
             <thead class="bg-slate-50 dark:bg-slate-800/30">
               <tr class="text-left text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                <th scope="col" class="px-3 py-2 text-center">#</th>
-                <th scope="col" class="px-3 py-2">Player 1</th>
-                <th scope="col" class="px-3 py-2">Player 2</th>
-                <th scope="col" class="px-3 py-2 text-center" title="Games together">Games</th>
-                <th scope="col" class="px-3 py-2 text-center" title="Minutes together">Min</th>
-                <th scope="col" class="px-3 py-2 text-center" title="Plus/Minus per minute">+/-/min</th>
-                <th scope="col" class="px-3 py-2 text-center" title="Synergy score">Synergy</th>
+                <th scope="col" class="px-3 py-2 text-center font-sans">#</th>
+                <th scope="col" class="px-3 py-2 font-sans">Player 1</th>
+                <th scope="col" class="px-3 py-2 font-sans">Player 2</th>
+                <th scope="col" class="px-3 py-2 text-center font-sans" title="Games together">Games</th>
+                <th scope="col" class="px-3 py-2 text-center font-sans" title="Minutes together">Min</th>
+                <th scope="col" class="px-3 py-2 text-center font-sans" title="Plus/Minus per minute">+/-/min</th>
+                <th scope="col" class="px-3 py-2 text-center font-sans" title="Synergy score">Synergy</th>
               </tr>
             </thead>
             <tbody class="text-slate-700 dark:text-slate-300">

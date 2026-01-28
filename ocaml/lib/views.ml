@@ -172,10 +172,50 @@ let teams_table ~season ~scope (stats: team_stats list) =
   |> String.concat "\n"
  in
  let min_label = if scope = PerGame then "MIN/G" else "MIN" in
-  Printf.sprintf
-    {html|<div class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto overflow-y-hidden"><table class="w-full min-w-[980px] text-xs sm:text-sm font-mono tabular-nums table-auto" data-sortable id="teams-table-inner" aria-label="팀 통계 테이블">
-      <th class="px-3 py-2 text-right hidden md:table-cell whitespace-nowrap" data-sortable data-sort-key="min">%s</th><th class="px-3 py-2 text-right whitespace-nowrap" data-sortable data-sort-key="pts">PTS</th><th class="px-3 py-2 text-right whitespace-nowrap" data-sortable data-sort-key="mg" title="MG: 팀 득실마진(PTS - PA)">MG</th><th class="px-3 py-2 text-right hidden md:table-cell whitespace-nowrap" data-sortable data-sort-key="pa">PA</th><th class="px-3 py-2 text-right hidden sm:table-cell whitespace-nowrap" data-sortable data-sort-key="reb">REB</th><th class="px-3 py-2 text-right hidden sm:table-cell whitespace-nowrap" data-sortable data-sort-key="ast">AST</th><th class="px-3 py-2 text-right hidden md:table-cell whitespace-nowrap" data-sortable data-sort-key="stl">STL</th><th class="px-3 py-2 text-right hidden md:table-cell whitespace-nowrap" data-sortable data-sort-key="blk">BLK</th><th class="px-3 py-2 text-right hidden md:table-cell whitespace-nowrap" data-sortable data-sort-key="to">TO</th><th class="px-3 py-2 text-right hidden lg:table-cell whitespace-nowrap" data-sortable data-sort-key="fg">FG%%</th><th class="px-3 py-2 text-right hidden lg:table-cell whitespace-nowrap" data-sortable data-sort-key="3p">3P%%</th><th class="px-3 py-2 text-right hidden lg:table-cell whitespace-nowrap" data-sortable data-sort-key="ft">FT%%</th><th class="px-3 py-2 text-right hidden lg:table-cell whitespace-nowrap" data-sortable data-sort-key="efg">eFG%%</th><th class="px-3 py-2 text-right hidden lg:table-cell text-emerald-600 dark:text-emerald-400 whitespace-nowrap" data-sortable data-sort-key="ts" title="True Shooting %%">TS%%</th><th class="px-3 py-2 text-right text-orange-600 dark:text-orange-400 whitespace-nowrap" data-sortable data-sort-key="eff">EFF</th></tr></thead><tbody>%s</tbody></table></div>|html}
-    min_label rows
+ let header = {html|<div class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto overflow-y-hidden shadow-xl">
+  <table class="w-full min-w-[980px] text-xs sm:text-sm font-mono tabular-nums table-fixed" data-sortable id="teams-table-inner" aria-label="팀 통계 테이블">
+    <colgroup>
+      <col style="width: auto;"> <!-- Team -->
+      <col style="width: 60px;"> <!-- GP -->
+      <col class="hidden md:table-column" style="width: 80px;"> <!-- MIN -->
+      <col style="width: 60px;"> <!-- PTS -->
+      <col style="width: 60px;"> <!-- MG -->
+      <col class="hidden md:table-column" style="width: 60px;"> <!-- PA -->
+      <col class="hidden sm:table-column" style="width: 60px;"> <!-- REB -->
+      <col class="hidden sm:table-column" style="width: 60px;"> <!-- AST -->
+      <col class="hidden md:table-column" style="width: 60px;"> <!-- STL -->
+      <col class="hidden md:table-column" style="width: 60px;"> <!-- BLK -->
+      <col class="hidden md:table-column" style="width: 60px;"> <!-- TO -->
+      <col class="hidden lg:table-column" style="width: 80px;"> <!-- FG% -->
+      <col class="hidden lg:table-column" style="width: 80px;"> <!-- 3P% -->
+      <col class="hidden lg:table-column" style="width: 80px;"> <!-- FT% -->
+      <col class="hidden lg:table-column" style="width: 80px;"> <!-- eFG% -->
+      <col class="hidden lg:table-column" style="width: 80px;"> <!-- TS% -->
+      <col style="width: 80px;"> <!-- EFF -->
+    </colgroup>
+    <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider whitespace-nowrap">
+      <tr>
+        <th class="px-3 py-2 text-left font-sans">Team</th>
+        <th class="px-3 py-2 text-right" data-sortable data-sort-key="gp">GP</th>
+        <th class="px-3 py-2 text-right hidden md:table-cell" data-sortable data-sort-key="min">|html} ^ min_label ^ {html|</th>
+        <th class="px-3 py-2 text-right" data-sortable data-sort-key="pts">PTS</th>
+        <th class="px-3 py-2 text-right" data-sortable data-sort-key="mg" title="MG: 팀 득실마진(PTS - PA)">MG</th>
+        <th class="px-3 py-2 text-right hidden md:table-cell" data-sortable data-sort-key="pa">PA</th>
+        <th class="px-3 py-2 text-right hidden sm:table-cell" data-sortable data-sort-key="reb">REB</th>
+        <th class="px-3 py-2 text-right hidden sm:table-cell" data-sortable data-sort-key="ast">AST</th>
+        <th class="px-3 py-2 text-right hidden md:table-cell" data-sortable data-sort-key="stl">STL</th>
+        <th class="px-3 py-2 text-right hidden md:table-cell" data-sortable data-sort-key="blk">BLK</th>
+        <th class="px-3 py-2 text-right hidden md:table-cell" data-sortable data-sort-key="to">TO</th>
+        <th class="px-3 py-2 text-right hidden lg:table-cell" data-sortable data-sort-key="fg">FG%</th>
+        <th class="px-3 py-2 text-right hidden lg:table-cell" data-sortable data-sort-key="3p">3P%</th>
+        <th class="px-3 py-2 text-right hidden lg:table-cell" data-sortable data-sort-key="ft">FT%</th>
+        <th class="px-3 py-2 text-right hidden lg:table-cell" data-sortable data-sort-key="efg">eFG%</th>
+        <th class="px-3 py-2 text-right hidden lg:table-cell text-emerald-600 dark:text-emerald-400" data-sortable data-sort-key="ts" title="True Shooting %">TS%</th>
+        <th class="px-3 py-2 text-right text-orange-600 dark:text-orange-400" data-sortable data-sort-key="eff">EFF</th>
+      </tr>
+    </thead>
+    <tbody>|html} ^ rows ^ {html|</tbody></table></div>|html}
+ in header
 
 let teams_page ~season ~seasons ~scope ~sort ~include_mismatch stats =
  let scope_value = team_scope_to_string scope in
@@ -574,7 +614,16 @@ let quarter_flow_section ~home_name ~away_name (quarters: quarter_score list) =
     <span class="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">쿼터별 흐름</span>
    </div>
    <div class="overflow-x-auto">
-    <table class="w-full text-sm">
+    <table class="w-full text-sm table-fixed">
+     <colgroup>
+      <col style="width: auto;"> <!-- QTR -->
+      <col style="width: 60px;"> <!-- Home Sum -->
+      <col class="hidden sm:table-column" style="width: 60px;"> <!-- Home Q -->
+      <col style="width: 40px;"> <!-- vs -->
+      <col style="width: 60px;"> <!-- Away Sum -->
+      <col class="hidden sm:table-column" style="width: 60px;"> <!-- Away Q -->
+      <col style="width: 80px;"> <!-- Flow -->
+     </colgroup>
      <thead class="text-xs uppercase text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700">
       <tr>
        <th class="px-3 py-2 text-left">QTR</th>
@@ -1873,26 +1922,32 @@ let clutch_page ~season ~seasons (stats: clutch_stats list) =
      "Clutch time = Q4 remaining 5 min + score diff ≤ 5 pts")
   else ""
  in
- let table_html = Printf.sprintf
+ let table_html =
   {html|<div class="overflow-x-auto">
-   <table class="w-full text-sm">
+   <table class="w-full text-sm table-fixed font-mono tabular-nums">
+    <colgroup>
+      <col style="width: auto;"> <!-- Player -->
+      <col style="width: 140px;"> <!-- Team -->
+      <col style="width: 60px;">  <!-- PTS -->
+      <col style="width: 100px;"> <!-- FGM-A -->
+      <col style="width: 80px;">  <!-- FG% -->
+      <col style="width: 60px;">  <!-- 3PM -->
+      <col style="width: 100px;"> <!-- FTM-A -->
+    </colgroup>
     <thead class="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
      <tr>
-      
-      <th class="px-3 py-2 text-left">Player</th>
-      <th class="px-3 py-2 text-left">Team</th>
-      
-      <th class="px-3 py-2 text-center" title="Clutch Points">PTS</th>
-      <th class="px-3 py-2 text-center" title="Field Goals Made-Attempted">FGM-A</th>
-      <th class="px-3 py-2 text-center" title="Field Goal Percentage">FG%%</th>
-      <th class="px-3 py-2 text-center" title="3-Pointers Made">3PM</th>
-      <th class="px-3 py-2 text-center" title="Free Throws Made-Attempted">FTM-A</th>
+      <th class="px-3 py-2 text-left font-sans">Player</th>
+      <th class="px-3 py-2 text-left font-sans">Team</th>
+      <th class="px-3 py-2 text-center font-sans" title="Clutch Points">PTS</th>
+      <th class="px-3 py-2 text-center font-sans" title="Field Goals Made-Attempted">FGM-A</th>
+      <th class="px-3 py-2 text-center font-sans" title="Field Goal Percentage">FG%</th>
+      <th class="px-3 py-2 text-center font-sans" title="3-Pointers Made">3PM</th>
+      <th class="px-3 py-2 text-center font-sans" title="Free Throws Made-Attempted">FTM-A</th>
      </tr>
     </thead>
-    <tbody>%s%s</tbody>
+    <tbody>|html} ^ rows ^ empty_row ^ {html|</tbody>
    </table>
   </div>|html}
-  rows empty_row
  in
  let content = Printf.sprintf
   {html|<div class="space-y-6 animate-fade-in">
