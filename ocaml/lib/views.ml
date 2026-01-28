@@ -198,8 +198,8 @@ let teams_table ~season ~scope (stats: Domain.team_stats list) =
     col "EFF" ~w:(px 80) ~align:`Right ~sort:"eff" ~highlight:true;
   ] in
 
-  (* 2. Transform Data to HTML Rows *)
-  let rows_html =
+  (* 2. Transform Data to Raw Strings (Data-Oriented) *)
+  let rows_data =
     stats
     |> List.map (fun s ->
         let logo = team_logo_tag ~class_name:"w-5 h-5 shrink-0" s.team in
@@ -210,36 +210,30 @@ let teams_table ~season ~scope (stats: Domain.team_stats list) =
           Printf.sprintf {html|<span class="%s">%s</span>|html} (margin_color v) s_str
         in
         
-        let cell ?(cls="") ?(highlight=false) content =
-          let color = if highlight then "text-orange-600 dark:text-orange-400 font-bold" else "text-slate-700 dark:text-slate-300" in
-          Printf.sprintf {html|<td class="px-3 py-2 %s %s">%s</td>|html} cls color content
-        in
-        
-        String.concat "" [
-          cell team_cell;
-          cell ~cls:"text-right" (string_of_int s.gp);
-          cell ~cls:"text-right hidden md:table-cell" (format_float s.min_total);
-          cell ~cls:"text-right" (format_float s.pts);
-          cell ~cls:"text-right" margin_str;
-          cell ~cls:"text-right hidden md:table-cell" (format_float s.pts_against);
-          cell ~cls:"text-right hidden sm:table-cell" (format_float s.reb);
-          cell ~cls:"text-right hidden sm:table-cell" (format_float s.ast);
-          cell ~cls:"text-right hidden md:table-cell" (format_float s.stl);
-          cell ~cls:"text-right hidden md:table-cell" (format_float s.blk);
-          cell ~cls:"text-right hidden md:table-cell" (format_float s.turnovers);
-          cell ~cls:"text-right hidden lg:table-cell" (format_float s.fg_pct);
-          cell ~cls:"text-right hidden lg:table-cell" (format_float s.fg3_pct);
-          cell ~cls:"text-right hidden lg:table-cell" (format_float s.ft_pct);
-          cell ~cls:"text-right hidden lg:table-cell" (format_float s.efg_pct);
-          cell ~cls:"text-right hidden lg:table-cell text-emerald-600 dark:text-emerald-400" (format_float s.ts_pct);
-          cell ~cls:"text-right" ~highlight:true (format_float s.eff);
+        [
+          team_cell;
+          string_of_int s.gp;
+          format_float s.min_total;
+          format_float s.pts;
+          margin_str;
+          format_float s.pts_against;
+          format_float s.reb;
+          format_float s.ast;
+          format_float s.stl;
+          format_float s.blk;
+          format_float s.turnovers;
+          format_float s.fg_pct;
+          format_float s.fg3_pct;
+          format_float s.ft_pct;
+          format_float s.efg_pct;
+          format_float s.ts_pct;
+          format_float s.eff;
         ]
-        |> fun cells -> Printf.sprintf {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors group">%s</tr>|html} cells
       )
   in
 
   (* 3. Render Table *)
-  render_fixed_table ~id:"teams-table-inner" ~min_width:"min-w-[980px]" ~cols rows_html
+  render_fixed_table ~id:"teams-table-inner" ~min_width:"min-w-[980px]" ~cols rows_data
 
 let teams_page ~season ~seasons ~scope ~sort ~include_mismatch stats =
  let scope_value = team_scope_to_string scope in
