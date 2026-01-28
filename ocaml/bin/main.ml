@@ -675,6 +675,76 @@ Sitemap: https://wkbl.win/sitemap.xml
               Kirin.html (Views_tools.fantasy_results_table scores)
     );
 
+    (* Compare - HTMX table fragment *)
+    Kirin.get "/compare/table" (fun request ->
+      let compare_type =
+        Kirin.query_opt "type" request
+        |> Option.map String.lowercase_ascii
+        |> Option.value ~default:"player"
+      in
+      let left = query_nonempty request "left" |> Option.value ~default:"" in
+      let right = query_nonempty request "right" |> Option.value ~default:"" in
+      match Db.get_seasons () with
+      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+      | Ok seasons ->
+          let season = query_season_or_latest request seasons in
+          if left = "" || right = "" then
+            Kirin.html (Views.compare_table_empty ())
+          else
+            match compare_type with
+            | "team" -> (
+                match Db.get_team_stats ~season ~scope:PerGame ~sort:TeamByPoints () with
+                | Error _ -> Kirin.html (Views.compare_table_empty ())
+                | Ok stats ->
+                    let code_of name = team_code_of_string name in
+                    let find_by_code code =
+                      match code with
+                      | None -> None
+                      | Some c ->
+                          List.find_opt (fun (row: team_stats) -> code_of row.team = Some c) stats
+                    in
+                    let left_row = find_by_code (code_of left) in
+                    let right_row = find_by_code (code_of right) in
+                    (match left_row, right_row with
+                    | Some a, Some b ->
+                        let rows = [
+                          ("PTS", a.pts, b.pts, false);
+                          ("MG", a.margin, b.margin, true);
+                          ("REB", a.reb, b.reb, false);
+                          ("AST", a.ast, b.ast, false);
+                          ("STL", a.stl, b.stl, false);
+                          ("BLK", a.blk, b.blk, false);
+                          ("TO", a.turnovers, b.turnovers, false);
+                          ("EFF", a.eff, b.eff, false);
+                        ] in
+                        Kirin.html
+                          (Views.compare_table_fragment
+                             ~left_label:(Views_common.normalize_name a.team)
+                             ~right_label:(Views_common.normalize_name b.team)
+                             rows)
+                    | _ -> Kirin.html (Views.compare_table_empty ())))
+            | _ -> (
+                match Db.get_player_aggregate_by_id ~player_id:left ~season (),
+                      Db.get_player_aggregate_by_id ~player_id:right ~season () with
+                | Ok (Some a), Ok (Some b) ->
+                    let rows = [
+                      ("PTS", a.avg_points, b.avg_points, false);
+                      ("MG", a.avg_margin, b.avg_margin, true);
+                      ("REB", a.avg_rebounds, b.avg_rebounds, false);
+                      ("AST", a.avg_assists, b.avg_assists, false);
+                      ("STL", a.avg_steals, b.avg_steals, false);
+                      ("BLK", a.avg_blocks, b.avg_blocks, false);
+                      ("TO", a.avg_turnovers, b.avg_turnovers, false);
+                      ("EFF", a.efficiency, b.efficiency, false);
+                    ] in
+                    Kirin.html
+                      (Views.compare_table_fragment
+                         ~left_label:(Views_common.normalize_name a.name)
+                         ~right_label:(Views_common.normalize_name b.name)
+                         rows)
+                | _ -> Kirin.html (Views.compare_table_empty ()))
+    );
+
     (* Compare - simplified version *)
     Kirin.get "/compare" (fun request ->
       let p1_query = Kirin.query_opt "p1" request |> Option.value ~default:"" in
