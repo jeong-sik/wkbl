@@ -20,7 +20,7 @@ check_page() {
         return
     fi
 
-    # 본문 내 에러 키워드 검사 (Dream 에러 핸들러 메시지)
+        # 본문 내 에러 키워드 검사 (Internal Server Error 등)
     if echo "$body" | grep -q "Something went wrong"; then
         echo "❌ [FAIL] $name ($url): 'Something went wrong' found in body"
         # 에러 메시지 추출 (괄호 안의 내용)
