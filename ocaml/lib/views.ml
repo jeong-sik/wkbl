@@ -215,7 +215,19 @@ let standings_table ~season (standings : team_standing list) =
   |> String.concat "\n"
  in
  Printf.sprintf
-  {html|<div class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto overflow-y-hidden shadow-2xl"><table class="min-w-[560px] sm:min-w-[760px] text-xs sm:text-sm font-mono tabular-nums" data-sortable id="standings-table-inner" aria-label="순위표"><th class="px-4 py-3 text-right" data-sortable data-sort-key="w">W</th><th class="px-4 py-3 text-right" data-sortable data-sort-key="l">L</th><th class="px-4 py-3 text-right" data-sortable data-sort-key="pct">PCT</th><th class="px-4 py-3 text-right hidden sm:table-cell" data-sortable data-sort-key="gb">GB</th><th class="px-4 py-3 text-right hidden md:table-cell" data-sortable data-sort-key="ps">PS/G</th><th class="px-4 py-3 text-right hidden md:table-cell" data-sortable data-sort-key="pa">PA/G</th><th class="px-4 py-3 text-right hidden sm:table-cell" data-sortable data-sort-key="diff">DIFF</th></tr></thead><tbody id="standings-body">%s</tbody></table></div>|html}
+  {html|<div class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto overflow-y-hidden shadow-2xl"><table class="min-w-[560px] sm:min-w-[760px] w-full text-xs sm:text-sm font-mono tabular-nums table-fixed" data-sortable id="standings-table-inner" aria-label="순위표">
+   <colgroup>
+    <col style="width: auto;"> <!-- Team -->
+    <col style="width: 60px;"> <!-- GP -->
+    <col style="width: 60px;"> <!-- W -->
+    <col style="width: 60px;"> <!-- L -->
+    <col style="width: 80px;"> <!-- PCT -->
+    <col class="hidden sm:table-column" style="width: 60px;"> <!-- GB -->
+    <col class="hidden md:table-column" style="width: 80px;"> <!-- PS/G -->
+    <col class="hidden md:table-column" style="width: 80px;"> <!-- PA/G -->
+    <col class="hidden sm:table-column" style="width: 80px;"> <!-- DIFF -->
+   </colgroup>
+   <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider"><tr><th class="px-4 py-3 text-left font-sans">Team</th><th class="px-4 py-3 text-right" data-sortable data-sort-key="gp">GP</th><th class="px-4 py-3 text-right" data-sortable data-sort-key="w">W</th><th class="px-4 py-3 text-right" data-sortable data-sort-key="l">L</th><th class="px-4 py-3 text-right" data-sortable data-sort-key="pct">PCT</th><th class="px-4 py-3 text-right hidden sm:table-cell" data-sortable data-sort-key="gb">GB</th><th class="px-4 py-3 text-right hidden md:table-cell" data-sortable data-sort-key="ps">PS/G</th><th class="px-4 py-3 text-right hidden md:table-cell" data-sortable data-sort-key="pa">PA/G</th><th class="px-4 py-3 text-right hidden sm:table-cell" data-sortable data-sort-key="diff">DIFF</th></tr></thead><tbody id="standings-body">%s</tbody></table></div>|html}
   rows
 
 let standings_page ~season ~seasons standings =
@@ -282,7 +294,14 @@ let games_table (games : game_summary list) =
     |> String.concat "\n"
   in
   Printf.sprintf
-    {html|<div class="space-y-3 sm:hidden">%s</div><div class="hidden sm:block bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto overflow-y-hidden shadow-2xl"><table class="min-w-[720px] sm:min-w-[860px] w-full text-xs sm:text-sm font-mono tabular-nums table-auto" aria-label="경기 일정">
+    {html|<div class="space-y-3 sm:hidden">%s</div><div class="hidden sm:block bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto overflow-y-hidden shadow-2xl"><table class="min-w-[720px] sm:min-w-[860px] w-full text-xs sm:text-sm font-mono tabular-nums table-fixed" aria-label="경기 일정">
+      <colgroup>
+        <col style="width: 120px;"> <!-- Date -->
+        <col style="width: auto;">  <!-- Home -->
+        <col style="width: 120px;"> <!-- Score -->
+        <col style="width: auto;">  <!-- Away -->
+        <col style="width: 100px;"> <!-- Action -->
+      </colgroup>
       <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider whitespace-nowrap"><tr><th class="px-4 py-3 text-left font-sans whitespace-nowrap">Date</th><th class="px-4 py-3 text-right font-sans whitespace-nowrap">Home</th><th class="px-4 py-3 text-center whitespace-nowrap">Score</th><th class="px-4 py-3 text-left font-sans whitespace-nowrap">Away</th><th class="px-4 py-3 text-right font-sans whitespace-nowrap">Action</th></tr></thead><tbody id="games-body">%s</tbody></table></div>|html}
     mobile_cards rows
 
@@ -364,7 +383,16 @@ let boxscores_table (games : game_summary list) =
   |> String.concat "\n"
  in
  Printf.sprintf
-  {html|<div class="space-y-3 sm:hidden">%s</div><div class="hidden sm:block bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto overflow-y-hidden shadow-2xl"><table class="min-w-[720px] sm:min-w-[900px] w-full text-xs sm:text-sm font-mono tabular-nums table-auto" aria-label="박스스코어 목록">
+  {html|<div class="space-y-3 sm:hidden">%s</div><div class="hidden sm:block bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto overflow-y-hidden shadow-2xl"><table class="min-w-[720px] sm:min-w-[900px] w-full text-xs sm:text-sm font-mono tabular-nums table-fixed" aria-label="박스스코어 목록">
+   <colgroup>
+    <col style="width: 120px;"> <!-- Date -->
+    <col style="width: auto;">  <!-- Home -->
+    <col style="width: 60px;">  <!-- PTS -->
+    <col style="width: 60px;">  <!-- PTS -->
+    <col style="width: auto;">  <!-- Away -->
+    <col class="hidden sm:table-column" style="width: 80px;"> <!-- Margin -->
+    <col style="width: 80px;">  <!-- Link -->
+   </colgroup>
    <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider whitespace-nowrap"><tr><th class="px-4 py-3 text-left font-sans whitespace-nowrap">Date</th><th class="px-4 py-3 text-right font-sans whitespace-nowrap">Home</th><th class="px-4 py-3 text-center font-sans whitespace-nowrap">PTS</th><th class="px-4 py-3 text-center font-sans whitespace-nowrap">PTS</th><th class="px-4 py-3 text-left font-sans whitespace-nowrap">Away</th><th class="px-4 py-3 text-right font-sans hidden sm:table-cell whitespace-nowrap">Margin</th><th class="px-4 py-3 text-right font-sans whitespace-nowrap">Link</th></tr></thead><tbody id="boxscores-body">%s</tbody></table></div>|html}
   mobile_cards rows
 
@@ -841,7 +869,19 @@ let h2h_game_row (g: h2h_game) =
 
 let h2h_game_table (p1_name: string) (p2_name: string) (games: h2h_game list) =
  let rows = games |> List.map h2h_game_row |> String.concat "\n" in
- Printf.sprintf {html|<div class="space-y-3 mt-8"><h3 class="text-center text-slate-600 dark:text-slate-400 text-sm font-bold uppercase tracking-widest">Match History</h3><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto overflow-y-hidden shadow-xl"><table class="w-full text-sm table-fixed" aria-label="선수 맞대결 기록"><thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-600 dark:text-slate-400 uppercase text-[10px] tracking-tighter"><tr><th class="px-3 py-2 text-left font-sans w-[100px]">Date</th><th class="px-3 py-2 text-right font-sans text-orange-600 dark:text-orange-400 w-[60px]">%s PTS</th><th class="px-3 py-2 text-right font-sans w-[60px]">REB</th><th class="px-3 py-2 text-right font-sans w-[60px]">AST</th><th class="px-3 py-2 w-[40px]"></th><th class="px-3 py-2 text-left font-sans text-sky-600 dark:text-sky-400 w-[60px]">%s PTS</th><th class="px-3 py-2 text-left font-sans w-[60px]">REB</th><th class="px-3 py-2 text-left font-sans w-[60px]">AST</th><th class="px-3 py-2 w-[80px]"></th></tr></thead><tbody>%s</tbody></table></div></div>|html} (escape_html p1_name) (escape_html p2_name) rows
+ Printf.sprintf {html|<div class="space-y-3 mt-8"><h3 class="text-center text-slate-600 dark:text-slate-400 text-sm font-bold uppercase tracking-widest">Match History</h3><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto overflow-y-hidden shadow-xl"><table class="w-full text-sm table-fixed" aria-label="선수 맞대결 기록">
+  <colgroup>
+    <col style="width: 100px;"> <!-- Date -->
+    <col style="width: 60px;">  <!-- P1 PTS -->
+    <col style="width: 60px;">  <!-- REB -->
+    <col style="width: 60px;">  <!-- AST -->
+    <col style="width: 40px;">  <!-- vs -->
+    <col style="width: 60px;">  <!-- P2 PTS -->
+    <col style="width: 60px;">  <!-- REB -->
+    <col style="width: 60px;">  <!-- AST -->
+    <col style="width: 80px;">  <!-- DIFF -->
+  </colgroup>
+  <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-600 dark:text-slate-400 uppercase text-[10px] tracking-tighter"><tr><th class="px-3 py-2 text-left font-sans">Date</th><th class="px-3 py-2 text-right font-sans text-orange-600 dark:text-orange-400">%s PTS</th><th class="px-3 py-2 text-right font-sans">REB</th><th class="px-3 py-2 text-right font-sans">AST</th><th class="px-3 py-2"></th><th class="px-3 py-2 text-left font-sans text-sky-600 dark:text-sky-400">%s PTS</th><th class="px-3 py-2 text-left font-sans">REB</th><th class="px-3 py-2 text-left font-sans">AST</th><th class="px-3 py-2"></th></tr></thead><tbody>%s</tbody></table></div></div>|html} (escape_html p1_name) (escape_html p2_name) rows
 
 let compare_page
   ~season

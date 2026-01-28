@@ -573,16 +573,26 @@ let player_season_stats_table ~scope (stats: season_stats list) =
     |> String.concat "\n"
   in
   Printf.sprintf {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 scroll-shadow shadow-lg animate-fade-in"><table class="season-stats-table min-w-[520px] sm:min-w-[720px] w-full text-sm font-mono table-fixed" aria-label="시즌별 선수 스탯">
+    <colgroup>
+      <col style="width: auto;"> <!-- Season -->
+      <col class="hidden sm:table-column" style="width: 80px;"> <!-- GP -->
+      <col class="hidden sm:table-column" style="width: 80px;"> <!-- MIN -->
+      <col style="width: 80px;"> <!-- PTS -->
+      <col class="hidden sm:table-column" style="width: 80px;"> <!-- MG -->
+      <col style="width: 80px;"> <!-- REB -->
+      <col class="hidden sm:table-column" style="width: 80px;"> <!-- AST -->
+      <col style="width: 80px;"> <!-- EFF -->
+    </colgroup>
     <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-xs whitespace-nowrap">
       <tr>
         <th scope="col" class="px-3 py-2 text-left font-sans">Season</th>
-        <th scope="col" class="px-3 py-2 text-right w-[80px] hidden sm:table-cell" title="Games Played">GP</th>
-        <th scope="col" class="px-3 py-2 text-right w-[80px] hidden sm:table-cell" title="Minutes">MIN</th>
-        <th scope="col" class="px-3 py-2 text-right text-orange-600 dark:text-orange-400 w-[80px]" title="Points">PTS</th>
-        <th scope="col" class="px-3 py-2 text-right w-[80px] hidden sm:table-cell" title="Margin">MG</th>
-        <th scope="col" class="px-3 py-2 text-right w-[80px]" title="Rebounds">REB</th>
-        <th scope="col" class="px-3 py-2 text-right w-[80px] hidden sm:table-cell" title="Assists">AST</th>
-        <th scope="col" class="px-3 py-2 text-right w-[80px]" title="Efficiency">EFF</th>
+        <th scope="col" class="px-3 py-2 text-right hidden sm:table-cell" title="Games Played">GP</th>
+        <th scope="col" class="px-3 py-2 text-right hidden sm:table-cell" title="Minutes">MIN</th>
+        <th scope="col" class="px-3 py-2 text-right text-orange-600 dark:text-orange-400" title="Points">PTS</th>
+        <th scope="col" class="px-3 py-2 text-right hidden sm:table-cell" title="Margin">MG</th>
+        <th scope="col" class="px-3 py-2 text-right" title="Rebounds">REB</th>
+        <th scope="col" class="px-3 py-2 text-right hidden sm:table-cell" title="Assists">AST</th>
+        <th scope="col" class="px-3 py-2 text-right" title="Efficiency">EFF</th>
       </tr>
     </thead>
     <tbody>%s</tbody>
