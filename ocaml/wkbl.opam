@@ -12,7 +12,7 @@ bug-reports: "https://github.com/yousleepwhen/wkbl/issues"
 depends: [
   "ocaml" {>= "5.1"}
   "dune" {>= "3.16" & >= "3.16"}
-  "kirin" {>= "0.1.0"}
+  "kirin" {>= "0.3.1"}
   "caqti" {>= "2.1"}
   "caqti-driver-sqlite3" {>= "2.1"}
   "caqti-driver-postgresql" {>= "2.1"}

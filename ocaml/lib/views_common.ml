@@ -49,7 +49,7 @@ let col ?(w=None) ?(align=`Left) ?(resp=`Always) ?sort ?title ?(highlight=false)
 let px w = Some w
 
 (** Render a fixed-layout table with colgroup (Data-Oriented Approach) *)
-let render_fixed_table ~id ~min_width ~(cols : col_spec list) (rows_html : string list) =
+let render_fixed_table ~id ~min_width ~(cols : col_spec list) (rows_data : string list list) =
   let resp_class = function
     | `Always -> ""
     | `Hidden_sm -> "hidden sm:table-cell"
@@ -104,9 +104,27 @@ let render_fixed_table ~id ~min_width ~(cols : col_spec list) (rows_html : strin
     |> String.concat "\n"
     |> fun s -> Printf.sprintf {html|<thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider whitespace-nowrap"><tr>%s</tr></thead>|html} s
   in
-  (* 3. Render <tbody> *)
+  (* 3. Render <tbody> with synced classes *)
   let tbody =
-    Printf.sprintf {html|<tbody>%s</tbody>|html} (String.concat "\n" rows_html)
+    rows_data
+    |> List.map (fun row ->
+        if List.length row <> List.length cols then
+          Printf.sprintf "<!-- Row column count mismatch: expected %d, got %d -->" (List.length cols) (List.length row)
+        else
+          let cells =
+            List.map2 (fun c data ->
+              let base_cls = "px-3 py-2 whitespace-nowrap" in
+              let align_cls = align_class c.align in
+              let resp_cls = resp_class c.resp in
+              let color_cls = if c.highlight then "text-orange-600 dark:text-orange-400 font-bold" else "text-slate-700 dark:text-slate-300" in
+              Printf.sprintf {html|<td class="%s %s %s %s">%s</td>|html} base_cls align_cls resp_cls color_cls data
+            ) cols row
+            |> String.concat ""
+          in
+          Printf.sprintf {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors group">%s</tr>|html} cells
+      )
+    |> String.concat "\n"
+    |> fun s -> Printf.sprintf {html|<tbody>%s</tbody>|html} s
   in
   (* Assemble *)
   Printf.sprintf
