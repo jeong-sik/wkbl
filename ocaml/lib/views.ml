@@ -165,10 +165,9 @@ let team_stat_row ~season (row: team_stats) =
  ] in
  Printf.sprintf {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors">%s%s%s</tr>|html} name_cell gp_cell cells
 
-let teams_table ~season ~scope (stats: team_stats list) =
-  let open Ui.Table in
-  let min_label = if scope = PerGame then "MIN/G" else "MIN" in
-  let team_link s =
+let teams_table ~season ~scope (stats: Domain.team_stats list) =
+  let min_label = if scope = Domain.PerGame then "MIN/G" else "MIN" in
+  let team_link (s: Domain.team_stats) =
     if season = "ALL" then Printf.sprintf "/team/%s" (Uri.pct_encode s.team)
     else Printf.sprintf "/team/%s?season=%s" (Uri.pct_encode s.team) (Uri.pct_encode season)
   in
@@ -177,32 +176,70 @@ let teams_table ~season ~scope (stats: team_stats list) =
     else if v < 0.0 then "text-rose-600 dark:text-rose-400 font-bold"
     else "text-slate-700 dark:text-slate-300 font-bold"
   in
-  let columns : Domain.team_stats Ui.Table.column list = [
-    col "Team" (fun (s: Domain.team_stats) ->
-      let logo = team_logo_tag ~class_name:"w-5 h-5 shrink-0" s.team in
-      Printf.sprintf {html|<div class="flex items-center gap-2">%s<a href="%s" class="hover:text-orange-600 dark:text-orange-400 transition-colors truncate">%s</a></div>|html}
-        logo (team_link s) (escape_html s.team));
-    col "GP" ~w:(px 60) ~align:`Right ~sort:"gp" (fun (s: Domain.team_stats) -> string_of_int s.gp);
-    col min_label ~w:(px 80) ~align:`Right ~resp:`Hidden_md ~sort:"min" (fun (s: Domain.team_stats) -> Printf.sprintf "%.1f" s.min_total);
-    col "PTS" ~w:(px 60) ~align:`Right ~sort:"pts" (fun (s: Domain.team_stats) -> Printf.sprintf "%.1f" s.pts);
-    col "MG" ~w:(px 60) ~align:`Right ~sort:"mg" ~title:"MG: 팀 득실마진(PTS - PA)" (fun (s: Domain.team_stats) ->
-      let v = s.margin in
-      let s_str = if v > 0.0 then Printf.sprintf "+%.1f" v else Printf.sprintf "%.1f" v in
-      Printf.sprintf {html|<span class="%s">%s</span>|html} (margin_color v) s_str);
-    col "PA" ~w:(px 60) ~align:`Right ~resp:`Hidden_md ~sort:"pa" (fun (s: Domain.team_stats) -> Printf.sprintf "%.1f" s.pts_against);
-    col "REB" ~w:(px 60) ~align:`Right ~resp:`Hidden_sm ~sort:"reb" (fun (s: Domain.team_stats) -> Printf.sprintf "%.1f" s.reb);
-    col "AST" ~w:(px 60) ~align:`Right ~resp:`Hidden_sm ~sort:"ast" (fun (s: Domain.team_stats) -> Printf.sprintf "%.1f" s.ast);
-    col "STL" ~w:(px 60) ~align:`Right ~resp:`Hidden_md ~sort:"stl" (fun (s: Domain.team_stats) -> Printf.sprintf "%.1f" s.stl);
-    col "BLK" ~w:(px 60) ~align:`Right ~resp:`Hidden_md ~sort:"blk" (fun (s: Domain.team_stats) -> Printf.sprintf "%.1f" s.blk);
-    col "TO" ~w:(px 60) ~align:`Right ~resp:`Hidden_md ~sort:"to" (fun (s: Domain.team_stats) -> Printf.sprintf "%.1f" s.turnovers);
-    col "FG%" ~w:(px 80) ~align:`Right ~resp:`Hidden_lg ~sort:"fg" (fun (s: Domain.team_stats) -> Printf.sprintf "%.1f" s.fg_pct);
-    col "3P%" ~w:(px 80) ~align:`Right ~resp:`Hidden_lg ~sort:"3p" (fun (s: Domain.team_stats) -> Printf.sprintf "%.1f" s.fg3_pct);
-    col "FT%" ~w:(px 80) ~align:`Right ~resp:`Hidden_lg ~sort:"ft" (fun (s: Domain.team_stats) -> Printf.sprintf "%.1f" s.ft_pct);
-    col "eFG%" ~w:(px 80) ~align:`Right ~resp:`Hidden_lg ~sort:"efg" (fun (s: Domain.team_stats) -> Printf.sprintf "%.1f" s.efg_pct);
-    col "TS%" ~w:(px 80) ~align:`Right ~resp:`Hidden_lg ~sort:"ts" ~title:"True Shooting %" ~highlight:true (fun (s: Domain.team_stats) -> Printf.sprintf "%.1f" s.ts_pct);
-    col "EFF" ~w:(px 80) ~align:`Right ~sort:"eff" ~highlight:true (fun (s: Domain.team_stats) -> Printf.sprintf "%.1f" s.eff);
+  
+  (* 1. Define Columns (Metadata only) *)
+  let cols = [
+    col "Team";
+    col "GP" ~w:(px 60) ~align:`Right ~sort:"gp";
+    col min_label ~w:(px 80) ~align:`Right ~resp:`Hidden_md ~sort:"min";
+    col "PTS" ~w:(px 60) ~align:`Right ~sort:"pts";
+    col "MG" ~w:(px 60) ~align:`Right ~sort:"mg" ~title:"MG: 팀 득실마진(PTS - PA)";
+    col "PA" ~w:(px 60) ~align:`Right ~resp:`Hidden_md ~sort:"pa";
+    col "REB" ~w:(px 60) ~align:`Right ~resp:`Hidden_sm ~sort:"reb";
+    col "AST" ~w:(px 60) ~align:`Right ~resp:`Hidden_sm ~sort:"ast";
+    col "STL" ~w:(px 60) ~align:`Right ~resp:`Hidden_md ~sort:"stl";
+    col "BLK" ~w:(px 60) ~align:`Right ~resp:`Hidden_md ~sort:"blk";
+    col "TO" ~w:(px 60) ~align:`Right ~resp:`Hidden_md ~sort:"to";
+    col "FG%" ~w:(px 80) ~align:`Right ~resp:`Hidden_lg ~sort:"fg";
+    col "3P%" ~w:(px 80) ~align:`Right ~resp:`Hidden_lg ~sort:"3p";
+    col "FT%" ~w:(px 80) ~align:`Right ~resp:`Hidden_lg ~sort:"ft";
+    col "eFG%" ~w:(px 80) ~align:`Right ~resp:`Hidden_lg ~sort:"efg";
+    col "TS%" ~w:(px 80) ~align:`Right ~resp:`Hidden_lg ~sort:"ts" ~title:"True Shooting %" ~highlight:true;
+    col "EFF" ~w:(px 80) ~align:`Right ~sort:"eff" ~highlight:true;
   ] in
-  render ~id:"teams-table-inner" ~min_width:"min-w-[980px]" columns stats
+
+  (* 2. Transform Data to HTML Rows *)
+  let rows_html =
+    stats
+    |> List.map (fun s ->
+        let logo = team_logo_tag ~class_name:"w-5 h-5 shrink-0" s.team in
+        let team_cell = Printf.sprintf {html|<div class="flex items-center gap-2">%s<a href="%s" class="hover:text-orange-600 dark:text-orange-400 transition-colors truncate">%s</a></div>|html} logo (team_link s) (escape_html s.team) in
+        let margin_str =
+          let v = s.margin in
+          let s_str = if v > 0.0 then Printf.sprintf "+%.1f" v else format_float v in
+          Printf.sprintf {html|<span class="%s">%s</span>|html} (margin_color v) s_str
+        in
+        
+        let cell ?(cls="") ?(highlight=false) content =
+          let color = if highlight then "text-orange-600 dark:text-orange-400 font-bold" else "text-slate-700 dark:text-slate-300" in
+          Printf.sprintf {html|<td class="px-3 py-2 %s %s">%s</td>|html} cls color content
+        in
+        
+        String.concat "" [
+          cell team_cell;
+          cell ~cls:"text-right" (string_of_int s.gp);
+          cell ~cls:"text-right hidden md:table-cell" (format_float s.min_total);
+          cell ~cls:"text-right" (format_float s.pts);
+          cell ~cls:"text-right" margin_str;
+          cell ~cls:"text-right hidden md:table-cell" (format_float s.pts_against);
+          cell ~cls:"text-right hidden sm:table-cell" (format_float s.reb);
+          cell ~cls:"text-right hidden sm:table-cell" (format_float s.ast);
+          cell ~cls:"text-right hidden md:table-cell" (format_float s.stl);
+          cell ~cls:"text-right hidden md:table-cell" (format_float s.blk);
+          cell ~cls:"text-right hidden md:table-cell" (format_float s.turnovers);
+          cell ~cls:"text-right hidden lg:table-cell" (format_float s.fg_pct);
+          cell ~cls:"text-right hidden lg:table-cell" (format_float s.fg3_pct);
+          cell ~cls:"text-right hidden lg:table-cell" (format_float s.ft_pct);
+          cell ~cls:"text-right hidden lg:table-cell" (format_float s.efg_pct);
+          cell ~cls:"text-right hidden lg:table-cell text-emerald-600 dark:text-emerald-400" (format_float s.ts_pct);
+          cell ~cls:"text-right" ~highlight:true (format_float s.eff);
+        ]
+        |> fun cells -> Printf.sprintf {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors group">%s</tr>|html} cells
+      )
+  in
+
+  (* 3. Render Table *)
+  render_fixed_table ~id:"teams-table-inner" ~min_width:"min-w-[980px]" ~cols rows_html
 
 let teams_page ~season ~seasons ~scope ~sort ~include_mismatch stats =
  let scope_value = team_scope_to_string scope in

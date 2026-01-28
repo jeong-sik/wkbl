@@ -30,6 +30,95 @@ let escape_html s =
   |> List.of_seq
   |> String.concat ""
 
+(** Table column specification for render_fixed_table *)
+type col_spec = {
+  header : string;
+  width : int option; (* None = auto *)
+  align : [ `Left | `Right | `Center ];
+  resp : [ `Always | `Hidden_sm | `Hidden_md | `Hidden_lg ];
+  sort : string option;
+  title : string option;
+  highlight : bool; (* header text color highlight *)
+}
+
+(** Helper to create a column spec *)
+let col ?(w=None) ?(align=`Left) ?(resp=`Always) ?sort ?title ?(highlight=false) header =
+  { header; width = w; align; resp; sort; title; highlight }
+
+(** Helper for pixel width *)
+let px w = Some w
+
+(** Render a fixed-layout table with colgroup (Data-Oriented Approach) *)
+let render_fixed_table ~id ~min_width ~(cols : col_spec list) (rows_html : string list) =
+  let resp_class = function
+    | `Always -> ""
+    | `Hidden_sm -> "hidden sm:table-cell"
+    | `Hidden_md -> "hidden md:table-cell"
+    | `Hidden_lg -> "hidden lg:table-cell"
+  in
+  let resp_col_class = function
+    | `Always -> ""
+    | `Hidden_sm -> "hidden sm:table-column"
+    | `Hidden_md -> "hidden md:table-column"
+    | `Hidden_lg -> "hidden lg:table-column"
+  in
+  let align_class = function
+    | `Left -> "text-left"
+    | `Center -> "text-center"
+    | `Right -> "text-right"
+  in
+  (* 1. Render <colgroup> *)
+  let colgroup =
+    cols
+    |> List.map (fun c ->
+        let width_style =
+          match c.width with
+          | Some w -> Printf.sprintf "width: %dpx;" w
+          | None -> "width: auto;"
+        in
+        let cls = resp_col_class c.resp in
+        Printf.sprintf {html|<col class="%s" style="%s">|html} cls width_style)
+    |> String.concat "\n"
+    |> fun s -> Printf.sprintf {html|<colgroup>%s</colgroup>|html} s
+  in
+  (* 2. Render <thead> *)
+  let thead =
+    cols
+    |> List.map (fun c ->
+        let base_cls = "px-3 py-2 font-sans whitespace-nowrap" in
+        let align_cls = align_class c.align in
+        let resp_cls = resp_class c.resp in
+        let highlight_cls = if c.highlight then "text-orange-600 dark:text-orange-400" else "" in
+        let sort_attr =
+          match c.sort with
+          | Some k -> Printf.sprintf " data-sortable data-sort-key=\"%s\"" k
+          | None -> ""
+        in
+        let title_attr =
+          match c.title with
+          | Some t -> Printf.sprintf " title=\"%s\"" (escape_html t)
+          | None -> ""
+        in
+        Printf.sprintf {html|<th class="%s %s %s %s"%s%s>%s</th>|html}
+          base_cls align_cls resp_cls highlight_cls sort_attr title_attr (escape_html c.header))
+    |> String.concat "\n"
+    |> fun s -> Printf.sprintf {html|<thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider whitespace-nowrap"><tr>%s</tr></thead>|html} s
+  in
+  (* 3. Render <tbody> *)
+  let tbody =
+    Printf.sprintf {html|<tbody>%s</tbody>|html} (String.concat "\n" rows_html)
+  in
+  (* Assemble *)
+  Printf.sprintf
+    {html|<div class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto overflow-y-hidden shadow-2xl">
+  <table id="%s" class="w-full %s text-xs sm:text-sm font-mono tabular-nums table-fixed" aria-label="Data Table">
+    %s
+    %s
+    %s
+  </table>
+</div>|html}
+    id min_width colgroup thead tbody
+
 (** Normalize names for duplicate detection (strip common escape artifacts). *)
 let normalize_name s =
   normalize_label s
