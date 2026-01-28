@@ -1,5 +1,5 @@
 (** WKBL Analytics Main Entry Point
-    OCaml Edition using Kirin framework (migrated from Dream)
+    OCaml Edition using Kirin framework
 *)
 
 open Wkbl
