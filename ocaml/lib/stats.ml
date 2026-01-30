@@ -157,3 +157,110 @@ let four_factors_of_totals (t : Domain.team_totals) : four_factors =
   in
 
   { efg_pct; tov_pct; orb_pct; ftr }
+
+(** ===== Advanced Player Statistics ===== *)
+
+(** Calculate True Shooting Percentage
+    TS% = PTS / (2 * (FGA + 0.44 * FTA)) * 100
+*)
+let true_shooting_pct ~pts ~fga ~fta : float =
+  let denom = 2.0 *. (float_of_int fga +. 0.44 *. float_of_int fta) in
+  if denom <= 0.0 then 0.0
+  else float_of_int pts /. denom *. 100.0
+
+(** Calculate Effective Field Goal Percentage
+    eFG% = (FGM + 0.5 * 3PM) / FGA * 100
+*)
+let effective_fg_pct ~fg_made ~fg3_made ~fga : float =
+  if fga <= 0 then 0.0
+  else (float_of_int fg_made +. 0.5 *. float_of_int fg3_made) /. float_of_int fga *. 100.0
+
+(** Calculate Usage Rate
+    USG% = (FGA + 0.44 * FTA + TOV) / Team_Possessions * 100
+
+    Note: Requires team possession estimate. If not available, uses player's
+    share of team minutes as a proxy.
+*)
+let usage_rate ~fga ~fta ~tov ~team_poss : float =
+  let player_poss = float_of_int fga +. 0.44 *. float_of_int fta +. float_of_int tov in
+  if team_poss <= 0.0 then 0.0
+  else player_poss /. team_poss *. 100.0
+
+(** Estimate team possessions using standard formula
+    Poss ≈ FGA + 0.44*FTA + TOV - OREB
+*)
+let estimate_team_possessions ~team_fga ~team_fta ~team_tov ~team_oreb : float =
+  let poss = float_of_int team_fga +. 0.44 *. float_of_int team_fta
+             +. float_of_int team_tov -. float_of_int team_oreb in
+  max poss 1.0 (* Avoid division by zero *)
+
+(** Calculate Offensive Rating (points scored per 100 possessions)
+    ORtg = (PTS / Possessions) * 100
+*)
+let offensive_rating ~pts ~possessions : float =
+  if possessions <= 0.0 then 0.0
+  else float_of_int pts /. possessions *. 100.0
+
+(** Calculate Defensive Rating (points allowed per 100 possessions)
+    DRtg = (Opp_PTS / Possessions) * 100
+*)
+let defensive_rating ~opp_pts ~possessions : float =
+  if possessions <= 0.0 then 0.0
+  else float_of_int opp_pts /. possessions *. 100.0
+
+(** Calculate Net Rating
+    NetRtg = ORtg - DRtg
+*)
+let net_rating ~ortg ~drtg : float = ortg -. drtg
+
+(** Calculate all advanced stats from shooting stats and team context *)
+let advanced_stats_of_shooting
+    ~(shooting: Domain.player_shooting_stats)
+    ~(aggregate: Domain.player_aggregate)
+    ~(team_totals: Domain.team_totals option)
+    : Domain.player_advanced_stats =
+  let pts = aggregate.total_points in
+  let fga = shooting.pss_fg_attempted in
+  let fta = shooting.pss_ft_attempted in
+  let tov = aggregate.total_turnovers in
+  let fg_made = shooting.pss_fg_made in
+  let fg3_made = shooting.pss_fg3_made in
+
+  let ts_pct = true_shooting_pct ~pts ~fga ~fta in
+  let efg_pct = effective_fg_pct ~fg_made ~fg3_made ~fga in
+  let per = calculate_per ~total_minutes:aggregate.total_minutes ~efficiency:aggregate.efficiency in
+
+  (* Calculate usage rate if team totals available *)
+  let usage_pct, ortg, drtg =
+    match team_totals with
+    | Some tt ->
+        let team_fga = tt.fg2_a + tt.fg3_a in
+        let team_poss = estimate_team_possessions
+          ~team_fga ~team_fta:tt.ft_a ~team_tov:tt.turnovers ~team_oreb:tt.reb_off in
+        (* Scale player's usage by their share of team games *)
+        let games_ratio = float_of_int aggregate.games_played /. float_of_int (max 1 tt.gp) in
+        let player_poss = (float_of_int fga +. 0.44 *. float_of_int fta +. float_of_int tov) in
+        let scaled_team_poss = team_poss *. games_ratio in
+        let usg = if scaled_team_poss <= 0.0 then 0.0
+                  else player_poss /. scaled_team_poss *. 100.0 in
+        (* Simplified ORtg/DRtg using team rates as proxy *)
+        let team_ortg = offensive_rating ~pts:tt.pts ~possessions:team_poss in
+        let team_drtg = 100.0 in (* Default estimate without opponent data *)
+        (usg, team_ortg, team_drtg)
+    | None ->
+        (0.0, 0.0, 0.0)
+  in
+
+  {
+    pas_player_id = shooting.pss_player_id;
+    pas_name = shooting.pss_name;
+    pas_team = aggregate.team_name;
+    pas_games = aggregate.games_played;
+    pas_ts_pct = ts_pct;
+    pas_efg_pct = efg_pct;
+    pas_usage_pct = usage_pct;
+    pas_per = per;
+    pas_ortg = ortg;
+    pas_drtg = drtg;
+    pas_net_rtg = net_rating ~ortg ~drtg;
+  }

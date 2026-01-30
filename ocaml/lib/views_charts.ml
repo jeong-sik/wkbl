@@ -918,3 +918,170 @@ let win_rate_trend_chart (points: win_rate_point list) =
     (* Title *)
     padding_left
     path_d circles x_labels
+
+(** Player Performance Trend Chart - Recent N games line chart *)
+let player_trend_chart ?(num_games=10) ~title ~get_value ~color (games: player_game_stat list) =
+  let width = 500.0 in
+  let height = 180.0 in
+  let padding_left = 50.0 in
+  let padding_right = 20.0 in
+  let padding_top = 30.0 in
+  let padding_bottom = 40.0 in
+  let plot_width = width -. padding_left -. padding_right in
+  let plot_height = height -. padding_top -. padding_bottom in
+
+  (* Take most recent N games, reversed for chronological order *)
+  let recent = games |> List.rev |> (fun lst ->
+    let len = List.length lst in
+    if len > num_games then
+      List.filteri (fun i _ -> i >= len - num_games) lst
+    else lst
+  ) in
+
+  let n = List.length recent in
+  if n < 2 then
+    Printf.sprintf {|<div class="text-slate-500 text-center p-4 text-sm">%s: 데이터 부족 (최소 2경기 필요)</div>|} title
+  else
+    let values = List.map get_value recent in
+    let max_val = List.fold_left max 1.0 values in
+    let min_val = List.fold_left min max_val values in
+    let range = max_val -. min_val in
+    let range = if range < 1.0 then 1.0 else range in
+    let x_step = plot_width /. float_of_int (n - 1) in
+
+    (* Calculate trend (simple linear regression) *)
+    let avg_x = float_of_int (n - 1) /. 2.0 in
+    let avg_y = List.fold_left (+.) 0.0 values /. float_of_int n in
+    let slope =
+      let num = List.mapi (fun i v -> (float_of_int i -. avg_x) *. (v -. avg_y)) values |> List.fold_left (+.) 0.0 in
+      let denom = List.mapi (fun i _ -> (float_of_int i -. avg_x) ** 2.0) values |> List.fold_left (+.) 0.0 in
+      if denom = 0.0 then 0.0 else num /. denom
+    in
+    let trend_icon =
+      if slope > 0.3 then "📈"
+      else if slope < -0.3 then "📉"
+      else "➖"
+    in
+
+    (* Generate path and points *)
+    let path_points : (int * float * float * player_game_stat * float) list =
+      List.mapi (fun i v ->
+        let g = List.nth recent i in
+        let x = padding_left +. (float_of_int i *. x_step) in
+        let normalized = (v -. min_val) /. range in
+        let y = padding_top +. plot_height -. (normalized *. plot_height) in
+        (i, x, y, g, v)
+      ) values
+    in
+
+    let path_d = path_points
+      |> List.map (fun (i, x, y, _, _) ->
+          if i = 0 then Printf.sprintf "M%.2f,%.2f" x y
+          else Printf.sprintf " L%.2f,%.2f" x y)
+      |> String.concat "" in
+
+    let circles = path_points |> List.map (fun (i, x, y, g, v) ->
+      let delay = 0.5 +. (float_of_int i *. 0.03) in
+      let result_str =
+        match g.team_score, g.opponent_score with
+        | Some ts, Some os ->
+          if ts > os then Printf.sprintf "승 (%d-%d)" ts os
+          else if ts < os then Printf.sprintf "패 (%d-%d)" ts os
+          else Printf.sprintf "무 (%d-%d)" ts os
+        | _ -> ""
+      in
+      Printf.sprintf {|
+        <circle cx="%.2f" cy="%.2f" r="4"
+                class="fill-%s-500 stroke-white dark:stroke-slate-900 cursor-pointer trend-point"
+                stroke-width="2" style="animation-delay: %.2fs">
+          <title>%s vs %s
+%s: %.1f
+%s</title>
+        </circle>
+      |} x y color delay g.game_date g.opponent title v result_str
+    ) |> String.concat "\n" in
+
+    (* X-axis labels *)
+    let label_step = max 1 (n / 5) in
+    let x_labels =
+      path_points
+      |> List.filteri (fun i _ -> i mod label_step = 0 || i = n - 1)
+      |> List.map (fun ((_: int), (x: float), (_: float), (g: player_game_stat), (_: float)) ->
+          let short_date = if String.length g.game_date >= 5
+            then String.sub g.game_date (String.length g.game_date - 5) 5
+            else g.game_date in
+          Printf.sprintf {|<text x="%.2f" y="%.2f" class="fill-slate-500 dark:fill-slate-400" style="font-size: 10px" text-anchor="middle">%s</text>|}
+            x (height -. 8.0) short_date)
+      |> String.concat "\n"
+    in
+
+    (* Y-axis labels *)
+    let y_max_label = Printf.sprintf "%.0f" max_val in
+    let y_mid_label = Printf.sprintf "%.0f" ((max_val +. min_val) /. 2.0) in
+    let y_min_label = Printf.sprintf "%.0f" min_val in
+
+    Printf.sprintf {|
+<svg viewBox="0 0 %.0f %.0f" class="w-full h-auto" preserveAspectRatio="xMidYMid meet">
+  <style>
+    .trend-line-%s { stroke-dasharray: 1500; animation: trend-draw 0.8s ease-out forwards; }
+    .trend-point { opacity: 0; animation: trend-fade 0.3s ease-out forwards; }
+    @keyframes trend-draw { from { stroke-dashoffset: 1500; } to { stroke-dashoffset: 0; } }
+    @keyframes trend-fade { from { opacity: 0; } to { opacity: 1; } }
+  </style>
+
+  <!-- Grid lines -->
+  <line x1="%.2f" y1="%.2f" x2="%.2f" y2="%.2f" stroke="#e2e8f0" stroke-dasharray="4" class="dark:stroke-slate-700"/>
+  <line x1="%.2f" y1="%.2f" x2="%.2f" y2="%.2f" stroke="#e2e8f0" stroke-dasharray="4" class="dark:stroke-slate-700"/>
+  <line x1="%.2f" y1="%.2f" x2="%.2f" y2="%.2f" stroke="#e2e8f0" stroke-dasharray="4" class="dark:stroke-slate-700"/>
+
+  <!-- Y-axis labels -->
+  <text x="%.2f" y="%.2f" class="fill-slate-500 dark:fill-slate-400" style="font-size: 10px" text-anchor="end">%s</text>
+  <text x="%.2f" y="%.2f" class="fill-slate-500 dark:fill-slate-400" style="font-size: 10px" text-anchor="end">%s</text>
+  <text x="%.2f" y="%.2f" class="fill-slate-500 dark:fill-slate-400" style="font-size: 10px" text-anchor="end">%s</text>
+
+  <!-- Title with trend -->
+  <text x="%.2f" y="18" class="fill-slate-700 dark:fill-slate-200 text-sm font-medium">%s %s</text>
+
+  <!-- Trend line -->
+  <path d="%s" fill="none" class="stroke-%s-500 trend-line-%s" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Data points -->
+  %s
+
+  <!-- X-axis labels -->
+  %s
+</svg>
+    |} width height color
+    (* Grid lines *)
+    padding_left padding_top (width -. padding_right) padding_top
+    padding_left (padding_top +. plot_height /. 2.0) (width -. padding_right) (padding_top +. plot_height /. 2.0)
+    padding_left (padding_top +. plot_height) (width -. padding_right) (padding_top +. plot_height)
+    (* Y labels *)
+    (padding_left -. 8.0) (padding_top +. 4.0) y_max_label
+    (padding_left -. 8.0) (padding_top +. plot_height /. 2.0 +. 4.0) y_mid_label
+    (padding_left -. 8.0) (padding_top +. plot_height +. 4.0) y_min_label
+    (* Title *)
+    padding_left title trend_icon
+    path_d color color circles x_labels
+
+(** Multi-stat trend panel - Shows PTS, REB, AST, EFF in a grid *)
+let player_trends_panel (games: player_game_stat list) =
+  let pts_chart = player_trend_chart ~title:"득점 (PTS)" ~get_value:(fun g -> float_of_int g.pts) ~color:"orange" games in
+  let reb_chart = player_trend_chart ~title:"리바운드 (REB)" ~get_value:(fun g -> float_of_int g.reb) ~color:"sky" games in
+  let ast_chart = player_trend_chart ~title:"어시스트 (AST)" ~get_value:(fun g -> float_of_int g.ast) ~color:"green" games in
+  let eff_chart = player_trend_chart ~title:"효율 (EFF)"
+    ~get_value:(fun g ->
+      (* Simple EFF = PTS + REB + AST + STL + BLK - TOV *)
+      float_of_int (g.pts + g.reb + g.ast + g.stl + g.blk - g.tov))
+    ~color:"purple" games in
+  Printf.sprintf
+    {|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
+      <h3 class="text-lg font-bold text-slate-900 dark:text-slate-200 mb-4">📊 최근 경기 트렌드</h3>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="border border-slate-200 dark:border-slate-700 rounded-lg p-3">%s</div>
+        <div class="border border-slate-200 dark:border-slate-700 rounded-lg p-3">%s</div>
+        <div class="border border-slate-200 dark:border-slate-700 rounded-lg p-3">%s</div>
+        <div class="border border-slate-200 dark:border-slate-700 rounded-lg p-3">%s</div>
+      </div>
+    </div>|}
+    pts_chart reb_chart ast_chart eff_chart

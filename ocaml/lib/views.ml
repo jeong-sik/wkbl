@@ -154,12 +154,18 @@ let home_page ~season ~seasons players =
        <span class="text-lg">🏀</span>
        <span class="text-xs font-bold text-orange-700 dark:text-orange-300 uppercase tracking-wider">오늘의 경기</span>
       </div>
-      <a href="/games" class="text-xs text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300"> 전체 일정 →</a>
+      <div class="flex items-center gap-3">
+       <span class="text-xs text-slate-400 dark:text-slate-500" title="마지막 동기화">🔄 %s</span>
+       <a href="/games" class="text-xs text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300">전체 일정 →</a>
+      </div>
      </div>
-     <div id="live-scores" hx-get="/api/live/widget" hx-trigger="every 30s" hx-swap="innerHTML">%s</div>
+     <div id="live-scores" hx-get="/api/live/widget" hx-trigger="every 30s" hx-swap="innerHTML" hx-indicator="#live-loading">
+       <span id="live-loading" class="htmx-indicator text-xs text-slate-400">업데이트 중...</span>
+       %s
+     </div>
     </div>
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"><h2 class="text-xl font-bold text-slate-900 dark:text-slate-200">Top Players by Efficiency</h2><form class="flex gap-2" hx-get="/home/table" hx-target="#players-table-inner tbody" hx-trigger="change"><select name="season" aria-label="시즌 선택" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-1.5 text-sm focus:border-orange-500 focus:outline-none">%s</select><input type="text" placeholder="Search player..." aria-label="선수 검색" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-1.5 text-sm focus:border-orange-500 focus:outline-none" hx-get="/home/table" hx-trigger="keyup changed delay:300ms" hx-target="#players-table-inner tbody" name="search"></form></div><div id="players-table" class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 scroll-shadow overflow-y-hidden" data-skeleton="table" data-skeleton-count="10" data-skeleton-cols="8">%s</div></div>|html}
-   live_widget season_options table) ()
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"><h2 class="text-xl font-bold text-slate-900 dark:text-slate-200">Top Players by Efficiency</h2><form class="flex gap-2 items-center" hx-get="/home/table" hx-target="#players-table-inner tbody" hx-trigger="change" hx-indicator="#table-loading"><select name="season" aria-label="시즌 선택" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-1.5 text-sm focus:border-orange-500 focus:outline-none">%s</select><input type="text" placeholder="Search player..." aria-label="선수 검색" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-1.5 text-sm focus:border-orange-500 focus:outline-none" hx-get="/home/table" hx-trigger="keyup changed delay:300ms" hx-target="#players-table-inner tbody" hx-indicator="#table-loading" name="search"><span id="table-loading" class="htmx-indicator"><span class="w-4 h-4 border-2 border-slate-300 border-t-orange-500 rounded-full animate-spin inline-block"></span></span></form></div><div id="players-table" class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 scroll-shadow overflow-y-hidden" data-skeleton="table" data-skeleton-count="10" data-skeleton-cols="8">%s</div></div>|html}
+   (Scraper.get_last_sync_time_str ()) live_widget season_options table) ()
 
 let players_page ~season ~seasons ~search ~sort ~include_mismatch players =
  let season_options =
@@ -1496,6 +1502,204 @@ let compare_page
    | None -> candidates_panel ~title:"Player 2" ~slot:`P2 ~accent_btn_class:"text-sky-700" p2_display p2_candidates)
    compare_result_html) ()
 
+(** Season Comparison Page - Compare a player's performance across different seasons *)
+let compare_seasons_page
+  ~seasons
+  ~player_id
+  ~player_name
+  ~s1  (* Season 1 code *)
+  ~s2  (* Season 2 code *)
+  ~(s1_stats: season_stats option)
+  ~(s2_stats: season_stats option)
+  ~(all_seasons: season_stats list)  (* All available seasons for this player *)
+  ~error
+ =
+ let season_label code =
+  if code = "" then "Select Season"
+  else
+   seasons
+   |> List.find_opt (fun (s: season_info) -> s.code = code)
+   |> Option.map (fun (s: season_info) -> s.name)
+   |> Option.value ~default:code
+ in
+ let season_options ~selected available_codes =
+  available_codes
+  |> List.map (fun code ->
+    let is_selected = if code = selected then "selected" else "" in
+    Printf.sprintf {html|<option value="%s" %s>%s</option>|html}
+     code is_selected (escape_html (season_label code)))
+  |> String.concat "\n"
+ in
+ let available_season_codes = List.map (fun (s: season_stats) -> s.ss_season_code) all_seasons in
+ let error_html =
+  match error with
+  | None -> ""
+  | Some msg ->
+    Printf.sprintf
+     {html|<div class="mb-4 p-3 bg-red-100 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded-lg text-red-700 dark:text-red-400 text-sm">⚠️ %s</div>|html}
+     (escape_html msg)
+ in
+ let stat_row ?(signed=false) label get_val =
+  match s1_stats, s2_stats with
+  | Some a, Some b ->
+    let v1 = get_val a in
+    let v2 = get_val b in
+    compare_table_row ~signed label v1 v2
+  | _ -> ""
+ in
+ let comparison_table =
+  match s1_stats, s2_stats with
+  | Some _, Some _ ->
+    Printf.sprintf
+     {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+      <div class="grid grid-cols-[1fr_100px_100px] text-sm font-bold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/50">
+       <div class="p-3">Stat</div>
+       <div class="p-3 text-center text-orange-600">%s</div>
+       <div class="p-3 text-center text-sky-600">%s</div>
+      </div>
+      %s
+      %s
+      %s
+      %s
+      %s
+      %s
+      %s
+      %s
+      %s
+      %s
+      %s
+     </div>|html}
+     (escape_html (season_label s1))
+     (escape_html (season_label s2))
+     (stat_row "Games Played" (fun s -> float_of_int s.ss_games_played))
+     (stat_row "Minutes" (fun s -> s.ss_total_minutes))
+     (stat_row ~signed:true "Points" (fun s -> s.ss_avg_points))
+     (stat_row ~signed:true "Rebounds" (fun s -> s.ss_avg_rebounds))
+     (stat_row ~signed:true "Assists" (fun s -> s.ss_avg_assists))
+     (stat_row ~signed:true "Steals" (fun s -> s.ss_avg_steals))
+     (stat_row ~signed:true "Blocks" (fun s -> s.ss_avg_blocks))
+     (stat_row ~signed:true "Turnovers" (fun s -> s.ss_avg_turnovers))
+     (stat_row ~signed:true "Efficiency" (fun s -> s.ss_efficiency))
+     (stat_row ~signed:true "TS%" (fun s -> s.ss_ts_pct *. 100.0))
+     (stat_row ~signed:true "+/- Margin" (fun s -> s.ss_margin))
+  | _ ->
+    {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-8 text-center text-slate-500 dark:text-slate-400">
+     Select two seasons to compare performance.
+    </div>|html}
+ in
+ let trend_indicator (s: season_stats) =
+  if s.ss_efficiency >= 15.0 then "🔥"
+  else if s.ss_efficiency >= 10.0 then "📈"
+  else if s.ss_efficiency >= 5.0 then "➖"
+  else "📉"
+ in
+ let season_card (s: season_stats) accent =
+  Printf.sprintf
+   {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 border-t-4 %s">
+    <div class="flex items-center justify-between mb-3">
+     <span class="text-lg font-bold text-slate-900 dark:text-slate-200">%s</span>
+     <span class="text-2xl">%s</span>
+    </div>
+    <div class="grid grid-cols-2 gap-2 text-sm">
+     <div class="text-slate-600 dark:text-slate-400">Games</div>
+     <div class="text-right font-mono text-slate-900 dark:text-slate-200">%d</div>
+     <div class="text-slate-600 dark:text-slate-400">PPG</div>
+     <div class="text-right font-mono text-slate-900 dark:text-slate-200">%.1f</div>
+     <div class="text-slate-600 dark:text-slate-400">RPG</div>
+     <div class="text-right font-mono text-slate-900 dark:text-slate-200">%.1f</div>
+     <div class="text-slate-600 dark:text-slate-400">APG</div>
+     <div class="text-right font-mono text-slate-900 dark:text-slate-200">%.1f</div>
+     <div class="text-slate-600 dark:text-slate-400">EFF</div>
+     <div class="text-right font-mono font-bold text-slate-900 dark:text-slate-200">%.1f</div>
+    </div>
+   </div>|html}
+   accent
+   (escape_html s.ss_season_name)
+   (trend_indicator s)
+   s.ss_games_played
+   s.ss_avg_points
+   s.ss_avg_rebounds
+   s.ss_avg_assists
+   s.ss_efficiency
+ in
+ let season_cards_html =
+  let s1_card = match s1_stats with
+   | Some s -> season_card s "border-t-orange-500"
+   | None -> ""
+  in
+  let s2_card = match s2_stats with
+   | Some s -> season_card s "border-t-sky-500"
+   | None -> ""
+  in
+  if s1_card <> "" || s2_card <> "" then
+   Printf.sprintf {html|<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">%s%s</div>|html} s1_card s2_card
+  else ""
+ in
+ let content = Printf.sprintf
+  {html|<div class="max-w-4xl mx-auto py-8 px-4">
+   <div class="mb-6">
+    <a href="/player/%s" class="text-orange-500 hover:underline text-sm">← Back to Player Profile</a>
+   </div>
+
+   <h1 class="text-2xl font-black text-slate-900 dark:text-slate-200 mb-2">
+    📊 Season Comparison
+   </h1>
+   <p class="text-slate-600 dark:text-slate-400 mb-6">
+    Compare <a href="/player/%s" class="text-orange-500 hover:underline font-semibold">%s</a>'s performance across different seasons.
+   </p>
+
+   %s
+
+   <form method="GET" action="/compare/seasons" class="mb-6 bg-slate-100 dark:bg-slate-800/50 rounded-xl p-4">
+    <input type="hidden" name="player" value="%s">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+     <div>
+      <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Season 1 (Orange)</label>
+      <select name="s1" class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-200">
+       <option value="">Select Season</option>
+       %s
+      </select>
+     </div>
+     <div>
+      <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Season 2 (Blue)</label>
+      <select name="s2" class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-200">
+       <option value="">Select Season</option>
+       %s
+      </select>
+     </div>
+    </div>
+    <button type="submit" class="mt-4 w-full md:w-auto px-6 py-2 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-lg transition-colors">
+     Compare Seasons
+    </button>
+   </form>
+
+   %s
+
+   %s
+
+   <div class="mt-8 text-center">
+    <a href="/compare?p1=%s" class="text-orange-500 hover:underline text-sm">
+     Compare with another player →
+    </a>
+   </div>
+  </div>|html}
+  (escape_html player_id)
+  (escape_html player_id)
+  (escape_html player_name)
+  error_html
+  (escape_html player_id)
+  (season_options ~selected:s1 available_season_codes)
+  (season_options ~selected:s2 available_season_codes)
+  season_cards_html
+  comparison_table
+  (Uri.pct_encode player_name)
+ in
+ layout
+  ~title:(Printf.sprintf "Season Comparison - %s - WKBL" player_name)
+  ~canonical_path:(Printf.sprintf "/compare/seasons?player=%s" (Uri.pct_encode player_id))
+  ~description:(Printf.sprintf "%s의 시즌별 성적 비교 - WKBL 여자농구 분석" player_name)
+  ~content ()
+
 let prediction_result_card ~(home: string) ~(away: string) (output: prediction_output) =
  let pct value = value *. 100.0 in
  let result = output.result in
@@ -2316,6 +2520,112 @@ let live_page () =
  layout ~title:"Live Scores - WKBL" ~canonical_path:"/live"
   ~description:"WKBL 여자농구 실시간 스코어 - 오늘 경기 라이브 점수를 확인하세요."
   ~content () 
+
+(** Position-based leaderboard page *)
+let position_leaders_page ~season ~seasons ~position (leaders: (string * leader_entry list) list) =
+  let season_options =
+    let base =
+      seasons
+      |> List.map (fun (s: season_info) ->
+        let selected = if s.code = season then "selected" else "" in
+        Printf.sprintf {html|<option value="%s" %s>%s</option>|html} s.code selected (escape_html s.name))
+      |> String.concat "\n"
+    in
+    Printf.sprintf {html|<option value="ALL" %s>전체 시즌</option>%s|html} (if season = "ALL" then "selected" else "") base
+  in
+  let position_btn pos label emoji =
+    let active = if pos = position then "bg-orange-600 text-white" else "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700" in
+    Printf.sprintf {html|<a href="/leaders/by-position?position=%s&season=%s" class="px-4 py-2 rounded-lg font-bold transition-colors %s">%s %s</a>|html} pos season active emoji (escape_html label)
+  in
+  let lookup stat =
+    leaders |> List.find_opt (fun (k, _) -> k = stat) |> Option.map snd |> Option.value ~default:[]
+  in
+  let leader_table title stat entries =
+    if List.length entries = 0 then
+      Printf.sprintf {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
+        <h3 class="text-lg font-bold text-slate-900 dark:text-slate-200 mb-4">%s</h3>
+        <p class="text-slate-500 dark:text-slate-400 text-center py-4">데이터가 없습니다</p>
+      </div>|html} (escape_html title)
+    else
+      let rows = entries |> List.mapi (fun i (e: leader_entry) ->
+        let rank_badge = match i with
+          | 0 -> {html|<span class="text-amber-500">🥇</span>|html}
+          | 1 -> {html|<span class="text-slate-400">🥈</span>|html}
+          | 2 -> {html|<span class="text-amber-700">🥉</span>|html}
+          | _ -> Printf.sprintf {html|<span class="text-slate-500">%d</span>|html} (i + 1)
+        in
+        Printf.sprintf {html|<tr class="border-b border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50">
+          <td class="px-3 py-2 text-center font-bold">%s</td>
+          <td class="px-3 py-2">
+            <a href="/player/%s" class="text-slate-900 dark:text-slate-200 hover:text-orange-600 font-medium">%s</a>
+            <span class="text-slate-500 text-xs ml-2">%s</span>
+          </td>
+          <td class="px-3 py-2 text-right font-bold font-mono text-orange-600 dark:text-orange-400">%.1f</td>
+        </tr>|html}
+        rank_badge e.le_player_id (escape_html e.le_player_name) (escape_html e.le_team_name) e.le_stat_value
+      ) |> String.concat "\n" in
+      Printf.sprintf {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-lg">
+        <div class="px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
+          <h3 class="text-lg font-bold text-slate-900 dark:text-slate-200">%s</h3>
+        </div>
+        <table class="w-full text-sm">
+          <thead class="bg-slate-100 dark:bg-slate-800 text-xs uppercase text-slate-500 dark:text-slate-400">
+            <tr><th class="px-3 py-2 text-center w-12">순위</th><th class="px-3 py-2 text-left">선수</th><th class="px-3 py-2 text-right w-20">%s</th></tr>
+          </thead>
+          <tbody>%s</tbody>
+        </table>
+      </div>|html} (escape_html title) (escape_html stat) rows
+  in
+  let position_label = match position with
+    | "G" -> "가드 (Guard)"
+    | "F" -> "포워드 (Forward)"
+    | "C" -> "센터 (Center)"
+    | _ -> "전체 포지션"
+  in
+  layout ~title:(position_label ^ " 리더보드 | WKBL")
+    ~content:(Printf.sprintf {html|<div class="space-y-6 animate-fade-in">
+      <!-- Header -->
+      <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-xl">
+        <h1 class="text-2xl font-black text-slate-900 dark:text-slate-200 text-center mb-4">포지션별 리더보드</h1>
+        <div class="flex flex-col md:flex-row items-center justify-center gap-4">
+          <!-- Position Tabs -->
+          <div class="flex flex-wrap justify-center gap-2">
+            %s
+            %s
+            %s
+            %s
+          </div>
+          <!-- Season Filter -->
+          <form action="/leaders/by-position" method="get" class="flex items-center gap-2">
+            <input type="hidden" name="position" value="%s" />
+            <select name="season" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm" onchange="this.form.submit()">
+              %s
+            </select>
+          </form>
+        </div>
+        <p class="text-center text-sm text-slate-500 dark:text-slate-400 mt-4">%s</p>
+      </div>
+
+      <!-- Stats Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        %s
+        %s
+        %s
+        %s
+      </div>
+    </div>|html}
+    (position_btn "ALL" "전체" "👥")
+    (position_btn "G" "가드" "🏃")
+    (position_btn "F" "포워드" "💪")
+    (position_btn "C" "센터" "🏀")
+    position
+    season_options
+    (escape_html position_label)
+    (leader_table "득점 (PTS)" "PTS" (lookup "pts"))
+    (leader_table "리바운드 (REB)" "REB" (lookup "reb"))
+    (leader_table "어시스트 (AST)" "AST" (lookup "ast"))
+    (leader_table "효율 (EFF)" "EFF" (lookup "eff"))
+  ) ()
 
 let error_page message = layout ~title:"Error" ~content:(Printf.sprintf {html|<div class="flex flex-col items-center justify-center py-20"><span class="text-6xl mb-4">😵</span><h2 class="text-xl font-bold text-slate-900 dark:text-slate-200 mb-2">Something went wrong</h2><p class="text-slate-600 dark:text-slate-400">%s</p><a href="/" class="mt-4 text-orange-500 hover:underline">← Back to home</a></div>|html} (escape_html message)) ()
 

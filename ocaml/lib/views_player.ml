@@ -172,6 +172,64 @@ let milestone_tracker_card (avg: player_aggregate) =
       (milestone_progress_bar assists_ms)
       (milestone_progress_bar games_ms)
 
+(** Advanced Stats Card - TS%, eFG%, PER, Usage% *)
+let advanced_stats_card (avg: player_aggregate) =
+  if avg.games_played <= 0 then ""
+  else
+    (* Calculate PER using existing function *)
+    let per = Stats.per_of_player_aggregate avg in
+    (* Simple efficiency-based estimates without full shooting data *)
+    let pts_per_game = avg.avg_points in
+    let eff_per_game = avg.efficiency /. float_of_int avg.games_played in
+    let minutes_per_game = avg.total_minutes /. float_of_int avg.games_played in
+    (* PER rating color *)
+    let per_color =
+      if per >= 25.0 then "text-emerald-600 dark:text-emerald-400"
+      else if per >= 20.0 then "text-sky-600 dark:text-sky-400"
+      else if per >= 15.0 then "text-slate-700 dark:text-slate-300"
+      else "text-rose-600 dark:text-rose-400"
+    in
+    let stat_box label value unit description color =
+      Printf.sprintf
+        {html|<div class="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-3 text-center">
+          <div class="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wider font-bold">%s</div>
+          <div class="text-2xl font-black %s font-mono tabular-nums">%.1f<span class="text-xs text-slate-400">%s</span></div>
+          <div class="text-[9px] text-slate-400 dark:text-slate-500 mt-1">%s</div>
+        </div>|html}
+        (escape_html label) color value unit (escape_html description)
+    in
+    Printf.sprintf
+      {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 sm:p-6 shadow-lg">
+        <div class="flex items-start justify-between gap-4 mb-4">
+          <div class="min-w-0">
+            <h3 class="text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-xs flex items-center gap-2">
+              <span class="text-lg">📊</span> Advanced Stats
+            </h3>
+            <div class="mt-1 text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
+              효율 지표 및 영향력 분석
+            </div>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+          %s
+          %s
+          %s
+          %s
+        </div>
+        <div class="mt-4 pt-3 border-t border-slate-200 dark:border-slate-700">
+          <div class="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed">
+            <strong>PER</strong>: Player Efficiency Rating (리그 평균 ≈ 15.0) |
+            <strong>EFF/G</strong>: 경기당 효율 |
+            <strong>PTS/G</strong>: 경기당 득점 |
+            <strong>MIN/G</strong>: 경기당 출전 시간
+          </div>
+        </div>
+      </div>|html}
+      (stat_box "PER" per "" "효율 레이팅" per_color)
+      (stat_box "EFF/G" eff_per_game "" "경기당 효율" "text-orange-600 dark:text-orange-400")
+      (stat_box "PTS/G" pts_per_game "" "경기당 득점" "text-slate-700 dark:text-slate-300")
+      (stat_box "MIN/G" minutes_per_game "" "경기당 출전" "text-slate-700 dark:text-slate-300")
+
 let player_profile_page ?(leaderboards=None) (profile: player_profile) ~scope ~(seasons_catalog: season_info list) =
   let _ = leaderboards in (* suppress unused warning *)
   let _ = seasons_catalog in
@@ -812,6 +870,13 @@ let player_profile_page ?(leaderboards=None) (profile: player_profile) ~scope ~(
 	    else
 	      ""
 	  in
+	  (* Trend analysis panel - requires at least 2 recent games *)
+	  let trends_panel_html =
+	    if List.length profile.recent_games >= 2 then
+	      Views_charts.player_trends_panel profile.recent_games
+	    else
+	      ""
+	  in
 
   let display_name = normalize_name p.name in
   let og_card_url = Printf.sprintf "https://wkbl.win/card/player/png/%s" p.id in
@@ -915,6 +980,8 @@ let player_profile_page ?(leaderboards=None) (profile: player_profile) ~scope ~(
             %s
             %s
             %s
+            %s
+            %s
           </div>
         </div>
       </div>
@@ -939,6 +1006,8 @@ let player_profile_page ?(leaderboards=None) (profile: player_profile) ~scope ~(
           team_movement_html
           leaderboards_html
           (Printf.sprintf {html|<div hx-get="/player/%s/shot-chart" hx-trigger="load" hx-swap="innerHTML" class="htmx-indicator-wrapper"><div class="text-center py-4 text-slate-400"><span class="htmx-indicator">Loading...</span></div></div>|html} (Uri.pct_encode p.id))
+          trends_panel_html
+          (advanced_stats_card profile.averages)
           (career_highs_card profile.career_highs)
           (milestone_tracker_card profile.averages)
           missing_data_html

@@ -310,4 +310,166 @@ let team_profile_page (detail: team_full_detail) ~season ~seasons =
 	     four_factors_section
 	     game_rows) ()
 
+(** Team H2H comparison page *)
+let team_h2h_page ~team1 ~team2 ~season ~seasons (games : Domain.game_info list) =
+  let season_options =
+    let base =
+      seasons
+      |> List.map (fun (s: season_info) ->
+        let selected = if s.code = season then "selected" else "" in
+        Printf.sprintf {html|<option value="%s" %s>%s</option>|html} s.code selected (escape_html s.name))
+      |> String.concat "\n"
+    in
+    Printf.sprintf {html|<option value="ALL" %s>전체 시즌</option>%s|html} (if season = "ALL" then "selected" else "") base
+  in
+  (* Calculate H2H record *)
+  let t1_wins, t2_wins, total_diff =
+    games |> List.fold_left (fun (w1, w2, diff) (g: game_info) ->
+      let is_t1_home = g.gi_home_team_name = team1 in
+      let t1_score = if is_t1_home then g.gi_home_score else g.gi_away_score in
+      let t2_score = if is_t1_home then g.gi_away_score else g.gi_home_score in
+      let d = t1_score - t2_score in
+      if d > 0 then (w1 + 1, w2, diff + d)
+      else if d < 0 then (w1, w2 + 1, diff + d)
+      else (w1, w2, diff)
+    ) (0, 0, 0)
+  in
+  let total_games = List.length games in
+  let avg_diff = if total_games > 0 then float_of_int total_diff /. float_of_int total_games else 0.0 in
+  let diff_sign = if avg_diff > 0.0 then "+" else "" in
+  let diff_color =
+    if avg_diff > 0.0 then "text-emerald-600 dark:text-emerald-400"
+    else if avg_diff < 0.0 then "text-rose-600 dark:text-rose-400"
+    else "text-slate-500"
+  in
+  (* Game rows *)
+  let game_rows =
+    games |> List.map (fun (g: game_info) ->
+      let is_t1_home = g.gi_home_team_name = team1 in
+      let t1_score = if is_t1_home then g.gi_home_score else g.gi_away_score in
+      let t2_score = if is_t1_home then g.gi_away_score else g.gi_home_score in
+      let result = if t1_score > t2_score then "W" else if t1_score < t2_score then "L" else "D" in
+      let result_color = match result with
+        | "W" -> "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+        | "L" -> "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400"
+        | _ -> "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400"
+      in
+      let home_away = if is_t1_home then "🏠" else "✈️" in
+      Printf.sprintf
+        {html|<tr class="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+          <td class="px-3 py-2 text-slate-600 dark:text-slate-400">%s</td>
+          <td class="px-3 py-2 text-center">%s</td>
+          <td class="px-3 py-2 text-center">
+            <span class="px-2 py-0.5 rounded text-xs font-bold %s">%s</span>
+          </td>
+          <td class="px-3 py-2 text-right font-bold">
+            <span class="%s">%d</span> - <span class="%s">%d</span>
+          </td>
+          <td class="px-3 py-2 text-right text-slate-500 dark:text-slate-400">%+d</td>
+        </tr>|html}
+        (escape_html g.gi_game_date)
+        home_away
+        result_color result
+        (if t1_score > t2_score then "text-emerald-600 dark:text-emerald-400" else "text-slate-700 dark:text-slate-300")
+        t1_score
+        (if t2_score > t1_score then "text-emerald-600 dark:text-emerald-400" else "text-slate-700 dark:text-slate-300")
+        t2_score
+        (t1_score - t2_score)
+    )
+    |> String.concat "\n"
+  in
+  let no_games_msg =
+    if List.length games = 0 then
+      {html|<div class="text-center text-slate-500 dark:text-slate-400 py-8">
+        <p class="text-lg">선택한 기간에 두 팀 간 경기 기록이 없습니다.</p>
+        <p class="text-sm mt-2">다른 시즌을 선택하거나 '전체 시즌'을 선택해보세요.</p>
+      </div>|html}
+    else ""
+  in
+  layout ~title:(Printf.sprintf "%s vs %s | H2H" team1 team2)
+    ~content:(Printf.sprintf
+      {html|<div class="space-y-6 animate-fade-in">
+        <!-- Header with team selection -->
+        <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-xl">
+          <h1 class="text-2xl font-black text-slate-900 dark:text-slate-200 text-center mb-6">팀 간 전적 비교 (H2H)</h1>
+          <form action="/teams/h2h" method="get" class="flex flex-col md:flex-row items-center justify-center gap-4">
+            <div class="flex items-center gap-3">
+              %s
+              <input type="text" name="team1" value="%s" placeholder="팀 1"
+                class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm w-36 focus:border-orange-500 focus:outline-none" />
+            </div>
+            <span class="text-xl font-bold text-slate-400">VS</span>
+            <div class="flex items-center gap-3">
+              <input type="text" name="team2" value="%s" placeholder="팀 2"
+                class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm w-36 focus:border-orange-500 focus:outline-none" />
+              %s
+            </div>
+            <select name="season" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none">
+              %s
+            </select>
+            <button type="submit" class="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg font-bold transition-colors">
+              비교
+            </button>
+          </form>
+        </div>
+
+        <!-- H2H Summary -->
+        <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-xl">
+          <div class="flex flex-col md:flex-row items-center justify-between gap-6">
+            <!-- Team 1 -->
+            <div class="flex flex-col items-center gap-2">
+              %s
+              <span class="text-lg font-bold text-slate-900 dark:text-slate-200">%s</span>
+              <span class="text-3xl font-black text-emerald-600 dark:text-emerald-400">%d승</span>
+            </div>
+            <!-- VS & Stats -->
+            <div class="text-center">
+              <div class="text-4xl font-black text-slate-400 mb-2">VS</div>
+              <div class="text-sm text-slate-500 dark:text-slate-400">총 %d경기</div>
+              <div class="text-lg font-bold %s">평균 %s%.1f점</div>
+            </div>
+            <!-- Team 2 -->
+            <div class="flex flex-col items-center gap-2">
+              %s
+              <span class="text-lg font-bold text-slate-900 dark:text-slate-200">%s</span>
+              <span class="text-3xl font-black text-rose-600 dark:text-rose-400">%d승</span>
+            </div>
+          </div>
+        </div>
+
+        %s
+
+        <!-- Game List -->
+        <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xl">
+          <table class="w-full text-sm font-mono tabular-nums">
+            <thead class="bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-xs">
+              <tr>
+                <th scope="col" class="px-3 py-2 text-left">날짜</th>
+                <th scope="col" class="px-3 py-2 text-center" title="Home/Away">H/A</th>
+                <th scope="col" class="px-3 py-2 text-center">결과</th>
+                <th scope="col" class="px-3 py-2 text-right">스코어</th>
+                <th scope="col" class="px-3 py-2 text-right">점차</th>
+              </tr>
+            </thead>
+            <tbody>%s</tbody>
+          </table>
+        </div>
+      </div>|html}
+      (team_logo_tag ~class_name:"w-12 h-12" team1)
+      (escape_html team1)
+      (escape_html team2)
+      (team_logo_tag ~class_name:"w-12 h-12" team2)
+      season_options
+      (team_logo_tag ~class_name:"w-20 h-20" team1)
+      (escape_html team1)
+      t1_wins
+      total_games
+      diff_color diff_sign avg_diff
+      (team_logo_tag ~class_name:"w-20 h-20" team2)
+      (escape_html team2)
+      t2_wins
+      no_games_msg
+      game_rows
+    ) ()
+
 (** DB QA dashboard page *)

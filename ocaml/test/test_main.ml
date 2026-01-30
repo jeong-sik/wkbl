@@ -1127,6 +1127,91 @@ let on_off_impact_tests = [
 ]
 
 (* ============================================= *)
+(* Advanced Stats Tests                          *)
+(* ============================================= *)
+
+let test_true_shooting_basic () =
+  (* Example: 24 pts, 25 FGA, 6 FTA
+     TS% = 24 / (2 * (25 + 0.44 * 6)) * 100 = 24 / 55.28 * 100 = 43.415 *)
+  let ts = Wkbl.Stats.true_shooting_pct ~pts:24 ~fga:25 ~fta:6 in
+  Alcotest.(check float_testable) "TS% basic calc" 43.415 ts
+
+let test_true_shooting_zero () =
+  (* Zero FGA and FTA should return 0 *)
+  let ts = Wkbl.Stats.true_shooting_pct ~pts:0 ~fga:0 ~fta:0 in
+  Alcotest.(check float_testable) "TS% zero" 0.0 ts
+
+let test_true_shooting_elite () =
+  (* Elite scorer: 30 pts, 20 FGA, 10 FTA
+     TS% = 30 / (2 * (20 + 4.4)) * 100 = 30 / 48.8 * 100 = 61.475 *)
+  let ts = Wkbl.Stats.true_shooting_pct ~pts:30 ~fga:20 ~fta:10 in
+  Alcotest.(check float_testable) "TS% elite" 61.475 ts
+
+let test_effective_fg_pct () =
+  (* 8 FGM, 3 3PM, 15 FGA
+     eFG% = (8 + 0.5*3) / 15 * 100 = 9.5 / 15 * 100 = 63.333 *)
+  let efg = Wkbl.Stats.effective_fg_pct ~fg_made:8 ~fg3_made:3 ~fga:15 in
+  Alcotest.(check float_testable) "eFG% calc" 63.333 efg
+
+let test_usage_rate () =
+  (* 15 FGA, 6 FTA, 3 TOV, team_poss=80
+     USG% = (15 + 0.44*6 + 3) / 80 * 100 = 20.64 / 80 * 100 = 25.8 *)
+  let usg = Wkbl.Stats.usage_rate ~fga:15 ~fta:6 ~tov:3 ~team_poss:80.0 in
+  Alcotest.(check float_testable) "Usage rate" 25.8 usg
+
+let test_estimate_possessions () =
+  (* FGA=75, FTA=20, TOV=12, OREB=10
+     Poss = 75 + 0.44*20 + 12 - 10 = 75 + 8.8 + 12 - 10 = 85.8 *)
+  let poss = Wkbl.Stats.estimate_team_possessions ~team_fga:75 ~team_fta:20 ~team_tov:12 ~team_oreb:10 in
+  Alcotest.(check float_testable) "Team possessions" 85.8 poss
+
+let advanced_stats_tests = [
+  Alcotest.test_case "True Shooting % basic" `Quick test_true_shooting_basic;
+  Alcotest.test_case "True Shooting % zero" `Quick test_true_shooting_zero;
+  Alcotest.test_case "True Shooting % elite" `Quick test_true_shooting_elite;
+  Alcotest.test_case "Effective FG %" `Quick test_effective_fg_pct;
+  Alcotest.test_case "Usage Rate" `Quick test_usage_rate;
+  Alcotest.test_case "Estimate Possessions" `Quick test_estimate_possessions;
+]
+
+(* ============================================= *)
+(* Scraper Function Tests                        *)
+(* ============================================= *)
+
+let test_code_from_team_name_known () =
+  (* Known teams should map correctly *)
+  Alcotest.(check string) "KB스타즈 -> 01" "01" (Wkbl.Scraper.code_from_team_name "KB스타즈");
+  Alcotest.(check string) "삼성생명 -> 03" "03" (Wkbl.Scraper.code_from_team_name "삼성생명");
+  Alcotest.(check string) "우리은행 -> 05" "05" (Wkbl.Scraper.code_from_team_name "우리은행");
+  Alcotest.(check string) "신한은행 -> 07" "07" (Wkbl.Scraper.code_from_team_name "신한은행");
+  Alcotest.(check string) "하나은행 -> 09" "09" (Wkbl.Scraper.code_from_team_name "하나은행");
+  Alcotest.(check string) "BNK썸 -> 11" "11" (Wkbl.Scraper.code_from_team_name "BNK썸")
+
+let test_code_from_team_name_unknown () =
+  (* Unknown teams should get fallback XX_ prefix *)
+  let result = Wkbl.Scraper.code_from_team_name "알수없는팀" in
+  Alcotest.(check bool) "Unknown team starts with XX_" true (String.length result >= 3 && String.sub result 0 3 = "XX_")
+
+let test_code_from_team_name_alternate () =
+  (* Alternate names should work *)
+  Alcotest.(check string) "KB 스타즈 (space)" "01" (Wkbl.Scraper.code_from_team_name "KB 스타즈");
+  Alcotest.(check string) "하나원큐 -> 09" "09" (Wkbl.Scraper.code_from_team_name "하나원큐");
+  Alcotest.(check string) "BNK 썸 (space)" "11" (Wkbl.Scraper.code_from_team_name "BNK 썸")
+
+let test_get_last_sync_time_str_initial () =
+  (* Initial state should show no sync record *)
+  let result = Wkbl.Scraper.get_last_sync_time_str () in
+  (* Either "동기화 기록 없음" or a time string is valid *)
+  Alcotest.(check bool) "Sync time string not empty" true (String.length result > 0)
+
+let scraper_tests = [
+  Alcotest.test_case "code_from_team_name known" `Quick test_code_from_team_name_known;
+  Alcotest.test_case "code_from_team_name unknown" `Quick test_code_from_team_name_unknown;
+  Alcotest.test_case "code_from_team_name alternate" `Quick test_code_from_team_name_alternate;
+  Alcotest.test_case "get_last_sync_time_str" `Quick test_get_last_sync_time_str_initial;
+]
+
+(* ============================================= *)
 (* Main Test Runner                              *)
 (* ============================================= *)
 
@@ -1146,4 +1231,6 @@ let () =
     "Score Flow", score_flow_tests;
     "Lineup Chemistry", lineup_chemistry_tests;
     "On/Off Impact", on_off_impact_tests;
+    "Advanced Stats", advanced_stats_tests;
+    "Scraper Functions", scraper_tests;
   ]

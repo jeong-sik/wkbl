@@ -8,6 +8,83 @@
 
 let base_url = "https://www.wkbl.or.kr"
 
+(** ==========================================================================
+    Unified Season Code Mapping
+
+    WKBL uses TWO different season code schemes:
+    - Main Site (Draft API): 044 = 2025-2026
+    - DataLab/Schedule API:  046 = 2025-2026
+
+    Pattern: DataLab code = Main code + 2 (for modern seasons)
+
+    This unified mapping provides:
+    1. Canonical season names
+    2. Bidirectional code conversion
+    3. Single source of truth for all season data
+    ========================================================================== *)
+
+type season_mapping = {
+  name: string;           (** e.g., "2025-2026" *)
+  main_code: string;      (** Main site code (Draft API) *)
+  datalab_code: string;   (** DataLab/Schedule API code *)
+}
+
+(** Master season list with both code schemes *)
+let unified_seasons = [
+  (* Modern era: Regular seasons (Oct-Mar) - offset +2 *)
+  { name = "2025-2026"; main_code = "044"; datalab_code = "046" };
+  { name = "2024-2025"; main_code = "043"; datalab_code = "045" };
+  { name = "2023-2024"; main_code = "042"; datalab_code = "044" };
+  { name = "2022-2023"; main_code = "041"; datalab_code = "043" };
+  { name = "2021-2022"; main_code = "040"; datalab_code = "042" };
+  { name = "2020-2021"; main_code = "039"; datalab_code = "041" };
+  { name = "2019-2020"; main_code = "038"; datalab_code = "040" };
+  { name = "2018-2019"; main_code = "037"; datalab_code = "039" };
+  { name = "2017-2018"; main_code = "036"; datalab_code = "038" };
+  { name = "2016-2017"; main_code = "035"; datalab_code = "037" };
+  { name = "2015-2016"; main_code = "034"; datalab_code = "036" };
+  { name = "2014-2015"; main_code = "033"; datalab_code = "035" };
+  { name = "2013-2014"; main_code = "032"; datalab_code = "034" };
+  { name = "2012-2013"; main_code = "031"; datalab_code = "033" };
+  { name = "2011-2012"; main_code = "030"; datalab_code = "032" };
+  { name = "2010-2011"; main_code = "029"; datalab_code = "031" };
+]
+
+(** Convert main site code to DataLab code *)
+let main_to_datalab code =
+  unified_seasons
+  |> List.find_opt (fun s -> s.main_code = code)
+  |> Option.map (fun s -> s.datalab_code)
+  |> Option.value ~default:code
+
+(** Convert DataLab code to main site code *)
+let datalab_to_main code =
+  unified_seasons
+  |> List.find_opt (fun s -> s.datalab_code = code)
+  |> Option.map (fun s -> s.main_code)
+  |> Option.value ~default:code
+
+(** Get season name from any code (main or datalab) *)
+let season_name_of_code code =
+  unified_seasons
+  |> List.find_opt (fun s -> s.main_code = code || s.datalab_code = code)
+  |> Option.map (fun s -> s.name)
+  |> Option.value ~default:(Printf.sprintf "Unknown-%s" code)
+
+(** Get both codes for a season name *)
+let codes_of_season_name name =
+  unified_seasons
+  |> List.find_opt (fun s -> s.name = name)
+  |> Option.map (fun s -> (s.main_code, s.datalab_code))
+
+(** Get main site season code list (for Draft API) *)
+let main_season_codes () =
+  List.map (fun s -> (s.main_code, s.name)) unified_seasons
+
+(** Get DataLab season code list (for DataLab/Schedule API) *)
+let datalab_season_codes_list () =
+  List.map (fun s -> (s.datalab_code, s.name)) unified_seasons
+
 (** TLS authenticator - lazily initialized once *)
 let tls_authenticator = lazy (Ca_certs.authenticator () |> Result.get_ok)
 
@@ -218,7 +295,9 @@ let fetch_draft_season ~sw ~env ~season_code ~season_name =
   else
     parse_draft_html ~season_code ~season_name html
 
-(** Season codes mapping (recent seasons) *)
+(** Season codes mapping (recent seasons)
+    @deprecated Use [main_season_codes ()] from unified_seasons instead.
+    This uses MAIN SITE codes (Draft API). *)
 let season_codes = [
   ("044", "2025-2026");
   ("043", "2024-2025");
@@ -839,6 +918,9 @@ let code_from_team_name name =
 (** DataLab uses different season codes (offset by +2 from main site)
     Main site: 044 = 2025-2026
     DataLab:   046 = 2025-2026
+
+    @deprecated Use [datalab_season_codes_list ()] from unified_seasons instead.
+    Or use [main_to_datalab] / [datalab_to_main] for code conversion.
 *)
 let datalab_season_codes = [
   ("046", "2025-2026");
@@ -1690,7 +1772,10 @@ let print_schedule_csv entries =
 
 (** Complete season code mapping from 1998 to 2026
     Discovered from WKBL main site dropdown menu.
-    Note: Some codes are skipped (004, 010, 014) *)
+    Note: Some codes are skipped (004, 010, 014)
+
+    @deprecated For modern seasons (2010+), use [datalab_season_codes_list ()].
+    This list includes legacy seasons (pre-2010) with special formats. *)
 let all_season_codes = [
   (* Modern era: Regular seasons (Oct-Mar) *)
   ("046", "2025-2026");
@@ -1937,3 +2022,82 @@ let schedule_status_from_scores home_score away_score =
   | Some _, Some _ -> "completed"
   | None, None -> "scheduled"
   | _ -> "in_progress"
+
+(** Last successful sync timestamp (Unix time) *)
+let last_sync_time : float option ref = ref None
+
+(** Get last sync time as formatted string *)
+let get_last_sync_time_str () =
+  match !last_sync_time with
+  | None -> "동기화 기록 없음"
+  | Some t ->
+    let tm = Unix.localtime t in
+    let now = Unix.time () in
+    let diff_min = int_of_float ((now -. t) /. 60.0) in
+    if diff_min < 1 then "방금 전"
+    else if diff_min < 60 then Printf.sprintf "%d분 전" diff_min
+    else if diff_min < 1440 then Printf.sprintf "%d시간 전" (diff_min / 60)
+    else Printf.sprintf "%04d-%02d-%02d %02d:%02d"
+      (tm.Unix.tm_year + 1900) (tm.Unix.tm_mon + 1) tm.Unix.tm_mday
+      tm.Unix.tm_hour tm.Unix.tm_min
+
+(** Calculate current season code based on date
+    WKBL season runs Oct-Mar, so:
+    - Oct 2025 ~ Mar 2026 = "2025-2026" season = code "044"
+    - Oct 2024 ~ Mar 2025 = "2024-2025" season = code "043"
+    Base: 1981-1982 = "001" *)
+let current_season_code_auto () =
+  let tm = Unix.localtime (Unix.time ()) in
+  let year = tm.Unix.tm_year + 1900 in
+  let month = tm.Unix.tm_mon + 1 in
+  (* Oct-Dec: current year's season, Jan-Sep: previous year's season *)
+  let season_start_year = if month >= 10 then year else year - 1 in
+  let code = season_start_year - 1981 in  (* 1981 = 001 *)
+  Printf.sprintf "%03d" code
+
+let current_season_name_auto () =
+  let tm = Unix.localtime (Unix.time ()) in
+  let year = tm.Unix.tm_year + 1900 in
+  let month = tm.Unix.tm_mon + 1 in
+  let season_start_year = if month >= 10 then year else year - 1 in
+  Printf.sprintf "%d-%d" season_start_year (season_start_year + 1)
+
+(** Sync current season schedule to database
+    Returns (synced_count, error_count) *)
+let sync_current_season_schedule ~sw ~env () =
+  let current_season_code = current_season_code_auto () in
+  let current_season_name = current_season_name_auto () in
+  Printf.printf "[Sync] Starting schedule sync for season %s (%s)...\n%!" current_season_code current_season_name;
+  try
+    let entries = fetch_full_season_schedule ~sw ~env ~season_code:current_season_code ~season_name:current_season_name in
+    Printf.printf "[Sync] Fetched %d schedule entries\n%!" (List.length entries);
+    let synced = ref 0 in
+    let errors = ref 0 in
+    entries |> List.iter (fun (entry : schedule_entry) ->
+      let status = schedule_status_from_scores entry.sch_home_score entry.sch_away_score in
+      let game_date = normalize_schedule_date ~season_code:current_season_code entry.sch_date in
+      let game_time = if entry.sch_time = "" then None else Some entry.sch_time in
+      let venue = if entry.sch_venue = "" then None else Some entry.sch_venue in
+      match Db.with_db (fun db ->
+        Db.Repo.upsert_schedule_entry
+          ~game_date
+          ~game_time
+          ~season_code:current_season_code
+          ~home_team_code:(code_from_team_name entry.sch_home_team)
+          ~away_team_code:(code_from_team_name entry.sch_away_team)
+          ~venue
+          ~status
+          db) with
+      | Ok () -> incr synced
+      | Error e ->
+          Printf.eprintf "[Sync] Error upserting game %s: %s\n%!" game_date (Db.show_db_error e);
+          incr errors
+    );
+    Printf.printf "[Sync] Complete: %d synced, %d errors\n%!" !synced !errors;
+    (* Update last sync time on success *)
+    if !synced > 0 || !errors = 0 then
+      last_sync_time := Some (Unix.time ());
+    (!synced, !errors)
+  with exn ->
+    Printf.eprintf "[Sync] Fatal error: %s\n%!" (Printexc.to_string exn);
+    (0, 1)
