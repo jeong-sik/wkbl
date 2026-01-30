@@ -104,6 +104,40 @@ let () =
       Printf.eprintf "Failed to ensure DB schema: %s\n" (Db.show_db_error e);
       exit 1);
 
+  (* Background scheduler: sync game results every 12 hours with exponential backoff retry *)
+  let twelve_hours = 12.0 *. 60.0 *. 60.0 in
+  let retry_intervals = [| 5.0 *. 60.0; 15.0 *. 60.0; 45.0 *. 60.0 |] in  (* 5m, 15m, 45m *)
+
+  let sync_with_retry () =
+    let rec attempt n =
+      Printf.printf "[Scheduler] Sync attempt %d...\n%!" (n + 1);
+      let (synced, errors) = Scraper.sync_current_season_schedule ~sw ~env () in
+      if errors = 0 || synced > 0 then
+        Printf.printf "[Scheduler] Sync successful: %d synced, %d errors\n%!" synced errors
+      else if n < Array.length retry_intervals then begin
+        Printf.printf "[Scheduler] Sync failed, retrying in %.0f minutes...\n%!"
+          (retry_intervals.(n) /. 60.0);
+        Eio.Time.sleep env#clock retry_intervals.(n);
+        attempt (n + 1)
+      end else
+        Printf.eprintf "[Scheduler] Sync failed after %d retries, giving up until next cycle\n%!"
+          (Array.length retry_intervals)
+    in
+    attempt 0
+  in
+
+  Eio.Fiber.fork ~sw (fun () ->
+    Printf.printf "[Scheduler] Background sync started (12h interval with retry)\n%!";
+    (* Initial sync on startup *)
+    sync_with_retry ();
+    (* Periodic sync *)
+    while true do
+      Eio.Time.sleep env#clock twelve_hours;
+      Printf.printf "[Scheduler] Running scheduled sync...\n%!";
+      sync_with_retry ()
+    done
+  );
+
   Kirin.run ~config:{ Kirin.default_config with port } ~sw ~env
   @@ Kirin.logger
   @@ utf8_middleware
@@ -518,6 +552,26 @@ Sitemap: https://wkbl.win/sitemap.xml
               Kirin.html (Views.error_page (Db.show_db_error e))
     );
 
+    (* Position-based Leaders *)
+    Kirin.get "/leaders/by-position" (fun request ->
+      let position = Kirin.query_opt "position" request |> Option.value ~default:"ALL" in
+      match Db.get_seasons () with
+      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+      | Ok seasons ->
+          let season = query_season_or_latest request seasons in
+          let stats = ["pts"; "reb"; "ast"; "eff"] in
+          let rec fetch_all acc = function
+            | [] -> Ok (List.rev acc)
+            | stat :: rest ->
+                match Db.get_leaders_by_position ~season ~position stat with
+                | Error e -> Error e
+                | Ok leaders -> fetch_all ((stat, leaders) :: acc) rest
+          in
+          match fetch_all [] stats with
+          | Ok leaders -> Kirin.html (Views.position_leaders_page ~season ~seasons ~position leaders)
+          | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+    );
+
     (* Clutch Time Leaders *)
     Kirin.get "/clutch" (fun request ->
       match Db.get_seasons () with
@@ -743,6 +797,51 @@ Sitemap: https://wkbl.win/sitemap.xml
                          ~right_label:(Views_common.normalize_name b.name)
                          rows)
                 | _ -> Kirin.html (Views.compare_table_empty ()))
+    );
+
+    (* Compare Seasons - Compare a player's performance across different seasons *)
+    Kirin.get "/compare/seasons" (fun request ->
+      let player_id = Kirin.query_opt "player" request |> Option.value ~default:"" in
+      let s1 = Kirin.query_opt "s1" request |> Option.value ~default:"" in
+      let s2 = Kirin.query_opt "s2" request |> Option.value ~default:"" in
+
+      if String.trim player_id = "" then
+        Kirin.redirect "/compare"
+      else
+        match Db.get_seasons () with
+        | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+        | Ok seasons ->
+            (* Get player profile to get name *)
+            (match Db.get_player_profile ~player_id () with
+            | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+            | Ok None -> Kirin.html (Views.error_page "Player not found")
+            | Ok (Some profile) ->
+                let player_name = profile.player.name in
+                (* Get all seasons for this player *)
+                (match Db.get_player_season_stats ~player_id ~scope:"per_game" () with
+                | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+                | Ok all_seasons ->
+                    let find_season code =
+                      List.find_opt (fun (s: season_stats) -> s.ss_season_code = code) all_seasons
+                    in
+                    let s1_stats = if s1 <> "" then find_season s1 else None in
+                    let s2_stats = if s2 <> "" then find_season s2 else None in
+                    let error =
+                      if s1 <> "" && s2 <> "" && s1 = s2 then Some "Please select two different seasons."
+                      else if s1 <> "" && s1_stats = None then Some (Printf.sprintf "Season %s not found for this player." s1)
+                      else if s2 <> "" && s2_stats = None then Some (Printf.sprintf "Season %s not found for this player." s2)
+                      else None
+                    in
+                    Kirin.html (Views.compare_seasons_page
+                      ~seasons
+                      ~player_id
+                      ~player_name
+                      ~s1
+                      ~s2
+                      ~s1_stats
+                      ~s2_stats
+                      ~all_seasons
+                      ~error)))
     );
 
     (* Compare - simplified version *)
@@ -1140,6 +1239,23 @@ Sitemap: https://wkbl.win/sitemap.xml
           (match Db.get_team_full_detail ~team_name ~season () with
           | Ok detail -> Kirin.html (Views_team.team_profile_page detail ~season ~seasons)
           | Error e -> Kirin.html (Views.error_page (Db.show_db_error e)))
+    );
+
+    (* Team H2H comparison *)
+    Kirin.get "/teams/h2h" (fun request ->
+      let team1 = Kirin.query_opt "team1" request |> Option.value ~default:"" in
+      let team2 = Kirin.query_opt "team2" request |> Option.value ~default:"" in
+      match Db.get_seasons () with
+      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+      | Ok seasons ->
+          let season = query_season_or_latest request seasons in
+          if team1 = "" || team2 = "" then
+            (* Show empty form *)
+            Kirin.html (Views_team.team_h2h_page ~team1 ~team2 ~season ~seasons [])
+          else
+            (match Db.get_team_h2h_data ~team1 ~team2 ~season () with
+            | Ok games -> Kirin.html (Views_team.team_h2h_page ~team1 ~team2 ~season ~seasons games)
+            | Error e -> Kirin.html (Views.error_page (Db.show_db_error e)))
     );
 
     (* Convenience aliases for transactions *)

@@ -453,6 +453,21 @@ type player_shooting_stats = {
   pss_ft_pct: float;
 }
 
+(** Advanced player statistics *)
+type player_advanced_stats = {
+  pas_player_id: string;
+  pas_name: string;
+  pas_team: string;
+  pas_games: int;
+  pas_ts_pct: float;      (** True Shooting % *)
+  pas_efg_pct: float;     (** Effective FG % *)
+  pas_usage_pct: float;   (** Usage Rate % *)
+  pas_per: float;         (** Player Efficiency Rating *)
+  pas_ortg: float;        (** Offensive Rating (points per 100 possessions) *)
+  pas_drtg: float;        (** Defensive Rating (points allowed per 100 possessions) *)
+  pas_net_rtg: float;     (** Net Rating = ORtg - DRtg *)
+}
+
 type team_game_result = {
   tgr_game_id: string;
   tgr_game_date: string;

@@ -2300,6 +2300,66 @@ module Queries = struct
   let leaders_efg_pct = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, ((SUM(s.fg_2p_m + s.fg_3p_m) + 0.5 * SUM(s.fg_3p_m)) * 1.0) / NULLIF(SUM(s.fg_2p_a + s.fg_3p_a), 0) FROM game_stats s JOIN players p ON s.player_id = p.player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING SUM(s.fg_2p_a + s.fg_3p_a) >= 50 ORDER BY (((SUM(s.fg_2p_m + s.fg_3p_m) + 0.5 * SUM(s.fg_3p_m)) * 1.0) / NULLIF(SUM(s.fg_2p_a + s.fg_3p_a), 0)) DESC LIMIT 5 |}
   let leaders_usg_pct = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, AVG(u.usg_pct) FROM player_usg_stats u JOIN players p ON u.player_id = p.player_id JOIN teams t ON u.team_code = t.team_code JOIN games g ON g.game_id = u.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' AND u.usg_pct IS NOT NULL GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING COUNT(*) >= 5 AND SUM(u.min_seconds) >= 6000 ORDER BY AVG(u.usg_pct) DESC LIMIT 5 |}
 
+  (** Position-filtered leader queries
+      Position values: 'G' (Guard), 'F' (Forward), 'C' (Center), 'ALL' (no filter)
+  *)
+  let leaders_pts_by_position = (t2 (t2 string string) string ->* Types.leader_entry) {|
+    SELECT p.player_id, p.player_name, t.team_name_kr, AVG(s.pts)
+    FROM game_stats s
+    JOIN players p ON s.player_id = p.player_id
+    JOIN teams t ON s.team_code = t.team_code
+    JOIN games g ON g.game_id = s.game_id
+    WHERE (? = 'ALL' OR g.season_code = ?)
+      AND g.game_type != '10'
+      AND (? = 'ALL' OR p.position LIKE ? || '%')
+    GROUP BY p.player_id, p.player_name, t.team_name_kr
+    HAVING COUNT(*) >= 5
+    ORDER BY AVG(s.pts) DESC
+    LIMIT 10
+  |}
+  let leaders_reb_by_position = (t2 (t2 string string) string ->* Types.leader_entry) {|
+    SELECT p.player_id, p.player_name, t.team_name_kr, AVG(s.reb_tot)
+    FROM game_stats s
+    JOIN players p ON s.player_id = p.player_id
+    JOIN teams t ON s.team_code = t.team_code
+    JOIN games g ON g.game_id = s.game_id
+    WHERE (? = 'ALL' OR g.season_code = ?)
+      AND g.game_type != '10'
+      AND (? = 'ALL' OR p.position LIKE ? || '%')
+    GROUP BY p.player_id, p.player_name, t.team_name_kr
+    HAVING COUNT(*) >= 5
+    ORDER BY AVG(s.reb_tot) DESC
+    LIMIT 10
+  |}
+  let leaders_ast_by_position = (t2 (t2 string string) string ->* Types.leader_entry) {|
+    SELECT p.player_id, p.player_name, t.team_name_kr, AVG(s.ast)
+    FROM game_stats s
+    JOIN players p ON s.player_id = p.player_id
+    JOIN teams t ON s.team_code = t.team_code
+    JOIN games g ON g.game_id = s.game_id
+    WHERE (? = 'ALL' OR g.season_code = ?)
+      AND g.game_type != '10'
+      AND (? = 'ALL' OR p.position LIKE ? || '%')
+    GROUP BY p.player_id, p.player_name, t.team_name_kr
+    HAVING COUNT(*) >= 5
+    ORDER BY AVG(s.ast) DESC
+    LIMIT 10
+  |}
+  let leaders_eff_by_position = (t2 (t2 string string) string ->* Types.leader_entry) {|
+    SELECT p.player_id, p.player_name, t.team_name_kr, AVG(s.game_score)
+    FROM game_stats s
+    JOIN players p ON s.player_id = p.player_id
+    JOIN teams t ON s.team_code = t.team_code
+    JOIN games g ON g.game_id = s.game_id
+    WHERE (? = 'ALL' OR g.season_code = ?)
+      AND g.game_type != '10'
+      AND (? = 'ALL' OR p.position LIKE ? || '%')
+    GROUP BY p.player_id, p.player_name, t.team_name_kr
+    HAVING COUNT(*) >= 5
+    ORDER BY AVG(s.game_score) DESC
+    LIMIT 10
+  |}
+
   (** Stat Awards (unofficial) *)
   let stat_mvp_eff = (t2 string (t2 string int) ->* Types.leader_entry) {|
     SELECT
@@ -2962,6 +3022,50 @@ module Queries = struct
       AND g.game_type != '10'
       AND g.home_score_calc IS NOT NULL
       AND g.away_score_calc IS NOT NULL
+    ORDER BY g.game_date DESC
+  |}
+
+  (* Team H2H: games between two specific teams *)
+  let team_h2h_games = (t2 (t2 (t2 string string) (t2 string string)) (t2 string string) ->* Types.game_info) {|
+    WITH scored_games AS (
+      SELECT
+        g.*,
+        COALESCE(
+          g.home_score,
+          (SELECT SUM(sx.pts) FROM game_stats sx WHERE sx.game_id = g.game_id AND sx.team_code = g.home_team_code)
+        ) AS home_score_calc,
+        COALESCE(
+          g.away_score,
+          (SELECT SUM(sx.pts) FROM game_stats sx WHERE sx.game_id = g.game_id AND sx.team_code = g.away_team_code)
+        ) AS away_score_calc,
+        CASE
+          WHEN g.home_score IS NOT NULL AND g.away_score IS NOT NULL THEN 2
+          WHEN EXISTS (SELECT 1 FROM game_stats gs WHERE gs.game_id = g.game_id) THEN 1
+          ELSE 0
+        END AS score_quality
+      FROM games g
+    )
+    SELECT
+      g.game_id,
+      g.game_date,
+      g.home_team_code,
+      th.team_name_kr AS home_team_name,
+      g.away_team_code,
+      ta.team_name_kr AS away_team_name,
+      COALESCE(g.home_score_calc, 0) AS home_score,
+      COALESCE(g.away_score_calc, 0) AS away_score,
+      g.score_quality
+    FROM scored_games g
+    JOIN teams th ON g.home_team_code = th.team_code
+    JOIN teams ta ON g.away_team_code = ta.team_code
+    WHERE (
+      (g.home_team_code = ? AND g.away_team_code = ?)
+      OR (g.home_team_code = ? AND g.away_team_code = ?)
+    )
+    AND (? = 'ALL' OR g.season_code = ?)
+    AND g.game_type != '10'
+    AND g.home_score_calc IS NOT NULL
+    AND g.away_score_calc IS NOT NULL
     ORDER BY g.game_date DESC
   |}
 
@@ -3652,6 +3756,21 @@ end
     else
       Db.collect_list Queries.leaders_base_cached s
 
+  (** Get leaders filtered by position
+      @param position "G" (Guard), "F" (Forward), "C" (Center), or "ALL"
+      @param stat "pts", "reb", "ast", "eff"
+  *)
+  let get_leaders_by_position ~season ~position ~stat (module Db : Caqti_eio.CONNECTION) =
+    let s = if String.trim season = "" then "ALL" else season in
+    let pos = if String.trim position = "" then "ALL" else position in
+    let q = match stat with
+      | "reb" -> Queries.leaders_reb_by_position
+      | "ast" -> Queries.leaders_ast_by_position
+      | "eff" -> Queries.leaders_eff_by_position
+      | _ -> Queries.leaders_pts_by_position
+    in
+    Db.collect_list q ((s, s), pos)
+
   let get_stat_mvp_eff ~season ~include_mismatch (module Db : Caqti_eio.CONNECTION) =
     let include_int = if include_mismatch then 1 else 0 in
     let s = if String.trim season = "" then "ALL" else season in
@@ -3787,6 +3906,12 @@ end
 	    in
 	    Db.collect_list Queries.team_games t
 	  let get_player_h2h ~p1_id ~p2_id ~season (module Db : Caqti_eio.CONNECTION) = let s = if season = "" then "ALL" else season in Db.collect_list Queries.player_h2h_games ((p1_id, p2_id), (s, s))
+
+    (** Get head-to-head games between two teams *)
+    let get_team_h2h ~team1 ~team2 ~season (module Db : Caqti_eio.CONNECTION) =
+      let s = if String.trim season = "" then "ALL" else season in
+      (* Params: (((t1, t2), (t2, t1)), (s, s)) for both home/away scenarios *)
+      Db.collect_list Queries.team_h2h_games (((team1, team2), (team2, team1)), (s, s))
 
     (** Get MVP race candidates for a season *)
     let get_mvp_race_candidates ~season ~min_games (module Db : Caqti_eio.CONNECTION) =
@@ -4276,6 +4401,9 @@ let get_leaders ?(season="ALL") ?(scope="per_game") category =
     let* bases = get_leaders_base ~season () in
     Ok (leaders_from_base ~scope ~category bases))
 
+let get_leaders_by_position ?(season="ALL") ?(position="ALL") stat =
+  with_db (fun db -> Repo.get_leaders_by_position ~season ~position ~stat db)
+
 let get_stat_mvp_eff ?(season="ALL") ?(include_mismatch=false) () =
   let key = Printf.sprintf "mvp|season=%s|mismatch=%b" season include_mismatch in
   cached awards_cache key (fun () ->
@@ -4329,6 +4457,9 @@ let get_team_full_detail ~team_name ?(season="ALL") () =
     Ok { tfd_team_name = team_name; tfd_standing = standing; tfd_roster = roster; tfd_game_results = game_results; tfd_recent_games = games; tfd_team_totals = team_totals })
 let get_player_h2h_data ~p1_id ~p2_id ?(season="ALL") () =
   with_db (fun db -> Repo.get_player_h2h ~p1_id ~p2_id ~season db)
+
+let get_team_h2h_data ~team1 ~team2 ?(season="ALL") () =
+  with_db (fun db -> Repo.get_team_h2h ~team1 ~team2 ~season db)
 
 let get_db_quality_report () : qa_db_report db_result =
   cached qa_report_cache "qa_report" (fun () ->
