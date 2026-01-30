@@ -361,7 +361,13 @@ let standings_table ~season (standings : team_standing list) =
         Printf.sprintf "/team/%s?season=%s" (Uri.pct_encode s.team_name) (Uri.pct_encode season)
       in
       let team_cell = Printf.sprintf {html|<span class="inline-flex items-center gap-2" style="white-space: nowrap;">%s<a href="%s" class="team-name hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 transition-colors" style="white-space: nowrap; word-break: keep-all;">%s</a></span>|html} (team_logo_tag ~class_name:"w-5 h-5" s.team_name) (escape_html team_href) (escape_html s.team_name) in
-      let pct_cell = Printf.sprintf {html|<div class="flex flex-col items-end leading-tight"><span class="text-orange-600 dark:text-orange-400 font-bold font-mono">%s</span><span class="text-slate-500 dark:text-slate-400 text-[10px] font-mono">PCT</span></div>|html} win_pct_fmt in
+      let pct_bar_width = int_of_float (s.win_pct *. 100.0) in
+      let pct_cell = Printf.sprintf {html|<div class="flex flex-col items-end gap-1 leading-tight">
+        <span class="text-orange-600 dark:text-orange-400 font-bold font-mono">%s</span>
+        <div class="w-16 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+          <div class="h-full bg-gradient-to-r from-orange-400 to-orange-600 rounded-full transition-all" style="width: %d%%"></div>
+        </div>
+      </div>|html} win_pct_fmt pct_bar_width in
       
       let diff_color = if s.diff >= 0.0 then "text-emerald-600 dark:text-emerald-400" else "text-rose-600 dark:text-rose-400" in
       let diff_str = if s.diff > 0.0 then Printf.sprintf "+%.1f" s.diff else Printf.sprintf "%.1f" s.diff in
