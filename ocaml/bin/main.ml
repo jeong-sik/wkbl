@@ -143,7 +143,7 @@ let () =
           | Some png ->
               Kirin.with_header "Content-Type" "image/png"
               @@ Kirin.with_header "Cache-Control" "public, max-age=3600"
-              @@ Kirin.Response.make ~status:`OK png
+              @@ Kirin.Response.make ~status:`OK (`String png)
           | None ->
               (* Fallback: return SVG if PNG conversion fails *)
               Kirin.with_header "Content-Type" "image/svg+xml"
@@ -1354,7 +1354,7 @@ Sitemap: https://wkbl.win/sitemap.xml
 
     (* Live Scores API: SSE *)
     Kirin.get "/api/live/sse" (fun request ->
-      Live.sse_handler () request
+      Live.sse_handler request
     );
 
     (* Live Scores Widget: HTMX partial *)
@@ -1484,11 +1484,11 @@ Sitemap: https://wkbl.win/sitemap.xml
             ("games", `List (List.map game_to_json today_games));
           ] in
           (* Return as SSE event *)
-          let event = Kirin.Sse.event ~event_type:"scores" (Yojson.Basic.to_string json_obj) in
-          Kirin.Sse.response [event]
+          let event = Kirin.Sse.event "scores" (Yojson.Basic.to_string json_obj) in
+          Kirin.Sse.response_legacy [event]
       | Error e ->
-          let err_event = Kirin.Sse.event ~event_type:"error" (Db.show_db_error e) in
-          Kirin.Sse.response [err_event]
+          let err_event = Kirin.Sse.event "error" (Db.show_db_error e) in
+          Kirin.Sse.response_legacy [err_event]
     );
 
     (* Live scores page *)
