@@ -4575,16 +4575,16 @@ let get_lineup_data ~season ~team_name () =
           s.player_id,
           p.player_name,
           s.team_code,
-          t.team_name,
+          t.team_name_kr,
           s.min_seconds,
           s.pts,
-          s.plus_minus
+          NULL::integer AS plus_minus
         FROM game_stats s
         JOIN games g ON g.game_id = s.game_id
         JOIN players p ON p.player_id = s.player_id
         JOIN teams t ON t.team_code = s.team_code
         WHERE g.game_type != '10'
-          AND (g.season_id = ? OR ? = 'ALL')
+          AND (g.season_code = ? OR ? = 'ALL')
           AND (s.team_code = ? OR ? = 'ALL')
           AND s.min_seconds > 0
         ORDER BY s.game_id, s.team_code, s.min_seconds DESC
