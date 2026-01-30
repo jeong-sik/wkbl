@@ -2,6 +2,15 @@
 # WKBL Data Refresh Script with improved error handling and monitoring
 set -euo pipefail
 
+# Source environment variables (for launchd which doesn't inherit shell env)
+# shellcheck source=/dev/null
+[[ -f "$HOME/.zshenv" ]] && source "$HOME/.zshenv"
+
+# Initialize opam environment (required for dune)
+if command -v opam &>/dev/null; then
+    eval "$(opam env --switch=5.4.0 --set-switch)"
+fi
+
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SCRIPT_DIR="$(dirname "${BASH_SOURCE[0]}")"
 ME_ROOT="${ME_ROOT:-$HOME/me}"
