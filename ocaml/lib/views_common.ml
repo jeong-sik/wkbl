@@ -256,6 +256,28 @@ let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="") ?og_titl
   <!-- ARIA live region for dynamic content announcements -->
   <div id="aria-live" aria-live="polite" aria-atomic="true" class="sr-only"></div>
 
+  <!-- Header with navigation and dark mode toggle -->
+  <header class="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-40">
+    <nav class="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
+      <div class="flex items-center gap-6">
+        <a href="/" class="flex items-center gap-2 font-bold text-lg text-orange-600 dark:text-orange-400">
+          <span>🏀</span>
+          <span>WKBL</span>
+        </a>
+        <div class="hidden md:flex items-center gap-4 text-sm">
+          <a href="/players" class="text-slate-600 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors">Players</a>
+          <a href="/teams" class="text-slate-600 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors">Teams</a>
+          <a href="/standings" class="text-slate-600 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors">Standings</a>
+          <a href="/games" class="text-slate-600 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors">Games</a>
+        </div>
+      </div>
+      <button id="theme-toggle" type="button" aria-label="다크모드 전환" class="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+        <svg id="theme-icon-light" class="w-5 h-5 hidden dark:block text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"/></svg>
+        <svg id="theme-icon-dark" class="w-5 h-5 block dark:hidden text-slate-600" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>
+      </button>
+    </nav>
+  </header>
+
   <main id="main-content" role="main" tabindex="-1" class="max-w-7xl mx-auto px-4 py-6">
     %s
   </main>
@@ -302,6 +324,28 @@ let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="") ?og_titl
         setTimeout(() => { liveRegion.textContent = ''; }, 1000);
       }
     };
+
+    // Dark mode toggle
+    (function() {
+      const toggle = document.getElementById('theme-toggle');
+      const html = document.documentElement;
+
+      // Initialize theme from localStorage or system preference
+      const stored = localStorage.getItem('wkbl-theme');
+      if (stored === 'dark' || (!stored && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        html.classList.add('dark');
+      }
+
+      // Toggle handler
+      if (toggle) {
+        toggle.addEventListener('click', function() {
+          html.classList.toggle('dark');
+          const isDark = html.classList.contains('dark');
+          localStorage.setItem('wkbl-theme', isDark ? 'dark' : 'light');
+          window.announceToScreenReader(isDark ? '다크 모드 활성화' : '라이트 모드 활성화');
+        });
+      }
+    })();
   </script>
 </body>
 </html>|html} title content
@@ -320,6 +364,10 @@ let score_quality_badge ?(compact=false) q =
 
 let team_scope_to_string = function PerGame -> "per_game" | Totals -> "totals"
 let wkbl_official_game_result_url id = Some ("https://www.wkbl.or.kr/game/result.asp?game_id=" ^ id)
+
+(** Responsive table wrapper - enables horizontal scroll on mobile *)
+let responsive_table_wrapper ?(class_extra="") content =
+  Printf.sprintf {html|<div class="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 %s">%s</div>|html} class_extra content
 let extract_contract_years s = try Some (int_of_string (String.sub s 0 1)) with _ -> None
 
 let radar_chart ?(show_league_avg=false) ~labels ~values_a ~values_b ?(color_a="#f97316") ?(color_b="#0ea5e9") () =
