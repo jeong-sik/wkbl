@@ -22,10 +22,9 @@ WORKDIR /home/opam/src/ocaml
 RUN opam update
 
 # Cache bust for kirin installation
-ARG CACHEBUST=2026013001
+ARG CACHEBUST=2026013002
 
 # Pin private dependencies from GitHub
-RUN opam install dune-build-info -y
 RUN opam pin add grpc-direct-core https://github.com/jeong-sik/grpc-direct.git#main -y --no-action
 RUN opam pin add grpc-direct https://github.com/jeong-sik/grpc-direct.git#main -y --no-action
 RUN opam pin add ocaml-webrtc https://github.com/jeong-sik/ocaml-webrtc.git#main -y --no-action
