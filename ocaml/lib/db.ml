@@ -3829,69 +3829,12 @@ let split_csv_ids (ids : string) =
   |> List.map String.trim
   |> List.filter (fun s -> s <> "")
 
-module Cache = struct
-  type 'a entry = {
-    value: 'a;
-    expires_at: float;
-  }
+(** Cache module - extracted to db_cache.ml *)
+module Cache = Db_cache
 
-  type 'a t = {
-    ttl: float;
-    max_entries: int;
-    store: (string, 'a entry) Hashtbl.t;
-  }
+let cached = Db_cache.cached
 
-  let create ~ttl ~max_entries =
-    { ttl; max_entries; store = Hashtbl.create max_entries }
-
-  let now () = Unix.gettimeofday ()
-
-  let get t key =
-    match Hashtbl.find_opt t.store key with
-    | Some entry when entry.expires_at > now () -> Some entry.value
-    | Some _ ->
-        Hashtbl.remove t.store key;
-        None
-    | None -> None
-
-  (** Evict expired entries first, then oldest 25% if still over capacity *)
-  let evict t =
-    let current = now () in
-    (* Phase 1: Remove expired entries *)
-    let expired_keys = Hashtbl.fold (fun k entry acc ->
-      if entry.expires_at <= current then k :: acc else acc
-    ) t.store [] in
-    List.iter (Hashtbl.remove t.store) expired_keys;
-    (* Phase 2: If still over capacity, remove oldest 25% *)
-    if Hashtbl.length t.store > t.max_entries then begin
-      let entries = Hashtbl.fold (fun k e acc -> (k, e.expires_at) :: acc) t.store [] in
-      let sorted = List.sort (fun (_, t1) (_, t2) -> Float.compare t1 t2) entries in
-      let to_remove = max 1 (List.length sorted / 4) in
-      List.iteri (fun i (k, _) ->
-        if i < to_remove then Hashtbl.remove t.store k
-      ) sorted
-    end
-
-  let set t key value =
-    Hashtbl.replace t.store key { value; expires_at = now () +. t.ttl };
-    if Hashtbl.length t.store > t.max_entries then evict t
-end
-
-let cached cache key f =
-  match Cache.get cache key with
-  | Some value -> Ok value
-  | None ->
-      let result = f () in
-      (match result with
-       | Ok value -> Cache.set cache key value
-       | Error _ -> ());
-      result
-
-(** Public API *)
-let cache_key_text value =
-  let trimmed = String.trim value in
-  let lowered = String.lowercase_ascii trimmed in
-  if String.length lowered > 64 then String.sub lowered 0 64 else lowered
+let cache_key_text = Db_cache.cache_key_text
 
 let player_sort_key = function
   | ByPoints -> "pts"

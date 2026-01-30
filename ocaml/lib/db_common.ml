@@ -1,0 +1,168 @@
+(** Common database utilities and types.
+
+    Extracted from db.ml for modularity.
+    This module has no dependencies on Caqti or Domain.
+*)
+
+(** Database error type - explicit, not string *)
+type db_error =
+  | ConnectionFailed of string
+  | QueryFailed of string
+  | ParseError of string
+[@@deriving show]
+
+(** Result type alias for convenience - Direct style with Eio *)
+type 'a db_result = ('a, db_error) result
+
+(** QA (data quality) report types. *)
+type qa_score_mismatch = {
+  qsm_game_id: string;
+  qsm_game_date: string;
+  qsm_home_team: string;
+  qsm_away_team: string;
+  qsm_home_score: int option;
+  qsm_away_score: int option;
+  qsm_home_sum: int option;
+  qsm_away_sum: int option;
+}
+
+type qa_team_count_anomaly = {
+  qtca_game_id: string;
+  qtca_team_count: int;
+}
+
+type qa_duplicate_player_row = {
+  qdpr_game_id: string;
+  qdpr_team_code: string;
+  qdpr_team_name: string;
+  qdpr_player_id: string;
+  qdpr_player_name: string;
+  qdpr_row_count: int;
+}
+
+type qa_duplicate_player_name = {
+  qdpn_player_name: string;
+  qdpn_id_count: int;
+  qdpn_player_ids: string list;
+}
+
+type qa_db_report = {
+  qdr_generated_at: string;
+  qdr_games_total: int;
+  qdr_games_with_stats: int;
+  qdr_plus_minus_games: int;
+  qdr_plus_minus_coverage_pct: float;
+  qdr_score_mismatch_count: int;
+  qdr_score_mismatch_sample: qa_score_mismatch list;
+  qdr_team_count_anomaly_count: int;
+  qdr_team_count_anomaly_sample: qa_team_count_anomaly list;
+  qdr_duplicate_player_row_count: int;
+  qdr_duplicate_player_row_sample: qa_duplicate_player_row list;
+  qdr_duplicate_player_name_count: int;
+  qdr_duplicate_player_name_sample: qa_duplicate_player_name list;
+}
+
+(** Leader base type for leaderboard queries *)
+type leader_base = {
+  lb_player_id: string;
+  lb_player_name: string;
+  lb_team_name: string;
+  lb_gp: int;
+  lb_min_seconds: int;
+  lb_pts: int;
+  lb_reb: int;
+  lb_ast: int;
+  lb_stl: int;
+  lb_blk: int;
+  lb_tov: int;
+  lb_eff: float;
+  lb_fg_m: int;
+  lb_fg_a: int;
+  lb_fg3_m: int;
+  lb_fg3_a: int;
+  lb_ft_m: int;
+  lb_ft_a: int;
+}
+
+(** Player base type for player lists *)
+type player_base = {
+  pb_player_id: string;
+  pb_player_name: string;
+  pb_team_name: string;
+  pb_gp: int;
+  pb_min_seconds: int;
+  pb_pts: int;
+  pb_reb: int;
+  pb_ast: int;
+  pb_stl: int;
+  pb_blk: int;
+  pb_tov: int;
+  pb_avg_pts: float;
+  pb_margin: float;
+  pb_avg_reb: float;
+  pb_avg_ast: float;
+  pb_avg_stl: float;
+  pb_avg_blk: float;
+  pb_avg_tov: float;
+  pb_eff: float;
+  pb_margin_seconds: int;
+}
+
+(** Database connection URI *)
+let default_db_path = "../data/wkbl.db"
+
+(** Normalize search pattern for LIKE queries *)
+let normalize_search_pattern search =
+  let trimmed = String.trim search in
+  if trimmed = "" then "%" else "%" ^ trimmed ^ "%"
+
+(** Key type for margin lookups (season, team) *)
+module MarginKey = struct
+  type t = string * string
+  let compare = compare
+end
+
+module MarginMap = Map.Make (MarginKey)
+
+(** Take first n items from a list *)
+let take n items =
+  let rec loop acc n = function
+    | [] -> List.rev acc
+    | _ when n <= 0 -> List.rev acc
+    | x :: xs -> loop (x :: acc) (n - 1) xs
+  in
+  loop [] n items
+
+(** Normalize text for search matching *)
+let normalize_search_text value =
+  String.lowercase_ascii (String.trim value)
+
+(** Check if needle is contained in hay (case-insensitive) *)
+let string_contains ~needle ~hay =
+  if String.length needle = 0 then true
+  else
+    let needle_lower = String.lowercase_ascii needle in
+    let hay_lower = String.lowercase_ascii hay in
+    try
+      let _ = Str.search_forward (Str.regexp_string needle_lower) hay_lower 0 in
+      true
+    with Not_found -> false
+
+(** ISO8601 UTC timestamp *)
+let iso8601_utc () =
+  let open Unix in
+  let t = gmtime (gettimeofday ()) in
+  Printf.sprintf "%04d-%02d-%02dT%02d:%02d:%02dZ"
+    (1900 + t.tm_year)
+    (t.tm_mon + 1)
+    t.tm_mday
+    t.tm_hour
+    t.tm_min
+    t.tm_sec
+
+(** Split CSV string into list *)
+let split_csv_ids (ids : string) =
+  ids
+  |> String.split_on_char ','
+  |> List.map String.trim
+  |> List.filter (fun s -> s <> "")
