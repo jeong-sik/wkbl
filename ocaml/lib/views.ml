@@ -264,6 +264,7 @@ let teams_table ~season ~scope (stats: Domain.team_stats list) =
   
   (* 1. Define Columns (Metadata only) *)
   let cols = [
+    col "#" ~w:(px 40) ~align:`Center;
     col "Team";
     col "GP" ~w:(px 60) ~align:`Right ~sort:"gp";
     col min_label ~w:(px 80) ~align:`Right ~resp:`Hidden_md ~sort:"min";
@@ -286,7 +287,8 @@ let teams_table ~season ~scope (stats: Domain.team_stats list) =
   (* 2. Transform Data to Raw Strings (Data-Oriented) *)
   let rows_data =
     stats
-    |> List.map (fun s ->
+    |> List.mapi (fun idx s ->
+        let rank = Printf.sprintf {html|<span class="font-bold text-slate-500 dark:text-slate-400">%d</span>|html} (idx + 1) in
         let logo = team_logo_tag ~class_name:"w-5 h-5 shrink-0" s.team in
         let team_cell = Printf.sprintf {html|<div class="flex items-center gap-2">%s<a href="%s" class="hover:text-orange-600 dark:text-orange-400 transition-colors truncate">%s</a></div>|html} logo (team_link s) (escape_html s.team) in
         let margin_str =
@@ -294,8 +296,9 @@ let teams_table ~season ~scope (stats: Domain.team_stats list) =
           let s_str = if v > 0.0 then Printf.sprintf "+%.1f" v else format_float v in
           Printf.sprintf {html|<span class="%s">%s</span>|html} (margin_color v) s_str
         in
-        
+
         [
+          rank;
           team_cell;
           string_of_int s.gp;
           format_float s.min_total;
