@@ -62,15 +62,23 @@ let get_live_sse_event () =
   let live_games = List.map game_to_live games in
   let json = live_games_to_json live_games in
   let event_id = Printf.sprintf "%d" (int_of_float (Unix.time ())) in
-  Kirin.Sse.event ~event_type:"scores" json
+  Kirin.Sse.event "scores" json
   |> Kirin.Sse.with_id event_id
   |> Kirin.Sse.with_retry 30000  (* 30 second retry *)
 
+(** Global broadcaster for live scores *)
+let broadcaster = Kirin.Sse.Broadcaster.create ()
+
+(** Broadcast current scores to all connected clients *)
+let broadcast_scores () =
+  let event = get_live_sse_event () in
+  Kirin.Sse.Broadcaster.broadcast broadcaster event
+
 (** SSE handler for live scores *)
-let sse_handler () =
-  Kirin.Sse.handler ~on_events:(fun () ->
-    [get_live_sse_event ()]
-  )
+let sse_handler req =
+  (* Broadcast current state to new client *)
+  broadcast_scores ();
+  Kirin.Sse.handler broadcaster req
 
 (** Get live status as JSON for API endpoint *)
 let get_status_json () =
