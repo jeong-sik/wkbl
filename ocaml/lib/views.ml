@@ -160,7 +160,15 @@ let home_page ~season ~seasons players =
       </div>
      </div>
      <div id="live-scores" hx-get="/api/live/widget" hx-trigger="every 30s" hx-swap="innerHTML" hx-indicator="#live-loading">
-       <span id="live-loading" class="htmx-indicator text-xs text-slate-400">업데이트 중...</span>
+       <div id="live-loading" class="htmx-indicator">
+         <div class="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg animate-pulse">
+           <div class="flex-1 space-y-2">
+             <div class="h-4 bg-slate-200 dark:bg-slate-700 rounded w-3/4"></div>
+             <div class="h-3 bg-slate-200 dark:bg-slate-700 rounded w-1/2"></div>
+           </div>
+           <div class="w-6 h-6 border-2 border-slate-300 dark:border-slate-600 border-t-orange-500 rounded-full animate-spin"></div>
+         </div>
+       </div>
        %s
      </div>
     </div>

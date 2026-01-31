@@ -174,15 +174,40 @@ let empty_state ?icon title desc =
   let _ = icon in
   Printf.sprintf {html|<div class="text-center py-12 px-4"><div class="text-4xl mb-4">🏀</div><h3 class="text-lg font-bold text-slate-900 dark:text-slate-200">%s</h3><p class="text-slate-500 dark:text-slate-400">%s</p></div>|html} title desc
 
-let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="") ?og_title ?og_description ?og_image ?data_freshness ~content () =
-  let _ = og_title in let _ = og_description in let _ = og_image in let _ = data_freshness in
-  let _ = canonical_path in let _ = description in let _ = json_ld in
+let layout ~title ?(canonical_path="/") ?(description="") ?(keywords="WKBL, 여자농구, 한국여자프로농구, 선수 통계, 팀 순위, 농구 분석") ?(json_ld="") ?og_title ?og_description ?og_image ?data_freshness ~content () =
+  let _ = data_freshness in
+  let base_url = "https://wkbl.win" in
+  let full_url = base_url ^ canonical_path in
+  let meta_description = if description = "" then "WKBL 여자농구 효율성 순위, 팀 순위, 선수 통계를 한눈에 확인하세요. 한국여자프로농구 통계 분석 사이트입니다." else description in
+  let og_title_val = Option.value og_title ~default:title in
+  let og_desc_val = Option.value og_description ~default:meta_description in
+  let og_image_val = Option.value og_image ~default:(base_url ^ "/static/images/og-default.png") in
+  let json_ld_tag = if json_ld = "" then "" else Printf.sprintf {html|<script type="application/ld+json">%s</script>|html} json_ld in
   Printf.sprintf {html|<!DOCTYPE html>
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>%s</title>
+  <!-- SEO Meta Tags -->
+  <meta name="description" content="%s">
+  <meta name="keywords" content="%s">
+  <link rel="canonical" href="%s">
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="%s">
+  <meta property="og:title" content="%s">
+  <meta property="og:description" content="%s">
+  <meta property="og:image" content="%s">
+  <meta property="og:locale" content="ko_KR">
+  <meta property="og:site_name" content="WKBL Analytics">
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:url" content="%s">
+  <meta name="twitter:title" content="%s">
+  <meta name="twitter:description" content="%s">
+  <meta name="twitter:image" content="%s">
+  %s
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -381,7 +406,7 @@ let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="") ?og_titl
     })();
   </script>
 </body>
-</html>|html} title content
+</html>|html} title (escape_html meta_description) (escape_html keywords) full_url full_url (escape_html og_title_val) (escape_html og_desc_val) og_image_val full_url (escape_html og_title_val) (escape_html og_desc_val) og_image_val json_ld_tag content
 
 let eff_badge ?(show_label=false) eff =
   let color_cls = if eff >= 20.0 then "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/30"
