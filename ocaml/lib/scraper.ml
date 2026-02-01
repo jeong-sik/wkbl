@@ -1731,6 +1731,14 @@ let fetch_schedule_month ~sw ~env ~ym ~season =
 (** Fetch full season schedule (October to March)
     @param season_code e.g., "046" for 2025-2026 season
 *)
+(** Check if a team name belongs to a recognized WKBL league team (current or historical) *)
+let is_league_team name =
+  let n = String.trim name in
+  match n with
+  | "우리은행" | "삼성생명" | "신한은행" | "KB스타즈" | "하나은행" | "BNK 썸"
+  | "하나원큐" | "KB국민은행" | "하나외환" | "신세계" | "금호생명" | "KDB생명" | "현대" | "한빛은행" | "국민은행" | "OK저축은행" -> true
+  | _ -> false
+
 let fetch_season_schedule ~sw ~env ~season_code =
   let start_year = 2025 in  (* For season 046, starts in 2025 *)
   let months = [
@@ -1748,6 +1756,7 @@ let fetch_season_schedule ~sw ~env ~season_code =
     let ym = Printf.sprintf "%04d%02d" year month in
     fetch_schedule_month ~sw ~env ~ym ~season:season_code
   )
+  |> List.filter (fun e -> is_league_team e.sch_home_team && is_league_team e.sch_away_team)
 
 (** Print schedule as CSV *)
 let print_schedule_csv entries =

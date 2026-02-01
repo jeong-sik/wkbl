@@ -1095,7 +1095,7 @@ let h2h_game_row (g: h2h_game) =
    <td class="px-3 py-2 text-left text-slate-500 dark:text-slate-400 text-[10px] w-[60px]">%d</td>
    <td class="px-3 py-2 text-right text-xs font-sans w-[80px]"><span class="px-1.5 py-0.5 rounded %s font-bold">%+d</span></td>
   </tr>|html}
-  (escape_html g.game_date) g.player1_pts g.player1_reb g.player1_ast g.player2_pts g.player2_reb g.player2_ast diff_color g.score_diff
+  (escape_html g.hg_game_date) g.player1_pts g.player1_reb g.player1_ast g.player2_pts g.player2_reb g.player2_ast diff_color g.score_diff
 
 let h2h_game_table (p1_name: string) (p2_name: string) (games: h2h_game list) =
  let rows = games |> List.map h2h_game_row |> String.concat "\n" in

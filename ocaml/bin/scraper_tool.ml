@@ -522,6 +522,9 @@ let run_sync_history ~sw ~env ~season_filter =
 
 let () =
   let args = Array.to_list Sys.argv |> List.tl in
+  
+  (* Global RNG initialization for HTTPS/TLS connectivity *)
+  Mirage_crypto_rng_unix.use_default ();
 
   let csv_output = List.mem "--csv" args in
   let stats_output = List.mem "--stats" args in

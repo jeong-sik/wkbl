@@ -435,7 +435,7 @@ let fantasy_score_tests = [
 let make_h2h_game ~game_id ~game_date ~p1_team ~p2_team ~p1_pts ~p1_reb ~p1_ast
     ?(p1_stl=0) ?(p1_blk=0) ~p2_pts ~p2_reb ~p2_ast ?(p2_stl=0) ?(p2_blk=0)
     ~winner_team ~score_diff () : h2h_game =
-  { game_id; game_date; player1_team = p1_team; player2_team = p2_team;
+  { hg_game_id = game_id; hg_game_date = game_date; player1_team = p1_team; player2_team = p2_team;
     player1_pts = p1_pts; player1_reb = p1_reb; player1_ast = p1_ast;
     player1_stl = p1_stl; player1_blk = p1_blk;
     player2_pts = p2_pts; player2_reb = p2_reb; player2_ast = p2_ast;

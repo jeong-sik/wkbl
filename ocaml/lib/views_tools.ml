@@ -735,7 +735,7 @@ let h2h_score_chart ~p1_name ~p2_name (games: Domain.h2h_game list) =
             </div>
           </div>
         </div>|html}
-        (escape_html g.game_date)
+        (escape_html g.hg_game_date)
         p1_border p1_pct g.player1_pts
         p2_border p2_pct g.player2_pts
     in
