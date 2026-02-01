@@ -1600,6 +1600,34 @@ Sitemap: https://wkbl.win/sitemap.xml
             Kirin.server_error ~body:(Db.show_db_error e) ()
     );
 
+    (* AI Prediction OG Image *)
+    Kirin.get "/api/og/predict" (fun request ->
+      let home = Kirin.query_opt "home" request |> Option.value ~default:"" in
+      let away = Kirin.query_opt "away" request |> Option.value ~default:"" in
+      let season = Kirin.query_opt "season" request |> Option.value ~default:"046" in
+      match Db.get_team_stats ~season (), Db.get_standings ~season (), Db.get_games ~season () with
+      | Ok teams, Ok standings, Ok games ->
+          let find_stats name = List.find_opt (fun (t: Domain.team_stats) -> t.team = name) teams in
+          let find_standing name = List.find_opt (fun (s: Domain.team_standing) -> s.team_name = name) standings in
+          (match find_stats home, find_stats away, find_standing home, find_standing away with
+          | Some home_stats, Some away_stats, Some home_st, Some away_st ->
+              let output = Prediction.predict_match_nerd
+                ~context:None ~season ~is_neutral:false ~games
+                ~home:home_stats ~away:away_stats
+                ~home_win_pct:home_st.win_pct ~away_win_pct:away_st.win_pct
+                ~name_home:home ~name_away:away
+              in
+              let svg = Cards.prediction_card ~home ~away output in
+              (match Cards.svg_to_png svg with
+              | Some png -> 
+                  Kirin.with_header "Content-Type" "image/png"
+                  @@ Kirin.with_header "Cache-Control" "public, max-age=3600"
+                  @@ Kirin.Response.make ~status:`OK (`String png)
+              | None -> Kirin.with_header "Content-Type" "image/svg+xml" @@ Kirin.text svg)
+          | _ -> Kirin.not_found ~body:"Team data not found" ())
+      | _ -> Kirin.server_error ~body:"Failed to generate image" ()
+    );
+
     (* SSE: Live scores endpoint *)
     Kirin.get "/api/live/scores" (fun _request ->
       (* Get today's date in YYYY-MM-DD format *)

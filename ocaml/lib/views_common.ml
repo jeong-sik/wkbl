@@ -175,8 +175,14 @@ let empty_state ?icon title desc =
   Printf.sprintf {html|<div class="text-center py-12 px-4"><div class="text-4xl mb-4">🏀</div><h3 class="text-lg font-bold text-slate-900 dark:text-slate-200">%s</h3><p class="text-slate-500 dark:text-slate-400">%s</p></div>|html} title desc
 
 let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="") ?og_title ?og_description ?og_image ?data_freshness ~content () =
-  let _ = og_title in let _ = og_description in let _ = og_image in
+  let _ = og_title in let _ = og_description in
   let _ = canonical_path in let _ = description in let _ = json_ld in
+  
+  let og_img_html = match og_image with
+    | Some url -> Printf.sprintf {html|<meta property="og:image" content="%s"><meta name="twitter:image" content="%s">|html} url url
+    | None -> {html|<meta property="og:image" content="https://wkbl.win/static/images/og-main.png">|html}
+  in
+
   let freshness_html = match data_freshness with
     | Some ts -> Printf.sprintf {|<span class="hidden sm:inline-flex items-center text-xs text-slate-500 dark:text-slate-400" data-freshness="%s"></span>|} ts
     | None -> ""
@@ -187,6 +193,7 @@ let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="") ?og_titl
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>%s</title>
+  %s
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
@@ -445,7 +452,7 @@ let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="") ?og_titl
   <script src="/static/js/skeleton-loader.js"></script>
   <script src="/static/js/data-freshness.js"></script>
 </body>
-</html>|html} title freshness_html content
+</html>|html} title og_img_html freshness_html content
 
 let eff_badge ?(show_label=false) eff =
   let color_cls = if eff >= 20.0 then "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/30"
