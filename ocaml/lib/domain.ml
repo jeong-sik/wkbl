@@ -489,8 +489,8 @@ type team_full_detail = {
 }
 
 type h2h_game = {
-  game_id: string;
-  game_date: string;
+  hg_game_id: string;
+  hg_game_date: string;
   player1_team: string;
   player2_team: string;
   player1_pts: int;

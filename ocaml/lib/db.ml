@@ -694,7 +694,7 @@ module Types = struct
   let h2h_game =
     let encode _ = Error "Encode not supported: read-only type" in
     let decode (game_id, (game_date, (p1_team, (p2_team, (p1_pts, (p1_reb, (p1_ast, (p1_stl, (p1_blk, (p2_pts, (p2_reb, (p2_ast, (p2_stl, (p2_blk, (winner, score_diff))))))))))))))) =
-      Ok { game_id; game_date; player1_team = p1_team; player2_team = p2_team;
+      Ok { hg_game_id = game_id; hg_game_date = game_date; player1_team = p1_team; player2_team = p2_team;
            player1_pts = p1_pts; player1_reb = p1_reb; player1_ast = p1_ast;
            player1_stl = p1_stl; player1_blk = p1_blk;
            player2_pts = p2_pts; player2_reb = p2_reb; player2_ast = p2_ast;
@@ -1099,8 +1099,17 @@ module Queries = struct
     CREATE INDEX IF NOT EXISTS idx_game_stats_game_team ON game_stats(game_id, team_code)
   |}
   let ensure_games_index_season_type = (unit ->. unit) {|
-    CREATE INDEX IF NOT EXISTS idx_games_season_type ON games(season_code, game_type)
+    CREATE INDEX IF NOT EXISTS idx_games_season_type ON games (season, game_type)
   |}
+
+  let ensure_games_index_date = (unit ->. unit) {|
+    CREATE INDEX IF NOT EXISTS idx_games_date ON games (game_date)
+  |}
+
+  let ensure_legend_players_index_name = (unit ->. unit) {|
+    CREATE INDEX IF NOT EXISTS idx_legend_players_name ON legend_players (player_name)
+  |}
+
   let ensure_games_index_season_date = (unit ->. unit) {|
     CREATE INDEX IF NOT EXISTS idx_games_season_date ON games(season_code, game_date)
   |}
@@ -3590,8 +3599,11 @@ end
       let* () = Db.exec Queries.ensure_game_stats_index_player () in
       let* () = Db.exec Queries.ensure_game_stats_index_team () in
       let* () = Db.exec Queries.ensure_game_stats_index_game_team () in
+      let* () = Db.exec Queries.ensure_game_stats_index_player () in
       let* () = Db.exec Queries.ensure_games_index_season_type () in
-      let* () = Db.exec Queries.ensure_games_index_season_date () in
+      let* () = Db.exec Queries.ensure_games_index_date () in
+      let* () = Db.exec Queries.ensure_legend_players_index_name () in
+      let* () = Db.exec Queries.ensure_player_plus_minus_table () in
       (* Schedule table for upcoming games *)
       let* () = Db.exec Queries.ensure_schedule_table () in
       let* () = Db.exec Queries.ensure_schedule_index_date () in
