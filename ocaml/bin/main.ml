@@ -44,6 +44,9 @@ let utf8_middleware : Kirin.middleware = fun next_handler request ->
   | _ -> response)
 
 let () =
+  (* Initialize RNG for HTTPS/TLS requests (Critical for Live Scraper) *)
+  Mirage_crypto_rng_unix.use_default ();
+  
   Printf.printf "Starting WKBL Server initialization...\n%!";
   (* Resolve runtime config from env. Prioritize WKBL_DATABASE_URL or DATABASE_URL for Postgres/Supabase. *)
   let db_url =
