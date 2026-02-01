@@ -1224,8 +1224,8 @@ module Queries = struct
       g.*,
       sh.pts_sum AS home_sum,
       sa.pts_sum AS away_sum,
-      COALESCE(g.home_score, sh.pts_sum) AS home_score_calc,
-      COALESCE(g.away_score, sa.pts_sum) AS away_score_calc
+      COALESCE(NULLIF(g.home_score, 0), sh.pts_sum, 0) AS home_score_calc,
+      COALESCE(NULLIF(g.away_score, 0), sa.pts_sum, 0) AS away_score_calc
     FROM games g
     LEFT JOIN sums sh ON sh.game_id = g.game_id AND sh.team_code = g.home_team_code
     LEFT JOIN sums sa ON sa.game_id = g.game_id AND sa.team_code = g.away_team_code
@@ -3580,6 +3580,13 @@ end
       let (let*) = Result.bind in
       let* () = Db.exec Queries.ensure_legend_players_table () in
       let* () = Db.exec Queries.seed_legend_players () in
+      
+      (* Critical: Re-create games_calc to fix 0-0 score bug *)
+      let* () = Db.exec Queries.drop_games_calc_view () in
+      let* () = Db.exec Queries.ensure_games_calc_matview () in
+      let* () = Db.exec Queries.ensure_games_calc_index () in
+      let* () = Db.exec Queries.ensure_games_calc_season_index () in
+
       let* () = Db.exec Queries.ensure_player_plus_minus_table () in
       let* () = Db.exec Queries.ensure_player_plus_minus_index () in
       let* () = Db.exec Queries.ensure_play_by_play_events_table () in
