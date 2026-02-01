@@ -52,15 +52,40 @@ let stats_probability ~(stats_a: team_prediction_stats) ~(stats_b: team_predicti
   (* Apply Home Boost *)
   clamp01 (relative_strength +. home_advantage)
 
+(** Calculate expected score margin based on probabilities
+    Using inverse Logistic function approx: margin = -ln(1/p - 1) * scale
+    Scale factor ~10.0-12.0 for basketball fits reasonably well for win% -> margin
+*)
+let predict_margin ~prob_a =
+  if prob_a <= 0.0 then -20.0
+  else if prob_a >= 1.0 then 20.0
+  else
+    let logit = log (prob_a /. (1.0 -. prob_a)) in
+    logit *. 11.0 (* Scaling factor for WKBL *)
+
+(** Calculate expected total score based on team stats *)
+let predict_total_score ~(team_a: team_prediction_stats) ~(team_b: team_prediction_stats) =
+  (* Simple model: Average of both teams' scoring + opponent scoring *)
+  (* WKBL average is around 130-135 points *)
+  let a_off = team_a.ps_pts in
+  let b_off = team_b.ps_pts in
+  (* No defensive stats in team_prediction_stats, so we rely on offensive averages *)
+  (* Adjust for pace interaction: fast + fast = very fast, slow + slow = very slow *)
+  (a_off +. b_off)
+
 (** Main prediction function *)
 let predict_match ~(team_a: team_prediction_stats) ~(team_b: team_prediction_stats) ~name_a ~name_b =
   let prob_a = stats_probability ~stats_a:team_a ~stats_b:team_b ~home_advantage:home_court_boost in
   let prob_b = 1.0 -. prob_a in
+  let margin = predict_margin ~prob_a in
+  let total_score = predict_total_score ~team_a ~team_b in
   
   {
     prob_a;
     prob_b;
     winner = if prob_a >= prob_b then name_a else name_b;
+    predicted_margin = margin;
+    predicted_total_score = total_score;
   }
 
 (** Elo rating model (basketball-nerd friendly default) *)
@@ -247,8 +272,37 @@ let predict_match_nerd ~(context : prediction_context_input option) ~(season: st
       ~home_advantage:(if is_neutral then 0.0 else home_court_boost)
   in
 
-  (* Blend probabilities (Elo-heavy) *)
-  let base_prob = clamp01 ((0.6 *. elo_prob) +. (0.25 *. pyth_prob) +. (0.15 *. stats_prob)) in
+  (* H2H Probability *)
+  let h2h_prob =
+    let h_key = normalize_label name_home in
+    let a_key = normalize_label name_away in
+    let relevant =
+      games
+      |> List.filter (fun (g : game_summary) ->
+          match g.home_score, g.away_score with
+          | Some _, Some _ ->
+              let gh = normalize_label g.home_team in
+              let ga = normalize_label g.away_team in
+              (gh = h_key && ga = a_key) || (gh = a_key && ga = h_key)
+          | _ -> false)
+    in
+    if relevant = [] then 0.5
+    else
+      let h_wins =
+        relevant
+        |> List.filter (fun g ->
+            let gh = normalize_label g.home_team in
+            let hs = Option.get g.home_score in
+            let as_ = Option.get g.away_score in
+            if gh = h_key then hs > as_ else as_ > hs)
+        |> List.length
+      in
+      float_of_int h_wins /. float_of_int (List.length relevant)
+  in
+
+  (* Blend probabilities (Elo-heavy but H2H included) *)
+  (* 0.55 Elo + 0.20 Pythag + 0.15 Stats + 0.10 H2H *)
+  let base_prob = clamp01 ((0.55 *. elo_prob) +. (0.20 *. pyth_prob) +. (0.15 *. stats_prob) +. (0.10 *. h2h_prob)) in
 
   let ctx_breakdown, final_prob =
     match context with
@@ -315,11 +369,24 @@ let predict_match_nerd ~(context : prediction_context_input option) ~(season: st
             },
           final_prob )
   in
+  
+  (* Calculate margin based on Elo difference and final probability *)
+  let elo_margin = (elo_home -. elo_away +. (if is_neutral then 0.0 else Elo.home_advantage)) /. 28.0 in
+  let prob_margin = predict_margin ~prob_a:final_prob in
+  (* Blend margins: Elo is good for spread, Prob is good for win/loss *)
+  let final_margin = (elo_margin +. prob_margin) /. 2.0 in
+
+  (* Calculate total score *)
+  let pace_factor = 1.0 in (* TODO: Calculate real pace from boxscores *)
+  let total_score = (home.pts +. away.pts) *. pace_factor in
+
   let result =
     {
       prob_a = final_prob;
       prob_b = 1.0 -. final_prob;
       winner = if final_prob >= 0.5 then name_home else name_away;
+      predicted_margin = final_margin;
+      predicted_total_score = total_score;
     }
   in
   let breakdown =

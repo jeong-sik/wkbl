@@ -1074,7 +1074,22 @@ Sitemap: https://wkbl.win/sitemap.xml
             | Ok totals, Ok games ->
                 let find_team (name : string) =
                   let key = normalize_label name in
-                  List.find_opt (fun (row : team_stats) -> normalize_label row.team = key) totals
+                  let key_without_city = 
+                    if String.starts_with ~prefix:"아산" key then String.sub key 6 (String.length key - 6)
+                    else if String.starts_with ~prefix:"청주" key then String.sub key 6 (String.length key - 6)
+                    else if String.starts_with ~prefix:"인천" key then String.sub key 6 (String.length key - 6)
+                    else if String.starts_with ~prefix:"용인" key then String.sub key 6 (String.length key - 6)
+                    else if String.starts_with ~prefix:"부천" key then String.sub key 6 (String.length key - 6)
+                    else if String.starts_with ~prefix:"부산" key then String.sub key 6 (String.length key - 6)
+                    else key
+                  in
+                  match List.find_opt (fun (row : team_stats) -> normalize_label row.team = key) totals with
+                  | Some t -> Some t
+                  | None -> 
+                      List.find_opt (fun (row : team_stats) -> 
+                        let row_key = normalize_label row.team in
+                        row_key = key_without_city
+                      ) totals
                 in
                 let win_pct_of_team (name : string) =
                   let key = normalize_label name in
