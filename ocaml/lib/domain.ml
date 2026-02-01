@@ -94,6 +94,7 @@ type team_stats = {
   ft_pct: float;
   efg_pct: float;
   ts_pct: float;
+  pace: float;
   eff: float;
 }
 

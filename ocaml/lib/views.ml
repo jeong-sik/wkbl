@@ -289,6 +289,7 @@ let teams_table ~season ~scope (stats: Domain.team_stats list) =
     col "STL" ~w:(px 60) ~align:`Right ~resp:`Hidden_md ~sort:"stl";
     col "BLK" ~w:(px 60) ~align:`Right ~resp:`Hidden_md ~sort:"blk";
     col "TO" ~w:(px 60) ~align:`Right ~resp:`Hidden_md ~sort:"to";
+    col "Pace" ~w:(px 60) ~align:`Right ~resp:`Hidden_md ~sort:"pace" ~title:"Est. Possessions per 40 min";
     col "FG%" ~w:(px 80) ~align:`Right ~resp:`Hidden_lg ~sort:"fg";
     col "3P%" ~w:(px 80) ~align:`Right ~resp:`Hidden_lg ~sort:"3p";
     col "FT%" ~w:(px 80) ~align:`Right ~resp:`Hidden_lg ~sort:"ft";
@@ -323,6 +324,7 @@ let teams_table ~season ~scope (stats: Domain.team_stats list) =
           format_float s.stl;
           format_float s.blk;
           format_float s.turnovers;
+          format_float s.pace;
           format_float s.fg_pct;
           format_float s.fg3_pct;
           format_float s.ft_pct;
@@ -334,7 +336,7 @@ let teams_table ~season ~scope (stats: Domain.team_stats list) =
   in
 
   (* 3. Render Table *)
-  render_fixed_table ~id:"teams-table-inner" ~min_width:"min-w-[980px]" ~cols rows_data
+  render_fixed_table ~id:"teams-table-inner" ~min_width:"min-w-[1040px]" ~cols rows_data
 
 let teams_page ~season ~seasons ~scope ~sort ~include_mismatch stats =
  let scope_value = team_scope_to_string scope in
