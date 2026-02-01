@@ -577,6 +577,8 @@ type prediction_result = {
   prob_a: float;
   prob_b: float;
   winner: string;
+  predicted_margin: float; (** Positive means Team A wins, negative means Team B wins *)
+  predicted_total_score: float; (** Estimated total points (Over/Under) *)
 }
 
 (** Prediction context inputs/breakdown (optional, best-effort). *)

@@ -1721,6 +1721,22 @@ let prediction_result_card ~(home: string) ~(away: string) (output: prediction_o
  let pyth_away_pct = pct (1.0 -. breakdown.pb_pyth_prob) in
  let stats_home_pct = pct breakdown.pb_stats_prob in
  let stats_away_pct = pct (1.0 -. breakdown.pb_stats_prob) in
+ 
+ (* Margin Logic *)
+ let margin = abs_float result.predicted_margin in
+ let spread_str = Printf.sprintf "%.1f" margin in
+ let spread_badge =
+   if margin < 1.5 then "초접전 (Close)"
+   else if margin < 5.5 then "접전 (Tight)"
+   else if margin < 10.5 then "우세 (Solid)"
+   else "압승 (Blowout)"
+ in
+ let spread_class = 
+   if margin < 1.5 then "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300"
+   else if margin < 5.5 then "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+   else "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+ in
+
  (* Generate AI explanation *)
  let ai_explanation = Ai.get_explanation ~home ~away output in
  let context_card_html, context_note_html =
@@ -1781,13 +1797,26 @@ let prediction_result_card ~(home: string) ~(away: string) (output: prediction_o
   {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-xl space-y-4">
    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
     <div class="min-w-0">
-     <div class="text-sm text-slate-600 dark:text-slate-400 font-mono uppercase tracking-widest">Prediction</div>
-     <div class="mt-1 text-2xl font-black text-slate-900 dark:text-slate-200">%s</div>
-     <div class="mt-1 text-xs text-slate-600 dark:text-slate-400 truncate">%s%s vs %s%s</div>
+     <div class="text-sm text-slate-600 dark:text-slate-400 font-mono uppercase tracking-widest mb-1">Prediction</div>
+     <div class="text-3xl font-black text-slate-900 dark:text-slate-200 tracking-tight">%s</div>
+     <div class="mt-1 text-xs text-slate-500 dark:text-slate-400 font-medium truncate flex items-center gap-2">
+       <span>%s vs %s</span>
+       <span class="px-1.5 py-0.5 rounded text-[10px] font-bold %s">%s</span>
+     </div>
     </div>
-    <div class="text-right shrink-0">
-     <div class="text-xs text-slate-600 dark:text-slate-400">Winner</div>
-     <div class="text-lg font-black %s">%s</div>
+    <div class="flex gap-4 text-right shrink-0">
+     <div>
+       <div class="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-bold">Total</div>
+       <div class="text-xl font-black font-mono text-slate-800 dark:text-slate-300">%.1f</div>
+     </div>
+     <div>
+       <div class="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-bold">Spread</div>
+       <div class="text-xl font-black font-mono text-slate-800 dark:text-slate-300">+%s</div>
+     </div>
+     <div>
+       <div class="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-bold">Winner</div>
+       <div class="text-xl font-black %s">%s</div>
+     </div>
     </div>
    </div>
    <div class="space-y-2">
@@ -1860,11 +1889,13 @@ let prediction_result_card ~(home: string) ~(away: string) (output: prediction_o
     </div>
    </details>
   </div>|html}
-  (escape_html (Printf.sprintf "%.1f%% - %.1f%%" home_pct away_pct))
+  (escape_html breakdown.pb_season)
   (escape_html home)
-  (if breakdown.pb_is_neutral then " (Neutral)" else " (Home)")
   (escape_html away)
-  (if breakdown.pb_is_neutral then " (Neutral)" else " (Home)")
+  spread_class
+  spread_badge
+  result.predicted_total_score
+  spread_str
   winner_class
   (escape_html result.winner)
   (escape_html home)
