@@ -1759,7 +1759,7 @@ module Queries = struct
     ORDER BY wins DESC
   |}
 
-  let all_games_by_season = (t2 string string ->* Types.game_summary) {|
+  let all_games_paginated = (t2 (t2 string string) (t2 int int) ->* Types.game_summary) {|
     SELECT
       g.game_id,
       COALESCE(g.game_date::text, 'Unknown'),
@@ -1771,10 +1771,10 @@ module Queries = struct
     FROM games_calc g
     JOIN teams t1 ON g.home_team_code = t1.team_code
     JOIN teams t2 ON g.away_team_code = t2.team_code
-    WHERE (? = 'ALL' OR g.season_code = ?)
+    WHERE ($1 = 'ALL' OR g.season_code = $2)
       AND g.game_type != '10'
     ORDER BY g.game_date DESC, g.game_id DESC
-    LIMIT 100
+    LIMIT $3 OFFSET $4
   |}
 
   let scored_games_by_season = (t2 string (t2 string int) ->* Types.game_summary) {|
@@ -3735,7 +3735,9 @@ end
     Db.collect_list Queries.team_margin_by_season (season, include_int)
   let get_standings ~season (module Db : Caqti_eio.CONNECTION) =
     Db.collect_list Queries.team_standings_by_season season
-  let get_games ~season (module Db : Caqti_eio.CONNECTION) = Db.collect_list Queries.all_games_by_season (season, season)
+  let get_games ?(page = 1) ?(page_size = 50) ~season (module Db : Caqti_eio.CONNECTION) =
+    let offset = (page - 1) * page_size in
+    Db.collect_list Queries.all_games_paginated ((season, season), (page_size, offset))
   let get_scored_games ~season ~include_mismatch (module Db : Caqti_eio.CONNECTION) =
     let include_int = if include_mismatch then 1 else 0 in
     Db.collect_list Queries.scored_games_by_season (season, (season, include_int))
@@ -4306,9 +4308,9 @@ let get_standings ?(season = "ALL") () =
     let (let*) = Result.bind in
     let* standings = with_db (fun db -> Repo.get_standings ~season db) in
     Ok (calculate_gb standings))
-let get_games ?(season = "ALL") () =
-  let key = Printf.sprintf "season=%s" season in
-  cached games_cache key (fun () -> with_db (fun db -> Repo.get_games ~season db))
+let get_games ?(page = 1) ?(page_size = 50) ?(season = "ALL") () =
+  let key = Printf.sprintf "season=%s|page=%d|size=%d" season page page_size in
+  cached games_cache key (fun () -> with_db (fun db -> Repo.get_games ~page ~page_size ~season db))
 let get_scored_games ?(season = "ALL") ?(include_mismatch=false) () =
   let key = Printf.sprintf "season=%s|mismatch=%b" season include_mismatch in
   cached scored_games_cache key (fun () ->

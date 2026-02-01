@@ -492,14 +492,35 @@ let games_table (games : game_summary list) =
     {html|<div class="space-y-3 sm:hidden">%s</div><div class="hidden sm:block">%s</div>|html}
     mobile_cards desktop_table
 
-let games_page ~season ~seasons games =
- let season_options = let base = seasons |> List.map (fun (s: season_info) -> let selected = if s.code = season then "selected" else "" in Printf.sprintf {html|<option value="%s" %s>%s</option>|html} s.code selected (escape_html s.name)) |> String.concat "\n" in Printf.sprintf {html|<option value="ALL" %s>All Seasons</option>%s|html} (if season = "ALL" then "selected" else "") base in
- let table = games_table games in
- layout ~title:"WKBL Games" ~canonical_path:"/games"
-  ~description:"WKBL 여자농구 경기 일정 - 시즌별 경기 결과와 스케줄을 확인하세요."
-  ~content:(Printf.sprintf
-   {html|<div class="space-y-6"><div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3"><div><h2 class="text-2xl font-bold text-slate-900 dark:text-slate-200">Games</h2><p class="text-slate-600 dark:text-slate-400 text-sm">Season schedule and results.</p></div></div><form id="games-filter" class="flex gap-3" hx-get="/games/table" hx-target="#games-table" hx-trigger="change"><select name="season" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none w-48">%s</select></form><div id="games-table" data-skeleton="cards" data-skeleton-count="8">%s</div></div>|html}
-   season_options table) ()
+let games_page ~page ~season ~seasons games =
+  let season_options = seasons |> List.map (fun (s: season_info) ->
+    Printf.sprintf {|<option value="%s" %s>%s</option>|} s.code (if s.code = season then "selected" else "") s.name
+  ) |> String.concat "" in
+
+  let pagination_html = 
+    let prev_btn = if page > 1 then 
+      Printf.sprintf {html|<a href="/games?season=%s&page=%d" class="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">이전 페이지</a>|html} season (page - 1)
+    else "" in
+    let next_btn = if List.length games >= 50 then
+      Printf.sprintf {html|<a href="/games?season=%s&page=%d" class="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">다음 페이지</a>|html} season (page + 1)
+    else "" in
+    Printf.sprintf {html|<div class="mt-8 flex items-center justify-center gap-4">%s <span class="text-xs font-mono text-slate-400">PAGE %d</span> %s</div>|html} prev_btn page next_btn
+  in
+
+  layout ~title:"WKBL Games" ~canonical_path:"/games"
+    ~content:(Printf.sprintf {html|
+      <div class="space-y-6">
+        <div class="flex items-center justify-between">
+          <h2 class="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Game Results</h2>
+          <form hx-get="/games" hx-target="#main-content" hx-push-url="true" class="flex items-center gap-2">
+            <select name="season" onchange="this.form.submit()" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm font-medium focus:ring-2 focus:ring-orange-500 outline-none transition-all">
+              %s
+            </select>
+          </form>
+        </div>
+        %s
+        %s
+      </div>|html} season_options (games_table games) pagination_html) ()
 
 let boxscores_table (games : game_summary list) =
   let cols = [
