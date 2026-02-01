@@ -1212,33 +1212,36 @@ module Queries = struct
   let drop_games_calc_view = (unit ->. unit) {|
     DROP MATERIALIZED VIEW IF EXISTS games_calc CASCADE
   |}
-  (* Materialized View: games_calc - pre-computed game scores for performance *)
-  let ensure_games_calc_matview = (unit ->. unit) {|
-    CREATE MATERIALIZED VIEW IF NOT EXISTS games_calc AS
-    WITH sums AS (
-      SELECT game_id, team_code, SUM(pts) AS pts_sum
-      FROM game_stats
-      GROUP BY game_id, team_code
-    )
-    SELECT
-      g.*,
-      sh.pts_sum AS home_sum,
-      sa.pts_sum AS away_sum,
-      COALESCE(NULLIF(g.home_score, 0), sh.pts_sum, 0) AS home_score_calc,
-      COALESCE(NULLIF(g.away_score, 0), sa.pts_sum, 0) AS away_score_calc
-    FROM games g
-    LEFT JOIN sums sh ON sh.game_id = g.game_id AND sh.team_code = g.home_team_code
-    LEFT JOIN sums sa ON sa.game_id = g.game_id AND sa.team_code = g.away_team_code
-  |}
-  let ensure_games_calc_index = (unit ->. unit) {|
-    CREATE UNIQUE INDEX IF NOT EXISTS idx_games_calc_game_id ON games_calc(game_id)
-  |}
-  let ensure_games_calc_season_index = (unit ->. unit) {|
-    CREATE INDEX IF NOT EXISTS idx_games_calc_season ON games_calc(season_code)
-  |}
-  let refresh_games_calc = (unit ->. unit) {|
-    REFRESH MATERIALIZED VIEW CONCURRENTLY games_calc
-  |}
+    (* Materialized View: games_calc_v2 - fixed zero score issue *)
+    let ensure_games_calc_matview = (unit ->. unit) {|
+      CREATE MATERIALIZED VIEW IF NOT EXISTS games_calc_v2 AS
+      WITH sums AS (
+        SELECT game_id, team_code, SUM(pts) AS pts_sum
+        FROM game_stats
+        GROUP BY game_id, team_code
+      )
+      SELECT
+        g.*,
+        sh.pts_sum AS home_sum,
+        sa.pts_sum AS away_sum,
+        COALESCE(NULLIF(g.home_score, 0), sh.pts_sum, 0) AS home_score_calc,
+        COALESCE(NULLIF(g.away_score, 0), sa.pts_sum, 0) AS away_score_calc
+      FROM games g
+      LEFT JOIN sums sh ON sh.game_id = g.game_id AND sh.team_code = g.home_team_code
+      LEFT JOIN sums sa ON sa.game_id = g.game_id AND sa.team_code = g.away_team_code
+    |}
+  
+    let ensure_games_calc_index = (unit ->. unit) {|
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_games_calc_v2_game_id ON games_calc_v2(game_id)
+    |}
+  
+    let ensure_games_calc_season_index = (unit ->. unit) {|
+      CREATE INDEX IF NOT EXISTS idx_games_calc_v2_season ON games_calc_v2(season_code)
+    |}
+  
+    let refresh_games_calc = (unit ->. unit) {|
+      REFRESH MATERIALIZED VIEW CONCURRENTLY games_calc_v2
+    |}
   let pbp_periods_by_game = (string ->* string) {|
     SELECT period_code
     FROM (
@@ -1396,7 +1399,7 @@ module Queries = struct
       COALESCE(AVG(s.tov), 0),
       COALESCE(AVG(s.game_score), 0)
     FROM game_stats s
-    JOIN games_calc g ON g.game_id = s.game_id
+    JOIN games_calc_v2 g ON g.game_id = s.game_id
     JOIN players p ON s.player_id = p.player_id
     JOIN teams t ON s.team_code = t.team_code
     WHERE g.game_type != '10'
@@ -1465,7 +1468,7 @@ module Queries = struct
         0
       ) as margin_seconds
     FROM game_stats s
-    JOIN games_calc g ON g.game_id = s.game_id
+    JOIN games_calc_v2 g ON g.game_id = s.game_id
     JOIN players p ON s.player_id = p.player_id
     JOIN teams t ON s.team_code = t.team_code
     WHERE g.game_type != '10'
@@ -1532,7 +1535,7 @@ module Queries = struct
       COALESCE(AVG(s.tov), 0),
       COALESCE(AVG(s.game_score), 0)
     FROM game_stats s
-    JOIN games_calc g ON g.game_id = s.game_id
+    JOIN games_calc_v2 g ON g.game_id = s.game_id
     JOIN players p ON s.player_id = p.player_id
     WHERE s.player_id = ?
       AND g.game_type != '10'
@@ -1600,7 +1603,7 @@ module Queries = struct
       COALESCE(AVG(s.tov), 0),
       COALESCE(AVG(s.game_score), 0)
     FROM game_stats s
-    JOIN games_calc g ON g.game_id = s.game_id
+    JOIN games_calc_v2 g ON g.game_id = s.game_id
     JOIN players p ON s.player_id = p.player_id
     WHERE s.player_id = ?
       AND g.game_type != '10'
@@ -1636,7 +1639,7 @@ module Queries = struct
         ELSE 0
       END AS ft_pct
     FROM game_stats s
-    JOIN games_calc g ON g.game_id = s.game_id
+    JOIN games_calc_v2 g ON g.game_id = s.game_id
     JOIN players p ON s.player_id = p.player_id
     WHERE s.player_id = ?
       AND g.game_type != '10'
@@ -1665,7 +1668,7 @@ module Queries = struct
 	      COALESCE(SUM(s.tov), 0),
 	      COALESCE(SUM(s.pts), 0)
 	    FROM game_stats s
-	    JOIN games_calc g ON g.game_id = s.game_id
+	    JOIN games_calc_v2 g ON g.game_id = s.game_id
 	    JOIN teams t ON t.team_code = s.team_code
 	    WHERE g.game_type != '10'
 	      AND (? = 'ALL' OR g.season_code = ?)
@@ -1684,7 +1687,7 @@ module Queries = struct
 	        g.home_score_calc AS pts_for,
 	        g.away_score_calc AS pts_against,
 	        g.game_id
-	      FROM games_calc g, params p
+	      FROM games_calc_v2 g, params p
 	      WHERE (p.season = 'ALL' OR g.season_code = p.season)
 	        AND g.game_type != '10'
 	        AND g.home_score_calc IS NOT NULL
@@ -1697,7 +1700,7 @@ module Queries = struct
 	        g.away_score_calc AS pts_for,
 	        g.home_score_calc AS pts_against,
 	        g.game_id
-	      FROM games_calc g, params p
+	      FROM games_calc_v2 g, params p
 	      WHERE (p.season = 'ALL' OR g.season_code = p.season)
 	        AND g.game_type != '10'
 	        AND g.home_score_calc IS NOT NULL
@@ -1729,7 +1732,7 @@ module Queries = struct
         g.home_team_code AS team_code,
         g.home_score_calc AS pts_for,
         g.away_score_calc AS pts_against
-      FROM games_calc g, params p
+      FROM games_calc_v2 g, params p
       WHERE (p.season = 'ALL' OR g.season_code = p.season)
         AND g.game_type != '10'
         AND g.home_score_calc IS NOT NULL
@@ -1740,7 +1743,7 @@ module Queries = struct
         g.away_team_code AS team_code,
         g.away_score_calc AS pts_for,
         g.home_score_calc AS pts_against
-      FROM games_calc g, params p
+      FROM games_calc_v2 g, params p
       WHERE (p.season = 'ALL' OR g.season_code = p.season)
         AND g.game_type != '10'
         AND g.home_score_calc IS NOT NULL
@@ -1768,7 +1771,7 @@ module Queries = struct
       g.home_score_calc,
       g.away_score_calc,
       g.game_type
-    FROM games_calc g
+    FROM games_calc_v2 g
     JOIN teams t1 ON g.home_team_code = t1.team_code
     JOIN teams t2 ON g.away_team_code = t2.team_code
     WHERE ($1 = 'ALL' OR g.season_code = $2)
@@ -1786,7 +1789,7 @@ module Queries = struct
       g.home_score_calc,
       g.away_score_calc,
       g.game_type
-    FROM games_calc g
+    FROM games_calc_v2 g
     JOIN teams t1 ON g.home_team_code = t1.team_code
     JOIN teams t2 ON g.away_team_code = t2.team_code
     WHERE (? = 'ALL' OR g.season_code = ?)
@@ -2167,7 +2170,7 @@ module Queries = struct
       COALESCE(AVG(s.tov), 0),
       COALESCE(AVG(s.game_score), 0)
     FROM game_stats s
-    JOIN games_calc g ON g.game_id = s.game_id
+    JOIN games_calc_v2 g ON g.game_id = s.game_id
     JOIN players p ON s.player_id = p.player_id
     JOIN teams t ON s.team_code = t.team_code
     WHERE g.game_type != '10'
@@ -2223,7 +2226,7 @@ module Queries = struct
       COALESCE(AVG(s.tov), 0),
       COALESCE(AVG(s.game_score), 0)
     FROM game_stats s
-    JOIN games_calc g ON g.game_id = s.game_id
+    JOIN games_calc_v2 g ON g.game_id = s.game_id
     JOIN players p ON s.player_id = p.player_id
     JOIN teams t ON s.team_code = t.team_code
     WHERE t.team_name_kr = ?
@@ -2600,7 +2603,7 @@ module Queries = struct
 	      0.0 as ts_pct,
 	      0.0 as efg_pct
 	    FROM game_stats s
-		    JOIN games_calc g ON s.game_id = g.game_id
+		    JOIN games_calc_v2 g ON s.game_id = g.game_id
 		    JOIN seasons se ON g.season_code = se.season_code
 		    WHERE s.player_id = ?
 		      AND g.game_type != '10'
@@ -2652,7 +2655,7 @@ module Queries = struct
 	      0.0 as ts_pct,
 	      0.0 as efg_pct
 	    FROM game_stats s
-		    JOIN games_calc g ON s.game_id = g.game_id
+		    JOIN games_calc_v2 g ON s.game_id = g.game_id
 		    JOIN seasons se ON g.season_code = se.season_code
 		    WHERE s.player_id = ?
 		      AND g.game_type != '10'
@@ -2704,7 +2707,7 @@ module Queries = struct
 	      0.0 as ts_pct,
 	      0.0 as efg_pct
 	    FROM game_stats s
-		    JOIN games_calc g ON s.game_id = g.game_id
+		    JOIN games_calc_v2 g ON s.game_id = g.game_id
 		    JOIN seasons se ON g.season_code = se.season_code
 		    WHERE s.player_id = ?
 		      AND g.game_type != '10'
@@ -2933,7 +2936,7 @@ module Queries = struct
 	        THEN 1
 	        ELSE 0
 	      END as is_win
-	    FROM games_calc g
+	    FROM games_calc_v2 g
 	    JOIN teams t1 ON t1.team_code = g.home_team_code
 	    JOIN teams t2 ON t2.team_code = g.away_team_code
 	    WHERE (t1.team_name_kr = ? OR t2.team_name_kr = ?)
@@ -2958,7 +2961,7 @@ module Queries = struct
 		        THEN 1
 		        ELSE 0
 		      END as is_win
-		    FROM games_calc g
+		    FROM games_calc_v2 g
 		    JOIN teams t1 ON t1.team_code = g.home_team_code
 		    JOIN teams t2 ON t2.team_code = g.away_team_code
 		    WHERE (t1.team_name_kr = ? OR t2.team_name_kr = ?)
@@ -3018,7 +3021,7 @@ module Queries = struct
 	    FROM game_stats s
 	    JOIN players p ON s.player_id = p.player_id
 	    JOIN teams t ON s.team_code = t.team_code
-	    JOIN games_calc g ON g.game_id = s.game_id
+	    JOIN games_calc_v2 g ON g.game_id = s.game_id
 	    WHERE p.player_name = ?
 	      AND (? = 'ALL' OR g.season_code = ?)
 	      AND g.game_type != '10'
@@ -3581,8 +3584,8 @@ end
       let* () = Db.exec Queries.ensure_legend_players_table () in
       let* () = Db.exec Queries.seed_legend_players () in
       
-      (* Critical: Re-create games_calc to fix 0-0 score bug *)
-      let* () = Db.exec Queries.drop_games_calc_view () in
+      (* Use games_calc_v2 instead of dropping old view synchronously *)
+      (* let* () = Db.exec Queries.drop_games_calc_view () in *)
       let* () = Db.exec Queries.ensure_games_calc_matview () in
       let* () = Db.exec Queries.ensure_games_calc_index () in
       let* () = Db.exec Queries.ensure_games_calc_season_index () in
