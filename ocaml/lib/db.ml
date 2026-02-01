@@ -19,6 +19,10 @@ type db_error =
 (** Result type alias for convenience - Direct style with Eio *)
 type 'a db_result = ('a, db_error) result
 
+(** Helper to extract game info safely - solves record field shadowing issues in views *)
+let extract_game_info (g: game_summary) =
+  (g.game_id, g.game_date, g.home_team, g.away_team, g.home_score, g.away_score)
+
 (** DB QA (data quality) report types. *)
 type qa_score_mismatch = {
   qsm_game_id: string;

@@ -175,8 +175,12 @@ let empty_state ?icon title desc =
   Printf.sprintf {html|<div class="text-center py-12 px-4"><div class="text-4xl mb-4">🏀</div><h3 class="text-lg font-bold text-slate-900 dark:text-slate-200">%s</h3><p class="text-slate-500 dark:text-slate-400">%s</p></div>|html} title desc
 
 let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="") ?og_title ?og_description ?og_image ?data_freshness ~content () =
-  let _ = og_title in let _ = og_description in let _ = og_image in let _ = data_freshness in
+  let _ = og_title in let _ = og_description in let _ = og_image in
   let _ = canonical_path in let _ = description in let _ = json_ld in
+  let freshness_html = match data_freshness with
+    | Some ts -> Printf.sprintf {|<span class="hidden sm:inline-flex items-center text-xs text-slate-500 dark:text-slate-400" data-freshness="%s"></span>|} ts
+    | None -> ""
+  in
   Printf.sprintf {html|<!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -184,10 +188,15 @@ let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="") ?og_titl
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>%s</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
     tailwind.config = {
       darkMode: 'class'
     }
+    // Global Chart.js defaults
+    Chart.defaults.font.family = 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace';
+    Chart.defaults.color = '#94a3b8';
+    Chart.defaults.scale.grid.color = '#334155';
   </script>
   <style>
     /* Accessibility: Screen reader only utility */
@@ -274,9 +283,12 @@ let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="") ?og_titl
           <a href="/teams" class="text-slate-600 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors">Teams</a>
           <a href="/standings" class="text-slate-600 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors">Standings</a>
           <a href="/games" class="text-slate-600 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors">Games</a>
+          <a href="/compare" class="text-slate-600 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors">Compare</a>
+          <a href="/predict" class="text-slate-600 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors">Predict</a>
         </div>
       </div>
       <div class="flex items-center gap-2">
+        %s
         <button id="theme-toggle" type="button" aria-label="다크모드 전환" class="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
           <svg id="theme-icon-light" class="w-5 h-5 hidden dark:block text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"/></svg>
           <svg id="theme-icon-dark" class="w-5 h-5 block dark:hidden text-slate-600" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>
@@ -293,6 +305,8 @@ let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="") ?og_titl
         <a href="/teams" class="block py-2 px-3 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Teams</a>
         <a href="/standings" class="block py-2 px-3 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Standings</a>
         <a href="/games" class="block py-2 px-3 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Games</a>
+        <a href="/compare" class="block py-2 px-3 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Compare</a>
+        <a href="/predict" class="block py-2 px-3 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Predict</a>
       </div>
     </div>
   </header>
@@ -300,6 +314,24 @@ let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="") ?og_titl
   <main id="main-content" role="main" tabindex="-1" class="max-w-7xl mx-auto px-4 py-6">
     %s
   </main>
+
+  <footer class="mt-auto border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/50 py-8">
+    <div class="max-w-7xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-2 font-bold text-slate-400 dark:text-slate-600">
+        <span>🏀</span>
+        <span>WKBL.win</span>
+      </div>
+      <div class="flex items-center gap-6 text-sm text-slate-500 dark:text-slate-400">
+        <a href="mailto:contact@wkbl.win" class="hover:text-orange-600 dark:hover:text-orange-400 transition-colors flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+          contact@wkbl.win
+        </a>
+      </div>
+      <div class="text-[11px] text-slate-400 dark:text-slate-600 font-mono">
+        &copy; 2026 WKBL Moneyball Lab.
+      </div>
+    </div>
+  </footer>
 
   <!-- Toast notification container -->
   <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2" aria-live="polite"></div>
@@ -380,8 +412,10 @@ let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="") ?og_titl
       }
     })();
   </script>
+  <script src="/static/js/skeleton-loader.js"></script>
+  <script src="/static/js/data-freshness.js"></script>
 </body>
-</html>|html} title content
+</html>|html} title freshness_html content
 
 let eff_badge ?(show_label=false) eff =
   let color_cls = if eff >= 20.0 then "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/30"
@@ -404,9 +438,87 @@ let responsive_table_wrapper ?(class_extra="") content =
 let extract_contract_years s = try Some (int_of_string (String.sub s 0 1)) with _ -> None
 
 let radar_chart ?(show_league_avg=false) ~labels ~values_a ~values_b ?(color_a="#f97316") ?(color_b="#0ea5e9") () =
-  let _ = show_league_avg in let _ = labels in let _ = values_a in let _ = values_b in let _ = color_a in let _ = color_b in "<!-- Radar Chart Placeholder -->"
+  let _ = show_league_avg in
+  let labels_json = "[" ^ (labels |> List.map (fun s -> "'" ^ s ^ "'") |> String.concat ",") ^ "]" in
+  let data_a_json = "[" ^ (values_a |> List.map string_of_float |> String.concat ",") ^ "]" in
+  let data_b_json = "[" ^ (values_b |> List.map string_of_float |> String.concat ",") ^ "]" in
+  let chart_id = "radar-" ^ string_of_int (Random.int 10000) in
+  
+  Printf.sprintf {html|
+    <div class="relative w-full max-w-md mx-auto aspect-square p-4">
+      <canvas id="%s"></canvas>
+    </div>
+    <script>
+      (function() {
+        const ctx = document.getElementById('%s');
+        new Chart(ctx, {
+          type: 'radar',
+          data: {
+            labels: %s,
+            datasets: [
+              {
+                label: 'A',
+                data: %s,
+                fill: true,
+                backgroundColor: '%s33',
+                borderColor: '%s',
+                pointBackgroundColor: '%s',
+                pointBorderColor: '#fff',
+                pointHoverBackgroundColor: '#fff',
+                pointHoverBorderColor: '%s'
+              },
+              {
+                label: 'B',
+                data: %s,
+                fill: true,
+                backgroundColor: '%s33',
+                borderColor: '%s',
+                pointBackgroundColor: '%s',
+                pointBorderColor: '#fff',
+                pointHoverBackgroundColor: '#fff',
+                pointHoverBorderColor: '%s'
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            elements: {
+              line: { borderWidth: 3 }
+            },
+            plugins: {
+              legend: { display: false }
+            },
+            scales: {
+              r: {
+                angleLines: { color: 'rgba(148, 163, 184, 0.2)' },
+                grid: { color: 'rgba(148, 163, 184, 0.2)' },
+                pointLabels: {
+                  color: 'rgba(148, 163, 184, 0.8)',
+                  font: { size: 11, weight: 'bold' }
+                },
+                ticks: { display: false, backdropColor: 'transparent' },
+                suggestedMin: 0,
+                suggestedMax: 5
+              }
+            }
+          }
+        });
+      })();
+    </script>
+  |html} chart_id chart_id labels_json data_a_json color_a color_a color_a color_a data_b_json color_b color_b color_b color_b
 
-let normalize_stat_for_radar _ _ = 0.0
+let normalize_stat_for_radar category current_val =
+  let max_val = match category with
+    | `Points -> 25.0
+    | `Rebounds -> 15.0
+    | `Assists -> 8.0
+    | `Steals -> 3.0
+    | `Blocks -> 2.0
+    | `Efficiency -> 30.0
+    | _ -> 10.0
+  in
+  if max_val <= 0.0 then 0.0 else (current_val /. max_val) *. 5.0
 let career_trajectory_chart _ = "<!-- Chart Placeholder -->"
 let player_season_stats_component ~player_id:_ ~scope:_ _ = "<!-- Season Stats Placeholder -->"
 let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2") ?(include_team=true) (rank: int) (p: player_aggregate) =
@@ -467,8 +579,119 @@ let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2") ?(include_
 let find_substring_from ~sub:_ _ ~from:_ = None
 let career_highs_card _ = "<!-- Career Highs Placeholder -->"
 
-(* ===== Accessibility Helpers ===== *)
+ (* Helper: Recent Games List *)
+ let render_recent_games_for_predict team_name (games : game_summary list) limit =
+   let target = normalize_name team_name in
+   let relevant =
+     games
+     |> List.filter (fun g ->
+         let (_, _, home_team, away_team, home_score, away_score) = Db.extract_game_info g in
+         match home_score, away_score with
+         | Some _, Some _ ->
+             normalize_name home_team = target || normalize_name away_team = target
+         | _ -> false)
+     |> List.sort (fun a b ->
+         let (_, date_a, _, _, _, _) = Db.extract_game_info a in
+         let (_, date_b, _, _, _, _) = Db.extract_game_info b in
+         String.compare date_b date_a) (* Descending date *)
+     |> (fun l -> try List.filteri (fun i _ -> i < limit) l with _ -> l)
+   in
+   if relevant = [] then
+     {html|<div class="text-slate-400 text-xs italic">No recent games</div>|html}
+   else
+     let rows =
+       relevant
+       |> List.map (fun g ->
+           let (_, game_date, home_team, away_team, home_score, away_score) = Db.extract_game_info g in
+           let is_home = normalize_name home_team = target in
+           let opponent = if is_home then away_team else home_team in
+           let my_score = if is_home then Option.get home_score else Option.get away_score in
+           let opp_score = if is_home then Option.get away_score else Option.get home_score in
+           let is_win = my_score > opp_score in
+           let result_badge =
+             if is_win then {html|<span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-bold">W</span>|html}
+             else {html|<span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-rose-100 text-rose-700 text-[10px] font-bold">L</span>|html}
+           in
+           let date_short = String.sub game_date 5 5 in (* MM-DD *)
+           Printf.sprintf
+             {html|
+               <div class="flex items-center justify-between py-1 border-b border-slate-100 dark:border-slate-800 last:border-0 text-xs">
+                 <div class="flex items-center gap-2">
+                   <span class="text-slate-400 font-mono">%s</span>
+                   %s
+                   <span class="text-slate-600 dark:text-slate-400 truncate w-24">vs %s</span>
+                 </div>
+                 <div class="font-mono font-bold %s">
+                   %d-%d
+                 </div>
+               </div>
+             |html}
+             date_short
+             result_badge
+             (team_badge ~max_width:"max-w-[80px]" opponent)
+             (if is_win then "text-slate-900 dark:text-white" else "text-slate-500")
+             my_score opp_score
+         )
+       |> String.concat "\n"
+     in
+     Printf.sprintf {html|<div class="space-y-1">%s</div>|html} rows
 
+ (* Helper: Head-to-Head Summary *)
+ let render_h2h_summary home away (games : game_summary list) season =
+   let h = normalize_name home in
+   let a = normalize_name away in
+   let relevant =
+     games
+     |> List.filter (fun g ->
+         let (_, _, home_team, away_team, home_score, away_score) = Db.extract_game_info g in
+         match home_score, away_score with
+         | Some _, Some _ ->
+             let gh = normalize_name home_team in
+             let ga = normalize_name away_team in
+             (gh = h && ga = a) || (gh = a && ga = h)
+         | _ -> false)
+     |> List.sort (fun a b ->
+         let (_, date_a, _, _, _, _) = Db.extract_game_info a in
+         let (_, date_b, _, _, _, _) = Db.extract_game_info b in
+         String.compare date_b date_a)
+   in
+   if relevant = [] then
+     ""
+   else
+     let total = List.length relevant in
+     let home_wins =
+       relevant
+       |> List.filter (fun g ->
+           let (_, _, home_team, _, home_score, away_score) = Db.extract_game_info g in
+           let gh = normalize_name home_team in
+           let hs = Option.get home_score in
+           let as_ = Option.get away_score in
+           if gh = h then hs > as_ else as_ > hs) (* if home is away team, check away score *)
+       |> List.length
+     in
+     let away_wins = total - home_wins in
+     let recent_games_html = render_recent_games_for_predict h relevant 5 in
+     Printf.sprintf
+       {html|
+         <div class="mt-6 bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
+           <h3 class="text-sm font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-3">Head-to-Head (Season %s)</h3>
+           <div class="flex items-center justify-between mb-4 px-4">
+             <div class="text-center">
+               <div class="text-2xl font-bold text-slate-900 dark:text-white">%d</div>
+               <div class="text-xs text-slate-500">%s Wins</div>
+             </div>
+             <div class="text-xs font-mono text-slate-400">Total %d Games</div>
+             <div class="text-center">
+               <div class="text-2xl font-bold text-slate-900 dark:text-white">%d</div>
+               <div class="text-xs text-slate-500">%s Wins</div>
+             </div>
+           </div>
+           %s
+         </div>
+       |html}
+       season
+       home_wins home total away_wins away
+       recent_games_html
 (** Create an accessible select with label *)
 let a11y_select ~id ~label ?(hint="") ~options ~selected ?(on_change="") () =
   let hint_id = if hint = "" then "" else id ^ "-hint" in

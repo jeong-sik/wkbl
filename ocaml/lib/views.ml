@@ -160,7 +160,7 @@ let home_page ~season ~seasons players =
       </div>
      </div>
      <div id="live-scores" hx-get="/api/live/widget" hx-trigger="every 30s" hx-swap="innerHTML" hx-indicator="#live-loading">
-       <span id="live-loading" class="htmx-indicator text-xs text-slate-400">업데이트 중...</span>
+       <span id="live-loading" class="htmx-indicator"><span class="w-4 h-4 border-2 border-slate-300 border-t-orange-500 rounded-full animate-spin inline-block" aria-hidden="true"></span><span class="sr-only">업데이트 중</span></span>
        %s
      </div>
     </div>
@@ -1919,7 +1919,7 @@ let upcoming_games_section (upcoming: Domain.schedule_entry list) =
    </div>|html}
    cards
 
-let predict_page ~season ~seasons ~teams ~home ~away ~is_neutral ~context_enabled ~include_mismatch ~upcoming (result: prediction_output option) (error: string option) =
+let predict_page ~season ~seasons ~teams ~home ~away ~is_neutral ~context_enabled ~include_mismatch ~upcoming ?(games=[]) (result: prediction_output option) (error: string option) =
  let season_options =
   let base =
    seasons
@@ -1930,6 +1930,46 @@ let predict_page ~season ~seasons ~teams ~home ~away ~is_neutral ~context_enable
   in
   Printf.sprintf {html|<option value="ALL" %s>All Seasons</option>%s|html} (if season = "ALL" then "selected" else "") base
  in
+
+ let result_html =
+  match result, error with
+  | _, Some e -> Views_common.error_with_retry ~message:e ()
+  | None, None ->
+    Printf.sprintf
+    {html|<div class="text-slate-600 dark:text-slate-400 text-sm">Select teams to see a prediction.</div>|html}
+  | Some r, _ ->
+      let insight_html =
+        if games <> [] then
+          Printf.sprintf
+            {html|
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                <!-- Home Recent Form -->
+                <div class="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
+                  <h3 class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                    %s Recent Form
+                  </h3>
+                  %s
+                </div>
+                <!-- Away Recent Form -->
+                <div class="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
+                  <h3 class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                    %s Recent Form
+                  </h3>
+                  %s
+                </div>
+              </div>
+              %s
+            |html}
+            (Views_common.team_badge home)
+            (Views_common.render_recent_games_for_predict home games 5)
+            (Views_common.team_badge away)
+            (Views_common.render_recent_games_for_predict away games 5)
+            (Views_common.render_h2h_summary home away games season)
+        else ""
+      in
+      (prediction_result_card ~home ~away r) ^ insight_html
+ in
+
  let team_option current name =
   let selected = if normalize_label current = normalize_label name then "selected" else "" in
   Printf.sprintf {html|<option value="%s" %s>%s</option>|html} (escape_html name) selected (escape_html name)
@@ -1938,16 +1978,7 @@ let predict_page ~season ~seasons ~teams ~home ~away ~is_neutral ~context_enable
   let base = teams |> List.map (team_option current) |> String.concat "\n" in
   Printf.sprintf {html|<option value="" %s>Select team…</option>%s|html} (if String.trim current = "" then "selected" else "") base
  in
- let result_html =
-  match result, error with
-  | Some r, _ -> prediction_result_card ~home ~away r
-  | None, Some msg ->
-    Printf.sprintf
-     {html|<div class="bg-rose-500/10 border border-rose-500/30 text-rose-700 dark:text-rose-400 rounded-xl p-5">%s</div>|html}
-     (escape_html msg)
-  | None, None ->
-    {html|<div class="text-slate-600 dark:text-slate-400 text-sm">Select teams to see a prediction.</div>|html}
- in
+
  let upcoming_html = upcoming_games_section upcoming in
  layout ~title:"WKBL Predict" ~canonical_path:"/predict"
   ~description:"WKBL 여자농구 경기 예측 - AI 기반 승률 예측과 분석을 확인하세요."
