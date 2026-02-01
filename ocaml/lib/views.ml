@@ -52,7 +52,7 @@ let live_scores_widget (games: Domain.live_game list) =
 
 (** HTMX endpoint for live scores widget *)
 let live_scores_htmx () =
- let games = Live.get_todays_games () |> List.map Live.game_to_live in
+ let games = Live.get_current_games () in
  live_scores_widget games
 
 let format_float ?(digits=1) value = Printf.sprintf "%.*f" digits value
@@ -154,7 +154,7 @@ let home_page ~season ~seasons players =
   |> String.concat "\n"
  in
  let table = players_table players in
- let live_games = Live.get_todays_games () |> List.map Live.game_to_live in
+ let live_games = Live.get_current_games () in
  let live_widget = live_scores_widget live_games in
  layout ~title:"WKBL Analytics" ~canonical_path:"/"
   ~description:"WKBL 여자농구 효율성 순위, 팀 순위, 선수 통계를 한눈에 확인하세요."
