@@ -1099,7 +1099,7 @@ module Queries = struct
     CREATE INDEX IF NOT EXISTS idx_game_stats_game_team ON game_stats(game_id, team_code)
   |}
   let ensure_games_index_season_type = (unit ->. unit) {|
-    CREATE INDEX IF NOT EXISTS idx_games_season_type ON games (season, game_type)
+    CREATE INDEX IF NOT EXISTS idx_games_season_type ON games (season_code, game_type)
   |}
 
   let ensure_games_index_date = (unit ->. unit) {|
