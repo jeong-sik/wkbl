@@ -572,6 +572,7 @@ let () =
       run_crowd ~sw ~env ~csv_output
   | "records" :: _ ->
       Eio_main.run @@ fun env ->
+      Mirage_crypto_rng_unix.use_default ();
       Eio.Switch.run @@ fun sw ->
       run_records ~sw ~env ~csv_output
   | "games" :: _ ->

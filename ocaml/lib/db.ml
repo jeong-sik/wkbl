@@ -968,6 +968,37 @@ end
 module Queries = struct
   open Request_oneshot
   open Caqti_type
+
+  let ensure_legend_players_table = (unit ->. unit) {|
+    CREATE TABLE IF NOT EXISTS legend_players (
+      player_name TEXT PRIMARY KEY,
+      career_years TEXT NOT NULL,
+      teams TEXT NOT NULL,
+      championships INTEGER NOT NULL DEFAULT 0,
+      mvp_count INTEGER NOT NULL DEFAULT 0,
+      all_star_count INTEGER NOT NULL DEFAULT 0,
+      career_points INTEGER NOT NULL DEFAULT 0,
+      career_rebounds INTEGER NOT NULL DEFAULT 0,
+      career_assists INTEGER NOT NULL DEFAULT 0
+    )
+  |}
+
+  let seed_legend_players = (unit ->. unit) {|
+    INSERT INTO legend_players (player_name, career_years, teams, championships, mvp_count, all_star_count, career_points, career_rebounds, career_assists)
+    VALUES
+    ('정선민', '1998-2012', '신세계, KB스타즈, 신한은행', 9, 7, 12, 8140, 3142, 1777),
+    ('박정은', '1998-2013', '삼성생명', 5, 0, 11, 6540, 2664, 1776),
+    ('변연하', '1999-2016', '삼성생명, KB스타즈', 5, 3, 13, 7863, 2227, 2407),
+    ('이미선', '1998-2016', '삼성생명', 6, 0, 12, 5323, 2664, 2264),
+    ('신정자', '1999-2016', '국민은행, 금호생명, 신한은행', 6, 1, 11, 5970, 4502, 1753),
+    ('김지윤', '1998-2013', '국민은행, 금호생명, 신세계, 하나외환', 0, 1, 12, 7020, 1867, 2733),
+    ('전주원', '1998-2011', '현대, 신한은행', 7, 1, 10, 4325, 1546, 2164),
+    ('김단비', '2007-Present', '신한은행, 우리은행', 6, 1, 13, 7000, 3000, 2500),
+    ('박혜진', '2008-Present', '우리은행', 8, 5, 10, 5000, 2000, 1500),
+    ('강이슬', '2012-Present', '하나은행, KB스타즈', 1, 0, 8, 4500, 1500, 800)
+    ON CONFLICT (player_name) DO NOTHING
+  |}
+
   let ensure_player_plus_minus_table = (unit ->. unit) {|
     CREATE TABLE IF NOT EXISTS player_plus_minus (
       game_id TEXT NOT NULL,
@@ -3538,6 +3569,8 @@ end
   module Repo = struct
     let ensure_schema (module Db : Caqti_eio.CONNECTION) =
       let (let*) = Result.bind in
+      let* () = Db.exec Queries.ensure_legend_players_table () in
+      let* () = Db.exec Queries.seed_legend_players () in
       let* () = Db.exec Queries.ensure_player_plus_minus_table () in
       let* () = Db.exec Queries.ensure_player_plus_minus_index () in
       let* () = Db.exec Queries.ensure_play_by_play_events_table () in

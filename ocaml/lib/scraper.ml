@@ -2153,7 +2153,31 @@ let fetch_live_games ~sw ~env () =
           | _ -> None
       )
     in
-    games
+    if games = [] then
+      (* Fallback: Use DB scheduled games *)
+      let today = 
+        let tm = Unix.localtime (Unix.time ()) in
+        Printf.sprintf "%04d-%02d-%02d" (tm.tm_year + 1900) (tm.tm_mon + 1) tm.tm_mday
+      in
+      match Db.get_games ~season:"ALL" () with
+      | Ok all_games ->
+          all_games 
+          |> List.filter (fun (g: Domain.game_summary) -> 
+              String.length g.game_date >= 10 && String.sub g.game_date 0 10 = today)
+          |> List.map (fun (g: Domain.game_summary) -> 
+              {
+                Domain.lg_game_id = g.game_id;
+                lg_home_team = g.home_team;
+                lg_away_team = g.away_team;
+                lg_home_score = Option.value ~default:0 g.home_score;
+                lg_away_score = Option.value ~default:0 g.away_score;
+                lg_quarter = if g.home_score = None then "경기전" else "경기종료";
+                lg_time_remaining = "";
+                lg_is_live = false; 
+              }
+          )
+      | Error _ -> []
+    else games
   with e ->
     Printf.eprintf "[Scraper] Live fetch failed: %s\n%!" (Printexc.to_string e);
     []
