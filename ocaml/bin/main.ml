@@ -138,6 +138,23 @@ let () =
     done
   );
 
+  (* Live Score Poller: 60s interval *)
+  Eio.Fiber.fork ~sw (fun () ->
+    Printf.printf "[Poller] Live score polling started (60s interval)\n%!";
+    while true do
+      (try
+        let games = Scraper.fetch_live_games ~sw ~env () in
+        Live.update_games games;
+        if List.length games > 0 then begin
+           Printf.printf "[Poller] Live games updated: %d games\n%!" (List.length games);
+           Live.broadcast_scores ()
+        end
+       with e ->
+        Printf.eprintf "[Poller] Error: %s\n%!" (Printexc.to_string e));
+      Eio.Time.sleep env#clock 60.0
+    done
+  );
+
   Kirin.run ~config:{ Kirin.default_config with port } ~sw ~env
   @@ Kirin.logger
   @@ utf8_middleware

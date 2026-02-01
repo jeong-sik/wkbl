@@ -2101,3 +2101,59 @@ let sync_current_season_schedule ~sw ~env () =
   with exn ->
     Printf.eprintf "[Sync] Fatal error: %s\n%!" (Printexc.to_string exn);
     (0, 1)
+
+(** Fetch live games from WKBL main page *)
+let fetch_live_games ~sw ~env () =
+  let url = "https://www.wkbl.or.kr/main/main.asp" in
+  try
+    let html = fetch_url ~sw ~env url in
+    let soup = Soup.parse html in
+    (* WKBL Main Page Structure (Heuristic) *)
+    let games =
+      soup
+      |> Soup.select ".main_game_list li"
+      |> Soup.to_list
+      |> List.filter_map (fun node ->
+          let open Soup in
+          let home_node = node $? ".home" in
+          let away_node = node $? ".away" in
+          let score_node = node $? ".score" in
+          let status_node = node $? ".state" in
+          
+          match home_node, away_node, score_node with
+          | Some h, Some a, Some s ->
+              let home_team = leaf_text h |> Option.value ~default:"" |> String.trim in
+              let away_team = leaf_text a |> Option.value ~default:"" |> String.trim in
+              let score_text = leaf_text s |> Option.value ~default:"0:0" in
+              let status = 
+                (match status_node with Some n -> leaf_text n | None -> None) 
+                |> Option.value ~default:"" |> String.trim 
+              in
+              
+              let home_score, away_score =
+                match String.split_on_char ':' score_text with
+                | [h; a] -> 
+                    (try (int_of_string (String.trim h), int_of_string (String.trim a)) 
+                     with _ -> (0, 0))
+                | _ -> (0, 0)
+              in
+              
+              if home_team <> "" && away_team <> "" then
+                Some {
+                  Domain.lg_game_id = "live_" ^ home_team;
+                  lg_home_team = home_team;
+                  lg_away_team = away_team;
+                  lg_home_score = home_score;
+                  lg_away_score = away_score;
+                  lg_quarter = status;
+                  lg_time_remaining = "";
+                  lg_is_live = (status <> "경기전" && status <> "경기종료" && status <> "");
+                }
+              else None
+          | _ -> None
+      )
+    in
+    games
+  with e ->
+    Printf.eprintf "[Scraper] Live fetch failed: %s\n%!" (Printexc.to_string e);
+    []
