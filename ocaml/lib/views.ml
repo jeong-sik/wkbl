@@ -1834,18 +1834,27 @@ let prediction_result_card ~(home: string) ~(away: string) (output: prediction_o
      </div>
     </div>
    </div>
-   <div class="space-y-2">
-    <div class="flex justify-between text-xs font-bold uppercase tracking-tighter text-slate-600 dark:text-slate-400">
-     <span class="text-slate-700 dark:text-slate-300">%s</span>
-     <span class="text-slate-700 dark:text-slate-300">%s</span>
+   <div class="space-y-3 pt-2">
+    <div class="flex justify-between text-[10px] font-black uppercase tracking-widest text-slate-500">
+     <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-orange-500"></span>%s</span>
+     <span class="flex items-center gap-1.5">%s<span class="w-2 h-2 rounded-full bg-sky-500"></span></span>
     </div>
-    <div class="flex h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-     <div class="bg-orange-500 h-full transition-all duration-500" style="width: %.1f%%"></div>
-     <div class="bg-sky-500 h-full transition-all duration-500" style="width: %.1f%%"></div>
+    <div class="relative h-4 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden shadow-inner border border-slate-200/50 dark:border-slate-700/30">
+     <div class="absolute top-0 left-1/2 -ml-px w-0.5 h-full bg-slate-300 dark:bg-slate-600 z-10 opacity-30"></div>
+     <div class="flex h-full w-full">
+      <div class="h-full transition-all duration-1000 ease-out bg-gradient-to-r from-orange-600 to-orange-400 shadow-[0_0_15px_rgba(249,115,22,0.3)]" style="width: %.1f%%"></div>
+      <div class="h-full transition-all duration-1000 ease-out bg-gradient-to-l from-sky-600 to-sky-400 shadow-[0_0_15px_rgba(14,165,233,0.3)]" style="width: %.1f%%"></div>
+     </div>
     </div>
-    <div class="flex justify-between font-mono text-sm">
-     <span class="text-orange-600 dark:text-orange-400 font-bold">%.1f%%</span>
-     <span class="text-sky-600 dark:text-sky-400 font-bold">%.1f%%</span>
+    <div class="flex justify-between font-mono">
+     <div class="flex flex-col">
+       <span class="text-2xl font-black text-orange-600 dark:text-orange-400 leading-none">%.1f%%</span>
+       <span class="text-[9px] text-slate-400 font-bold uppercase mt-1">Win Prob</span>
+     </div>
+     <div class="flex flex-col items-end">
+       <span class="text-2xl font-black text-sky-600 dark:text-sky-400 leading-none">%.1f%%</span>
+       <span class="text-[9px] text-slate-400 font-bold uppercase mt-1">Win Prob</span>
+     </div>
     </div>
    </div>
    <!-- AI Analysis -->

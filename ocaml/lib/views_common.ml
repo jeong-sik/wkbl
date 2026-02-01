@@ -259,8 +259,38 @@ let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="") ?og_titl
     .htmx-indicator { opacity: 0; transition: opacity 200ms ease-in; }
     .htmx-request .htmx-indicator, .htmx-request.htmx-indicator { opacity: 1; }
     /* Skeleton pulse animation */
-    @keyframes pulse { 0%%, 100%% { opacity: 1; } 50%% { opacity: 0.5; } }
+    @keyframes pulse {
+      from { opacity: 1; }
+      to { opacity: 0.5; }
+    }
     .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+
+    /* Live Badge Animations */
+    @keyframes live-pulse {
+      from { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+      to { transform: scale(1); box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+    }
+    .live-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      background-color: #ef4444;
+      border-radius: 50%%;
+      margin-right: 6px;
+    }
+    .live-badge {
+      display: inline-flex;
+      items-center: center;
+      padding: 2px 8px;
+      background-color: rgba(239, 68, 68, 0.1);
+      color: #ef4444;
+      border: 1px solid rgba(239, 68, 68, 0.2);
+      border-radius: 9999px;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      animation: live-pulse 2s infinite;
+    }
   </style>
 </head>
 <body class="bg-slate-50 dark:bg-[#0b0e14] text-slate-900 dark:text-slate-200">
