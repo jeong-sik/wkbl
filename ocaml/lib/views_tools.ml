@@ -196,16 +196,16 @@ let transactions_page
     Printf.sprintf
       {html|<form method="get" action="/transactions" class="flex flex-col sm:flex-row sm:items-end gap-3">
   <input type="hidden" name="tab" value="%s">
-  <label class="block text-xs text-slate-500 dark:text-slate-400 space-y-1">
-    <div class="font-bold uppercase tracking-widest text-[10px]">Year</div>
-    <select name="year" class="bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700/60 rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-slate-200 focus:border-orange-500 focus:outline-none">
+  <div class="block text-xs text-slate-500 dark:text-slate-400 space-y-1">
+    <label for="filter-year" class="font-bold uppercase tracking-widest text-[10px]">Year</label>
+    <select id="filter-year" name="year" class="bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700/60 rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-slate-200 focus:border-orange-500 focus:outline-none">
       %s
     </select>
-  </label>
-  <label class="block text-xs text-slate-500 dark:text-slate-400 space-y-1 min-w-0 flex-1">
-    <div class="font-bold uppercase tracking-widest text-[10px]">Search</div>
-    <input name="q" value="%s" placeholder="player / team / keyword" class="w-full bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700/60 rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-slate-200 focus:border-orange-500 focus:outline-none">
-  </label>
+  </div>
+  <div class="block text-xs text-slate-500 dark:text-slate-400 space-y-1 min-w-0 flex-1">
+    <label for="filter-search" class="font-bold uppercase tracking-widest text-[10px]">Search</label>
+    <input id="filter-search" name="q" value="%s" placeholder="player / team / keyword" class="w-full bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700/60 rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-slate-200 focus:border-orange-500 focus:outline-none">
+  </div>
   <button class="shrink-0 bg-orange-600 hover:bg-orange-500 text-slate-900 dark:text-slate-200 font-bold rounded-lg px-3 py-2 text-sm transition">Apply</button>
 </form>|html}
       (escape_html active_tab)
@@ -404,7 +404,7 @@ let transactions_page
     <div class="mt-2 space-y-2 leading-relaxed">
       <div>Docker 빌드에서 공식 Draft/Trade를 포함하려면 <span class="font-mono text-slate-900 dark:text-slate-200">WKBL_SYNC_DRAFT_TRADE=1</span>을 켜세요.</div>
       <div class="text-slate-500 dark:text-slate-400">로컬 DB를 갱신하려면 아래를 실행하세요: (네트워크 필요)</div>
-      <code class="block font-mono text-slate-700 dark:text-slate-300 bg-slate-950/30 border border-slate-300 dark:border-slate-700/60 px-3 py-2 rounded overflow-x-auto whitespace-nowrap">python3 scripts/wkbl_draft_trade_sync.py --only-missing --backup</code>
+      <code class="block font-mono text-slate-700 dark:text-slate-300 bg-slate-950/30 border border-slate-300 dark:border-slate-700/60 px-3 py-2 rounded overflow-x-auto whitespace-nowrap">dune exec bin/scraper_tool.exe draft</code>
     </div>
   </details>
   %s
@@ -500,7 +500,7 @@ function resetRules() {
     </div>
   </div>
   <div class="flex items-center gap-3">
-    <label class="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest">Season</label>
+    <label for="season-select" class="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest">Season</label>
     <select id="season-select" class="bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700/60 rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-slate-200 focus:border-orange-500 focus:outline-none"
             onchange="window.location.href='/fantasy?season=' + this.value">
       %s

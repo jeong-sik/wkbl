@@ -1062,7 +1062,7 @@ Sitemap: https://wkbl.win/sitemap.xml
           let team_names = List.map (fun (t: team_info) -> t.team_name) teams in
           let season = query_season_or_latest request seasons in
           let render result error =
-            Kirin.html (Views.predict_page ~season ~seasons ~teams:team_names ~home ~away ~is_neutral ~context_enabled ~include_mismatch ~upcoming result error)
+            Kirin.html (Views.predict_page ~season ~seasons ~teams:team_names ~home ~away ~is_neutral ~context_enabled ~include_mismatch ~upcoming ~games:(match Db.get_scored_games ~season ~include_mismatch () with Ok g -> g | _ -> []) result error)
           in
 
           if String.trim home = "" || String.trim away = "" then

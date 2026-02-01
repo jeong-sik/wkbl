@@ -395,16 +395,19 @@ let team_h2h_page ~team1 ~team2 ~season ~seasons (games : Domain.game_info list)
           <form action="/teams/h2h" method="get" class="flex flex-col md:flex-row items-center justify-center gap-4">
             <div class="flex items-center gap-3">
               %s
-              <input type="text" name="team1" value="%s" placeholder="팀 1"
+              <label for="h2h-team1" class="sr-only">첫 번째 팀</label>
+              <input type="text" id="h2h-team1" name="team1" value="%s" placeholder="팀 1" aria-label="첫 번째 팀"
                 class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm w-36 focus:border-orange-500 focus:outline-none" />
             </div>
-            <span class="text-xl font-bold text-slate-400">VS</span>
+            <span class="text-xl font-bold text-slate-400" aria-hidden="true">VS</span>
             <div class="flex items-center gap-3">
-              <input type="text" name="team2" value="%s" placeholder="팀 2"
+              <label for="h2h-team2" class="sr-only">두 번째 팀</label>
+              <input type="text" id="h2h-team2" name="team2" value="%s" placeholder="팀 2" aria-label="두 번째 팀"
                 class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm w-36 focus:border-orange-500 focus:outline-none" />
               %s
             </div>
-            <select name="season" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none">
+            <label for="h2h-season" class="sr-only">시즌 선택</label>
+            <select id="h2h-season" name="season" aria-label="시즌 선택" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none">
               %s
             </select>
             <button type="submit" class="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg font-bold transition-colors">
