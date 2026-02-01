@@ -6,36 +6,49 @@ open Domain
 open Views_common
 
 (** Live scores widget for homepage *)
-let live_scores_widget (games: Live.live_game list) =
+let live_scores_widget (games: Domain.live_game list) =
  if List.length games = 0 then
   empty_state ~icon:BasketballIcon "오늘 경기가 없습니다" "경기 일정이 있는 날 다시 확인해주세요."
  else
-  let game_cards = games |> List.map (fun (g: Live.live_game) ->
+  let game_cards = games |> List.map (fun (g: Domain.live_game) ->
    let status_badge =
-    if g.is_live then
+    if g.lg_is_live then
      {html|<span class="live-badge"><span class="live-dot"></span>LIVE</span>|html}
     else
      Printf.sprintf {html|<span class="px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-[10px]">%s</span>|html}
-      (escape_html g.quarter)
+      (escape_html g.lg_quarter)
    in
    Printf.sprintf
-    {html|<a href="/boxscore/%s" class="flex items-center justify-between gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700/50 transition">
-     <div class="flex items-center gap-2">
-      <span class="font-medium text-sm text-slate-900 dark:text-slate-200">%s</span>
-      <span class="text-xl font-bold text-slate-900 dark:text-slate-200">%d</span>
+    {html|
+     <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-4 shadow-sm">
+      <div class="flex items-center justify-between mb-2">
+       %s
+       <span class="text-xs font-mono text-slate-500">%s</span>
+      </div>
+      <div class="flex items-center justify-between">
+       <div class="flex items-center gap-2">
+        %s
+        <span class="font-bold text-slate-900 dark:text-white">%s</span>
+       </div>
+       <span class="text-xl font-black font-mono text-slate-900 dark:text-white">%d : %d</span>
+       <div class="flex items-center gap-2">
+        <span class="font-bold text-slate-900 dark:text-white text-right">%s</span>
+        %s
+       </div>
+      </div>
      </div>
-     <div class="flex flex-col items-center gap-1">%s<span class="text-[10px] text-slate-500">vs</span></div>
-     <div class="flex items-center gap-2">
-      <span class="text-xl font-bold text-slate-900 dark:text-slate-200">%d</span>
-      <span class="font-medium text-sm text-slate-900 dark:text-slate-200">%s</span>
-     </div>
-    </a>|html}
-    (escape_html g.game_id)
-    (escape_html g.home_team) g.home_score
+    |html}
     status_badge
-    g.away_score (escape_html g.away_team)
-  ) |> String.concat "\n" in
-  Printf.sprintf {html|<div class="space-y-2">%s</div>|html} game_cards
+    (escape_html g.lg_time_remaining)
+    (team_logo_tag ~class_name:"w-6 h-6" g.lg_home_team)
+    (escape_html g.lg_home_team)
+    g.lg_home_score
+    g.lg_away_score
+    (escape_html g.lg_away_team)
+    (team_logo_tag ~class_name:"w-6 h-6" g.lg_away_team)
+  ) |> String.concat "\n"
+  in
+  Printf.sprintf {html|<div class="grid grid-cols-1 md:grid-cols-2 gap-4">%s</div>|html} game_cards
 
 (** HTMX endpoint for live scores widget *)
 let live_scores_htmx () =

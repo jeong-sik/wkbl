@@ -581,6 +581,18 @@ type prediction_result = {
   predicted_total_score: float; (** Estimated total points (Over/Under) *)
 }
 
+(** Live game state *)
+type live_game = {
+  lg_game_id : string;
+  lg_home_team : string;
+  lg_away_team : string;
+  lg_home_score : int;
+  lg_away_score : int;
+  lg_quarter : string;  (* "Q1", "Q2", "Q3", "Q4", "OT", "FINAL" *)
+  lg_time_remaining : string;  (* "10:00", "FINAL" *)
+  lg_is_live : bool;
+}
+
 (** Prediction context inputs/breakdown (optional, best-effort). *)
 type roster_core_status = {
   rcs_present: int;
