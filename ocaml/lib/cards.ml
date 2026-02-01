@@ -128,6 +128,48 @@ let game_card_svg ~date ~venue ~home_team ~away_team ~home_score ~away_score
     away_c1 away_team (if winner = "away" then "1" else "0.6") away_score
     home_c1 home_team (if winner = "home" then "1" else "0.6") home_score
 
+(** Prediction result card for social sharing *)
+let prediction_card ~(home: string) ~(away: string) (output: Domain.prediction_output) =
+  let res = output.result in
+  let (h_c1, _) = team_gradient home in
+  let (a_c1, _) = team_gradient away in
+  let winner = res.winner in
+  
+  Printf.sprintf {|<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0%%" y1="0%%" x2="100%%" y2="100%%">
+      <stop offset="0%%" style="stop-color:#0f172a"/>
+      <stop offset="100%%" style="stop-color:#1e293b"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  
+  <!-- Left Team (Home) -->
+  <rect x="0" y="0" width="600" height="630" fill="%s" opacity="0.3"/>
+  <text x="300" y="250" text-anchor="middle" fill="white" font-size="60" font-weight="900" font-family="sans-serif">%s</text>
+  <text x="300" y="320" text-anchor="middle" fill="white" font-size="120" font-weight="900" font-family="sans-serif" opacity="0.8">%.1f%%</text>
+  
+  <!-- Right Team (Away) -->
+  <rect x="600" y="0" width="600" height="630" fill="%s" opacity="0.3"/>
+  <text x="900" y="250" text-anchor="middle" fill="white" font-size="60" font-weight="900" font-family="sans-serif">%s</text>
+  <text x="900" y="320" text-anchor="middle" fill="white" font-size="120" font-weight="900" font-family="sans-serif" opacity="0.8">%.1f%%</text>
+  
+  <!-- Center VS -->
+  <circle cx="600" cy="315" r="80" fill="#0f172a" stroke="#f97316" stroke-width="4"/>
+  <text x="600" y="335" text-anchor="middle" fill="#f97316" font-size="60" font-weight="900" font-family="sans-serif">VS</text>
+  
+  <!-- Winner Badge -->
+  <rect x="350" y="450" width="500" height="100" rx="50" fill="#f97316"/>
+  <text x="600" y="515" text-anchor="middle" fill="white" font-size="45" font-weight="900" font-family="sans-serif">%s 승리 예상</text>
+  
+  <!-- Footer -->
+  <text x="600" y="600" text-anchor="middle" fill="#94a3b8" font-size="20" font-family="monospace">WKBL.win | AI Moneyball Analysis</text>
+</svg>|}
+  h_c1 home (res.prob_a *. 100.0)
+  a_c1 away (res.prob_b *. 100.0)
+  winner
+
 (** Convert SVG to PNG using ImageMagick (sync, blocking) *)
 let svg_to_png svg_content =
   let temp_svg = Filename.temp_file "card_" ".svg" in

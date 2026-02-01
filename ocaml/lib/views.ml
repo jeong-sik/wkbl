@@ -2035,8 +2035,14 @@ let predict_page ~season ~seasons ~teams ~home ~away ~is_neutral ~context_enable
  in
 
  let upcoming_html = upcoming_games_section upcoming in
+ let og_image =
+   if home <> "" && away <> "" then
+     Some (Printf.sprintf "https://wkbl.win/api/og/predict?home=%s&away=%s&season=%s" (Uri.pct_encode home) (Uri.pct_encode away) (Uri.pct_encode season))
+   else None
+ in
  layout ~title:"WKBL Predict" ~canonical_path:"/predict"
   ~description:"WKBL 여자농구 경기 예측 - AI 기반 승률 예측과 분석을 확인하세요."
+  ?og_image
   ~content:(Printf.sprintf
    {html|<div class="space-y-6 animate-fade-in">
     <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
