@@ -38,6 +38,9 @@ jobs:
       - name: Install dependencies
         run: |
           cd ocaml
+          opam pin add -n -y grpc-direct https://github.com/jeong-sik/grpc-direct.git
+          opam pin add -n -y grpc-direct-core https://github.com/jeong-sik/grpc-direct.git
+          opam pin add -n -y ocaml-webrtc https://github.com/jeong-sik/ocaml-webrtc.git
           opam pin add -n -y kirin https://github.com/jeong-sik/kirin.git
           opam install . --deps-only --yes
 
