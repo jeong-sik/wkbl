@@ -5,6 +5,15 @@ on:
     # 매일 03:00 UTC (한국시간 12:00)
     - cron: "0 3 * * *"
   workflow_dispatch:
+    inputs:
+      season:
+        description: "Optional season code (e.g., 046). Leave blank for current season."
+        required: false
+        default: ""
+      run_boxscore:
+        description: "Run boxscore sync (true/false)"
+        required: false
+        default: "true"
 
 jobs:
   refresh:
@@ -16,7 +25,7 @@ jobs:
       - name: Setup OCaml
         uses: ocaml/setup-ocaml@v3
         with:
-          ocaml-compiler: 5.2.x
+          ocaml-compiler: 5.4.0
 
       - name: Cache opam dependencies
         uses: actions/cache@v4
@@ -43,9 +52,27 @@ jobs:
           cd ocaml
           opam exec -- dune exec bin/scraper_tool.exe -- sync schedule
 
-      - name: Sync boxscores
+      - name: Sync games (DataLab results)
         env:
           WKBL_DATABASE_URL: ${{ secrets.WKBL_DATABASE_URL }}
+          SEASON: ${{ inputs.season }}
         run: |
           cd ocaml
-          opam exec -- dune exec bin/scraper_tool.exe -- sync boxscore
+          if [ -n "${SEASON}" ]; then
+            opam exec -- dune exec bin/scraper_tool.exe -- sync games --season="${SEASON}"
+          else
+            opam exec -- dune exec bin/scraper_tool.exe -- sync games
+          fi
+
+      - name: Sync boxscores
+        if: ${{ inputs.run_boxscore != 'false' }}
+        env:
+          WKBL_DATABASE_URL: ${{ secrets.WKBL_DATABASE_URL }}
+          SEASON: ${{ inputs.season }}
+        run: |
+          cd ocaml
+          if [ -n "${SEASON}" ]; then
+            opam exec -- dune exec bin/scraper_tool.exe -- sync boxscore --season="${SEASON}"
+          else
+            opam exec -- dune exec bin/scraper_tool.exe -- sync boxscore
+          fi

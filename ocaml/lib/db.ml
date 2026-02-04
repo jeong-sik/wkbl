@@ -3571,6 +3571,35 @@ module Queries = struct
       status = EXCLUDED.status
   |}
 
+  (** UPSERT game record - inserts or updates by game_id *)
+  let upsert_game =
+    (t2 string                (* game_id *)
+      (t2 string              (* season_code *)
+        (t2 string            (* game_type *)
+          (t2 int             (* game_no *)
+            (t2 (option string) (* game_date *)
+              (t2 string       (* home_team_code *)
+                (t2 string     (* away_team_code *)
+                  (t2 (option int) (* home_score *)
+                    (t2 (option int) (* away_score *)
+                      (option string) (* stadium *)
+                    )))))))) ->. unit) {|
+    INSERT INTO games
+      (game_id, season_code, game_type, game_no, game_date,
+       home_team_code, away_team_code, home_score, away_score, stadium)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+    ON CONFLICT (game_id) DO UPDATE SET
+      season_code = EXCLUDED.season_code,
+      game_type = EXCLUDED.game_type,
+      game_no = EXCLUDED.game_no,
+      game_date = COALESCE(EXCLUDED.game_date, games.game_date),
+      home_team_code = EXCLUDED.home_team_code,
+      away_team_code = EXCLUDED.away_team_code,
+      home_score = COALESCE(EXCLUDED.home_score, games.home_score),
+      away_score = COALESCE(EXCLUDED.away_score, games.away_score),
+      stadium = COALESCE(EXCLUDED.stadium, games.stadium)
+  |}
+
   (** Count schedule entries by season and status *)
   let count_schedule_by_status = (t2 string string ->? int) {|
     SELECT COUNT(*) FROM schedule WHERE season_code = $1 AND status = $2
@@ -3723,6 +3752,12 @@ end
   (** Upsert a single schedule entry *)
   let upsert_schedule_entry ~game_date ~game_time ~season_code ~home_team_code ~away_team_code ~venue ~status (module Db : Caqti_eio.CONNECTION) =
     Db.exec Queries.upsert_schedule (game_date, (game_time, (season_code, (home_team_code, (away_team_code, (venue, status))))))
+
+  (** Upsert a game record (scores + metadata) *)
+  let upsert_game ~game_id ~season_code ~game_type ~game_no ~game_date
+      ~home_team_code ~away_team_code ~home_score ~away_score ~stadium (module Db : Caqti_eio.CONNECTION) =
+    Db.exec Queries.upsert_game
+      (game_id, (season_code, (game_type, (game_no, (game_date, (home_team_code, (away_team_code, (home_score, (away_score, stadium)))))))))
 
   (** Count schedule entries by season and status *)
   let count_schedule_by_status ~season_code ~status (module Db : Caqti_eio.CONNECTION) =
@@ -5042,4 +5077,3 @@ let get_schedule_progress ~season_code () =
   | Ok None, Ok (Some s) -> Ok (Some (0, s))
   | Ok (Some c), Ok None -> Ok (Some (c, c))
   | _ -> Ok None
-

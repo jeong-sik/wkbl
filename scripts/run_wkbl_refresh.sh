@@ -2,7 +2,7 @@
 # WKBL Data Refresh Script with improved error handling and monitoring
 set -euo pipefail
 
-# Source environment variables (for launchd which doesn't inherit shell env)
+# Source environment variables (non-interactive shells won't inherit)
 # shellcheck source=/dev/null
 [[ -f "$HOME/.zshenv" ]] && source "$HOME/.zshenv"
 
@@ -51,8 +51,12 @@ run_refresh() {
     log "Building scraper tool..."
     dune build bin/scraper_tool.exe
 
-    log "Syncing schedule and results..."
-    if dune exec bin/scraper_tool.exe sync schedule && dune exec bin/scraper_tool.exe sync boxscore; then
+    log "Syncing schedule..."
+    if dune exec bin/scraper_tool.exe sync schedule \
+       && log "Syncing game results (DataLab)..." \
+       && dune exec bin/scraper_tool.exe sync games \
+       && log "Syncing boxscores..." \
+       && dune exec bin/scraper_tool.exe sync boxscore; then
         local end_time duration
         end_time=$(date +%s)
         duration=$((end_time - start_time))
