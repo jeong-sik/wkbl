@@ -38,6 +38,7 @@ jobs:
       - name: Install dependencies
         run: |
           cd ocaml
+          opam pin add -n -y kirin https://github.com/jeong-sik/kirin.git
           opam install . --deps-only --yes
 
       - name: Build scraper tool
