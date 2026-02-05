@@ -1628,16 +1628,35 @@ let print_allstar_analysis records =
 
 (** Schedule entry type *)
 type schedule_entry = {
-  sch_date: string;         (* e.g., "2026-01-25" *)
-  sch_day: string;          (* e.g., "일" *)
-  sch_time: string;         (* e.g., "16:00" *)
-  sch_home_team: string;    (* Home team name *)
-  sch_away_team: string;    (* Away team name *)
-  sch_home_score: int option;  (* Home score (None if not played) *)
-  sch_away_score: int option;  (* Away score (None if not played) *)
-  sch_venue: string;        (* e.g., "부천체육관" *)
-  sch_season: string;       (* e.g., "046" *)
+  sch_game_id: string option;    (* e.g., "046-01-40" *)
+  sch_game_type: string option;  (* "01" regular, "02" playoff, "10" special *)
+  sch_game_no: int option;       (* game_no from WKBL result link *)
+  sch_date: string;              (* e.g., "2026-01-25" *)
+  sch_day: string;               (* e.g., "일" *)
+  sch_time: string;              (* e.g., "16:00" *)
+  sch_home_team: string;         (* Home team name *)
+  sch_away_team: string;         (* Away team name *)
+  sch_home_score: int option;    (* Home score (None if not played) *)
+  sch_away_score: int option;    (* Away score (None if not played) *)
+  sch_venue: string;             (* e.g., "부천체육관" *)
+  sch_season: string;            (* e.g., "046" *)
 }
+
+(** Extract game_type and game_no from WKBL result link *)
+let game_params_of_href href =
+  let uri = Uri.of_string href in
+  let game_type = Uri.get_query_param uri "game_type" in
+  let game_no =
+    let opt = Uri.get_query_param uri "game_no" in
+    Option.bind opt int_of_string_opt
+  in
+  (game_type, game_no)
+
+(** Build game_id from season_code + game_type + game_no *)
+let game_id_of_params ~season_code ~game_type_opt ~game_no_opt =
+  match game_type_opt, game_no_opt with
+  | Some gt, Some gn -> Some (Printf.sprintf "%s-%s-%d" season_code gt gn)
+  | _ -> None
 
 (** Parse schedule HTML from inc_list_1_new.asp
     Returns list of schedule entries
@@ -1694,7 +1713,25 @@ let parse_schedule_html ~season ~ym html =
           (* Get time (4th td) *)
           let time = List.nth tds 3 |> Soup.texts |> String.concat "" |> String.trim in
 
+          (* Extract game link params if available *)
+          let href =
+            let link_opt =
+              match row |> Soup.select "a[href*='result.asp']" |> Soup.to_list with
+              | x :: _ -> Some x
+              | [] -> None
+            in
+            Option.bind link_opt (Soup.attribute "href")
+            |> Option.value ~default:""
+          in
+          let game_type_opt, game_no_opt =
+            if String.length href > 0 then game_params_of_href href else (None, None)
+          in
+          let game_id_opt = game_id_of_params ~season_code:season ~game_type_opt ~game_no_opt in
+
           let entry = {
+            sch_game_id = game_id_opt;
+            sch_game_type = game_type_opt;
+            sch_game_no = game_no_opt;
             sch_date = date;
             sch_day = day;
             sch_time = time;
@@ -1942,7 +1979,25 @@ let parse_schedule_api_html ~season_code ~season_name:_ html =
         List.nth tds 3 |> texts |> String.concat "" |> String.trim
       else "" in
 
+      (* Extract game link params if available *)
+      let href =
+        let link_opt =
+          match row |> select "a[href*='result.asp']" |> to_list with
+          | x :: _ -> Some x
+          | [] -> None
+        in
+        Option.bind link_opt (attribute "href")
+        |> Option.value ~default:""
+      in
+      let game_type_opt, game_no_opt =
+        if String.length href > 0 then game_params_of_href href else (None, None)
+      in
+      let game_id_opt = game_id_of_params ~season_code:season_code ~game_type_opt ~game_no_opt in
+
       Some {
+        sch_game_id = game_id_opt;
+        sch_game_type = game_type_opt;
+        sch_game_no = game_no_opt;
         sch_season = season_code;
         sch_date = date_text;
         sch_day = "";  (* Could extract from date_text *)
@@ -1954,6 +2009,20 @@ let parse_schedule_api_html ~season_code ~season_name:_ html =
         sch_venue = venue;
       }
     with _ -> None
+  )
+
+(** Deduplicate schedule entries by game_id (preferred) or date+teams *)
+let dedupe_schedule_entries entries =
+  let seen = Hashtbl.create (List.length entries * 2 + 1) in
+  let key_of (e: schedule_entry) =
+    match e.sch_game_id with
+    | Some gid -> "id:" ^ gid
+    | None -> Printf.sprintf "date:%s|%s|%s" e.sch_date e.sch_home_team e.sch_away_team
+  in
+  entries |> List.filter (fun e ->
+    let key = key_of e in
+    if Hashtbl.mem seen key then false
+    else (Hashtbl.add seen key true; true)
   )
 
 (** Fetch full schedule for a season using new API *)
@@ -1972,6 +2041,7 @@ let fetch_full_season_schedule ~sw ~env ~season_code ~season_name =
     else
       []
   )
+  |> dedupe_schedule_entries
 
 (** Fetch all historical schedules (1998-2026)
     @param seasons Optional subset of seasons to fetch *)
@@ -1997,6 +2067,15 @@ let fetch_all_historical_schedules ~sw ~env ?(seasons=all_season_codes) () =
 (** Convert schedule_entry date format for database
     Input: "1/10(월)" or "12/25(일)" → Output: "2000-01-10" *)
 let normalize_schedule_date ~season_code date_str =
+  let clean = String.trim date_str in
+  (* Fast path: already in YYYY-MM-DD or YYYY.MM.DD/ YYYY/MM/DD *)
+  let date_re = Str.regexp "\\([0-9][0-9][0-9][0-9]\\)[./-]\\([0-9][0-9]?\\)[./-]\\([0-9][0-9]?\\)" in
+  if Str.string_match date_re clean 0 then
+    let y = int_of_string (Str.matched_group 1 clean) in
+    let m = int_of_string (Str.matched_group 2 clean) in
+    let d = int_of_string (Str.matched_group 3 clean) in
+    Printf.sprintf "%04d-%02d-%02d" y m d
+  else
   (* Extract season year from season_code *)
   let season_name = List.assoc_opt season_code all_season_codes |> Option.value ~default:"2025-2026" in
   let base_year =
@@ -2006,8 +2085,8 @@ let normalize_schedule_date ~season_code date_str =
   in
   (* Parse "M/D(day)" format *)
   try
-    let paren_pos = String.index date_str '(' in
-    let date_part = String.sub date_str 0 paren_pos in
+    let paren_pos = String.index clean '(' in
+    let date_part = String.sub clean 0 paren_pos in
     let slash_pos = String.index date_part '/' in
     let month = int_of_string (String.sub date_part 0 slash_pos) in
     let day = int_of_string (String.sub date_part (slash_pos + 1) (String.length date_part - slash_pos - 1)) in

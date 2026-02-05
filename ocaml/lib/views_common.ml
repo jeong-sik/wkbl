@@ -113,6 +113,42 @@ let render_fixed_table ~id ~min_width ~(cols : col_spec list) (rows_data : strin
 let normalize_name s = Domain.normalize_label s
 let format_float ?(digits=1) value = Printf.sprintf "%.*f" digits value
 
+(** Extract first 4-digit year from a string, e.g. "1999-01-02" -> 1999 *)
+let extract_year (s: string) =
+  let len = String.length s in
+  let is_digit c = c >= '0' && c <= '9' in
+  let rec loop i =
+    if i + 3 >= len then None
+    else if is_digit s.[i] && is_digit s.[i+1] && is_digit s.[i+2] && is_digit s.[i+3] then
+      Some (int_of_string (String.sub s i 4))
+    else
+      loop (i + 1)
+  in
+  loop 0
+
+(** Build disambiguation line for duplicate names *)
+let player_disambiguation_line ~team_name ~player_id (info_opt: player_info option) =
+  let parts = ref [] in
+  let team = normalize_name team_name |> String.trim in
+  if team <> "" then parts := !parts @ [team];
+  (match info_opt with
+  | Some info ->
+      (match info.position with
+      | Some p when String.trim p <> "" -> parts := !parts @ [String.uppercase_ascii p]
+      | _ -> ());
+      (match info.birth_date with
+      | Some d -> (match extract_year d with Some y -> parts := !parts @ [string_of_int y] | None -> ())
+      | None -> ());
+      (match info.height with
+      | Some h when h > 0 -> parts := !parts @ [Printf.sprintf "%dcm" h]
+      | _ -> ())
+  | None -> ());
+  parts := !parts @ [Printf.sprintf "ID %s" player_id];
+  let text = String.concat " · " !parts in
+  Printf.sprintf
+    {html|<div class="text-[10px] text-slate-500 dark:text-slate-400 font-mono whitespace-nowrap">%s</div>|html}
+    (escape_html text)
+
 let team_logo_tag ?(class_name="w-8 h-8") team_name =
   let logo_file = match Domain.team_code_of_string team_name with | Some code -> Domain.team_code_to_logo code | None -> None in
   match logo_file with
@@ -129,7 +165,10 @@ let player_img_tag ?(class_name="w-12 h-12") player_id _name =
   let remote_src = Printf.sprintf "https://www.wkbl.or.kr/static/images/player/pimg/m_%s.jpg" player_id in
   Printf.sprintf {html|<img src="%s" class="%s rounded-full object-cover bg-slate-100 border border-slate-300" loading="lazy" onerror="this.src='/static/images/player_placeholder.svg'">|html} remote_src class_name
 
-let player_id_badge player_id = Printf.sprintf {html|<span class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800/50 border border-slate-300 dark:border-slate-700/50 text-[10px] font-mono text-slate-500">ID %s</span>|html} (String.sub player_id (String.length player_id - 3) 3)
+let player_id_badge player_id =
+  Printf.sprintf
+    {html|<span class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800/50 border border-slate-300 dark:border-slate-700/50 text-[10px] font-mono text-slate-500">ID %s</span>|html}
+    (escape_html player_id)
 
 let format_int_commas n = string_of_int n
 let format_int_compact n = if abs n < 1000 then string_of_int n else Printf.sprintf "%.1fK" (float_of_int n /. 1000.0)
@@ -558,11 +597,13 @@ let normalize_stat_for_radar category current_val =
   if max_val <= 0.0 then 0.0 else (current_val /. max_val) *. 5.0
 let career_trajectory_chart _ = "<!-- Chart Placeholder -->"
 let player_season_stats_component ~player_id:_ ~scope:_ _ = "<!-- Season Stats Placeholder -->"
-let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2") ?(include_team=true) (rank: int) (p: player_aggregate) =
-  let id_badge =
-    if show_player_id then player_id_badge p.player_id else ""
-  in
+let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2") ?(include_team=true) ?(player_info=None) (rank: int) (p: player_aggregate) =
+  let id_badge = if show_player_id then player_id_badge p.player_id else "" in
   let display_name = normalize_name p.name in
+  let disambiguation =
+    if show_player_id then player_disambiguation_line ~team_name:p.team_name ~player_id:p.player_id player_info
+    else ""
+  in
   let per =
     if p.total_minutes <= 0.0 then 0.0
     else
@@ -586,9 +627,12 @@ let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2") ?(include_
       <td class="px-3 py-2 font-medium text-slate-900 dark:text-white font-sans whitespace-nowrap" style="width: 200px; min-width: 200px;">
         <div class="flex items-center gap-3 min-w-0">
           %s
-          <div class="flex items-center gap-2 min-w-0">
-            <a href="/player/%s" class="player-name hover:text-orange-600 dark:text-orange-400 transition-colors truncate break-keep min-w-0">%s</a>
-            <span class="%s">%s</span>
+          <div class="flex flex-col min-w-0">
+            <div class="flex items-center gap-2 min-w-0">
+              <a href="/player/%s" class="player-name hover:text-orange-600 dark:text-orange-400 transition-colors truncate break-keep min-w-0">%s</a>
+              <span class="%s">%s</span>
+            </div>
+            %s
           </div>
         </div>
       </td>
@@ -600,8 +644,9 @@ let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2") ?(include_
     (player_img_tag ~class_name:"w-8 h-8 shrink-0" p.player_id p.name)
     p.player_id
     (escape_html display_name)
-    (if show_player_id then "opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity" else "hidden")
+    (if show_player_id then "inline-flex" else "hidden")
     id_badge
+    disambiguation
     team_cell
     p.games_played
     (points_total_cell ~extra_classes:"whitespace-nowrap" ~width_style:"width: 90px; min-width: 90px;" p.avg_points p.total_points)

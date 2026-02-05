@@ -2468,6 +2468,7 @@ module Queries = struct
     LIMIT 5
   |}
   let player_info = (string ->? Types.player_info) "SELECT player_id, player_name, position, birth_date, height, weight FROM players WHERE player_id = ?"
+  let all_player_info = (unit ->* Types.player_info) "SELECT player_id, player_name, position, birth_date, height, weight FROM players"
 
   let player_draft_by_player_id = (string ->? Types.player_draft) {|
     SELECT
@@ -3571,35 +3572,45 @@ module Queries = struct
       status = EXCLUDED.status
   |}
 
-  (** UPSERT game record - inserts or updates by game_id *)
+  (** UPSERT season info *)
+  let upsert_season = (t2 string string ->. unit) {|
+    INSERT INTO seasons (season_code, season_name)
+    VALUES ($1, $2)
+    ON CONFLICT (season_code)
+    DO UPDATE SET season_name = EXCLUDED.season_name
+  |}
+
+  (** UPSERT game entry *)
   let upsert_game =
-    (t2 string                (* game_id *)
-      (t2 string              (* season_code *)
-        (t2 string            (* game_type *)
-          (t2 int             (* game_no *)
-            (t2 (option string) (* game_date *)
-              (t2 string       (* home_team_code *)
-                (t2 string     (* away_team_code *)
-                  (t2 (option int) (* home_score *)
+    (t2 string                      (* game_id *)
+      (t2 string                    (* season_code *)
+        (t2 string                  (* game_type *)
+          (t2 int                   (* game_no *)
+            (t2 (option string)     (* game_date *)
+              (t2 string            (* home_team_code *)
+                (t2 string          (* away_team_code *)
+                  (t2 (option int)  (* home_score *)
                     (t2 (option int) (* away_score *)
                       (option string) (* stadium *)
                     )))))))) ->. unit) {|
-    INSERT INTO games
-      (game_id, season_code, game_type, game_no, game_date,
-       home_team_code, away_team_code, home_score, away_score, stadium)
+    INSERT INTO games (
+      game_id, season_code, game_type, game_no,
+      game_date, home_team_code, away_team_code,
+      home_score, away_score, stadium
+    )
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-    ON CONFLICT (game_id) DO UPDATE SET
-      season_code = EXCLUDED.season_code,
-      game_type = EXCLUDED.game_type,
-      game_no = EXCLUDED.game_no,
+    ON CONFLICT (game_id)
+    DO UPDATE SET
+      season_code = COALESCE(EXCLUDED.season_code, games.season_code),
+      game_type = COALESCE(EXCLUDED.game_type, games.game_type),
+      game_no = COALESCE(EXCLUDED.game_no, games.game_no),
       game_date = COALESCE(EXCLUDED.game_date, games.game_date),
-      home_team_code = EXCLUDED.home_team_code,
-      away_team_code = EXCLUDED.away_team_code,
+      home_team_code = COALESCE(EXCLUDED.home_team_code, games.home_team_code),
+      away_team_code = COALESCE(EXCLUDED.away_team_code, games.away_team_code),
       home_score = COALESCE(EXCLUDED.home_score, games.home_score),
       away_score = COALESCE(EXCLUDED.away_score, games.away_score),
       stadium = COALESCE(EXCLUDED.stadium, games.stadium)
   |}
-
   (** Count schedule entries by season and status *)
   let count_schedule_by_status = (t2 string string ->? int) {|
     SELECT COUNT(*) FROM schedule WHERE season_code = $1 AND status = $2
@@ -3672,6 +3683,7 @@ end
       Db.exec Queries.refresh_score_mismatch ()
   let get_teams (module Db : Caqti_eio.CONNECTION) = Db.collect_list Queries.all_teams ()
   let get_seasons (module Db : Caqti_eio.CONNECTION) = Db.collect_list Queries.all_seasons ()
+  let get_all_player_info (module Db : Caqti_eio.CONNECTION) = Db.collect_list Queries.all_player_info ()
   let get_latest_game_date (module Db : Caqti_eio.CONNECTION) = Db.find_opt Queries.latest_game_date ()
   let get_historical_seasons (module Db : Caqti_eio.CONNECTION) = Db.collect_list Queries.all_historical_seasons ()
   let get_legend_players (module Db : Caqti_eio.CONNECTION) = Db.collect_list Queries.all_legend_players ()
@@ -3753,12 +3765,38 @@ end
   let upsert_schedule_entry ~game_date ~game_time ~season_code ~home_team_code ~away_team_code ~venue ~status (module Db : Caqti_eio.CONNECTION) =
     Db.exec Queries.upsert_schedule (game_date, (game_time, (season_code, (home_team_code, (away_team_code, (venue, status))))))
 
+  (** Upsert a single season entry *)
+  let upsert_season ~season_code ~season_name (module Db : Caqti_eio.CONNECTION) =
+    Db.exec Queries.upsert_season (season_code, season_name)
+
+  (** Upsert a single game entry *)
+  let upsert_game_entry
+      ~game_id ~season_code ~game_type ~game_no ~game_date
+      ~home_team_code ~away_team_code ~home_score ~away_score ~stadium
+      (module Db : Caqti_eio.CONNECTION) =
+    Db.exec Queries.upsert_game
+      (game_id,
+        (season_code,
+          (game_type,
+            (game_no,
+              (game_date,
+                (home_team_code,
+                  (away_team_code,
+                    (home_score,
+                  (away_score, stadium)))))))))
   (** Upsert a game record (scores + metadata) *)
   let upsert_game ~game_id ~season_code ~game_type ~game_no ~game_date
       ~home_team_code ~away_team_code ~home_score ~away_score ~stadium (module Db : Caqti_eio.CONNECTION) =
     Db.exec Queries.upsert_game
-      (game_id, (season_code, (game_type, (game_no, (game_date, (home_team_code, (away_team_code, (home_score, (away_score, stadium)))))))))
-
+      (game_id,
+        (season_code,
+          (game_type,
+            (game_no,
+              (game_date,
+                (home_team_code,
+                  (away_team_code,
+                    (home_score,
+                      (away_score, stadium)))))))))
   (** Count schedule entries by season and status *)
   let count_schedule_by_status ~season_code ~status (module Db : Caqti_eio.CONNECTION) =
     Db.find_opt Queries.count_schedule_by_status (season_code, status)
@@ -4086,6 +4124,7 @@ let team_stats_cache = Cache.create ~ttl:120.0 ~max_entries:48
 let players_cache = Cache.create ~ttl:60.0 ~max_entries:128
 let players_base_cache = Cache.create ~ttl:120.0 ~max_entries:32
 let players_by_team_cache = Cache.create ~ttl:120.0 ~max_entries:128
+let player_info_cache = Cache.create ~ttl:(60.0 *. 60.0 *. 6.0) ~max_entries:4
 let team_detail_cache = Cache.create ~ttl:120.0 ~max_entries:64
 let player_profile_cache = Cache.create ~ttl:120.0 ~max_entries:256
 let player_season_stats_cache = Cache.create ~ttl:120.0 ~max_entries:256
@@ -4221,6 +4260,8 @@ let get_all_teams () =
   cached teams_cache "all" (fun () -> with_db (fun db -> Repo.get_teams db))
 let get_seasons () =
   cached seasons_cache "all" (fun () -> with_db (fun db -> Repo.get_seasons db))
+let get_all_player_info () =
+  cached player_info_cache "all" (fun () -> with_db (fun db -> Repo.get_all_player_info db))
 let get_latest_game_date () =
   cached data_freshness_cache "latest" (fun () ->
     with_db (fun db -> Repo.get_latest_game_date db))
