@@ -1204,11 +1204,79 @@ let test_get_last_sync_time_str_initial () =
   (* Either "동기화 기록 없음" or a time string is valid *)
   Alcotest.(check bool) "Sync time string not empty" true (String.length result > 0)
 
+let test_game_params_of_href () =
+  let href = "/game/result.asp?season_gu=046&gun=1&game_type=01&game_no=40&ym=202601&viewType=2" in
+  let (game_type, game_no) = Wkbl.Scraper.game_params_of_href href in
+  Alcotest.(check (option string)) "game_type" (Some "01") game_type;
+  Alcotest.(check (option int)) "game_no" (Some 40) game_no
+
+let test_game_id_of_params () =
+  let gid = Wkbl.Scraper.game_id_of_params ~season_code:"046" ~game_type_opt:(Some "01") ~game_no_opt:(Some 40) in
+  Alcotest.(check (option string)) "game_id" (Some "046-01-40") gid
+
 let scraper_tests = [
   Alcotest.test_case "code_from_team_name known" `Quick test_code_from_team_name_known;
   Alcotest.test_case "code_from_team_name unknown" `Quick test_code_from_team_name_unknown;
   Alcotest.test_case "code_from_team_name alternate" `Quick test_code_from_team_name_alternate;
   Alcotest.test_case "get_last_sync_time_str" `Quick test_get_last_sync_time_str_initial;
+  Alcotest.test_case "game_params_of_href" `Quick test_game_params_of_href;
+  Alcotest.test_case "game_id_of_params" `Quick test_game_id_of_params;
+]
+
+(* ============================================= *)
+(* Disambiguation Line Tests                     *)
+(* ============================================= *)
+
+let contains_substring s sub =
+  let len_s = String.length s in
+  let len_sub = String.length sub in
+  let rec loop i =
+    if i + len_sub > len_s then false
+    else if String.sub s i len_sub = sub then true
+    else loop (i + 1)
+  in
+  if len_sub = 0 then true else loop 0
+
+let test_player_disambiguation_line () =
+  let info : Wkbl.Domain.player_info = {
+    id = "P0001";
+    name = "Test";
+    position = Some "G";
+    birth_date = Some "1999-01-02";
+    height = Some 175;
+    weight = None;
+  } in
+  let html = Wkbl.Views_common.player_disambiguation_line ~team_name:"우리은행" ~player_id:"P0001" (Some info) in
+  Alcotest.(check bool) "contains team" true (contains_substring html "우리은행");
+  Alcotest.(check bool) "contains position" true (contains_substring html "G");
+  Alcotest.(check bool) "contains year" true (contains_substring html "1999");
+  Alcotest.(check bool) "contains height" true (contains_substring html "175cm");
+  Alcotest.(check bool) "contains id" true (contains_substring html "ID P0001")
+
+let test_leader_card_disambiguation () =
+  let leaders : Wkbl.Domain.leader_entry list = [
+    { le_player_id = "P1"; le_player_name = "Kim"; le_team_name = "우리은행"; le_stat_value = 10.0 };
+    { le_player_id = "P2"; le_player_name = "Kim"; le_team_name = "KB스타즈"; le_stat_value = 9.0 };
+  ] in
+  let info1 : Wkbl.Domain.player_info = {
+    id = "P1";
+    name = "Kim";
+    position = Some "G";
+    birth_date = Some "1990-01-01";
+    height = Some 180;
+    weight = None;
+  } in
+  let map = Hashtbl.create 4 in
+  Hashtbl.replace map info1.id info1;
+  let html = Wkbl.Views.leader_card ~player_info_map:(Some map) "Test" leaders in
+  Alcotest.(check bool) "contains leader id P1" true (contains_substring html "ID P1");
+  Alcotest.(check bool) "contains leader id P2" true (contains_substring html "ID P2");
+  Alcotest.(check bool) "contains leader year" true (contains_substring html "1990");
+  Alcotest.(check bool) "contains leader height" true (contains_substring html "180cm")
+
+let disambiguation_tests = [
+  Alcotest.test_case "player disambiguation line" `Quick test_player_disambiguation_line;
+  Alcotest.test_case "leader card disambiguation" `Quick test_leader_card_disambiguation;
 ]
 
 (* ============================================= *)
@@ -1233,4 +1301,5 @@ let () =
     "On/Off Impact", on_off_impact_tests;
     "Advanced Stats", advanced_stats_tests;
     "Scraper Functions", scraper_tests;
+    "Disambiguation", disambiguation_tests;
   ]

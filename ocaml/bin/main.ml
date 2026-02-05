@@ -26,6 +26,18 @@ let query_season_or_latest request (seasons : season_info list) =
   query_nonempty request "season"
   |> Option.value ~default:(latest_season_code seasons)
 
+let build_player_info_map (infos: player_info list) =
+  let map = Hashtbl.create (List.length infos * 2 + 1) in
+  infos |> List.iter (fun (p: player_info) ->
+    Hashtbl.replace map p.id p
+  );
+  map
+
+let get_player_info_map () =
+  match Db.get_all_player_info () with
+  | Ok infos -> Some (build_player_info_map infos)
+  | Error _ -> None
+
 let rec find_static_path start_dir =
   let has_styles path = Sys.file_exists (Filename.concat path "css/styles.css") in
   let candidates = [ Filename.concat start_dir "static"; Filename.concat start_dir "ocaml/static" ] in
@@ -259,7 +271,9 @@ Sitemap: https://wkbl.win/sitemap.xml
       | Ok seasons ->
           let season = query_season_or_latest request seasons in
           match Db.get_players ~season ~search ~limit:20 () with
-          | Ok p -> Kirin.html (Views.home_page ~season ~seasons p)
+          | Ok p ->
+              let player_info_map = get_player_info_map () in
+              Kirin.html (Views.home_page ~player_info_map ~season ~seasons p)
           | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
     );
 
@@ -271,7 +285,9 @@ Sitemap: https://wkbl.win/sitemap.xml
       | Ok seasons ->
           let season = query_season_or_latest request seasons in
           match Db.get_players ~season ~search ~limit:20 () with
-          | Ok p -> Kirin.html (Views.players_table p)
+          | Ok p ->
+              let player_info_map = get_player_info_map () in
+              Kirin.html (Views.players_table ~player_info_map p)
           | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
     );
 
@@ -292,7 +308,9 @@ Sitemap: https://wkbl.win/sitemap.xml
       | Ok seasons ->
           let season = query_season_or_latest request seasons in
           match Db.get_players ~season ~search ~sort ~include_mismatch () with
-          | Ok p -> Kirin.html (Views.players_page ~season ~seasons ~search ~sort:sort_str ~include_mismatch p)
+          | Ok p ->
+              let player_info_map = get_player_info_map () in
+              Kirin.html (Views.players_page ~player_info_map ~season ~seasons ~search ~sort:sort_str ~include_mismatch p)
           | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
     );
 
@@ -306,7 +324,9 @@ Sitemap: https://wkbl.win/sitemap.xml
       | Ok seasons ->
           let season = query_season_or_latest request seasons in
           match Db.get_players ~season ~search ~sort ~include_mismatch () with
-          | Ok p -> Kirin.html (Views.players_table p)
+          | Ok p ->
+              let player_info_map = get_player_info_map () in
+              Kirin.html (Views.players_table ~player_info_map p)
           | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
     );
 
@@ -566,7 +586,8 @@ Sitemap: https://wkbl.win/sitemap.xml
           in
           match fetch_all [] categories with
           | Ok leaders_by_category ->
-              Kirin.html (Views.leaders_page ~season ~seasons ~scope leaders_by_category)
+              let player_info_map = get_player_info_map () in
+              Kirin.html (Views.leaders_page ~player_info_map ~season ~seasons ~scope leaders_by_category)
           | Error e ->
               Kirin.html (Views.error_page (Db.show_db_error e))
     );
@@ -587,7 +608,9 @@ Sitemap: https://wkbl.win/sitemap.xml
                 | Ok leaders -> fetch_all ((stat, leaders) :: acc) rest
           in
           match fetch_all [] stats with
-          | Ok leaders -> Kirin.html (Views.position_leaders_page ~season ~seasons ~position leaders)
+          | Ok leaders ->
+              let player_info_map = get_player_info_map () in
+              Kirin.html (Views.position_leaders_page ~player_info_map ~season ~seasons ~position leaders)
           | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
     );
 
@@ -668,7 +691,9 @@ Sitemap: https://wkbl.win/sitemap.xml
             | Some prev_season -> Db.get_stat_mip_eff_delta ~season ~prev_season ~include_mismatch ()
           in
           match mvp_res, mip_res with
-          | Ok mvp, Ok mip -> Kirin.html (Views.awards_page ~season ~seasons ~include_mismatch ~prev_season_name ~mvp ~mip)
+          | Ok mvp, Ok mip ->
+              let player_info_map = get_player_info_map () in
+              Kirin.html (Views.awards_page ~player_info_map ~season ~seasons ~include_mismatch ~prev_season_name ~mvp ~mip)
           | Error e, _ | _, Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
     );
 
@@ -1271,7 +1296,9 @@ Sitemap: https://wkbl.win/sitemap.xml
       | Ok seasons ->
           let season = query_season_or_latest request seasons in
           (match Db.get_team_full_detail ~team_name ~season () with
-          | Ok detail -> Kirin.html (Views_team.team_profile_page detail ~season ~seasons)
+          | Ok detail ->
+              let player_info_map = get_player_info_map () in
+              Kirin.html (Views_team.team_profile_page ~player_info_map detail ~season ~seasons)
           | Error e -> Kirin.html (Views.error_page (Db.show_db_error e)))
     );
 
