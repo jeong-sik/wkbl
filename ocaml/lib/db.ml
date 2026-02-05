@@ -3611,7 +3611,6 @@ module Queries = struct
       away_score = COALESCE(EXCLUDED.away_score, games.away_score),
       stadium = COALESCE(EXCLUDED.stadium, games.stadium)
   |}
-
   (** Count schedule entries by season and status *)
   let count_schedule_by_status = (t2 string string ->? int) {|
     SELECT COUNT(*) FROM schedule WHERE season_code = $1 AND status = $2
@@ -3784,8 +3783,20 @@ end
                 (home_team_code,
                   (away_team_code,
                     (home_score,
+                  (away_score, stadium)))))))))
+  (** Upsert a game record (scores + metadata) *)
+  let upsert_game ~game_id ~season_code ~game_type ~game_no ~game_date
+      ~home_team_code ~away_team_code ~home_score ~away_score ~stadium (module Db : Caqti_eio.CONNECTION) =
+    Db.exec Queries.upsert_game
+      (game_id,
+        (season_code,
+          (game_type,
+            (game_no,
+              (game_date,
+                (home_team_code,
+                  (away_team_code,
+                    (home_score,
                       (away_score, stadium)))))))))
-
   (** Count schedule entries by season and status *)
   let count_schedule_by_status ~season_code ~status (module Db : Caqti_eio.CONNECTION) =
     Db.find_opt Queries.count_schedule_by_status (season_code, status)

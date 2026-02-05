@@ -2104,6 +2104,24 @@ let normalize_schedule_date ~season_code date_str =
     Printf.sprintf "%04d-%02d-%02d" year month day
   with _ -> Printf.sprintf "%04d-01-01" base_year  (* fallback *)
 
+(** Normalize DataLab game_date into YYYY-MM-DD
+    Accepts formats like "20260123", "2026.01.23", "2026-01-23", or strings with extra text.
+    Returns [None] if no 8-digit date can be extracted. *)
+let normalize_game_date date_str =
+  let digits =
+    date_str
+    |> String.to_seq
+    |> Seq.filter (fun c -> c >= '0' && c <= '9')
+    |> String.of_seq
+  in
+  if String.length digits = 8 then
+    let y = String.sub digits 0 4 in
+    let m = String.sub digits 4 2 in
+    let d = String.sub digits 6 2 in
+    Some (Printf.sprintf "%s-%s-%s" y m d)
+  else
+    None
+
 (** Get schedule status from scores *)
 let schedule_status_from_scores home_score away_score =
   match home_score, away_score with
@@ -2153,7 +2171,7 @@ let current_season_name_auto () =
 (** Sync current season schedule to database
     Returns (synced_count, error_count) *)
 let sync_current_season_schedule ~sw ~env () =
-  let current_season_code = current_season_code_auto () in
+  let current_season_code = current_season_code_auto () |> main_to_datalab in
   let current_season_name = current_season_name_auto () in
   Printf.printf "[Sync] Starting schedule sync for season %s (%s)...\n%!" current_season_code current_season_name;
   try
