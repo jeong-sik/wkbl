@@ -1214,6 +1214,15 @@ let test_game_id_of_params () =
   let gid = Wkbl.Scraper.game_id_of_params ~season_code:"046" ~game_type_opt:(Some "01") ~game_no_opt:(Some 40) in
   Alcotest.(check (option string)) "game_id" (Some "046-01-40") gid
 
+let test_normalize_game_date_formats () =
+  let open Wkbl.Scraper in
+  let string_opt = Alcotest.option Alcotest.string in
+  Alcotest.(check string_opt) "YYYYMMDD" (Some "2026-01-23") (normalize_game_date "20260123");
+  Alcotest.(check string_opt) "Dot format" (Some "2026-01-23") (normalize_game_date "2026.01.23");
+  Alcotest.(check string_opt) "Dash format" (Some "2026-01-23") (normalize_game_date "2026-01-23");
+  Alcotest.(check string_opt) "Slash format" (Some "2026-01-23") (normalize_game_date "2026/01/23");
+  Alcotest.(check string_opt) "With text" (Some "2026-01-23") (normalize_game_date "2026.01.23 (금)");
+  Alcotest.(check string_opt) "Invalid" None (normalize_game_date "no-date")
 let scraper_tests = [
   Alcotest.test_case "code_from_team_name known" `Quick test_code_from_team_name_known;
   Alcotest.test_case "code_from_team_name unknown" `Quick test_code_from_team_name_unknown;
@@ -1221,6 +1230,7 @@ let scraper_tests = [
   Alcotest.test_case "get_last_sync_time_str" `Quick test_get_last_sync_time_str_initial;
   Alcotest.test_case "game_params_of_href" `Quick test_game_params_of_href;
   Alcotest.test_case "game_id_of_params" `Quick test_game_id_of_params;
+  Alcotest.test_case "normalize_game_date formats" `Quick test_normalize_game_date_formats;
 ]
 
 (* ============================================= *)
