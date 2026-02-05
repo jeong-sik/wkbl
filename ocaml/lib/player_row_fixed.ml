@@ -43,7 +43,7 @@ let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2") ?(include_
     (player_img_tag ~class_name:"w-8 h-8 shrink-0" p.player_id p.name)
     p.player_id
     (escape_html display_name)
-    (if show_player_id then "opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity" else "hidden")
+    (if show_player_id then "inline-flex" else "hidden")
     id_badge
     team_cell
     p.games_played
