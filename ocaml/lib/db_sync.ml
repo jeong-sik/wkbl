@@ -1,3 +1,13 @@
+type missing_boxscore_game = {
+  game_id: string;
+  season_code: string;
+  game_type: string;
+  game_no: int;
+  ym: string; (* YYYYMM derived from game_date *)
+  home_team_code: string;
+  away_team_code: string;
+}
+
 module BoxscoreSync = struct
   open Caqti_request.Infix
   open Caqti_type
@@ -29,12 +39,34 @@ module BoxscoreSync = struct
         blk = EXCLUDED.blk,
         tov = EXCLUDED.tov|}
 
-  let games_without_stats_query =
-    (t2 s s ->* s)
-    {|SELECT game_id FROM games
-      WHERE game_id NOT IN (SELECT DISTINCT game_id FROM game_stats)
-        AND ($1 = 'ALL' OR season_code = $2)
-      ORDER BY game_date DESC|}
+  let missing_game_tuple_type =
+    t2 s (t2 s (t2 s (t2 i (t2 s (t2 s s)))))
+
+  let games_missing_boxscore_query =
+    (t2 s s ->* missing_game_tuple_type)
+    {|SELECT
+        g.game_id,
+        g.season_code,
+        g.game_type,
+        g.game_no,
+        to_char(g.game_date, 'YYYYMM') AS ym,
+        g.home_team_code,
+        g.away_team_code
+      FROM games g
+      LEFT JOIN (
+        SELECT game_id, COUNT(DISTINCT team_code) AS team_cnt
+        FROM game_stats
+        GROUP BY game_id
+      ) gs ON gs.game_id = g.game_id
+      WHERE
+        COALESCE(gs.team_cnt, 0) < 2
+        AND g.game_date IS NOT NULL
+        AND g.home_score IS NOT NULL
+        AND g.away_score IS NOT NULL
+        AND g.home_team_code IS NOT NULL
+        AND g.away_team_code IS NOT NULL
+        AND ($1 = 'ALL' OR g.season_code = $2)
+      ORDER BY g.game_date DESC|}
 
   let game_teams_query =
     (s ->? t2 s s)
@@ -49,8 +81,12 @@ module BoxscoreSync = struct
     in
     Db_conn.exec upsert_game_stat_query (game_id, team_code, stat.bs_player_id, tuple16)
 
-  let get_games_without_stats ~season (module Db_conn : Caqti_eio.CONNECTION) =
-    Db_conn.collect_list games_without_stats_query (season, season)
+  let missing_game_of_tuple (game_id, (season_code, (game_type, (game_no, (ym, (home_team_code, away_team_code)))))) =
+    { game_id; season_code; game_type; game_no; ym; home_team_code; away_team_code }
+
+  let get_games_missing_boxscore ~season (module Db_conn : Caqti_eio.CONNECTION) =
+    Db_conn.collect_list games_missing_boxscore_query (season, season)
+    |> Result.map (List.map missing_game_of_tuple)
 
   let get_game_teams ~game_id (module Db_conn : Caqti_eio.CONNECTION) =
     Db_conn.find_opt game_teams_query game_id
@@ -59,8 +95,8 @@ end
 let upsert_game_stat stat ~game_id ~team_code =
   Db.with_db (fun db -> BoxscoreSync.upsert_game_stat stat ~game_id ~team_code db)
 
-let get_games_without_stats ?(season="ALL") () =
-  Db.with_db (fun db -> BoxscoreSync.get_games_without_stats ~season db)
+let get_games_missing_boxscore ?(season="ALL") () =
+  Db.with_db (fun db -> BoxscoreSync.get_games_missing_boxscore ~season db)
 
 let get_game_teams ~game_id =
   Db.with_db (fun db -> BoxscoreSync.get_game_teams ~game_id db)

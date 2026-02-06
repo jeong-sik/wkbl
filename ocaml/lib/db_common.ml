@@ -46,12 +46,53 @@ type qa_duplicate_player_name = {
   qdpn_player_ids: string list;
 }
 
+type qa_duplicate_player_identity = {
+  qdpi_player_name: string;
+  qdpi_birth_date: string;
+  qdpi_id_count: int;
+  qdpi_player_ids: string list;
+}
+
+type qa_schedule_missing_game = {
+  qsmg_game_date: string;
+  qsmg_season_code: string;
+  qsmg_home_team: string;
+  qsmg_away_team: string;
+}
+
+type qa_schedule_missing_stats = {
+  qsms_game_id: string;
+  qsms_game_date: string;
+  qsms_home_team: string;
+  qsms_away_team: string;
+}
+
+type qa_schedule_coverage = {
+  qsc_season_code: string;
+  qsc_schedule_completed: int;
+  qsc_games_total: int;
+  qsc_matched: int;
+  qsc_missing: int;
+  qsc_coverage_pct: float;
+  qsc_season_uningested: bool;
+  qsc_games_missing_team: bool;
+}
+
 type qa_db_report = {
   qdr_generated_at: string;
   qdr_games_total: int;
   qdr_games_with_stats: int;
   qdr_plus_minus_games: int;
   qdr_plus_minus_coverage_pct: float;
+  qdr_schedule_total: int;
+  qdr_schedule_completed: int;
+  qdr_schedule_missing_game_count: int;
+  qdr_schedule_missing_game_pct: float;
+  qdr_schedule_missing_game_sample: qa_schedule_missing_game list;
+  qdr_schedule_missing_stats_count: int;
+  qdr_schedule_missing_stats_pct: float;
+  qdr_schedule_missing_stats_sample: qa_schedule_missing_stats list;
+  qdr_schedule_coverage: qa_schedule_coverage list;
   qdr_score_mismatch_count: int;
   qdr_score_mismatch_sample: qa_score_mismatch list;
   qdr_team_count_anomaly_count: int;
@@ -60,6 +101,8 @@ type qa_db_report = {
   qdr_duplicate_player_row_sample: qa_duplicate_player_row list;
   qdr_duplicate_player_name_count: int;
   qdr_duplicate_player_name_sample: qa_duplicate_player_name list;
+  qdr_duplicate_player_identity_count: int;
+  qdr_duplicate_player_identity_sample: qa_duplicate_player_identity list;
 }
 
 (** Leader base type for leaderboard queries *)
@@ -159,6 +202,13 @@ let iso8601_utc () =
     t.tm_hour
     t.tm_min
     t.tm_sec
+
+(** Coverage percentage rounded to 1 decimal. *)
+let coverage_pct ~total ~covered =
+  if total <= 0 then 0.0
+  else
+    let pct = (float_of_int covered /. float_of_int total) *. 100.0 in
+    Float.round (pct *. 10.0) /. 10.0
 
 (** Split CSV string into list *)
 let split_csv_ids (ids : string) =

@@ -1228,6 +1228,234 @@ let test_get_last_sync_time_str_initial () =
   (* Either "동기화 기록 없음" or a time string is valid *)
   Alcotest.(check bool) "Sync time string not empty" true (String.length result > 0)
 
+let test_game_params_of_href () =
+  let href = "/game/result.asp?season_gu=046&gun=1&game_type=01&game_no=40&ym=202601&viewType=2" in
+  let (game_type, game_no) = Wkbl.Scraper.game_params_of_href href in
+  Alcotest.(check (option string)) "game_type" (Some "01") game_type;
+  Alcotest.(check (option int)) "game_no" (Some 40) game_no
+
+let test_game_id_of_params () =
+  let gid = Wkbl.Scraper.game_id_of_params ~season_code:"046" ~game_type_opt:(Some "01") ~game_no_opt:(Some 40) in
+  Alcotest.(check (option string)) "game_id" (Some "046-01-40") gid
+
+let test_parse_schedule_html_extracts_game_meta () =
+  let html = {|
+<div class="info_table01 type_list">
+  <table>
+    <tbody>
+      <tr id="20260110">
+        <td>1/10(<span class="language" data-kr="토" data-en="Sat">토</span>)</td>
+        <td>
+          <div class="team_versus">
+            <div class="info_team away">
+              <strong class="team_name language" data-kr="신한은행" data-en="SHINHAN BANK">신한은행</strong>
+              <em class="txt_score">61</em>
+            </div>
+            <span class="txt_vs">vs</span>
+            <div class="info_team home">
+              <strong class="team_name language" data-kr="삼성생명" data-en="SAMSUNG LIFE">삼성생명</strong>
+              <em class="txt_score">74</em>
+            </div>
+          </div>
+        </td>
+        <td class="language" data-kr="용인실내체육관" data-en="Yongin Indoor Gymnasium">용인실내체육관</td>
+        <td>14:00</td>
+        <td>
+          <a href="/game/result.asp?season_gu=046&gun=1&game_type=01&game_no=40&ym=202601&viewType=" class="btn_type1 language">경기기록</a>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+|} in
+  let entries = Wkbl.Scraper.parse_schedule_html ~season:"046" ~ym:"202601" html in
+  match entries with
+  | [e] ->
+      Alcotest.(check string) "date normalized from row id" "2026-01-10" e.sch_date;
+      Alcotest.(check (option string)) "game_id" (Some "046-01-40") e.sch_game_id;
+      Alcotest.(check (option string)) "game_type" (Some "01") e.sch_game_type;
+      Alcotest.(check (option int)) "game_no" (Some 40) e.sch_game_no
+  | _ -> Alcotest.fail "expected exactly one schedule entry"
+
+let test_parse_schedule_api_html_extracts_game_meta () =
+  let html = {|
+<table><tbody>
+  <tr id="20260110">
+    <td>1/10(<span class="language">토</span>)</td>
+    <td>
+      <div class="team_versus">
+        <div class="info_team away"><strong class="team_name">신한은행</strong><em class="txt_score">61</em></div>
+        <div class="info_team home"><strong class="team_name">삼성생명</strong><em class="txt_score">74</em></div>
+      </div>
+    </td>
+    <td>용인실내체육관</td>
+    <td>14:00</td>
+    <td><a href="/game/result.asp?season_gu=046&gun=1&game_type=01&game_no=40&ym=202601&viewType=">경기기록</a></td>
+  </tr>
+</tbody></table>
+|} in
+  let entries = Wkbl.Scraper.parse_schedule_api_html ~season_code:"046" ~season_name:"2025-2026" html in
+  match entries with
+  | [e] ->
+      Alcotest.(check string) "date normalized from row id" "2026-01-10" e.sch_date;
+      Alcotest.(check string) "day extracted" "토" e.sch_day;
+      Alcotest.(check (option string)) "game_id" (Some "046-01-40") e.sch_game_id;
+      Alcotest.(check (option string)) "game_type" (Some "01") e.sch_game_type;
+      Alcotest.(check (option int)) "game_no" (Some 40) e.sch_game_no
+  | _ -> Alcotest.fail "expected exactly one schedule entry"
+
+let test_normalize_game_date_formats () =
+  let open Wkbl.Scraper in
+  let string_opt = Alcotest.option Alcotest.string in
+  Alcotest.(check string_opt) "YYYYMMDD" (Some "2026-01-23") (normalize_game_date "20260123");
+  Alcotest.(check string_opt) "Dot format" (Some "2026-01-23") (normalize_game_date "2026.01.23");
+  Alcotest.(check string_opt) "Dash format" (Some "2026-01-23") (normalize_game_date "2026-01-23");
+  Alcotest.(check string_opt) "Slash format" (Some "2026-01-23") (normalize_game_date "2026/01/23");
+  Alcotest.(check string_opt) "With text" (Some "2026-01-23") (normalize_game_date "2026.01.23 (금)");
+  Alcotest.(check string_opt) "Invalid" None (normalize_game_date "no-date")
+
+let test_parse_boxscore_html_two_teams () =
+  let html = {|
+<div class="info_table01 type_record">
+  <table><tbody>
+    <tr>
+      <td><a href="/player/detail.asp?pno=095633">신이슬</a></td>
+      <td>G</td>
+      <td>27:10</td>
+      <td>0-3</td>
+      <td>0-2</td>
+      <td>1-2</td>
+      <td>2</td>
+      <td>1</td>
+      <td>3</td>
+      <td>1</td>
+      <td>3</td>
+      <td>1</td>
+      <td>3</td>
+      <td>1</td>
+      <td>1</td>
+    </tr>
+  </tbody></table>
+</div>
+<div class="info_table01 type_record">
+  <table><tbody>
+    <tr>
+      <td><a href="/player/detail.asp?pno=095499">진안</a></td>
+      <td>C</td>
+      <td>32:00</td>
+      <td>5-10</td>
+      <td>0-0</td>
+      <td>2-4</td>
+      <td>1</td>
+      <td>5</td>
+      <td>6</td>
+      <td>2</td>
+      <td>1</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>12</td>
+    </tr>
+  </tbody></table>
+</div>
+|} in
+  match Wkbl.Scraper.parse_boxscore_html html with
+  | [away; home] ->
+      (match away with
+      | [p] ->
+          Alcotest.(check string) "away player_id" "095633" p.bs_player_id;
+          Alcotest.(check string) "away player_name" "신이슬" p.bs_player_name;
+          Alcotest.(check int) "away min_seconds" ((27 * 60) + 10) p.bs_min_seconds;
+          Alcotest.(check int) "away fg2 made" 0 p.bs_fg2_m;
+          Alcotest.(check int) "away fg2 att" 3 p.bs_fg2_a;
+          Alcotest.(check int) "away fg3 made" 0 p.bs_fg3_m;
+          Alcotest.(check int) "away fg3 att" 2 p.bs_fg3_a;
+          Alcotest.(check int) "away ft made" 1 p.bs_ft_m;
+          Alcotest.(check int) "away ft att" 2 p.bs_ft_a;
+          Alcotest.(check int) "away off" 2 p.bs_off_reb;
+          Alcotest.(check int) "away def" 1 p.bs_def_reb;
+          Alcotest.(check int) "away tot" 3 p.bs_tot_reb;
+          Alcotest.(check int) "away ast" 1 p.bs_ast;
+          Alcotest.(check int) "away pf" 3 p.bs_pf;
+          Alcotest.(check int) "away stl" 1 p.bs_stl;
+          Alcotest.(check int) "away tov" 3 p.bs_tov;
+          Alcotest.(check int) "away blk" 1 p.bs_blk;
+          Alcotest.(check int) "away pts" 1 p.bs_pts
+      | _ -> Alcotest.fail "expected exactly one away player row");
+      (match home with
+      | [p] ->
+          Alcotest.(check string) "home player_id" "095499" p.bs_player_id;
+          Alcotest.(check string) "home player_name" "진안" p.bs_player_name;
+          Alcotest.(check int) "home min_seconds" (32 * 60) p.bs_min_seconds;
+          Alcotest.(check int) "home fg2 made" 5 p.bs_fg2_m;
+          Alcotest.(check int) "home fg2 att" 10 p.bs_fg2_a;
+          Alcotest.(check int) "home ft att" 4 p.bs_ft_a;
+          Alcotest.(check int) "home tot" 6 p.bs_tot_reb;
+          Alcotest.(check int) "home pts" 12 p.bs_pts
+      | _ -> Alcotest.fail "expected exactly one home player row")
+  | _ -> Alcotest.fail "expected exactly two team tables"
+
+let test_schedule_sync_success_policy () =
+  let open Wkbl.Scraper in
+  Alcotest.(check bool)
+    "0 schedule, 0 games, 0 errors is not success"
+    false
+    (schedule_sync_success ~schedule_synced:0 ~games_upserted:0 ~errors:0);
+  Alcotest.(check bool)
+    "schedule > 0 and no errors is success"
+    true
+    (schedule_sync_success ~schedule_synced:1 ~games_upserted:0 ~errors:0);
+  Alcotest.(check bool)
+    "games > 0 and no errors is success"
+    true
+    (schedule_sync_success ~schedule_synced:0 ~games_upserted:1 ~errors:0);
+  Alcotest.(check bool)
+    "any errors makes it failure"
+    false
+    (schedule_sync_success ~schedule_synced:1 ~games_upserted:1 ~errors:1)
+
+let test_schedule_sync_suspicion_reason_policy () =
+  let open Wkbl.Scraper in
+  let string_opt = Alcotest.option Alcotest.string in
+  Alcotest.(check string_opt)
+    "not enforced -> none"
+    None
+    (schedule_sync_suspicion_reason_v
+       ~enforce:false
+       ~current_ym:"2026-02"
+       ~threshold_old:"2026-01-01"
+       ~dates:[]
+       ~completed_dates:[]);
+  Alcotest.(check bool)
+    "missing current month -> some"
+    true
+    (schedule_sync_suspicion_reason_v
+       ~enforce:true
+       ~current_ym:"2026-02"
+       ~threshold_old:"2026-01-01"
+       ~dates:["2026-01-31"; "2026-03-01"]
+       ~completed_dates:["2026-01-31"]
+     <> None);
+  Alcotest.(check bool)
+    "stale completed -> some"
+    true
+    (schedule_sync_suspicion_reason_v
+       ~enforce:true
+       ~current_ym:"2026-02"
+       ~threshold_old:"2026-01-20"
+       ~dates:["2026-02-01"; "2026-02-02"]
+       ~completed_dates:["2026-01-10"]
+     <> None);
+  Alcotest.(check string_opt)
+    "healthy -> none"
+    None
+    (schedule_sync_suspicion_reason_v
+       ~enforce:true
+       ~current_ym:"2026-02"
+       ~threshold_old:"2026-01-20"
+       ~dates:["2026-02-01"; "2026-02-02"]
+       ~completed_dates:["2026-02-01"])
+
 let scraper_tests = [
   Alcotest.test_case "code_from_team_name known" `Quick test_code_from_team_name_known;
   Alcotest.test_case "code_from_team_name unknown" `Quick test_code_from_team_name_unknown;
@@ -1235,6 +1463,268 @@ let scraper_tests = [
   Alcotest.test_case "code_from_team_name extended" `Quick test_code_from_team_name_extended;
   Alcotest.test_case "normalize_schedule_date formats" `Quick test_normalize_schedule_date_formats;
   Alcotest.test_case "get_last_sync_time_str" `Quick test_get_last_sync_time_str_initial;
+  Alcotest.test_case "schedule sync success policy" `Quick test_schedule_sync_success_policy;
+  Alcotest.test_case "schedule sync suspicion policy" `Quick test_schedule_sync_suspicion_reason_policy;
+  Alcotest.test_case "game_params_of_href" `Quick test_game_params_of_href;
+  Alcotest.test_case "game_id_of_params" `Quick test_game_id_of_params;
+  Alcotest.test_case "parse_schedule_html extracts game meta" `Quick test_parse_schedule_html_extracts_game_meta;
+  Alcotest.test_case "parse_schedule_api_html extracts game meta" `Quick test_parse_schedule_api_html_extracts_game_meta;
+  Alcotest.test_case "normalize_game_date formats" `Quick test_normalize_game_date_formats;
+  Alcotest.test_case "parse_boxscore_html extracts two teams" `Quick test_parse_boxscore_html_two_teams;
+]
+
+(* ============================================= *)
+(* Disambiguation Line Tests                     *)
+(* ============================================= *)
+
+let contains_substring s sub =
+  let len_s = String.length s in
+  let len_sub = String.length sub in
+  let rec loop i =
+    if i + len_sub > len_s then false
+    else if String.sub s i len_sub = sub then true
+    else loop (i + 1)
+  in
+  if len_sub = 0 then true else loop 0
+
+let test_player_disambiguation_line () =
+  let info : Wkbl.Domain.player_info = {
+    id = "P0001";
+    name = "Test";
+    position = Some "G";
+    birth_date = Some "1999-01-02";
+    height = Some 175;
+    weight = None;
+  } in
+  let html = Wkbl.Views_common.player_disambiguation_line ~team_name:"우리은행" ~player_id:"P0001" (Some info) in
+  Alcotest.(check bool) "contains team" true (contains_substring html "우리은행");
+  Alcotest.(check bool) "contains position" true (contains_substring html "G");
+  Alcotest.(check bool) "contains year" true (contains_substring html "1999");
+  Alcotest.(check bool) "contains height" true (contains_substring html "175cm");
+  Alcotest.(check bool) "contains id" true (contains_substring html "ID P0001")
+
+let test_leader_card_disambiguation () =
+  let leaders : Wkbl.Domain.leader_entry list = [
+    { le_player_id = "P1"; le_player_name = "Kim"; le_team_name = "우리은행"; le_stat_value = 10.0 };
+    { le_player_id = "P2"; le_player_name = "Kim"; le_team_name = "KB스타즈"; le_stat_value = 9.0 };
+  ] in
+  let info1 : Wkbl.Domain.player_info = {
+    id = "P1";
+    name = "Kim";
+    position = Some "G";
+    birth_date = Some "1990-01-01";
+    height = Some 180;
+    weight = None;
+  } in
+  let map = Hashtbl.create 4 in
+  Hashtbl.replace map info1.id info1;
+  let html = Wkbl.Views.leader_card ~player_info_map:(Some map) "Test" leaders in
+  Alcotest.(check bool) "contains leader id P1" true (contains_substring html "ID P1");
+  Alcotest.(check bool) "contains leader id P2" true (contains_substring html "ID P2");
+  Alcotest.(check bool) "contains leader year" true (contains_substring html "1990");
+  Alcotest.(check bool) "contains leader height" true (contains_substring html "180cm")
+
+let disambiguation_tests = [
+  Alcotest.test_case "player disambiguation line" `Quick test_player_disambiguation_line;
+  Alcotest.test_case "leader card disambiguation" `Quick test_leader_card_disambiguation;
+]
+
+(* ============================================= *)
+(* QA Utility Tests                              *)
+(* ============================================= *)
+
+let test_coverage_pct () =
+  Alcotest.(check float_testable) "zero total" 0.0 (Wkbl.Db_common.coverage_pct ~total:0 ~covered:10);
+  Alcotest.(check float_testable) "half" 50.0 (Wkbl.Db_common.coverage_pct ~total:10 ~covered:5);
+  Alcotest.(check float_testable) "rounding" 33.3 (Wkbl.Db_common.coverage_pct ~total:3 ~covered:1)
+
+let test_split_csv_ids () =
+  let list_string = Alcotest.(list string) in
+  Alcotest.(check list_string) "basic" ["a"; "b"; "c"] (Wkbl.Db.split_csv_ids "a, b, c");
+  Alcotest.(check list_string) "empty" [] (Wkbl.Db.split_csv_ids "");
+  Alcotest.(check list_string) "trim + skip empty" ["a"; "b"] (Wkbl.Db.split_csv_ids "a,, ,b,")
+
+let test_qa_dashboard_schedule_coverage () =
+  let report : Wkbl.Db.qa_db_report = {
+    qdr_generated_at = "2026-02-06T00:00:00Z";
+    qdr_games_total = 0;
+    qdr_games_with_stats = 0;
+    qdr_plus_minus_games = 0;
+    qdr_plus_minus_coverage_pct = 0.0;
+    qdr_schedule_total = 0;
+    qdr_schedule_completed = 0;
+    qdr_schedule_missing_game_count = 0;
+    qdr_schedule_missing_game_pct = 0.0;
+    qdr_schedule_missing_game_sample = [];
+    qdr_schedule_missing_stats_count = 0;
+    qdr_schedule_missing_stats_pct = 0.0;
+    qdr_schedule_missing_stats_sample = [];
+    qdr_schedule_coverage = [
+      { qsc_season_code = "001";
+        qsc_schedule_completed = 20;
+        qsc_games_total = 0;
+        qsc_matched = 0;
+        qsc_missing = 20;
+        qsc_coverage_pct = 0.0;
+        qsc_season_uningested = true;
+        qsc_games_missing_team = false;
+      }
+    ];
+    qdr_score_mismatch_count = 0;
+    qdr_score_mismatch_sample = [];
+    qdr_team_count_anomaly_count = 0;
+    qdr_team_count_anomaly_sample = [];
+    qdr_duplicate_player_row_count = 0;
+    qdr_duplicate_player_row_sample = [];
+    qdr_duplicate_player_name_count = 0;
+    qdr_duplicate_player_name_sample = [];
+    qdr_duplicate_player_identity_count = 0;
+    qdr_duplicate_player_identity_sample = [];
+  } in
+  let html = Wkbl.Views_tools.qa_dashboard_page report () in
+  Alcotest.(check bool) "contains schedule coverage header" true (contains_substring html "Schedule Coverage by Season");
+  Alcotest.(check bool) "contains no games flag" true (contains_substring html "no games")
+
+let qa_util_tests = [
+  Alcotest.test_case "coverage pct" `Quick test_coverage_pct;
+  Alcotest.test_case "split csv ids" `Quick test_split_csv_ids;
+  Alcotest.test_case "qa schedule coverage block" `Quick test_qa_dashboard_schedule_coverage;
+]
+
+(* ============================================= *)
+(* UI Copy Tests                                 *)
+(* ============================================= *)
+
+let test_find_substring_from () =
+  let open Wkbl.Views_common in
+  Alcotest.(check (option int)) "find at 0" (Some 0) (find_substring_from ~sub:"foo" "foo" ~from:0);
+  Alcotest.(check (option int)) "find in middle" (Some 4) (find_substring_from ~sub:"bar" "foo bar baz" ~from:0);
+  Alcotest.(check (option int)) "find after offset" (Some 8) (find_substring_from ~sub:"baz" "foo bar baz" ~from:5);
+  Alcotest.(check (option int)) "not found" None (find_substring_from ~sub:"zzz" "foo bar baz" ~from:0)
+
+let test_ui_copy_no_dev_terms () =
+  let banned = [ "PBP"; "FLOW"; "VERIFIED"; "DERIVED"; "MISMATCH"; "COALESCE"; "player_plus_minus"; "game_stats"; "SUM("; "team1/team2"; "Play-by-Play" ] in
+  let check_clean ~ctx html =
+    banned
+    |> List.iter (fun sub ->
+        Alcotest.(check bool) (ctx ^ " no " ^ sub) false (contains_substring html sub))
+  in
+
+  (* Score quality badges should be Korean *)
+  let badge_full = Wkbl.Views_common.score_quality_badge Wkbl.Domain.Verified in
+  Alcotest.(check bool) "badge label is Korean" true (contains_substring badge_full "일치");
+  check_clean ~ctx:"score_quality_badge" badge_full;
+
+  (* Boxscore action links and notes should not leak internal terms *)
+  let pbp_link = Wkbl.Views.boxscore_pbp_link_html "046-01-62" in
+  Alcotest.(check bool) "pbp link label" true (contains_substring pbp_link "문자중계");
+  check_clean ~ctx:"boxscore_pbp_link_html" pbp_link;
+
+  let flow_link = Wkbl.Views.boxscore_flow_link_html "046-01-62" in
+  Alcotest.(check bool) "flow link label" true (contains_substring flow_link "득점흐름");
+  check_clean ~ctx:"boxscore_flow_link_html" flow_link;
+
+  let notes = Wkbl.Views.boxscore_data_notes_html ~official_link:"" in
+  Alcotest.(check bool) "notes mention source" true (contains_substring notes "\xec\xb6\x9c\xec\xb2\x98");
+  check_clean ~ctx:"boxscore_data_notes_html" notes;
+
+  (* PBP page copy should be user-facing Korean labels *)
+  let game : Wkbl.Domain.game_info =
+    { gi_game_id = "046-01-62";
+      gi_game_date = "2026-02-04";
+      gi_home_team_code = "09";
+      gi_home_team_name = "하나은행";
+      gi_away_team_code = "03";
+      gi_away_team_name = "삼성생명";
+      gi_home_score = 54;
+      gi_away_score = 74;
+      gi_score_quality = Wkbl.Domain.Derived;
+    }
+  in
+  let pbp_page_html = Wkbl.Views.pbp_page ~game ~periods:[] ~selected_period:"ALL" ~events:[] in
+  Alcotest.(check bool) "pbp page title mentions Korean label" true (contains_substring pbp_page_html "문자중계");
+  check_clean ~ctx:"pbp_page" pbp_page_html
+
+let test_ops_copy_hidden_by_default () =
+  let banned = [ "dune exec"; "scraper_tool"; "WKBL_SYNC_DRAFT_TRADE"; "scripts/wkbl_draft_trade_sync.py" ] in
+  let check_clean ~ctx html =
+    banned
+    |> List.iter (fun sub ->
+        Alcotest.(check bool) (ctx ^ " no " ^ sub) false (contains_substring html sub))
+  in
+
+  let seasons_catalog : Wkbl.Domain.season_info list =
+    [ { code = "046"; name = "2025-2026" }
+    ; { code = "045"; name = "2024-2025" }
+    ]
+  in
+  let player : Wkbl.Domain.player_info =
+    { id = "TEST001"
+    ; name = "테스트"
+    ; position = Some "G"
+    ; birth_date = Some "2000-01-01"
+    ; height = Some 170
+    ; weight = None
+    }
+  in
+  let averages : Wkbl.Domain.player_aggregate =
+    { player_id = "TEST001"
+    ; name = "테스트"
+    ; team_name = "테스트팀"
+    ; games_played = 0
+    ; total_minutes = 0.0
+    ; total_points = 0
+    ; total_rebounds = 0
+    ; total_assists = 0
+    ; total_steals = 0
+    ; total_blocks = 0
+    ; total_turnovers = 0
+    ; avg_points = 0.0
+    ; avg_margin = 0.0
+    ; avg_rebounds = 0.0
+    ; avg_assists = 0.0
+    ; avg_steals = 0.0
+    ; avg_blocks = 0.0
+    ; avg_turnovers = 0.0
+    ; efficiency = 0.0
+    }
+  in
+  let profile : Wkbl.Domain.player_profile =
+    { player
+    ; averages
+    ; recent_games = []
+    ; all_star_games = []
+    ; draft = None
+    ; official_trade_events = []
+    ; external_links = []
+    ; team_stints = []
+    ; season_breakdown = []
+    ; career_highs = None
+    }
+  in
+
+  let player_html =
+    Wkbl.Views_player.player_profile_page profile ~scope:"per_game" ~seasons_catalog
+  in
+  check_clean ~ctx:"player_profile_page" player_html;
+
+  let tx_html =
+    Wkbl.Views_tools.transactions_page
+      ~show_ops:false
+      ~tab:"draft"
+      ~year:0
+      ~q:""
+      ~draft_years:[]
+      ~trade_years:[]
+      ~draft_picks:[]
+      ~trade_events:[]
+  in
+  check_clean ~ctx:"transactions_page" tx_html
+
+let ui_copy_tests = [
+  Alcotest.test_case "find_substring_from" `Quick test_find_substring_from;
+  Alcotest.test_case "ui copy avoids dev terms" `Quick test_ui_copy_no_dev_terms;
+  Alcotest.test_case "ops copy hidden by default" `Quick test_ops_copy_hidden_by_default;
 ]
 
 (* ============================================= *)
@@ -1259,4 +1749,7 @@ let () =
     "On/Off Impact", on_off_impact_tests;
     "Advanced Stats", advanced_stats_tests;
     "Scraper Functions", scraper_tests;
+    "Disambiguation", disambiguation_tests;
+    "QA Utils", qa_util_tests;
+    "UI Copy", ui_copy_tests;
   ]

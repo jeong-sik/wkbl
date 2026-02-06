@@ -4,7 +4,7 @@
 open Domain
 open Views_common
 
-let team_profile_page (detail: team_full_detail) ~season ~seasons =
+let team_profile_page ?(player_info_map=None) (detail: team_full_detail) ~season ~seasons =
  let t = detail.tfd_team_name in
  let s = detail.tfd_standing in
  let season_options =
@@ -33,7 +33,12 @@ let team_profile_page (detail: team_full_detail) ~season ~seasons =
      | Some c when c > 1 -> true
      | _ -> false
     in
-    player_row ~show_player_id ~include_team:false ~team_cell_class:"px-3 py-2" (i + 1) p)
+    let player_info =
+     match player_info_map with
+     | Some map -> Hashtbl.find_opt map p.player_id
+     | None -> None
+    in
+    player_row ~show_player_id ~include_team:false ~team_cell_class:"px-3 py-2" ~player_info (i + 1) p)
   |> String.concat "\n"
  in
  let roster_cards =
@@ -54,8 +59,16 @@ let team_profile_page (detail: team_full_detail) ~season ~seasons =
      | Some c when c > 1 -> true
      | _ -> false
     in
-    let id_badge =
-     if show_player_id then Printf.sprintf {html|<span class="ml-2">%s</span>|html} (player_id_badge p.player_id) else ""
+    let player_info =
+     match player_info_map with
+     | Some map -> Hashtbl.find_opt map p.player_id
+     | None -> None
+    in
+    let disambiguation =
+     if show_player_id then
+      Printf.sprintf {html|<div class="mt-0.5">%s</div>|html}
+       (player_disambiguation_line ~team_name:p.team_name ~player_id:p.player_id player_info)
+     else ""
     in
     Printf.sprintf
      {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-lg">
@@ -64,8 +77,9 @@ let team_profile_page (detail: team_full_detail) ~season ~seasons =
         <div class="shrink-0">%s</div>
         <div class="min-w-0">
          <div class="text-sm font-bold text-slate-900 dark:text-slate-200 truncate">
-          <a href="/player/%s" class="player-name hover:text-orange-600 dark:text-orange-400 transition-colors">%s</a>%s
+          <a href="/player/%s" class="player-name hover:text-orange-600 dark:text-orange-400 transition-colors">%s</a>
          </div>
+         %s
          <div class="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400 font-mono tabular-nums">GP %d • EFF %.1f</div>
         </div>
        </div>
@@ -92,7 +106,7 @@ let team_profile_page (detail: team_full_detail) ~season ~seasons =
      (player_img_tag ~class_name:"w-10 h-10 border border-slate-300 dark:border-slate-700 shadow-sm" p.player_id p.name)
      p.player_id
      (escape_html (normalize_name p.name))
-     id_badge
+     disambiguation
      p.games_played
      p.efficiency
      p.avg_points

@@ -55,12 +55,53 @@ type qa_duplicate_player_name = {
   qdpn_player_ids: string list;
 }
 
+type qa_duplicate_player_identity = {
+  qdpi_player_name: string;
+  qdpi_birth_date: string;
+  qdpi_id_count: int;
+  qdpi_player_ids: string list;
+}
+
+type qa_schedule_missing_game = {
+  qsmg_game_date: string;
+  qsmg_season_code: string;
+  qsmg_home_team: string;
+  qsmg_away_team: string;
+}
+
+type qa_schedule_missing_stats = {
+  qsms_game_id: string;
+  qsms_game_date: string;
+  qsms_home_team: string;
+  qsms_away_team: string;
+}
+
+type qa_schedule_coverage = {
+  qsc_season_code: string;
+  qsc_schedule_completed: int;
+  qsc_games_total: int;
+  qsc_matched: int;
+  qsc_missing: int;
+  qsc_coverage_pct: float;
+  qsc_season_uningested: bool;
+  qsc_games_missing_team: bool;
+}
+
 type qa_db_report = {
   qdr_generated_at: string;
   qdr_games_total: int;
   qdr_games_with_stats: int;
   qdr_plus_minus_games: int;
   qdr_plus_minus_coverage_pct: float;
+  qdr_schedule_total: int;
+  qdr_schedule_completed: int;
+  qdr_schedule_missing_game_count: int;
+  qdr_schedule_missing_game_pct: float;
+  qdr_schedule_missing_game_sample: qa_schedule_missing_game list;
+  qdr_schedule_missing_stats_count: int;
+  qdr_schedule_missing_stats_pct: float;
+  qdr_schedule_missing_stats_sample: qa_schedule_missing_stats list;
+  qdr_schedule_coverage: qa_schedule_coverage list;
   qdr_score_mismatch_count: int;
   qdr_score_mismatch_sample: qa_score_mismatch list;
   qdr_team_count_anomaly_count: int;
@@ -69,6 +110,8 @@ type qa_db_report = {
   qdr_duplicate_player_row_sample: qa_duplicate_player_row list;
   qdr_duplicate_player_name_count: int;
   qdr_duplicate_player_name_sample: qa_duplicate_player_name list;
+  qdr_duplicate_player_identity_count: int;
+  qdr_duplicate_player_identity_sample: qa_duplicate_player_identity list;
 }
 
 type qa_schedule_missing_summary = {
@@ -401,12 +444,68 @@ module Types = struct
     in
     custom ~encode ~decode (t2 string (t2 int string))
 
+  let qa_duplicate_player_identity_row =
+    let encode _ = Error "Encode not supported: read-only type" in
+    let decode (player_name, (birth_date, (id_count, player_ids_csv))) =
+      Ok (player_name, birth_date, id_count, player_ids_csv)
+    in
+    custom ~encode ~decode (t2 string (t2 string (t2 int string)))
+
+  let qa_schedule_missing_game =
+    let encode _ = Error "Encode not supported: read-only type" in
+    let decode (game_date, (season_code, (home_team, away_team))) =
+      Ok {
+        qsmg_game_date = game_date;
+        qsmg_season_code = season_code;
+        qsmg_home_team = home_team;
+        qsmg_away_team = away_team;
+      }
+    in
+    custom ~encode ~decode (t2 string (t2 string (t2 string string)))
+
+  let qa_schedule_missing_stats =
+    let encode _ = Error "Encode not supported: read-only type" in
+    let decode (game_id, (game_date, (home_team, away_team))) =
+      Ok {
+        qsms_game_id = game_id;
+        qsms_game_date = game_date;
+        qsms_home_team = home_team;
+        qsms_away_team = away_team;
+      }
+    in
+    custom ~encode ~decode (t2 string (t2 string (t2 string string)))
+
+  let qa_schedule_coverage =
+    let encode _ = Error "Encode not supported: read-only type" in
+    let decode (season_code, (schedule_completed, (games_total, (matched, (missing, (coverage_pct, (season_uningested, games_missing_team))))))) =
+      Ok {
+        qsc_season_code = season_code;
+        qsc_schedule_completed = schedule_completed;
+        qsc_games_total = games_total;
+        qsc_matched = matched;
+        qsc_missing = missing;
+        qsc_coverage_pct = coverage_pct;
+        qsc_season_uningested = season_uningested;
+        qsc_games_missing_team = games_missing_team;
+      }
+    in
+    let t = t2 in
+    custom ~encode ~decode
+      (t string
+         (t int
+            (t int
+               (t int
+                  (t int
+                     (t float
+                        (t bool bool)))))))
+
   let qa_schedule_missing_summary =
     let encode _ = Error "Encode not supported: read-only type" in
     let decode (missing_ingested, (missing_uningested, missing_total)) =
-      Ok { qsms_missing_ingested = missing_ingested;
-           qsms_missing_uningested = missing_uningested;
-           qsms_missing_total = missing_total;
+      Ok {
+        qsms_missing_ingested = missing_ingested;
+        qsms_missing_uningested = missing_uningested;
+        qsms_missing_total = missing_total;
       }
     in
     custom ~encode ~decode (t2 int (t2 int int))
@@ -414,13 +513,14 @@ module Types = struct
   let qa_schedule_missing_sample =
     let encode _ = Error "Encode not supported: read-only type" in
     let decode (season_code, (game_date, (home_team_code, (away_team_code, (reason, (games_on_date, games_info)))))) =
-      Ok { qsmp_season_code = season_code;
-           qsmp_game_date = game_date;
-           qsmp_home_team_code = home_team_code;
-           qsmp_away_team_code = away_team_code;
-           qsmp_reason = reason;
-           qsmp_games_on_date = games_on_date;
-           qsmp_games_info = games_info;
+      Ok {
+        qsmp_season_code = season_code;
+        qsmp_game_date = game_date;
+        qsmp_home_team_code = home_team_code;
+        qsmp_away_team_code = away_team_code;
+        qsmp_reason = reason;
+        qsmp_games_on_date = games_on_date;
+        qsmp_games_info = games_info;
       }
     in
     let t = t2 in
@@ -431,7 +531,6 @@ module Types = struct
             (t string
               (t string
                 (t int (option string)))))))
-
   let boxscore_player_stat =
     let encode _ = Error "Encode not supported: read-only type" in
     let decode (player_id, (player_name, (position, (team_code, (team_name, (min_seconds, (pts, (plus_minus, (reb, (ast, (stl, (blk, (tov, (fg2_m, (fg2_a, (fg3_m, (fg3_a, (ft_m, ft_a)))))))))))))))))) =
@@ -1918,6 +2017,162 @@ module Queries = struct
     WHERE g.game_type != '10'
   |}
 
+  let qa_schedule_total = (unit ->? int) {|
+    SELECT COUNT(*) FROM schedule
+  |}
+
+  let qa_schedule_completed = (unit ->? int) {|
+    SELECT COUNT(*) FROM schedule WHERE status = 'completed'
+  |}
+
+  let qa_schedule_missing_game_count = (unit ->? int) {|
+    WITH completed AS (
+      SELECT s.game_date, s.season_code, s.home_team_code, s.away_team_code
+      FROM schedule s
+      WHERE s.status = 'completed'
+    )
+    SELECT COUNT(*)
+    FROM completed s
+    LEFT JOIN games g
+      ON g.season_code = s.season_code
+     AND g.game_date::text = s.game_date
+     AND g.home_team_code = s.home_team_code
+     AND g.away_team_code = s.away_team_code
+     AND g.game_type != '10'
+    WHERE g.game_id IS NULL
+  |}
+
+  let qa_schedule_missing_game_sample = (unit ->* Types.qa_schedule_missing_game) {|
+    SELECT
+      s.game_date,
+      s.season_code,
+      th.team_name_kr,
+      ta.team_name_kr
+    FROM schedule s
+    JOIN teams th ON s.home_team_code = th.team_code
+    JOIN teams ta ON s.away_team_code = ta.team_code
+    LEFT JOIN games g
+      ON g.season_code = s.season_code
+     AND g.game_date::text = s.game_date
+     AND g.home_team_code = s.home_team_code
+     AND g.away_team_code = s.away_team_code
+     AND g.game_type != '10'
+    WHERE s.status = 'completed'
+      AND g.game_id IS NULL
+    ORDER BY s.game_date DESC, s.season_code DESC
+    LIMIT 50
+  |}
+
+  let qa_schedule_missing_stats_count = (unit ->? int) {|
+    WITH completed AS (
+      SELECT s.game_date, s.season_code, s.home_team_code, s.away_team_code
+      FROM schedule s
+      WHERE s.status = 'completed'
+    ),
+    matched AS (
+      SELECT s.game_date, s.season_code, s.home_team_code, s.away_team_code, g.game_id
+      FROM completed s
+      JOIN games g
+        ON g.season_code = s.season_code
+       AND g.game_date::text = s.game_date
+       AND g.home_team_code = s.home_team_code
+       AND g.away_team_code = s.away_team_code
+       AND g.game_type != '10'
+    ),
+    stats AS (
+      SELECT game_id, COUNT(*) AS stat_rows
+      FROM game_stats
+      GROUP BY game_id
+    )
+    SELECT COUNT(*)
+    FROM matched m
+    LEFT JOIN stats st ON st.game_id = m.game_id
+    WHERE st.stat_rows IS NULL OR st.stat_rows = 0
+  |}
+
+  let qa_schedule_missing_stats_sample = (unit ->* Types.qa_schedule_missing_stats) {|
+    WITH completed AS (
+      SELECT s.game_date, s.season_code, s.home_team_code, s.away_team_code
+      FROM schedule s
+      WHERE s.status = 'completed'
+    ),
+    matched AS (
+      SELECT s.game_date, s.season_code, s.home_team_code, s.away_team_code, g.game_id
+      FROM completed s
+      JOIN games g
+        ON g.season_code = s.season_code
+       AND g.game_date::text = s.game_date
+       AND g.home_team_code = s.home_team_code
+       AND g.away_team_code = s.away_team_code
+       AND g.game_type != '10'
+    ),
+    stats AS (
+      SELECT game_id, COUNT(*) AS stat_rows
+      FROM game_stats
+      GROUP BY game_id
+    )
+    SELECT
+      m.game_id,
+      m.game_date,
+      th.team_name_kr,
+      ta.team_name_kr
+    FROM matched m
+    JOIN teams th ON m.home_team_code = th.team_code
+    JOIN teams ta ON m.away_team_code = ta.team_code
+    LEFT JOIN stats st ON st.game_id = m.game_id
+    WHERE st.stat_rows IS NULL OR st.stat_rows = 0
+    ORDER BY m.game_date DESC, m.game_id DESC
+    LIMIT 50
+  |}
+
+  let qa_schedule_coverage = (unit ->* Types.qa_schedule_coverage) {|
+    WITH completed AS (
+      SELECT s.season_code, s.game_date, s.home_team_code, s.away_team_code
+      FROM schedule s
+      WHERE s.status = 'completed'
+    ),
+    matched AS (
+      SELECT
+        c.season_code,
+        COUNT(*) AS schedule_completed,
+        COUNT(g.game_id) AS matched
+      FROM completed c
+      LEFT JOIN games g
+        ON g.season_code = c.season_code
+       AND g.game_date::text = c.game_date
+       AND g.home_team_code = c.home_team_code
+       AND g.away_team_code = c.away_team_code
+       AND g.game_type != '10'
+      GROUP BY c.season_code
+    ),
+    games_by_season AS (
+      SELECT
+        season_code,
+        COUNT(*) AS games_total,
+        COUNT(*) FILTER (
+          WHERE home_team_code IS NULL OR home_team_code = '' OR away_team_code IS NULL OR away_team_code = ''
+        ) AS games_missing_team
+      FROM games
+      WHERE game_type != '10'
+      GROUP BY season_code
+    )
+    SELECT
+      m.season_code,
+      m.schedule_completed,
+      COALESCE(g.games_total, 0) AS games_total,
+      m.matched,
+      (m.schedule_completed - m.matched) AS missing,
+      CASE
+        WHEN m.schedule_completed = 0 THEN 0
+        ELSE ROUND(100.0 * m.matched / m.schedule_completed, 1)
+      END AS coverage_pct,
+      COALESCE(g.games_total, 0) = 0 AS season_uningested,
+      COALESCE(g.games_missing_team, 0) > 0 AS games_missing_team
+    FROM matched m
+    LEFT JOIN games_by_season g ON g.season_code = m.season_code
+    ORDER BY m.season_code
+  |}
+
   let qa_score_mismatch_count = (unit ->? int) {|
     WITH sums AS (
       SELECT game_id, team_code, SUM(pts) AS pts_sum
@@ -2245,6 +2500,36 @@ module Queries = struct
     ORDER BY reason, season_code, game_date
   |}
 
+  let qa_duplicate_player_identity_count = (unit ->? int) {|
+    SELECT COUNT(*)
+    FROM (
+      SELECT
+        TRIM(REPLACE(REPLACE(player_name, chr(92), ''), '"', '')) AS normalized_name,
+        birth_date
+      FROM players
+      WHERE birth_date IS NOT NULL
+      GROUP BY
+        TRIM(REPLACE(REPLACE(player_name, chr(92), ''), '"', '')),
+        birth_date
+      HAVING COUNT(DISTINCT player_id) > 1
+    )
+  |}
+
+  let qa_duplicate_player_identity_sample = (unit ->* Types.qa_duplicate_player_identity_row) {|
+    SELECT
+      TRIM(REPLACE(REPLACE(player_name, chr(92), ''), '"', '')) AS normalized_name,
+      TO_CHAR(birth_date, 'YYYY-MM-DD') AS birth_date,
+      COUNT(DISTINCT player_id) AS id_count,
+      STRING_AGG(DISTINCT player_id, ',' ORDER BY player_id) AS player_ids
+    FROM players
+    WHERE birth_date IS NOT NULL
+    GROUP BY
+      TRIM(REPLACE(REPLACE(player_name, chr(92), ''), '"', '')),
+      birth_date
+    HAVING COUNT(DISTINCT player_id) > 1
+    ORDER BY id_count DESC, normalized_name ASC, birth_date ASC
+    LIMIT 50
+  |}
   let game_info_by_id = (string ->? Types.game_info) {|
     WITH sums AS (
       SELECT game_id, team_code, SUM(pts) AS pts_sum
@@ -2722,6 +3007,7 @@ module Queries = struct
     LIMIT 5
   |}
   let player_info = (string ->? Types.player_info) "SELECT player_id, player_name, position, birth_date, height, weight FROM players WHERE player_id = ?"
+  let all_player_info = (unit ->* Types.player_info) "SELECT player_id, player_name, position, birth_date, height, weight FROM players"
 
   let player_draft_by_player_id = (string ->? Types.player_draft) {|
     SELECT
@@ -3825,6 +4111,45 @@ module Queries = struct
       status = EXCLUDED.status
   |}
 
+  (** UPSERT season info *)
+  let upsert_season = (t2 string string ->. unit) {|
+    INSERT INTO seasons (season_code, season_name)
+    VALUES ($1, $2)
+    ON CONFLICT (season_code)
+    DO UPDATE SET season_name = EXCLUDED.season_name
+  |}
+
+  (** UPSERT game row from schedule/results scrape *)
+  let upsert_game =
+    (t2 string                    (* game_id *)
+      (t2 string                  (* season_code *)
+        (t2 string                (* game_type *)
+          (t2 int                 (* game_no *)
+            (t2 (option string)   (* game_date: YYYY-MM-DD *)
+              (t2 string          (* home_team_code *)
+                (t2 string        (* away_team_code *)
+                  (t2 (option int) (* home_score *)
+                    (t2 (option int) (* away_score *)
+                      (t2 (option string) (* stadium *)
+                        (option int) (* attendance *)
+                      ))))))))) ->. unit) {|
+    INSERT INTO games
+      (game_id, season_code, game_type, game_no, game_date, home_team_code, away_team_code, home_score, away_score, stadium, attendance)
+    VALUES
+      ($1, $2, $3, $4, $5::date, $6, $7, $8, $9, $10, $11)
+    ON CONFLICT (game_id)
+    DO UPDATE SET
+      season_code = EXCLUDED.season_code,
+      game_type = EXCLUDED.game_type,
+      game_no = EXCLUDED.game_no,
+      game_date = COALESCE(EXCLUDED.game_date, games.game_date),
+      home_team_code = COALESCE(EXCLUDED.home_team_code, games.home_team_code),
+      away_team_code = COALESCE(EXCLUDED.away_team_code, games.away_team_code),
+      home_score = COALESCE(EXCLUDED.home_score, games.home_score),
+      away_score = COALESCE(EXCLUDED.away_score, games.away_score),
+      stadium = COALESCE(EXCLUDED.stadium, games.stadium),
+      attendance = COALESCE(EXCLUDED.attendance, games.attendance)
+  |}
   (** Count schedule entries by season and status *)
   let count_schedule_by_status = (t2 string string ->? int) {|
     SELECT COUNT(*) FROM schedule WHERE season_code = $1 AND status = $2
@@ -3903,6 +4228,7 @@ end
       Db.exec Queries.refresh_score_mismatch ()
   let get_teams (module Db : Caqti_eio.CONNECTION) = Db.collect_list Queries.all_teams ()
   let get_seasons (module Db : Caqti_eio.CONNECTION) = Db.collect_list Queries.all_seasons ()
+  let get_all_player_info (module Db : Caqti_eio.CONNECTION) = Db.collect_list Queries.all_player_info ()
   let get_latest_game_date (module Db : Caqti_eio.CONNECTION) = Db.find_opt Queries.latest_game_date ()
   let get_historical_seasons (module Db : Caqti_eio.CONNECTION) = Db.collect_list Queries.all_historical_seasons ()
   let get_legend_players (module Db : Caqti_eio.CONNECTION) = Db.collect_list Queries.all_legend_players ()
@@ -3988,6 +4314,61 @@ end
   let delete_schedule_by_season ~season_code (module Db : Caqti_eio.CONNECTION) =
     Db.exec Queries.delete_schedule_by_season season_code
 
+  (** Upsert a single season entry *)
+  let upsert_season ~season_code ~season_name (module Db : Caqti_eio.CONNECTION) =
+    Db.exec Queries.upsert_season (season_code, season_name)
+
+  (** Upsert a single game row *)
+  let upsert_game_entry
+      ~game_id
+      ~season_code
+      ~game_type
+      ~game_no
+      ~game_date
+      ~home_team_code
+      ~away_team_code
+      ~home_score
+      ~away_score
+      ~stadium
+      ~attendance
+      (module Db : Caqti_eio.CONNECTION) =
+    let game_date_opt =
+      match game_date with
+      | None -> None
+      | Some s ->
+          let trimmed = String.trim s in
+          if trimmed = "" then None else Some trimmed
+    in
+    Db.exec Queries.upsert_game
+      (game_id,
+        (season_code,
+          (game_type,
+            (game_no,
+              (game_date_opt,
+                (home_team_code,
+                  (away_team_code,
+                    (home_score,
+                      (away_score,
+                        (stadium, attendance))))))))))
+
+  (** Upsert a game record (scores + metadata) *)
+  let upsert_game
+      ~game_id ~season_code ~game_type ~game_no ~game_date
+      ~home_team_code ~away_team_code ~home_score ~away_score ~stadium
+      (module Db : Caqti_eio.CONNECTION) =
+    upsert_game_entry
+      ~game_id
+      ~season_code
+      ~game_type
+      ~game_no
+      ~game_date
+      ~home_team_code
+      ~away_team_code
+      ~home_score
+      ~away_score
+      ~stadium
+      ~attendance:None
+      (module Db)
   (** Count schedule entries by season and status *)
   let count_schedule_by_status ~season_code ~status (module Db : Caqti_eio.CONNECTION) =
     Db.find_opt Queries.count_schedule_by_status (season_code, status)
@@ -4036,6 +4417,15 @@ end
   let qa_duplicate_player_row_sample (module Db : Caqti_eio.CONNECTION) = Db.collect_list Queries.qa_duplicate_player_row_sample ()
   let qa_duplicate_player_name_count (module Db : Caqti_eio.CONNECTION) = Db.find_opt Queries.qa_duplicate_player_name_count ()
   let qa_duplicate_player_name_sample (module Db : Caqti_eio.CONNECTION) = Db.collect_list Queries.qa_duplicate_player_name_sample ()
+  let qa_duplicate_player_identity_count (module Db : Caqti_eio.CONNECTION) = Db.find_opt Queries.qa_duplicate_player_identity_count ()
+  let qa_duplicate_player_identity_sample (module Db : Caqti_eio.CONNECTION) = Db.collect_list Queries.qa_duplicate_player_identity_sample ()
+  let qa_schedule_total (module Db : Caqti_eio.CONNECTION) = Db.find_opt Queries.qa_schedule_total ()
+  let qa_schedule_completed (module Db : Caqti_eio.CONNECTION) = Db.find_opt Queries.qa_schedule_completed ()
+  let qa_schedule_missing_game_count (module Db : Caqti_eio.CONNECTION) = Db.find_opt Queries.qa_schedule_missing_game_count ()
+  let qa_schedule_missing_game_sample (module Db : Caqti_eio.CONNECTION) = Db.collect_list Queries.qa_schedule_missing_game_sample ()
+  let qa_schedule_missing_stats_count (module Db : Caqti_eio.CONNECTION) = Db.find_opt Queries.qa_schedule_missing_stats_count ()
+  let qa_schedule_missing_stats_sample (module Db : Caqti_eio.CONNECTION) = Db.collect_list Queries.qa_schedule_missing_stats_sample ()
+  let qa_schedule_coverage (module Db : Caqti_eio.CONNECTION) = Db.collect_list Queries.qa_schedule_coverage ()
   let qa_schedule_missing_summary (module Db : Caqti_eio.CONNECTION) = Db.find_opt Queries.qa_schedule_missing_summary ()
   let qa_schedule_missing_reason_counts (module Db : Caqti_eio.CONNECTION) = Db.collect_list Queries.qa_schedule_missing_reason_counts ()
   let qa_schedule_missing_samples (module Db : Caqti_eio.CONNECTION) = Db.collect_list Queries.qa_schedule_missing_samples ()
@@ -4318,6 +4708,7 @@ let team_stats_cache = Cache.create ~ttl:120.0 ~max_entries:48
 let players_cache = Cache.create ~ttl:60.0 ~max_entries:128
 let players_base_cache = Cache.create ~ttl:120.0 ~max_entries:32
 let players_by_team_cache = Cache.create ~ttl:120.0 ~max_entries:128
+let player_info_cache = Cache.create ~ttl:(60.0 *. 60.0 *. 6.0) ~max_entries:4
 let team_detail_cache = Cache.create ~ttl:120.0 ~max_entries:64
 let player_profile_cache = Cache.create ~ttl:120.0 ~max_entries:256
 let player_season_stats_cache = Cache.create ~ttl:120.0 ~max_entries:256
@@ -4454,6 +4845,8 @@ let get_all_teams () =
   cached teams_cache "all" (fun () -> with_db (fun db -> Repo.get_teams db))
 let get_seasons () =
   cached seasons_cache "all" (fun () -> with_db (fun db -> Repo.get_seasons db))
+let get_all_player_info () =
+  cached player_info_cache "all" (fun () -> with_db (fun db -> Repo.get_all_player_info db))
 let get_latest_game_date () =
   cached data_freshness_cache "latest" (fun () ->
     with_db (fun db -> Repo.get_latest_game_date db))
@@ -4794,10 +5187,16 @@ let get_db_quality_report () : qa_db_report db_result =
   cached qa_report_cache "qa_report" (fun () ->
     let (let*) = Result.bind in
     let int_or_zero = Option.value ~default:0 in
-    let round1 v = Float.round (v *. 10.0) /. 10.0 in
     let* games_total_opt = with_db (fun db -> Repo.qa_games_total db) in
     let* games_with_stats_opt = with_db (fun db -> Repo.qa_games_with_stats db) in
     let* plus_minus_games_opt = with_db (fun db -> Repo.qa_plus_minus_games db) in
+    let* schedule_total_opt = with_db (fun db -> Repo.qa_schedule_total db) in
+    let* schedule_completed_opt = with_db (fun db -> Repo.qa_schedule_completed db) in
+    let* schedule_missing_game_count_opt = with_db (fun db -> Repo.qa_schedule_missing_game_count db) in
+    let* schedule_missing_game_sample = with_db (fun db -> Repo.qa_schedule_missing_game_sample db) in
+    let* schedule_missing_stats_count_opt = with_db (fun db -> Repo.qa_schedule_missing_stats_count db) in
+    let* schedule_missing_stats_sample = with_db (fun db -> Repo.qa_schedule_missing_stats_sample db) in
+    let* schedule_coverage = with_db (fun db -> Repo.qa_schedule_coverage db) in
     let* mismatch_count_opt = with_db (fun db -> Repo.qa_score_mismatch_count db) in
     let* mismatch_sample = with_db (fun db -> Repo.qa_score_mismatch_sample db) in
     let* team_count_anomaly_count_opt = with_db (fun db -> Repo.qa_team_count_anomaly_count db) in
@@ -4806,13 +5205,18 @@ let get_db_quality_report () : qa_db_report db_result =
     let* dup_row_sample = with_db (fun db -> Repo.qa_duplicate_player_row_sample db) in
     let* dup_name_count_opt = with_db (fun db -> Repo.qa_duplicate_player_name_count db) in
     let* dup_name_rows = with_db (fun db -> Repo.qa_duplicate_player_name_sample db) in
+    let* dup_identity_count_opt = with_db (fun db -> Repo.qa_duplicate_player_identity_count db) in
+    let* dup_identity_rows = with_db (fun db -> Repo.qa_duplicate_player_identity_sample db) in
     let games_total = int_or_zero games_total_opt in
     let games_with_stats = int_or_zero games_with_stats_opt in
     let plus_minus_games = int_or_zero plus_minus_games_opt in
-    let plus_minus_coverage_pct =
-      if games_total <= 0 then 0.0
-      else round1 ((float_of_int plus_minus_games /. float_of_int games_total) *. 100.0)
-    in
+    let schedule_total = int_or_zero schedule_total_opt in
+    let schedule_completed = int_or_zero schedule_completed_opt in
+    let schedule_missing_game_count = int_or_zero schedule_missing_game_count_opt in
+    let schedule_missing_stats_count = int_or_zero schedule_missing_stats_count_opt in
+    let plus_minus_coverage_pct = Db_common.coverage_pct ~total:games_total ~covered:plus_minus_games in
+    let schedule_missing_game_pct = Db_common.coverage_pct ~total:schedule_completed ~covered:schedule_missing_game_count in
+    let schedule_missing_stats_pct = Db_common.coverage_pct ~total:schedule_completed ~covered:schedule_missing_stats_count in
     let dup_name_sample =
       dup_name_rows
       |> List.map (fun (name, id_count, ids_csv) ->
@@ -4821,11 +5225,29 @@ let get_db_quality_report () : qa_db_report db_result =
             qdpn_player_ids = split_csv_ids ids_csv;
           })
     in
+    let dup_identity_sample =
+      dup_identity_rows
+      |> List.map (fun (name, birth_date, id_count, ids_csv) ->
+          { qdpi_player_name = name;
+            qdpi_birth_date = birth_date;
+            qdpi_id_count = id_count;
+            qdpi_player_ids = split_csv_ids ids_csv;
+          })
+    in
     Ok { qdr_generated_at = iso8601_utc ();
         qdr_games_total = games_total;
         qdr_games_with_stats = games_with_stats;
         qdr_plus_minus_games = plus_minus_games;
         qdr_plus_minus_coverage_pct = plus_minus_coverage_pct;
+        qdr_schedule_total = schedule_total;
+        qdr_schedule_completed = schedule_completed;
+        qdr_schedule_missing_game_count = schedule_missing_game_count;
+        qdr_schedule_missing_game_pct = schedule_missing_game_pct;
+        qdr_schedule_missing_game_sample = schedule_missing_game_sample;
+        qdr_schedule_missing_stats_count = schedule_missing_stats_count;
+        qdr_schedule_missing_stats_pct = schedule_missing_stats_pct;
+        qdr_schedule_missing_stats_sample = schedule_missing_stats_sample;
+        qdr_schedule_coverage = schedule_coverage;
         qdr_score_mismatch_count = int_or_zero mismatch_count_opt;
         qdr_score_mismatch_sample = mismatch_sample;
         qdr_team_count_anomaly_count = int_or_zero team_count_anomaly_count_opt;
@@ -4834,6 +5256,8 @@ let get_db_quality_report () : qa_db_report db_result =
         qdr_duplicate_player_row_sample = dup_row_sample;
         qdr_duplicate_player_name_count = int_or_zero dup_name_count_opt;
         qdr_duplicate_player_name_sample = dup_name_sample;
+        qdr_duplicate_player_identity_count = int_or_zero dup_identity_count_opt;
+        qdr_duplicate_player_identity_sample = dup_identity_sample;
       })
 
 let get_schedule_missing_report () : qa_schedule_missing_report db_result =

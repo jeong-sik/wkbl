@@ -120,13 +120,18 @@ let fetch_url ~sw ~env url =
       Printf.eprintf "HTTP error for %s: %s\n" url (Printexc.to_string exn);
       ""
 
-(** POST request with form data *)
-let post_url ~sw ~env url body_params =
+(** POST request with form data.
+    Some WKBL endpoints require an AJAX-style request (Accept + X-Requested-With)
+    and a game-specific Referer. *)
+let post_url ~sw ~env ~referer url body_params =
   let net = Eio.Stdenv.net env in
   let headers = Cohttp.Header.of_list [
     ("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) WKBL-Stats-Bot/1.0");
-    ("Content-Type", "application/x-www-form-urlencoded");
-    ("Referer", "https://www.wkbl.or.kr/game/result.asp");
+    ("Accept", "text/plain, */*; q=0.01");
+    ("Accept-Language", "ko-KR,ko;q=0.9");
+    ("X-Requested-With", "XMLHttpRequest");
+    ("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8");
+    ("Referer", referer);
     ("Origin", "https://www.wkbl.or.kr");
   ] in
   let uri = Uri.of_string url in
@@ -169,80 +174,95 @@ type boxscore_entry = {
   bs_pts: int;
 }
 
-(** Parse boxscore table from AJAX HTML response *)
+(** Parse one team boxscore table from WKBL "ajax_game_result_2.asp" HTML. *)
+let parse_boxscore_table table =
+  let open Soup in
+  let cell_text td = td |> texts |> String.concat "" |> String.trim in
+  let parse_int s = s |> String.trim |> int_of_string_opt |> Option.value ~default:0 in
+  let parse_min min_str =
+    let parts = String.split_on_char ':' (String.trim min_str) in
+    match parts with
+    | [m; s] -> (parse_int m * 60) + parse_int s
+    | [m] -> parse_int m * 60
+    | _ -> 0
+  in
+  let parse_made_attempt s =
+    match String.split_on_char '-' (String.trim s) with
+    | [m; a] -> (parse_int m, parse_int a)
+    | _ -> (0, 0)
+  in
+  table |> select "tbody tr" |> to_list |> List.filter_map (fun row ->
+    let tds = row $$ "td" |> to_list in
+    match tds with
+    | player_td :: _pos_td :: min_td :: fg2_td :: fg3_td :: ft_td
+      :: off_td :: def_td :: tot_td :: ast_td :: pf_td :: stl_td :: tov_td :: blk_td :: pts_td :: _ ->
+        let a_opt = player_td $? "a" in
+        let player_id =
+          match a_opt with
+          | None -> ""
+          | Some a ->
+              let href = attribute "href" a |> Option.value ~default:"" in
+              let uri = Uri.of_string href in
+              Uri.get_query_param uri "pno" |> Option.value ~default:""
+        in
+        let player_name =
+          match a_opt with
+          | Some a -> leaf_text a |> Option.value ~default:"" |> String.trim
+          | None -> cell_text player_td
+        in
+        if player_id = "" || player_name = "" then None
+        else
+          let fg2_m, fg2_a = parse_made_attempt (cell_text fg2_td) in
+          let fg3_m, fg3_a = parse_made_attempt (cell_text fg3_td) in
+          let ft_m, ft_a = parse_made_attempt (cell_text ft_td) in
+          Some {
+            bs_player_id = player_id;
+            bs_player_name = player_name;
+            bs_min_seconds = parse_min (cell_text min_td);
+            bs_fg2_m = fg2_m;
+            bs_fg2_a = fg2_a;
+            bs_fg3_m = fg3_m;
+            bs_fg3_a = fg3_a;
+            bs_ft_m = ft_m;
+            bs_ft_a = ft_a;
+            bs_off_reb = parse_int (cell_text off_td);
+            bs_def_reb = parse_int (cell_text def_td);
+            bs_tot_reb = parse_int (cell_text tot_td);
+            bs_ast = parse_int (cell_text ast_td);
+            bs_pf = parse_int (cell_text pf_td);
+            bs_stl = parse_int (cell_text stl_td);
+            bs_tov = parse_int (cell_text tov_td);
+            bs_blk = parse_int (cell_text blk_td);
+            bs_pts = parse_int (cell_text pts_td);
+          }
+    | _ -> None
+  )
+
+(** Parse per-team boxscore tables from WKBL "ajax_game_result_2.asp" HTML.
+    Returns one list per team in the order shown on the WKBL site: [away; home]. *)
 let parse_boxscore_html html =
   let open Soup in
   let soup = parse html in
-  let rows = soup $$ "table tbody tr" |> to_list in
-  rows |> List.filter_map (fun row ->
-    try
-      let tds = row $$ "td" |> to_list in
-      (* Player name and photo usually in first/second cells *)
-      let name_cell = row $ ".name" in
-      let player_name = leaf_text name_cell |> Option.value ~default:"" |> String.trim in
-      
-      (* Extract player ID from photo URL if possible *)
-      let player_id = 
-        match row $? "img" with
-        | Some img -> 
-            let src = attribute "src" img |> Option.value ~default:"" in
-            let re = Str.regexp {|m_\([0-9]+\)\.|} in
-            if Str.string_match re src 0 then Str.matched_group 1 src else ""
-        | None -> ""
-      in
+  soup |> select ".info_table01.type_record table" |> to_list |> List.map parse_boxscore_table
 
-      if player_name <> "" && player_id <> "" then
-        let get_int idx = 
-          if idx < List.length tds then
-            List.nth tds idx |> texts |> String.concat "" |> String.trim |> int_of_string_opt |> Option.value ~default:0
-          else 0
-        in
-        (* Standard WKBL Boxscore Column Mapping (may need adjustment) *)
-        let parse_min min_str =
-          let parts = String.split_on_char ':' min_str in
-          match parts with
-          | m :: s :: _ -> (int_of_string m * 60) + (int_of_string s)
-          | m :: _ -> (int_of_string m * 60)
-          | [] -> 0
-        in
-        let min_str = List.nth tds 2 |> texts |> String.concat "" |> String.trim in
-        
-        Some {
-          bs_player_id = player_id;
-          bs_player_name = player_name;
-          bs_min_seconds = parse_min min_str;
-          bs_fg2_m = get_int 3;  (* Simplified: need to check actual col index *)
-          bs_fg2_a = get_int 4;
-          bs_fg3_m = get_int 5;
-          bs_fg3_a = get_int 6;
-          bs_ft_m = get_int 7;
-          bs_ft_a = get_int 8;
-          bs_off_reb = get_int 9;
-          bs_def_reb = get_int 10;
-          bs_tot_reb = get_int 11;
-          bs_ast = get_int 12;
-          bs_stl = get_int 13;
-          bs_blk = get_int 14;
-          bs_tov = get_int 15;
-          bs_pf = get_int 16;
-          bs_pts = get_int 17;
-        }
-      else None
-    with _ -> None
-  )
-
-(** Fetch boxscore for a game and team *)
-let fetch_game_boxscore ~sw ~env ~game_id ~team_code =
+(** Fetch per-team boxscores for a game.
+    Note: WKBL expects (season_gu, game_type, game_no, ym) rather than (s_pcode, s_team). *)
+let fetch_game_boxscore ~sw ~env ~season_gu ~game_type ~game_no ~ym =
   let url = "https://www.wkbl.or.kr/game/ajax/ajax_game_result_2.asp" in
+  let referer =
+    Printf.sprintf "https://www.wkbl.or.kr/game/result.asp?season_gu=%s&gun=1&game_type=%s&game_no=%d&ym=%s&viewType=1"
+      season_gu game_type game_no ym
+  in
   let params = [
-    ("s_pcode", [game_id]);
-    ("s_team", [team_code]);
+    ("season_gu", [season_gu]);
+    ("game_type", [game_type]);
+    ("game_no", [string_of_int game_no]);
+    ("ym", [ym]);
+    ("h_player", [""]);
+    ("a_player", [""]);
   ] in
-  let html = post_url ~sw ~env url params in
-  if String.length html > 0 then
-    parse_boxscore_html html
-  else
-    []
+  let html = post_url ~sw ~env ~referer url params in
+  if String.length html > 0 then parse_boxscore_html html else []
 
 (** Draft entry type *)
 type draft_entry = {
@@ -1687,16 +1707,44 @@ let print_allstar_analysis records =
 
 (** Schedule entry type *)
 type schedule_entry = {
-  sch_date: string;         (* e.g., "2026-01-25" *)
-  sch_day: string;          (* e.g., "일" *)
-  sch_time: string;         (* e.g., "16:00" *)
-  sch_home_team: string;    (* Home team name *)
-  sch_away_team: string;    (* Away team name *)
-  sch_home_score: int option;  (* Home score (None if not played) *)
-  sch_away_score: int option;  (* Away score (None if not played) *)
-  sch_venue: string;        (* e.g., "부천체육관" *)
-  sch_season: string;       (* e.g., "046" *)
+  sch_game_id: string option;    (* e.g., "046-01-40" *)
+  sch_game_type: string option;  (* "01" regular, "02" playoff, "10" special *)
+  sch_game_no: int option;       (* game_no from WKBL result link *)
+  sch_date: string;              (* e.g., "2026-01-25" *)
+  sch_day: string;               (* e.g., "일" *)
+  sch_time: string;              (* e.g., "16:00" *)
+  sch_home_team: string;         (* Home team name *)
+  sch_away_team: string;         (* Away team name *)
+  sch_home_score: int option;    (* Home score (None if not played) *)
+  sch_away_score: int option;    (* Away score (None if not played) *)
+  sch_venue: string;             (* e.g., "부천체육관" *)
+  sch_season: string;            (* e.g., "046" *)
 }
+
+(** Extract game_type and game_no from WKBL result link *)
+let game_params_of_href href =
+  let uri = Uri.of_string href in
+  let game_type = Uri.get_query_param uri "game_type" in
+  let game_no =
+    let opt = Uri.get_query_param uri "game_no" in
+    Option.bind opt int_of_string_opt
+  in
+  (game_type, game_no)
+
+(** Extract (game_type, game_no) from schedule row action links. *)
+let extract_game_meta_from_schedule_row row =
+  let open Soup in
+  match row $? "a[href*='result.asp']" with
+  | None -> (None, None)
+  | Some a ->
+      let href = attribute "href" a |> Option.value ~default:"" |> String.trim in
+      if href = "" then (None, None) else game_params_of_href href
+
+(** Build game_id from season_code + game_type + game_no *)
+let game_id_of_params ~season_code ~game_type_opt ~game_no_opt =
+  match game_type_opt, game_no_opt with
+  | Some gt, Some gn -> Some (Printf.sprintf "%s-%s-%d" season_code gt gn)
+  | _ -> None
 
 (** Parse schedule HTML from inc_list_1_new.asp
     Returns list of schedule entries
@@ -1704,9 +1752,7 @@ type schedule_entry = {
 let parse_schedule_html ~season ~ym html =
   let soup = Soup.parse html in
   let games = ref [] in
-
-  (* Extract year from ym (e.g., "202601" -> "2026") *)
-  let year = String.sub ym 0 4 in
+  let _ = ym in
 
   (* Each game is in a <tr id="YYYYMMDD"> *)
   let rows = soup |> Soup.select "tbody tr" |> Soup.to_list in
@@ -1753,7 +1799,12 @@ let parse_schedule_html ~season ~ym html =
           (* Get time (4th td) *)
           let time = List.nth tds 3 |> Soup.texts |> String.concat "" |> String.trim in
 
+          let game_type_opt, game_no_opt = extract_game_meta_from_schedule_row row in
+          let game_id_opt = game_id_of_params ~season_code:season ~game_type_opt ~game_no_opt in
           let entry = {
+            sch_game_id = game_id_opt;
+            sch_game_type = game_type_opt;
+            sch_game_no = game_no_opt;
             sch_date = date;
             sch_day = day;
             sch_time = time;
@@ -1769,7 +1820,6 @@ let parse_schedule_html ~season ~ym html =
       end
     with _ -> ()
   );
-  let _ = year in  (* suppress unused warning *)
   List.rev !games
 
 (** Fetch schedule for a specific month
@@ -1971,9 +2021,26 @@ let parse_schedule_api_html ~season_code ~season_name:_ html =
   let rows = soup $$ "tr[id]" |> to_list in
   rows |> List.filter_map (fun row ->
     try
-      (* Extract date from first td *)
+      (* Prefer row id (YYYYMMDD) for a stable ISO date. *)
+      let date_id = attribute "id" row |> Option.value ~default:"" in
+      let date_iso =
+        if String.length date_id >= 8 then
+          Printf.sprintf "%s-%s-%s"
+            (String.sub date_id 0 4)
+            (String.sub date_id 4 2)
+            (String.sub date_id 6 2)
+        else
+          ""
+      in
+
+      (* Extract day of week from first td (e.g., "토") *)
       let date_td = row $ "td" in
-      let date_text = texts date_td |> String.concat "" |> String.trim in
+      let day =
+        match date_td $? "span.language" with
+        | None -> ""
+        | Some sp ->
+            leaf_text sp |> Option.value ~default:"" |> String.trim
+      in
 
       (* Extract teams and scores from team_versus div *)
       let team_div = row $ ".team_versus" in
@@ -2001,10 +2068,15 @@ let parse_schedule_api_html ~season_code ~season_name:_ html =
         List.nth tds 3 |> texts |> String.concat "" |> String.trim
       else "" in
 
+      let game_type_opt, game_no_opt = extract_game_meta_from_schedule_row row in
+      let game_id_opt = game_id_of_params ~season_code:season_code ~game_type_opt ~game_no_opt in
       Some {
+        sch_game_id = game_id_opt;
+        sch_game_type = game_type_opt;
+        sch_game_no = game_no_opt;
         sch_season = season_code;
-        sch_date = date_text;
-        sch_day = "";  (* Could extract from date_text *)
+        sch_date = if date_iso <> "" then date_iso else (texts date_td |> String.concat "" |> String.trim);
+        sch_day = day;
         sch_time = time;
         sch_home_team = home_team;
         sch_away_team = away_team;
@@ -2013,6 +2085,20 @@ let parse_schedule_api_html ~season_code ~season_name:_ html =
         sch_venue = venue;
       }
     with _ -> None
+  )
+
+(** Deduplicate schedule entries by game_id (preferred) or date+teams *)
+let dedupe_schedule_entries entries =
+  let seen = Hashtbl.create (List.length entries * 2 + 1) in
+  let key_of (e: schedule_entry) =
+    match e.sch_game_id with
+    | Some gid -> "id:" ^ gid
+    | None -> Printf.sprintf "date:%s|%s|%s" e.sch_date e.sch_home_team e.sch_away_team
+  in
+  entries |> List.filter (fun e ->
+    let key = key_of e in
+    if Hashtbl.mem seen key then false
+    else (Hashtbl.add seen key true; true)
   )
 
 (** Fetch full schedule for a season using new API *)
@@ -2031,6 +2117,7 @@ let fetch_full_season_schedule ~sw ~env ~season_code ~season_name =
     else
       []
   )
+  |> dedupe_schedule_entries
 
 (** Fetch all historical schedules (1998-2026)
     @param seasons Optional subset of seasons to fetch *)
@@ -2056,10 +2143,16 @@ let fetch_all_historical_schedules ~sw ~env ?(seasons=all_season_codes) () =
 (** Convert schedule_entry date format for database
     Input: "1/10(월)" or "12/25(일)" → Output: "2000-01-10" *)
 let normalize_schedule_date ~season_code date_str =
-  let date_str = String.trim date_str in
-  (* Already normalized (new schedule API sometimes returns ISO date). *)
-  if String.length date_str >= 10 && date_str.[4] = '-' && date_str.[7] = '-' then
-    String.sub date_str 0 10
+  let clean = String.trim date_str in
+  (* Fast path: already in YYYY-MM-DD or YYYY.MM.DD / YYYY/MM/DD *)
+  let date_re =
+    Str.regexp "\\([0-9][0-9][0-9][0-9]\\)[./-]\\([0-9][0-9]?\\)[./-]\\([0-9][0-9]?\\)"
+  in
+  if Str.string_match date_re clean 0 then
+    let y = int_of_string (Str.matched_group 1 clean) in
+    let m = int_of_string (Str.matched_group 2 clean) in
+    let d = int_of_string (Str.matched_group 3 clean) in
+    Printf.sprintf "%04d-%02d-%02d" y m d
   else
   (* Extract season year from season_code *)
   let season_name = List.assoc_opt season_code all_season_codes |> Option.value ~default:"2025-2026" in
@@ -2068,26 +2161,44 @@ let normalize_schedule_date ~season_code date_str =
       try int_of_string (String.sub season_name 0 4) with _ -> 2025
     else 2025
   in
-    (* Parse "M/D(day)" format *)
-    try
-      let paren_pos = String.index date_str '(' in
-      let date_part = String.sub date_str 0 paren_pos in
-      let slash_pos = String.index date_part '/' in
-      let month = int_of_string (String.sub date_part 0 slash_pos) in
-      let day = int_of_string (String.sub date_part (slash_pos + 1) (String.length date_part - slash_pos - 1)) in
-      (* Determine actual year based on month and season type *)
-      let year =
-        if String.length season_name >= 9 && season_name.[4] = '-' then
-          (* Regular season: Oct-Mar spans two years *)
-          if month >= 10 then base_year else base_year + 1
-        else if String.sub season_name 4 (String.length season_name - 4) = "겨울" then
-          (* Winter: Dec spans into next year, Jan-Mar is next year *)
-          if month = 12 then base_year - 1 else base_year
-        else
-          base_year
-      in
-      Printf.sprintf "%04d-%02d-%02d" year month day
-    with _ -> Printf.sprintf "%04d-01-01" base_year  (* fallback *)
+  (* Parse "M/D(day)" format *)
+  try
+    let paren_pos = String.index clean '(' in
+    let date_part = String.sub clean 0 paren_pos in
+    let slash_pos = String.index date_part '/' in
+    let month = int_of_string (String.sub date_part 0 slash_pos) in
+    let day = int_of_string (String.sub date_part (slash_pos + 1) (String.length date_part - slash_pos - 1)) in
+    (* Determine actual year based on month and season type *)
+    let year =
+      if String.length season_name >= 9 && season_name.[4] = '-' then
+        (* Regular season: Oct-Mar spans two years *)
+        if month >= 10 then base_year else base_year + 1
+      else if String.sub season_name 4 (String.length season_name - 4) = "겨울" then
+        (* Winter: Dec spans into next year, Jan-Mar is next year *)
+        if month = 12 then base_year - 1 else base_year
+      else
+        base_year
+    in
+    Printf.sprintf "%04d-%02d-%02d" year month day
+  with _ -> Printf.sprintf "%04d-01-01" base_year  (* fallback *)
+
+(** Normalize DataLab game_date into YYYY-MM-DD
+    Accepts formats like "20260123", "2026.01.23", "2026-01-23", or strings with extra text.
+    Returns [None] if no 8-digit date can be extracted. *)
+let normalize_game_date date_str =
+  let digits =
+    date_str
+    |> String.to_seq
+    |> Seq.filter (fun c -> c >= '0' && c <= '9')
+    |> String.of_seq
+  in
+  if String.length digits = 8 then
+    let y = String.sub digits 0 4 in
+    let m = String.sub digits 4 2 in
+    let d = String.sub digits 6 2 in
+    Some (Printf.sprintf "%s-%s-%s" y m d)
+  else
+    None
 
 (** Get schedule status from scores *)
 let schedule_status_from_scores home_score away_score =
@@ -2116,16 +2227,16 @@ let get_last_sync_time_str () =
 
 (** Calculate current season code based on date
     WKBL season runs Oct-Mar, so:
-    - Oct 2025 ~ Mar 2026 = "2025-2026" season = code "044"
-    - Oct 2024 ~ Mar 2025 = "2024-2025" season = code "043"
-    Base: 1981-1982 = "001" *)
+    - Oct 2025 ~ Mar 2026 = "2025-2026" season = code "046"
+    - Oct 2024 ~ Mar 2025 = "2024-2025" season = code "045"
+    Base: 1980-1981 = "001" (season_start_year - 1979) *)
 let current_season_code_auto () =
   let tm = Unix.localtime (Unix.time ()) in
   let year = tm.Unix.tm_year + 1900 in
   let month = tm.Unix.tm_mon + 1 in
   (* Oct-Dec: current year's season, Jan-Sep: previous year's season *)
   let season_start_year = if month >= 10 then year else year - 1 in
-  let code = season_start_year - 1981 in  (* 1981 = 001 *)
+  let code = season_start_year - 1979 in  (* 1980 = 001 *)
   Printf.sprintf "%03d" code
 
 let current_season_name_auto () =
@@ -2135,45 +2246,203 @@ let current_season_name_auto () =
   let season_start_year = if month >= 10 then year else year - 1 in
   Printf.sprintf "%d-%d" season_start_year (season_start_year + 1)
 
+let iso_date_of_time (t: float) =
+  let tm = Unix.localtime t in
+  Printf.sprintf "%04d-%02d-%02d"
+    (tm.Unix.tm_year + 1900)
+    (tm.Unix.tm_mon + 1)
+    tm.Unix.tm_mday
+
+let year_month_prefix_of_time (t: float) =
+  let tm = Unix.localtime t in
+  Printf.sprintf "%04d-%02d"
+    (tm.Unix.tm_year + 1900)
+    (tm.Unix.tm_mon + 1)
+
+(** Decide whether fetched schedule entries look suspiciously incomplete.
+
+    Rationale: a non-empty scrape can still miss the current month and make the
+    site appear "stuck" while logs say "synced".
+
+    Policy:
+    - Only enforce during core season months (Nov-Mar).
+    - If the current month has no entries, flag as suspicious.
+    - If the latest completed game is too old (30d) during the season, flag.
+
+    Returns [Some reason] when suspicious, else [None]. *)
+let schedule_sync_suspicion_reason_v
+    ~enforce
+    ~current_ym
+    ~threshold_old
+    ~(dates: string list)
+    ~(completed_dates: string list)
+  =
+  if not enforce then
+    None
+  else
+    let has_current_month =
+      dates
+      |> List.exists (fun d ->
+          String.length d >= 7 && String.starts_with ~prefix:current_ym d)
+    in
+    if not has_current_month then
+      Some (Printf.sprintf "no entries for current month (%s)" current_ym)
+    else
+      let max_completed =
+        completed_dates
+        |> List.fold_left
+             (fun acc d -> if String.compare d acc > 0 then d else acc)
+             "0000-00-00"
+      in
+      if max_completed = "0000-00-00" then
+        None
+      else if String.compare max_completed threshold_old < 0 then
+        Some (Printf.sprintf "latest completed game is stale (%s < %s)" max_completed threshold_old)
+      else
+        None
+
+let schedule_sync_suspicion_reason
+    ~now
+    ~(dates: string list)
+    ~(completed_dates: string list)
+  =
+  let tm = Unix.localtime now in
+  let month = tm.Unix.tm_mon + 1 in
+  let enforce = (month >= 11 || month <= 3) in
+  let current_ym = year_month_prefix_of_time now in
+  let threshold_old = iso_date_of_time (now -. (30.0 *. 86400.0)) in
+  schedule_sync_suspicion_reason_v
+    ~enforce
+    ~current_ym
+    ~threshold_old
+    ~dates
+    ~completed_dates
+
+(** Decide whether a schedule sync attempt should be treated as "successful".
+
+    Important: (0 synced, 0 errors) is treated as failure, because it almost
+    always means the upstream HTML was blocked/changed and nothing was ingested. *)
+let schedule_sync_success ~schedule_synced ~games_upserted ~errors =
+  errors = 0 && (schedule_synced > 0 || games_upserted > 0)
+
 (** Sync current season schedule to database
-    Returns (synced_count, error_count) *)
+    Returns (schedule_synced, games_upserted, error_count) *)
 let sync_current_season_schedule ~sw ~env () =
-  let current_season_code = current_season_code_auto () in
+  let current_season_code = current_season_code_auto () |> main_to_datalab in
   let current_season_name = current_season_name_auto () in
   Printf.printf "[Sync] Starting schedule sync for season %s (%s)...\n%!" current_season_code current_season_name;
   try
     let entries = fetch_full_season_schedule ~sw ~env ~season_code:current_season_code ~season_name:current_season_name in
     Printf.printf "[Sync] Fetched %d schedule entries\n%!" (List.length entries);
+    if entries = [] then begin
+      Printf.eprintf
+        "[Sync] No schedule entries fetched (season=%s, name=%s). Treating as failure.\n%!"
+        current_season_code
+        current_season_name;
+      (0, 0, 1)
+    end else
     let synced = ref 0 in
+    let synced_games = ref 0 in
     let errors = ref 0 in
+    let normalized_dates =
+      entries
+      |> List.map (fun (e: schedule_entry) ->
+          if String.contains e.sch_date '-' then e.sch_date
+          else normalize_schedule_date ~season_code:current_season_code e.sch_date)
+    in
+    let normalized_completed_dates =
+      entries
+      |> List.filter (fun (e: schedule_entry) ->
+          match e.sch_home_score, e.sch_away_score with
+          | Some _, Some _ -> true
+          | _ -> false)
+      |> List.map (fun (e: schedule_entry) ->
+          if String.contains e.sch_date '-' then e.sch_date
+          else normalize_schedule_date ~season_code:current_season_code e.sch_date)
+    in
+    (match schedule_sync_suspicion_reason
+             ~now:(Unix.time ())
+             ~dates:normalized_dates
+             ~completed_dates:normalized_completed_dates
+     with
+    | None -> ()
+    | Some reason ->
+        Printf.eprintf "[Sync] Suspicious schedule data: %s\n%!" reason;
+        incr errors);
     entries |> List.iter (fun (entry : schedule_entry) ->
       let status = schedule_status_from_scores entry.sch_home_score entry.sch_away_score in
-      let game_date = normalize_schedule_date ~season_code:current_season_code entry.sch_date in
+      let game_date =
+        (* Prefer the ISO date from row id; fallback to normalizer for legacy formats. *)
+        if String.contains entry.sch_date '-' then entry.sch_date
+        else normalize_schedule_date ~season_code:current_season_code entry.sch_date
+      in
       let game_time = if entry.sch_time = "" then None else Some entry.sch_time in
       let venue = if entry.sch_venue = "" then None else Some entry.sch_venue in
-      match Db.with_db (fun db ->
-        Db.Repo.upsert_schedule_entry
-          ~game_date
-          ~game_time
-          ~season_code:current_season_code
-          ~home_team_code:(code_from_team_name entry.sch_home_team)
-          ~away_team_code:(code_from_team_name entry.sch_away_team)
-          ~venue
-          ~status
-          db) with
+
+      let home_team_code = code_from_team_name entry.sch_home_team in
+      let away_team_code = code_from_team_name entry.sch_away_team in
+
+      let upsert_res =
+        Db.with_db (fun db ->
+          Db.Repo.upsert_schedule_entry
+            ~game_date
+            ~game_time
+            ~season_code:current_season_code
+            ~home_team_code
+            ~away_team_code
+            ~venue
+            ~status
+            db)
+      in
+      (match upsert_res with
       | Ok () -> incr synced
       | Error e ->
-          Printf.eprintf "[Sync] Error upserting game %s: %s\n%!" game_date (Db.show_db_error e);
-          incr errors
+          Printf.eprintf "[Sync] Error upserting schedule %s: %s\n%!" game_date (Db.show_db_error e);
+          incr errors);
+
+      (* Also upsert into games table when we can derive stable identifiers. *)
+      (match (entry.sch_game_type, entry.sch_game_no) with
+      | Some game_type, Some game_no
+        when not (String.starts_with ~prefix:"XX_" home_team_code)
+             && not (String.starts_with ~prefix:"XX_" away_team_code) ->
+          let game_id = Printf.sprintf "%s-%s-%d" current_season_code game_type game_no in
+          let game_res =
+            Db.with_db (fun db ->
+	              Db.Repo.upsert_game_entry
+	                ~game_id
+	                ~season_code:current_season_code
+	                ~game_type
+	                ~game_no
+	                ~game_date:(Some game_date)
+	                ~home_team_code
+	                ~away_team_code
+	                ~home_score:entry.sch_home_score
+	                ~away_score:entry.sch_away_score
+                ~stadium:venue
+                ~attendance:None
+                db)
+          in
+          (match game_res with
+          | Ok () -> incr synced_games
+          | Error e ->
+              Printf.eprintf "[Sync] Error upserting game %s: %s\n%!" game_id (Db.show_db_error e);
+              incr errors)
+      | _ -> ())
     );
-    Printf.printf "[Sync] Complete: %d synced, %d errors\n%!" !synced !errors;
+    (* Refresh materialized views so /games reflects new rows quickly. *)
+    (match Db.refresh_matviews () with
+    | Ok () -> ()
+    | Error e -> Printf.eprintf "[Sync] Failed to refresh materialized views: %s\n%!" (Db.show_db_error e));
+
+    Printf.printf "[Sync] Complete: %d schedule synced, %d games upserted, %d errors\n%!"
+      !synced !synced_games !errors;
     (* Update last sync time on success *)
-    if !synced > 0 || !errors = 0 then
+    if schedule_sync_success ~schedule_synced:!synced ~games_upserted:!synced_games ~errors:!errors then
       last_sync_time := Some (Unix.time ());
-    (!synced, !errors)
+    (!synced, !synced_games, !errors)
   with exn ->
     Printf.eprintf "[Sync] Fatal error: %s\n%!" (Printexc.to_string exn);
-    (0, 1)
+    (0, 0, 1)
 
 (** Fetch live games from WKBL main page *)
 let fetch_live_games ~sw ~env () =
