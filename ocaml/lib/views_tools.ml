@@ -4,7 +4,7 @@
 open Domain
 open Views_common
 
-let qa_dashboard_page (report: Db.qa_db_report) ?(markdown=None) () =
+let qa_dashboard_page ?(lang=I18n.Ko) (report: Db.qa_db_report) ?(markdown=None) () =
   let int_chip v =
     Printf.sprintf {html|<div class="text-2xl font-black text-slate-900 dark:text-slate-200 font-mono tabular-nums">%d</div>|html} v
   in
@@ -215,7 +215,7 @@ let qa_dashboard_page (report: Db.qa_db_report) ?(markdown=None) () =
       report.qdr_schedule_missing_stats_count
       schedule_missing_stats_rows
   in
-  layout ~title:"데이터 점검 | WKBL"
+  layout ~lang ~title:"데이터 점검 | WKBL"
     ~content:(Printf.sprintf
       {html|<div class="space-y-6 animate-fade-in"><div class="flex flex-col gap-2"><h2 class="text-2xl font-black text-slate-900 dark:text-slate-200">데이터 점검</h2><div class="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">기록 신뢰도를 위해 <span class="font-mono text-slate-900 dark:text-slate-200">스코어 불일치</span>, <span class="font-mono text-slate-900 dark:text-slate-200">팀 수 이상</span>, <span class="font-mono text-slate-900 dark:text-slate-200">중복 기록</span>, <span class="font-mono text-slate-900 dark:text-slate-200">중복 선수 고유번호</span>, <span class="font-mono text-slate-900 dark:text-slate-200">이름+생년월일 중복</span>을 점검합니다. (생성: <span class="font-mono">%s</span>)</div></div>%s<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">%s%s%s%s%s%s%s%s</div><div class="grid grid-cols-1 lg:grid-cols-4 gap-4">%s%s%s%s</div><div class="grid grid-cols-1 gap-4">%s%s<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-lg"><div class="flex items-center justify-between gap-3"><h3 class="text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-xs">스코어 불일치</h3><span class="text-[11px] text-slate-500 dark:text-slate-400 font-mono">건수 %d</span></div><div class="mt-3 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">최종 스코어와 선수 득점 합계를 비교합니다.</div><div class="mt-4 overflow-x-auto"><table class="min-w-[860px] w-full text-sm font-mono table-fixed" aria-label="스코어 불일치 목록">
           <colgroup>
@@ -284,7 +284,7 @@ let qa_dashboard_page (report: Db.qa_db_report) ?(markdown=None) () =
 (** Schedule Missing QA:
     Focuses on "completed schedule rows that do not match games" for seasons that have games ingested.
     This is primarily used to detect schedule sync issues and team-code mapping issues. *)
-let qa_schedule_missing_page (report: Db.qa_schedule_missing_report) () =
+let qa_schedule_missing_page ?(lang=I18n.Ko) (report: Db.qa_schedule_missing_report) () =
   let int_chip v =
     Printf.sprintf {html|<div class="text-2xl font-black text-slate-900 dark:text-slate-200 font-mono tabular-nums">%d</div>|html} v
   in
@@ -393,7 +393,7 @@ let qa_schedule_missing_page (report: Db.qa_schedule_missing_report) () =
     |> String.concat "\n"
   in
   let s = report.qsmr_summary in
-  layout ~title:"데이터 점검 | 일정 누락 | WKBL"
+  layout ~lang ~title:"데이터 점검 | 일정 누락 | WKBL"
     ~content:(Printf.sprintf
       {html|<div class="space-y-6 animate-fade-in">
   <div class="flex flex-col gap-2">
@@ -445,6 +445,7 @@ let qa_schedule_missing_page (report: Db.qa_schedule_missing_report) () =
 
 (** Draft / Trade (official) page *)
 let transactions_page
+  ?(lang=I18n.Ko)
   ~show_ops
   ~tab
   ~year
@@ -453,6 +454,7 @@ let transactions_page
   ~trade_years
   ~(draft_picks: draft_pick_row list)
   ~(trade_events: official_trade_event list)
+  ()
   =
   let tab_value = tab |> String.trim |> String.lowercase_ascii in
   let active_tab = if tab_value = "trade" then "trade" else "draft" in
@@ -721,16 +723,18 @@ let transactions_page
       section
       sync_build_block
   in
-	  layout ~title:"드래프트 / 이적 | WKBL" ~content ()
+	  layout ~lang ~title:"드래프트 / 이적 | WKBL" ~content ()
 
 (* ===== Fantasy Calculator ===== *)
 
 (** Fantasy Calculator Page - Calculate fantasy points with custom weights *)
 let rec fantasy_calculator_page
+    ?(lang=I18n.Ko)
     ~season
     ~(seasons: season_info list)
     ~(rules: fantasy_scoring_rule)
     ~(scores: fantasy_player_score list)
+    ()
     =
   let season_options =
     seasons
@@ -822,7 +826,7 @@ function resetRules() {
       rules_form
       results_table
   in
-  layout ~title:"판타지 계산기 | WKBL" ~content ()
+  layout ~lang ~title:"판타지 계산기 | WKBL" ~content ()
 
 (** Fantasy results table partial (for HTMX updates) *)
 and fantasy_results_table (scores: fantasy_player_score list) =
@@ -1276,7 +1280,7 @@ let game_flow_chart ~home_team ~away_team (flow_points: Domain.score_flow_point 
       y_labels
 
 (** Game flow page with chart and summary statistics *)
-let game_flow_page ~(game: Domain.game_info) (flow_points: Domain.score_flow_point list) =
+let game_flow_page ?(lang=I18n.Ko) ~(game: Domain.game_info) (flow_points: Domain.score_flow_point list) =
   let chart = game_flow_chart ~home_team:game.gi_home_team_name ~away_team:game.gi_away_team_name flow_points in
 
   (* Calculate lead changes and biggest leads *)
@@ -1351,9 +1355,9 @@ let game_flow_page ~(game: Domain.game_info) (flow_points: Domain.score_flow_poi
       (format_time home_lead_time) (format_time away_lead_time)
   in
 
-  layout ~title:(Printf.sprintf "경기 흐름: %s 대 %s" game.gi_home_team_name game.gi_away_team_name)
-	    ~content:(Printf.sprintf
-	      {html|<div class="space-y-6 animate-fade-in">
+  layout ~lang ~title:(Printf.sprintf "경기 흐름: %s 대 %s" game.gi_home_team_name game.gi_away_team_name)
+		    ~content:(Printf.sprintf
+		      {html|<div class="space-y-6 animate-fade-in">
 	        <div class="text-center">
 	          <h1 class="text-2xl font-black text-slate-900 dark:text-slate-200">%s 대 %s</h1>
 	          <div class="text-slate-500 dark:text-slate-400 text-sm mt-1">%s</div>
@@ -1517,6 +1521,7 @@ let render_synergy_table (synergies: Domain.lineup_synergy list) : string =
 
 (** Full lineup chemistry page *)
 let lineup_chemistry_page
+    ?(lang=I18n.Ko)
     ~teams ~seasons
     ~selected_team ~selected_season
     (chemistry: Domain.lineup_chemistry) : string =
@@ -1569,7 +1574,7 @@ let lineup_chemistry_page
 
   let synergy_table = render_synergy_table chemistry.lc_synergies in
 
-	  layout ~title:"라인업 궁합 | WKBL"
+	  layout ~lang ~title:"라인업 궁합 | WKBL"
 	    ~content:(Printf.sprintf
 	      {html|<div class="space-y-6 animate-fade-in">
 	        <div class="flex items-center justify-between">
@@ -1692,6 +1697,7 @@ let on_off_impact_table (impacts: Domain.on_off_impact list) : string =
 
 (** On/Off Impact page *)
 let on_off_impact_page
+    ?(lang=I18n.Ko)
     ~season
     ~(seasons: Domain.season_info list)
     (impacts: Domain.on_off_impact list)
@@ -1766,7 +1772,7 @@ let on_off_impact_page
      | None -> "-")
   in
 
-  layout ~title:"온/오프 영향력 | WKBL"
+  layout ~lang ~title:"온/오프 영향력 | WKBL"
     ~content:(Printf.sprintf
       {html|<div class="space-y-6 animate-fade-in">
         <div class="flex items-center justify-between">

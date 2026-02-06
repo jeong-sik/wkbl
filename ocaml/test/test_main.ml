@@ -1673,6 +1673,59 @@ let disambiguation_tests = [
 ]
 
 (* ============================================= *)
+(* I18n Tests                                    *)
+(* ============================================= *)
+
+let i18n_lang_testable =
+  Alcotest.testable
+    (fun fmt l ->
+      Fmt.string fmt (match l with
+        | Wkbl.I18n.Ko -> "Ko"
+        | Wkbl.I18n.En -> "En"))
+    (=)
+
+let test_i18n_lang_of_code () =
+  let open Wkbl.I18n in
+  Alcotest.(check (option i18n_lang_testable)) "ko" (Some Ko) (lang_of_code "ko");
+  Alcotest.(check (option i18n_lang_testable)) "KR" (Some Ko) (lang_of_code "KR");
+  Alcotest.(check (option i18n_lang_testable)) "en" (Some En) (lang_of_code "en");
+  Alcotest.(check (option i18n_lang_testable)) "unknown" None (lang_of_code "fr")
+
+let test_i18n_lang_of_cookie_header () =
+  let open Wkbl.I18n in
+  Alcotest.(check (option i18n_lang_testable))
+    "cookie en"
+    (Some En)
+    (lang_of_cookie_header "a=b; wkbl_lang=en; c=d");
+  Alcotest.(check (option i18n_lang_testable))
+    "cookie ko"
+    (Some Ko)
+    (lang_of_cookie_header "wkbl_lang=ko");
+  Alcotest.(check (option i18n_lang_testable))
+    "cookie invalid"
+    None
+    (lang_of_cookie_header "wkbl_lang=fr");
+  Alcotest.(check (option i18n_lang_testable))
+    "cookie missing"
+    None
+    (lang_of_cookie_header "a=b")
+
+let test_i18n_set_cookie_header () =
+  let open Wkbl.I18n in
+  let h = set_cookie_header En in
+  Alcotest.(check bool) "has wkbl_lang=en" true (contains_substring h "wkbl_lang=en");
+  Alcotest.(check bool) "has Path=/" true (contains_substring h "Path=/");
+  Alcotest.(check bool) "has Max-Age" true (contains_substring h "Max-Age=");
+  Alcotest.(check bool) "has SameSite" true (contains_substring h "SameSite=");
+  Alcotest.(check bool) "has HttpOnly" true (contains_substring h "HttpOnly")
+
+let i18n_tests = [
+  Alcotest.test_case "lang_of_code" `Quick test_i18n_lang_of_code;
+  Alcotest.test_case "lang_of_cookie_header" `Quick test_i18n_lang_of_cookie_header;
+  Alcotest.test_case "set_cookie_header" `Quick test_i18n_set_cookie_header;
+]
+
+(* ============================================= *)
 (* QA Utility Tests                              *)
 (* ============================================= *)
 
@@ -1833,7 +1886,7 @@ let test_ui_copy_no_dev_terms () =
       gi_score_quality = Wkbl.Domain.Derived;
     }
   in
-  let pbp_page_html = Wkbl.Views.pbp_page ~game ~periods:[] ~selected_period:"ALL" ~events:[] in
+  let pbp_page_html = Wkbl.Views.pbp_page ~game ~periods:[] ~selected_period:"ALL" ~events:[] () in
   Alcotest.(check bool) "pbp page title mentions Korean label" true (contains_substring pbp_page_html "문자중계");
   check_clean ~ctx:"pbp_page" pbp_page_html
 
@@ -1910,6 +1963,7 @@ let test_ops_copy_hidden_by_default () =
       ~trade_years:[]
       ~draft_picks:[]
       ~trade_events:[]
+      ()
   in
   check_clean ~ctx:"transactions_page" tx_html
 
@@ -1989,6 +2043,7 @@ let () =
     "Advanced Stats", advanced_stats_tests;
     "Scraper Functions", scraper_tests;
     "Disambiguation", disambiguation_tests;
+    "I18n", i18n_tests;
     "QA Utils", qa_util_tests;
     "Observability", observability_tests;
     "UI Copy", ui_copy_tests;

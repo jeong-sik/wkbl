@@ -5,6 +5,7 @@ module Db = Db
 module Db_common = Db_common
 module Db_sync = Db_sync
 module Stats = Stats
+module I18n = I18n
 module Views = Views
 module Views_common = Views_common
 module Views_player = Views_player

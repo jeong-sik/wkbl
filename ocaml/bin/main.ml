@@ -26,6 +26,52 @@ let query_season_or_latest request (seasons : season_info list) =
   query_nonempty request "season"
   |> Option.value ~default:(latest_season_code seasons)
 
+let is_safe_redirect_path (s : string) =
+  let t = String.trim s in
+  String.length t > 0
+  && String.get t 0 = '/'
+  && (String.length t = 1 || String.get t 1 <> '/')
+  && not (String.contains t '\n')
+  && not (String.contains t '\r')
+
+let request_lang request =
+  Kirin.header "Cookie" request
+  |> Option.bind I18n.lang_of_cookie_header
+  |> Option.value ~default:I18n.Ko
+
+let referer_to_path (referer : string) : string option =
+  let r = String.trim referer in
+  if r = "" then None
+  else if String.starts_with ~prefix:"/" r then Some r
+  else
+    (* Best-effort: extract "/path?query" from an absolute URL. *)
+    let len = String.length r in
+    let rec find_scheme_slash i =
+      if i + 2 >= len then None
+      else if r.[i] = ':' && r.[i + 1] = '/' && r.[i + 2] = '/' then Some (i + 3)
+      else find_scheme_slash (i + 1)
+    in
+    match find_scheme_slash 0 with
+    | None -> None
+    | Some start ->
+        let rec find_path i =
+          if i >= len then None
+          else if r.[i] = '/' then Some i
+          else find_path (i + 1)
+        in
+        (match find_path start with
+        | None -> None
+        | Some i -> Some (String.sub r i (len - i)))
+
+let redirect_back_or_home request =
+  let next_q = Kirin.query_opt "next" request |> Option.value ~default:"" |> String.trim in
+  if next_q <> "" && is_safe_redirect_path next_q then
+    next_q
+  else
+    match Kirin.header "Referer" request |> Option.bind referer_to_path with
+    | Some p when is_safe_redirect_path p -> p
+    | _ -> "/"
+
 let build_player_info_map (infos: player_info list) =
   let map = Hashtbl.create (List.length infos * 2 + 1) in
   infos |> List.iter (fun (p: player_info) ->
@@ -284,9 +330,10 @@ Sitemap: https://wkbl.win/sitemap.xml
 
     (* Home Page *)
     Kirin.get "/" (fun request ->
+      let lang = request_lang request in
       let search = Kirin.query_opt "search" request |> Option.value ~default:"" in
       match Db.get_seasons () with
-      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+      | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
       | Ok seasons ->
           let season = query_season_or_latest request seasons in
           match Db.get_players ~season ~search ~limit:20 () with
@@ -298,80 +345,94 @@ Sitemap: https://wkbl.win/sitemap.xml
                 | Ok None -> "없음"
                 | Error _ -> "-"
               in
-              Kirin.html (Views.home_page ~player_info_map ~season ~seasons ~data_as_of p)
-          | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+              Kirin.html (Views.home_page ~lang ~player_info_map ~season ~seasons ~data_as_of p)
+          | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
     );
 
     (* Home Page Table HTMX *)
     Kirin.get "/home/table" (fun request ->
+      let lang = request_lang request in
       let search = Kirin.query_opt "search" request |> Option.value ~default:"" in
       match Db.get_seasons () with
-      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+      | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
       | Ok seasons ->
           let season = query_season_or_latest request seasons in
           match Db.get_players ~season ~search ~limit:20 () with
           | Ok p ->
               let player_info_map = get_player_info_map () in
-              Kirin.html (Views.players_table ~player_info_map p)
-          | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+              Kirin.html (Views.players_table ~lang ~player_info_map p)
+          | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
     );
 
     (* Handle HEAD requests *)
     Kirin.head "/" (fun _ -> Kirin.empty `OK);
 
     (* Redirect index.html *)
-    Kirin.get "/index.html" (fun _ -> Kirin.redirect "/");
+  Kirin.get "/index.html" (fun _ -> Kirin.redirect "/");
+
+  (* Language toggle: set cookie and redirect back *)
+  Kirin.get "/lang/:code" (fun request ->
+    let code = Kirin.param "code" request in
+    let lang = I18n.lang_of_code code |> Option.value ~default:I18n.Ko in
+    let next = redirect_back_or_home request in
+    Kirin.with_header "Set-Cookie" (I18n.set_cookie_header lang)
+    @@ Kirin.redirect next
+  );
 
     (* Players List & Table HTMX *)
     Kirin.get "/players" (fun request ->
+      let lang = request_lang request in
       let search = Kirin.query_opt "search" request |> Option.value ~default:"" in
       let sort_str = Kirin.query_opt "sort" request |> Option.value ~default:"eff" in
       let include_mismatch = query_bool request "include_mismatch" in
       let sort = Domain.player_sort_of_string sort_str in
       match Db.get_seasons () with
-      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+      | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
       | Ok seasons ->
           let season = query_season_or_latest request seasons in
           match Db.get_players ~season ~search ~sort ~include_mismatch () with
           | Ok p ->
               let player_info_map = get_player_info_map () in
-              Kirin.html (Views.players_page ~player_info_map ~season ~seasons ~search ~sort:sort_str ~include_mismatch p)
-          | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+              Kirin.html (Views.players_page ~lang ~player_info_map ~season ~seasons ~search ~sort:sort_str ~include_mismatch p)
+          | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
     );
 
     Kirin.get "/players/table" (fun request ->
+      let lang = request_lang request in
       let search = Kirin.query_opt "search" request |> Option.value ~default:"" in
       let sort_str = Kirin.query_opt "sort" request |> Option.value ~default:"eff" in
       let include_mismatch = query_bool request "include_mismatch" in
       let sort = Domain.player_sort_of_string sort_str in
       match Db.get_seasons () with
-      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+      | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
       | Ok seasons ->
           let season = query_season_or_latest request seasons in
           match Db.get_players ~season ~search ~sort ~include_mismatch () with
           | Ok p ->
               let player_info_map = get_player_info_map () in
-              Kirin.html (Views.players_table ~player_info_map p)
-          | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+              Kirin.html (Views.players_table ~lang ~player_info_map p)
+          | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
     );
 
     (* Teams Page & Table HTMX *)
     Kirin.get "/teams" (fun request ->
+      let lang = request_lang request in
       let scope_str = Kirin.query_opt "scope" request |> Option.value ~default:"per_game" in
       let scope = Domain.team_scope_of_string scope_str in
       let sort_str = Kirin.query_opt "sort" request |> Option.value ~default:"pts" in
       let sort = Domain.team_sort_of_string sort_str in
       let include_mismatch = query_bool request "include_mismatch" in
       match Db.get_seasons () with
-      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+      | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
       | Ok seasons ->
           let season = query_season_or_latest request seasons in
           (match Db.get_team_stats ~season ~scope ~sort ~include_mismatch () with
-          | Ok stats -> Kirin.html (Views.teams_page ~season ~seasons ~scope ~sort:sort_str ~include_mismatch stats)
-          | Error e -> Kirin.html (Views.error_page (Db.show_db_error e)))
+          | Ok stats -> Kirin.html (Views.teams_page ~lang ~season ~seasons ~scope ~sort:sort_str ~include_mismatch stats)
+          | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e)))
     );
 
     Kirin.get "/teams/table" (fun request ->
+      let lang = request_lang request in
       let season = Kirin.query_opt "season" request |> Option.value ~default:"ALL" in
       let scope_str = Kirin.query_opt "scope" request |> Option.value ~default:"per_game" in
       let scope = Domain.team_scope_of_string scope_str in
@@ -379,95 +440,104 @@ Sitemap: https://wkbl.win/sitemap.xml
       let sort = Domain.team_sort_of_string sort_str in
       let include_mismatch = query_bool request "include_mismatch" in
       match Db.get_team_stats ~season ~scope ~sort ~include_mismatch () with
-      | Ok stats -> Kirin.html (Views.teams_table ~season ~scope stats)
-      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+      | Ok stats -> Kirin.html (Views.teams_table ~lang ~season ~scope stats)
+      | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
     );
 
     (* Team Shooting Comparison Chart - HTMX Partial *)
     Kirin.get "/teams/shooting-chart" (fun request ->
+      let lang = request_lang request in
       let season = Kirin.query_opt "season" request |> Option.value ~default:"ALL" in
       let include_mismatch = query_bool request "include_mismatch" in
       match Db.get_team_stats ~season ~scope:Domain.PerGame ~sort:Domain.TeamByPoints ~include_mismatch () with
       | Ok stats -> Kirin.html (Views_charts.team_shooting_comparison stats)
-      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+      | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
     );
 
     (* Team Radar Chart - HTMX Partial *)
     Kirin.get "/teams/radar-chart" (fun request ->
+      let lang = request_lang request in
       let season = Kirin.query_opt "season" request |> Option.value ~default:"ALL" in
       let include_mismatch = query_bool request "include_mismatch" in
       match Db.get_team_stats ~season ~scope:Domain.PerGame ~sort:Domain.TeamByEfficiency ~include_mismatch () with
       | Ok stats -> Kirin.html (Views_charts.team_radar_chart stats)
-      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+      | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
     );
 
     (* Standings *)
     Kirin.get "/standings" (fun request ->
+      let lang = request_lang request in
       match Db.get_seasons () with
-      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+      | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
       | Ok seasons ->
           let season = query_season_or_latest request seasons in
           (match Db.get_standings ~season () with
-          | Ok standings -> Kirin.html (Views.standings_page ~season ~seasons standings)
-          | Error e -> Kirin.html (Views.error_page (Db.show_db_error e)))
+          | Ok standings -> Kirin.html (Views.standings_page ~lang ~season ~seasons standings)
+          | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e)))
     );
 
     Kirin.get "/standings/table" (fun request ->
+      let lang = request_lang request in
       let season = Kirin.query_opt "season" request |> Option.value ~default:"ALL" in
       match Db.get_standings ~season () with
-      | Ok standings -> Kirin.html (Views.standings_table ~season standings)
-      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+      | Ok standings -> Kirin.html (Views.standings_table ~lang ~season standings)
+      | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
     );
 
-	    (* Games & Boxscores List *)
-	    Kirin.get "/games" (fun request ->
-	      let page = Kirin.query_opt "page" request |> Option.map int_of_string |> Option.value ~default:1 in
-	      match Db.get_seasons () with
-	      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
-	      | Ok seasons ->
-	          let season = query_season_or_latest request seasons in
-	          (match Db.get_games ~season ~page () with
-	          | Ok games -> Kirin.html (Views.games_page ~page ~season ~seasons games)
-	          | Error e -> Kirin.html (Views.error_page (Db.show_db_error e)))
-	    );
+		    (* Games & Boxscores List *)
+		    Kirin.get "/games" (fun request ->
+          let lang = request_lang request in
+		      let page = Kirin.query_opt "page" request |> Option.map int_of_string |> Option.value ~default:1 in
+		      match Db.get_seasons () with
+		      | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
+		      | Ok seasons ->
+		          let season = query_season_or_latest request seasons in
+		          (match Db.get_games ~season ~page () with
+		          | Ok games -> Kirin.html (Views.games_page ~lang ~page ~season ~seasons games)
+		          | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e)))
+		    );
 
-	    Kirin.get "/games/table" (fun request ->
-	      match Db.get_seasons () with
-	      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
-	      | Ok seasons ->
-	          let season = query_season_or_latest request seasons in
-	          (match Db.get_games ~season () with
-	          | Ok games -> Kirin.html (Views.games_table games)
-	          | Error e -> Kirin.html (Views.error_page (Db.show_db_error e)))
-	    );
+		    Kirin.get "/games/table" (fun request ->
+          let lang = request_lang request in
+		      match Db.get_seasons () with
+		      | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
+		      | Ok seasons ->
+		          let season = query_season_or_latest request seasons in
+		          (match Db.get_games ~season () with
+		          | Ok games -> Kirin.html (Views.games_table ~lang games)
+		          | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e)))
+		    );
 
     (* Boxscores List *)
     Kirin.get "/boxscores" (fun request ->
+      let lang = request_lang request in
       match Db.get_seasons () with
-      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+      | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
       | Ok seasons ->
           let season = query_season_or_latest request seasons in
           (match Db.get_games ~season () with
-          | Ok games -> Kirin.html (Views.boxscores_page ~season ~seasons games)
-          | Error e -> Kirin.html (Views.error_page (Db.show_db_error e)))
+          | Ok games -> Kirin.html (Views.boxscores_page ~lang ~season ~seasons games)
+          | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e)))
     );
 
     Kirin.get "/boxscores/table" (fun request ->
+      let lang = request_lang request in
       let season = Kirin.query_opt "season" request |> Option.value ~default:"ALL" in
       match Db.get_games ~season () with
-      | Ok games -> Kirin.html (Views.boxscores_table games)
-      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+      | Ok games -> Kirin.html (Views.boxscores_table ~lang games)
+      | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
     );
 
     (* Play-by-Play (PBP) Detail - MUST come before /boxscore/:id *)
     Kirin.get "/boxscore/:id/pbp" (fun request ->
+      let lang = request_lang request in
       let game_id = Kirin.param "id" request in
       let period_opt = query_nonempty request "period" in
       match Db.get_boxscore ~game_id () with
-      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+      | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
       | Ok bs ->
           (match Db.get_pbp_periods ~game_id () with
-          | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+          | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
           | Ok periods ->
               let selected_period =
                 match period_opt with
@@ -480,8 +550,8 @@ Sitemap: https://wkbl.win/sitemap.xml
                 | _ -> Db.get_pbp_events ~game_id ~period_code:selected_period ()
               in
               match events_res with
-              | Ok events -> Kirin.html (Views.pbp_page ~game:bs.boxscore_game ~periods ~selected_period ~events)
-              | Error e -> Kirin.html (Views.error_page (Db.show_db_error e)))
+              | Ok events -> Kirin.html (Views.pbp_page ~lang ~game:bs.boxscore_game ~periods ~selected_period ~events ())
+              | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e)))
     );
 
     (* AI Game Summary *)
@@ -562,13 +632,14 @@ Sitemap: https://wkbl.win/sitemap.xml
 
     (* Game Flow Chart *)
     Kirin.get "/boxscore/:id/flow" (fun request ->
+      let lang = request_lang request in
       let game_id = Kirin.param "id" request in
       match Db.get_boxscore ~game_id () with
-      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+      | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
       | Ok bs ->
           (* Get all periods for this game *)
           (match Db.get_pbp_periods ~game_id () with
-          | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+          | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
           | Ok periods ->
               (* Fetch PBP events for all periods *)
               let all_events =
@@ -580,22 +651,24 @@ Sitemap: https://wkbl.win/sitemap.xml
               in
               (* Extract score flow and render chart *)
               let flow_points = Domain.extract_score_flow all_events in
-              Kirin.html (Views_tools.game_flow_page ~game:bs.boxscore_game flow_points))
+              Kirin.html (Views_tools.game_flow_page ~lang ~game:bs.boxscore_game flow_points))
     );
 
     (* Boxscore Detail - MUST come AFTER more specific /boxscore/:id/* routes *)
     Kirin.get "/boxscore/:id" (fun request ->
+      let lang = request_lang request in
       let game_id = Kirin.param "id" request in
       match Db.get_boxscore ~game_id () with
-      | Ok bs -> Kirin.html (Views.boxscore_page bs)
-      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+      | Ok bs -> Kirin.html (Views.boxscore_page ~lang bs)
+      | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
     );
 
     (* Leaders *)
     Kirin.get "/leaders" (fun request ->
+      let lang = request_lang request in
       let scope = Kirin.query_opt "scope" request |> Option.value ~default:"per_game" in
       match Db.get_seasons () with
-      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+      | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
       | Ok seasons ->
           let season = query_season_or_latest request seasons in
           let categories =
@@ -617,16 +690,17 @@ Sitemap: https://wkbl.win/sitemap.xml
           match fetch_all [] categories with
           | Ok leaders_by_category ->
               let player_info_map = get_player_info_map () in
-              Kirin.html (Views.leaders_page ~player_info_map ~season ~seasons ~scope leaders_by_category)
+              Kirin.html (Views.leaders_page ~lang ~player_info_map ~season ~seasons ~scope leaders_by_category)
           | Error e ->
-              Kirin.html (Views.error_page (Db.show_db_error e))
+              Kirin.html (Views.error_page ~lang (Db.show_db_error e))
     );
 
     (* Position-based Leaders *)
     Kirin.get "/leaders/by-position" (fun request ->
+      let lang = request_lang request in
       let position = Kirin.query_opt "position" request |> Option.value ~default:"ALL" in
       match Db.get_seasons () with
-      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+      | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
       | Ok seasons ->
           let season = query_season_or_latest request seasons in
           let stats = ["pts"; "reb"; "ast"; "eff"] in
@@ -640,14 +714,15 @@ Sitemap: https://wkbl.win/sitemap.xml
           match fetch_all [] stats with
           | Ok leaders ->
               let player_info_map = get_player_info_map () in
-              Kirin.html (Views.position_leaders_page ~player_info_map ~season ~seasons ~position leaders)
-          | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+              Kirin.html (Views.position_leaders_page ~lang ~player_info_map ~season ~seasons ~position leaders)
+          | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
     );
 
     (* Clutch Time Leaders *)
     Kirin.get "/clutch" (fun request ->
+      let lang = request_lang request in
       match Db.get_seasons () with
-      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+      | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
       | Ok seasons ->
           let season = query_season_or_latest request seasons in
           match Db.get_clutch_stats ~season () with
@@ -657,43 +732,46 @@ Sitemap: https://wkbl.win/sitemap.xml
                   compare b.cs_clutch_points a.cs_clutch_points)
                 stats
               in
-              Kirin.html (Views.clutch_page ~season ~seasons sorted_stats)
+              Kirin.html (Views.clutch_page ~lang ~season ~seasons sorted_stats)
           | Error e ->
-              Kirin.html (Views.error_page (Db.show_db_error e))
+              Kirin.html (Views.error_page ~lang (Db.show_db_error e))
     );
 
     (* Lineup Chemistry - Full Page *)
     Kirin.get "/lineups" (fun request ->
+      let lang = request_lang request in
       match Db.get_seasons (), Db.get_all_teams () with
-      | Error e, _ | _, Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+      | Error e, _ | _, Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
       | Ok seasons, Ok teams ->
           let season = query_season_or_latest request seasons in
           let team = Kirin.query_opt "team" request |> Option.value ~default:"ALL" in
           match Db.get_lineup_chemistry ~season ~team_name:team () with
           | Ok chemistry ->
               Kirin.html (Views_tools.lineup_chemistry_page
-                ~teams ~seasons ~selected_team:team ~selected_season:season chemistry)
-          | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+                ~lang ~teams ~seasons ~selected_team:team ~selected_season:season chemistry)
+          | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
     );
 
     (* Lineup Chemistry - Table Content (HTMX partial) *)
     Kirin.get "/lineups/table" (fun request ->
+      let lang = request_lang request in
       match Db.get_seasons () with
-      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+      | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
       | Ok seasons ->
           let season = query_season_or_latest request seasons in
           let team = Kirin.query_opt "team" request |> Option.value ~default:"ALL" in
           match Db.get_lineup_chemistry ~season ~team_name:team () with
           | Ok chemistry ->
               Kirin.html (Views_tools.lineup_chemistry_table_content chemistry)
-          | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+          | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
     );
 
     (* Awards (Stat-based, unofficial) *)
     Kirin.get "/awards" (fun request ->
+      let lang = request_lang request in
       let include_mismatch = query_bool request "include_mismatch" in
       match Db.get_seasons () with
-      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+      | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
       | Ok seasons ->
           let season = query_season_or_latest request seasons in
           let prev_season_code =
@@ -723,36 +801,39 @@ Sitemap: https://wkbl.win/sitemap.xml
           match mvp_res, mip_res with
           | Ok mvp, Ok mip ->
               let player_info_map = get_player_info_map () in
-              Kirin.html (Views.awards_page ~player_info_map ~season ~seasons ~include_mismatch ~prev_season_name ~mvp ~mip)
-          | Error e, _ | _, Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+              Kirin.html (Views.awards_page ~lang ~player_info_map ~season ~seasons ~include_mismatch ~prev_season_name ~mvp ~mip ())
+          | Error e, _ | _, Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
     );
 
     (* MVP Race - Full Page *)
     Kirin.get "/mvp-race" (fun request ->
+      let lang = request_lang request in
       match Db.get_seasons () with
-      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+      | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
       | Ok seasons ->
           let season = query_season_or_latest request seasons in
           match Db.get_mvp_race ~season () with
-          | Ok candidates -> Kirin.html (Views_mvp.mvp_race_page ~season ~seasons candidates)
-          | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+          | Ok candidates -> Kirin.html (Views_mvp.mvp_race_page ~lang ~season ~seasons candidates)
+          | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
     );
 
     (* MVP Race - Table HTMX *)
     Kirin.get "/mvp-race/table" (fun request ->
+      let lang = request_lang request in
       match Db.get_seasons () with
-      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+      | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
       | Ok seasons ->
           let season = query_season_or_latest request seasons in
           match Db.get_mvp_race ~season () with
           | Ok candidates -> Kirin.html (Views_mvp.mvp_race_table candidates)
-          | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+          | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
     );
 
     (* Fantasy Calculator - Full Page *)
     Kirin.get "/fantasy" (fun request ->
+      let lang = request_lang request in
       match Db.get_seasons () with
-      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+      | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
       | Ok seasons ->
           let season = query_season_or_latest request seasons in
           let pts = Option.bind (Kirin.query_opt "pts" request) float_of_string_opt |> Option.value ~default:1.0 in
@@ -770,16 +851,17 @@ Sitemap: https://wkbl.win/sitemap.xml
             fsr_turnovers = tov;
           } in
           match Db.get_players ~season ~search:"" ~sort:ByMinutes () with
-          | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+          | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
           | Ok players ->
               let scores = List.map (Domain.fantasy_score_of_aggregate ~rules) players in
-              Kirin.html (Views_tools.fantasy_calculator_page ~season ~seasons ~rules ~scores)
+              Kirin.html (Views_tools.fantasy_calculator_page ~lang ~season ~seasons ~rules ~scores ())
     );
 
     (* Fantasy Calculator - HTMX Calculate Endpoint *)
     Kirin.get "/fantasy/calculate" (fun request ->
+      let lang = request_lang request in
       match Db.get_seasons () with
-      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+      | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
       | Ok seasons ->
           let season = query_season_or_latest request seasons in
           let pts = Option.bind (Kirin.query_opt "pts" request) float_of_string_opt |> Option.value ~default:1.0 in
@@ -797,7 +879,7 @@ Sitemap: https://wkbl.win/sitemap.xml
             fsr_turnovers = tov;
           } in
           match Db.get_players ~season ~search:"" ~sort:ByMinutes () with
-          | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+          | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
           | Ok players ->
               let scores = List.map (Domain.fantasy_score_of_aggregate ~rules) players in
               Kirin.html (Views_tools.fantasy_results_table scores)
@@ -805,6 +887,7 @@ Sitemap: https://wkbl.win/sitemap.xml
 
     (* Compare - HTMX table fragment *)
     Kirin.get "/compare/table" (fun request ->
+      let lang = request_lang request in
       let compare_type =
         Kirin.query_opt "type" request
         |> Option.map String.lowercase_ascii
@@ -813,7 +896,7 @@ Sitemap: https://wkbl.win/sitemap.xml
       let left = query_nonempty request "left" |> Option.value ~default:"" in
       let right = query_nonempty request "right" |> Option.value ~default:"" in
       match Db.get_seasons () with
-      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+      | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
       | Ok seasons ->
           let season = query_season_or_latest request seasons in
           if left = "" || right = "" then
@@ -875,6 +958,7 @@ Sitemap: https://wkbl.win/sitemap.xml
 
     (* Compare Seasons - Compare a player's performance across different seasons *)
     Kirin.get "/compare/seasons" (fun request ->
+      let lang = request_lang request in
       let player_id = Kirin.query_opt "player" request |> Option.value ~default:"" in
       let s1 = Kirin.query_opt "s1" request |> Option.value ~default:"" in
       let s2 = Kirin.query_opt "s2" request |> Option.value ~default:"" in
@@ -883,17 +967,17 @@ Sitemap: https://wkbl.win/sitemap.xml
         Kirin.redirect "/compare"
       else
         match Db.get_seasons () with
-        | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+        | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
         | Ok seasons ->
             (* Get player profile to get name *)
             (match Db.get_player_profile ~player_id () with
-            | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
-            | Ok None -> Kirin.html (Views.error_page "Player not found")
+            | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
+            | Ok None -> Kirin.html (Views.error_page ~lang "Player not found")
             | Ok (Some profile) ->
                 let player_name = profile.player.name in
                 (* Get all seasons for this player *)
                 (match Db.get_player_season_stats ~player_id ~scope:"per_game" () with
-                | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+                | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
                 | Ok all_seasons ->
                     let find_season code =
                       List.find_opt (fun (s: season_stats) -> s.ss_season_code = code) all_seasons
@@ -907,19 +991,22 @@ Sitemap: https://wkbl.win/sitemap.xml
                       else None
                     in
                     Kirin.html (Views.compare_seasons_page
+                      ~lang
                       ~seasons
                       ~player_id
                       ~player_name
                       ~s1
                       ~s2
                       ~s1_stats
-                      ~s2_stats
-                      ~all_seasons
-                      ~error)))
-    );
+	                      ~s2_stats
+	                      ~all_seasons
+	                      ~error
+	                      ())))
+	    );
 
     (* Compare - simplified version *)
     Kirin.get "/compare" (fun request ->
+      let lang = request_lang request in
       let p1_query = Kirin.query_opt "p1" request |> Option.value ~default:"" in
       let p2_query = Kirin.query_opt "p2" request |> Option.value ~default:"" in
       let p1_id = Kirin.query_opt "p1_id" request |> Option.value ~default:"" in
@@ -928,7 +1015,7 @@ Sitemap: https://wkbl.win/sitemap.xml
       let p2_id_opt = if String.trim p2_id = "" then None else Some (String.trim p2_id) in
 
       match Db.get_seasons () with
-      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+      | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
       | Ok seasons ->
           let season = query_season_or_latest request seasons in
           let is_valid_season code =
@@ -1090,6 +1177,7 @@ Sitemap: https://wkbl.win/sitemap.xml
           in
           Kirin.html
             (Views.compare_page
+               ~lang
                ~season
                ~seasons
                ~p1_season
@@ -1111,6 +1199,7 @@ Sitemap: https://wkbl.win/sitemap.xml
 
     (* Predict (Team vs Team) *)
     Kirin.get "/predict" (fun request ->
+      let lang = request_lang request in
       let home = Kirin.query_opt "home" request |> Option.value ~default:"" in
       let away = Kirin.query_opt "away" request |> Option.value ~default:"" in
       let include_mismatch = query_bool request "include_mismatch" in
@@ -1130,13 +1219,13 @@ Sitemap: https://wkbl.win/sitemap.xml
       in
 
       match Db.get_seasons (), Db.get_all_teams () with
-      | Error e, _ | _, Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+      | Error e, _ | _, Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
       | Ok seasons, Ok teams ->
           let upcoming = match Db.get_upcoming_schedule ~status:"scheduled" ~limit:6 () with Ok u -> u | Error _ -> [] in
           let team_names = List.map (fun (t: team_info) -> t.team_name) teams in
           let season = query_season_or_latest request seasons in
           let render result error =
-            Kirin.html (Views.predict_page ~season ~seasons ~teams:team_names ~home ~away ~is_neutral ~context_enabled ~include_mismatch ~upcoming ~games:(match Db.get_scored_games ~season ~include_mismatch () with Ok g -> g | _ -> []) result error)
+            Kirin.html (Views.predict_page ~lang ~season ~seasons ~teams:team_names ~home ~away ~is_neutral ~context_enabled ~include_mismatch ~upcoming ~games:(match Db.get_scored_games ~season ~include_mismatch () with Ok g -> g | _ -> []) result error)
           in
 
           if String.trim home = "" || String.trim away = "" then
@@ -1204,13 +1293,14 @@ Sitemap: https://wkbl.win/sitemap.xml
                         ~name_away:away
                     in
                     render (Some output) None
-                | None, _ -> render None (Some (Printf.sprintf "Team not found: %s" home))
-                | _, None -> render None (Some (Printf.sprintf "Team not found: %s" away)))
-            | Error e, _ | _, Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+	                | None, _ -> render None (Some (Printf.sprintf "Team not found: %s" home))
+	                | _, None -> render None (Some (Printf.sprintf "Team not found: %s" away)))
+	            | Error e, _ | _, Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
     );
 
     (* Player Profile *)
     Kirin.get "/player/:id" (fun request ->
+      let lang = request_lang request in
       let player_id = Kirin.param "id" request in
       let scope = Kirin.query_opt "scope" request |> Option.value ~default:"per_game" in
       let show_ops = query_bool request "ops" in
@@ -1238,8 +1328,8 @@ Sitemap: https://wkbl.win/sitemap.xml
             |> List.find_opt (fun (s: season_info) -> s.code = season_for_leaderboards)
             |> Option.map (fun (s: season_info) -> s.name)
             |> Option.value ~default:season_for_leaderboards
-          in
-          let leaderboard_categories =
+	          in
+	          let leaderboard_categories =
             match String.lowercase_ascii scope with
             | "totals" ->
                 [ "gp"; "min"; "pts"; "reb"; "ast"; "stl"; "blk"; "tov"; "fg_pct"; "fg3_pct"; "ft_pct"; "ts_pct"; "efg_pct" ]
@@ -1254,101 +1344,107 @@ Sitemap: https://wkbl.win/sitemap.xml
                 match Db.get_leaders ~season:season_for_leaderboards ~scope category with
                 | Error e -> Error e
                 | Ok leaders -> fetch_all ((category, leaders) :: acc) rest
-          in
-          let leaderboards =
-            match fetch_all [] leaderboard_categories with
-            | Ok leaders_by_category ->
-                Some (season_for_leaderboards, season_name_for_leaderboards, leaders_by_category)
-            | Error _ ->
-                None
-          in
-          Kirin.html (Views_player.player_profile_page ~leaderboards ~show_ops final_profile ~scope ~seasons_catalog)
-      | Ok None -> Kirin.html (Views.error_page "Player not found")
-      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
-    );
+	          in
+	          let leaderboards =
+	            match fetch_all [] leaderboard_categories with
+	            | Ok leaders_by_category ->
+	                Some (season_for_leaderboards, season_name_for_leaderboards, leaders_by_category)
+	            | Error _ ->
+	                None
+	          in
+	          Kirin.html (Views_player.player_profile_page ~lang ~leaderboards ~show_ops final_profile ~scope ~seasons_catalog)
+	      | Ok None -> Kirin.html (Views.error_page ~lang "Player not found")
+	      | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
+	    );
 
-    (* Player Game Log *)
-    Kirin.get "/player/:id/games" (fun request ->
-      let player_id = Kirin.param "id" request in
-      let include_mismatch = query_bool request "include_mismatch" in
-      match Db.get_player_profile ~player_id (), Db.get_seasons () with
-      | Ok None, _ -> Kirin.html (Views.error_page "Player not found")
-      | Error e, _ | _, Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
-      | Ok (Some profile), Ok seasons ->
-          let season = query_season_or_latest request seasons in
-          (match Db.get_player_game_logs ~player_id ~season ~include_mismatch () with
-          | Ok games -> Kirin.html (Views_player.player_game_logs_page profile ~season ~seasons ~include_mismatch games)
-          | Error e -> Kirin.html (Views.error_page (Db.show_db_error e)))
-    );
+	    (* Player Game Log *)
+	    Kirin.get "/player/:id/games" (fun request ->
+	      let lang = request_lang request in
+	      let player_id = Kirin.param "id" request in
+	      let include_mismatch = query_bool request "include_mismatch" in
+	      match Db.get_player_profile ~player_id (), Db.get_seasons () with
+	      | Ok None, _ -> Kirin.html (Views.error_page ~lang "Player not found")
+	      | Error e, _ | _, Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
+	      | Ok (Some profile), Ok seasons ->
+	          let season = query_season_or_latest request seasons in
+	          (match Db.get_player_game_logs ~player_id ~season ~include_mismatch () with
+	          | Ok games -> Kirin.html (Views_player.player_game_logs_page ~lang profile ~season ~seasons ~include_mismatch games)
+	          | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e)))
+	    );
 
-    (* Player Season Stats HTMX Partial *)
-    Kirin.get "/player/:id/season-stats" (fun request ->
-      let player_id = Kirin.param "id" request in
-      let scope = Kirin.query_opt "scope" request |> Option.value ~default:"per_game" in
-      match Db.get_player_season_stats ~player_id ~scope () with
-      | Ok stats -> Kirin.html (Views_common.player_season_stats_component ~player_id ~scope stats)
-      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
-    );
+	    (* Player Season Stats HTMX Partial *)
+	    Kirin.get "/player/:id/season-stats" (fun request ->
+	      let lang = request_lang request in
+	      let player_id = Kirin.param "id" request in
+	      let scope = Kirin.query_opt "scope" request |> Option.value ~default:"per_game" in
+	      match Db.get_player_season_stats ~player_id ~scope () with
+	      | Ok stats -> Kirin.html (Views_common.player_season_stats_component ~player_id ~scope stats)
+	      | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
+	    );
 
-    (* Player Shot Chart HTMX Partial *)
-    Kirin.get "/player/:id/shot-chart" (fun request ->
-      let player_id = Kirin.param "id" request in
-      let season = Kirin.query_opt "season" request |> Option.value ~default:"ALL" in
-      match Db.get_player_shooting_stats ~player_id ~season () with
-      | Ok (Some stats) -> Kirin.html (Views_charts.player_shot_chart_html stats)
-      | Ok None -> Kirin.html {|<div class="text-slate-400 text-center p-4">슈팅 데이터가 없습니다.</div>|}
-      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
-    );
+	    (* Player Shot Chart HTMX Partial *)
+	    Kirin.get "/player/:id/shot-chart" (fun request ->
+	      let lang = request_lang request in
+	      let player_id = Kirin.param "id" request in
+	      let season = Kirin.query_opt "season" request |> Option.value ~default:"ALL" in
+	      match Db.get_player_shooting_stats ~player_id ~season () with
+	      | Ok (Some stats) -> Kirin.html (Views_charts.player_shot_chart_html stats)
+	      | Ok None -> Kirin.html {|<div class="text-slate-400 text-center p-4">슈팅 데이터가 없습니다.</div>|}
+	      | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
+	    );
 
-    (* Player Zone Shot Chart (PBP-based) - Full Page *)
-    Kirin.get "/player/:id/shots" (fun request ->
-      let player_id = Kirin.param "id" request in
-      let season = Kirin.query_opt "season" request |> Option.value ~default:"ALL" in
-      let is_htmx = Kirin.header "HX-Request" request |> Option.is_some in
-      match Db.get_player_shot_chart ~player_id ~season () with
-      | Ok chart ->
-          if is_htmx then
-            Kirin.html (Views_charts.zone_shot_chart_partial chart)
-          else
-            (match Db.get_seasons () with
-            | Ok seasons ->
-                let season_list = seasons |> List.map (fun s -> (s.code, s.name)) in
-                Kirin.html (Views_charts.zone_shot_chart_page chart ~seasons:season_list ~current_season:season)
-            | Error _ ->
-                Kirin.html (Views_charts.zone_shot_chart_page chart ~seasons:[] ~current_season:season))
-      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
-    );
+	    (* Player Zone Shot Chart (PBP-based) - Full Page *)
+	    Kirin.get "/player/:id/shots" (fun request ->
+	      let lang = request_lang request in
+	      let player_id = Kirin.param "id" request in
+	      let season = Kirin.query_opt "season" request |> Option.value ~default:"ALL" in
+	      let is_htmx = Kirin.header "HX-Request" request |> Option.is_some in
+	      match Db.get_player_shot_chart ~player_id ~season () with
+	      | Ok chart ->
+	          if is_htmx then
+	            Kirin.html (Views_charts.zone_shot_chart_partial chart)
+	          else
+	            (match Db.get_seasons () with
+	            | Ok seasons ->
+	                let season_list = seasons |> List.map (fun s -> (s.code, s.name)) in
+	                Kirin.html (Views_charts.zone_shot_chart_page ~lang chart ~seasons:season_list ~current_season:season)
+	            | Error _ ->
+	                Kirin.html (Views_charts.zone_shot_chart_page ~lang chart ~seasons:[] ~current_season:season))
+	      | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
+	    );
 
-    (* Team Profile *)
-    Kirin.get "/team/:name" (fun request ->
-      let team_name = Kirin.param "name" request |> Uri.pct_decode in
-      match Db.get_seasons () with
-      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
-      | Ok seasons ->
-          let season = query_season_or_latest request seasons in
-          (match Db.get_team_full_detail ~team_name ~season () with
-          | Ok detail ->
-              let player_info_map = get_player_info_map () in
-              Kirin.html (Views_team.team_profile_page ~player_info_map detail ~season ~seasons)
-          | Error e -> Kirin.html (Views.error_page (Db.show_db_error e)))
-    );
+	    (* Team Profile *)
+	    Kirin.get "/team/:name" (fun request ->
+	      let lang = request_lang request in
+	      let team_name = Kirin.param "name" request |> Uri.pct_decode in
+	      match Db.get_seasons () with
+	      | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
+	      | Ok seasons ->
+	          let season = query_season_or_latest request seasons in
+	          (match Db.get_team_full_detail ~team_name ~season () with
+	          | Ok detail ->
+	              let player_info_map = get_player_info_map () in
+	              Kirin.html (Views_team.team_profile_page ~lang ~player_info_map detail ~season ~seasons)
+	          | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e)))
+	    );
 
-    (* Team H2H comparison *)
-    Kirin.get "/teams/h2h" (fun request ->
-      let team1 = Kirin.query_opt "team1" request |> Option.value ~default:"" in
-      let team2 = Kirin.query_opt "team2" request |> Option.value ~default:"" in
-      match Db.get_seasons () with
-      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
-      | Ok seasons ->
-          let season = query_season_or_latest request seasons in
-          if team1 = "" || team2 = "" then
-            (* Show empty form *)
-            Kirin.html (Views_team.team_h2h_page ~team1 ~team2 ~season ~seasons [])
-          else
-            (match Db.get_team_h2h_data ~team1 ~team2 ~season () with
-            | Ok games -> Kirin.html (Views_team.team_h2h_page ~team1 ~team2 ~season ~seasons games)
-            | Error e -> Kirin.html (Views.error_page (Db.show_db_error e)))
-    );
+	    (* Team H2H comparison *)
+	    Kirin.get "/teams/h2h" (fun request ->
+	      let lang = request_lang request in
+	      let team1 = Kirin.query_opt "team1" request |> Option.value ~default:"" in
+	      let team2 = Kirin.query_opt "team2" request |> Option.value ~default:"" in
+	      match Db.get_seasons () with
+	      | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
+	      | Ok seasons ->
+	          let season = query_season_or_latest request seasons in
+	          if team1 = "" || team2 = "" then
+	            (* Show empty form *)
+	            Kirin.html (Views_team.team_h2h_page ~lang ~team1 ~team2 ~season ~seasons [])
+	          else
+	            (match Db.get_team_h2h_data ~team1 ~team2 ~season () with
+	            | Ok games -> Kirin.html (Views_team.team_h2h_page ~lang ~team1 ~team2 ~season ~seasons games)
+	            | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e)))
+	    );
 
     (* Convenience aliases for transactions *)
     Kirin.get "/draft" (fun request ->
@@ -1372,64 +1468,70 @@ Sitemap: https://wkbl.win/sitemap.xml
       Kirin.redirect ("/transactions?" ^ params)
     );
 
-    (* Draft / Trade (official transactions) *)
-    Kirin.get "/transactions" (fun request ->
-      let tab =
-        Kirin.query_opt "tab" request
-        |> Option.map String.lowercase_ascii
-        |> Option.value ~default:"draft"
-      in
+	    (* Draft / Trade (official transactions) *)
+	    Kirin.get "/transactions" (fun request ->
+	      let lang = request_lang request in
+	      let tab =
+	        Kirin.query_opt "tab" request
+	        |> Option.map String.lowercase_ascii
+	        |> Option.value ~default:"draft"
+	      in
       let show_ops = query_bool request "ops" in
-      let year =
+	      let year =
         let year_str_opt = Kirin.query_opt "year" request in
         match year_str_opt with
         | None -> 0
         | Some s -> (match int_of_string_opt s with Some i -> i | None -> 0)
-      in
-      let q = Kirin.query_opt "q" request |> Option.value ~default:"" in
-      match Db.get_draft_years (), Db.get_official_trade_years () with
-      | Error e, _ | _, Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
-      | Ok draft_years, Ok trade_years ->
-          if tab = "trade" then (
-            match Db.get_official_trade_events ~year ~search:q () with
-            | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
-            | Ok events ->
-                Kirin.html
-                  (Views_tools.transactions_page
-                     ~show_ops
-                     ~tab
-                     ~year
-                     ~q
-                     ~draft_years
-                     ~trade_years
-                     ~draft_picks:[]
-                     ~trade_events:events)
-          ) else (
-            match Db.get_draft_picks ~year ~search:q () with
-            | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
-            | Ok picks ->
-                Kirin.html
-                  (Views_tools.transactions_page
-                     ~show_ops
-                     ~tab:"draft"
-                     ~year
-                     ~q
-                     ~draft_years
-                     ~trade_years
-                     ~draft_picks:picks
-                     ~trade_events:[])
-          )
-    );
+	      in
+	      let q = Kirin.query_opt "q" request |> Option.value ~default:"" in
+	      match Db.get_draft_years (), Db.get_official_trade_years () with
+	      | Error e, _ | _, Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
+	      | Ok draft_years, Ok trade_years ->
+	          if tab = "trade" then (
+	            match Db.get_official_trade_events ~year ~search:q () with
+	            | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
+	            | Ok events ->
+	                Kirin.html
+	                  (Views_tools.transactions_page
+	                     ~lang
+	                     ~show_ops
+	                     ~tab
+	                     ~year
+	                     ~q
+	                     ~draft_years
+	                     ~trade_years
+	                     ~draft_picks:[]
+	                     ~trade_events:events
+	                     ())
+	          ) else (
+	            match Db.get_draft_picks ~year ~search:q () with
+	            | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
+	            | Ok picks ->
+	                Kirin.html
+	                  (Views_tools.transactions_page
+	                     ~lang
+	                     ~show_ops
+	                     ~tab:"draft"
+	                     ~year
+	                     ~q
+	                     ~draft_years
+	                     ~trade_years
+	                     ~draft_picks:picks
+	                     ~trade_events:[]
+	                     ())
+	          )
+	    );
 
-    (* Hot Streaks *)
-    Kirin.get "/streaks" (fun request ->
-      match Db.get_seasons () with
-      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
-      | Ok seasons ->
-          let season = query_season_or_latest request seasons in
-          match Db.get_players ~season ~search:"" ~sort:ByEfficiency (), Db.get_all_teams () with
-          | Error e, _ | _, Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
-          | Ok players, Ok teams ->
+	    (* Hot Streaks *)
+	    Kirin.get "/streaks" (fun request ->
+	      let lang = request_lang request in
+	      match Db.get_seasons () with
+	      | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
+	      | Ok seasons ->
+	          let season = query_season_or_latest request seasons in
+	          match Db.get_players ~season ~search:"" ~sort:ByEfficiency (), Db.get_all_teams () with
+	          | Error e, _ | _, Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
+	          | Ok players, Ok teams ->
               let top_players = List.filteri (fun i _ -> i < 30) players in
               let player_ids = List.map (fun (p: player_aggregate) -> p.player_id) top_players in
               let player_streaks = match Db.get_batch_player_game_logs ~player_ids ~season () with
@@ -1469,38 +1571,42 @@ Sitemap: https://wkbl.win/sitemap.xml
                 |> List.filteri (fun i _ -> i < 20)
               in
 
-              Kirin.html (Views_streaks.streaks_page
-                ~season
-                ~seasons
-                ~active_player_streaks
-                ~active_team_streaks
-                ~all_time_records
-                ())
-    );
+	              Kirin.html (Views_streaks.streaks_page
+	                ~lang
+	                ~season
+	                ~seasons
+	                ~active_player_streaks
+	                ~active_team_streaks
+	                ~all_time_records
+	                ())
+	    );
 
-    (* On/Off Impact *)
-    Kirin.get "/on-off" (fun request ->
-      match Db.get_seasons () with
-      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
-      | Ok seasons ->
-          let season = query_season_or_latest request seasons in
-          (match Db.get_on_off_impact_stats ~season () with
-          | Ok impacts -> Kirin.html (Views_tools.on_off_impact_page ~season ~seasons impacts)
-          | Error e -> Kirin.html (Views.error_page (Db.show_db_error e)))
-    );
+	    (* On/Off Impact *)
+	    Kirin.get "/on-off" (fun request ->
+	      let lang = request_lang request in
+	      match Db.get_seasons () with
+	      | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
+	      | Ok seasons ->
+	          let season = query_season_or_latest request seasons in
+	          (match Db.get_on_off_impact_stats ~season () with
+	          | Ok impacts -> Kirin.html (Views_tools.on_off_impact_page ~lang ~season ~seasons impacts)
+	          | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e)))
+	    );
 
-    (* QA & System *)
-    Kirin.get "/qa" (fun _ ->
-      let markdown = Qa.read_markdown_if_exists () in
-      match Db.get_db_quality_report () with
-      | Ok report -> Kirin.html (Views_tools.qa_dashboard_page report ~markdown ())
-      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
-    );
-    Kirin.get "/qa/schedule-missing" (fun _ ->
-      match Db.get_schedule_missing_report () with
-      | Ok report -> Kirin.html (Views_tools.qa_schedule_missing_page report ())
-      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
-    );
+	    (* QA & System *)
+	    Kirin.get "/qa" (fun request ->
+	      let lang = request_lang request in
+	      let markdown = Qa.read_markdown_if_exists () in
+	      match Db.get_db_quality_report () with
+	      | Ok report -> Kirin.html (Views_tools.qa_dashboard_page report ~lang ~markdown ())
+	      | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
+	    );
+	    Kirin.get "/qa/schedule-missing" (fun request ->
+	      let lang = request_lang request in
+	      match Db.get_schedule_missing_report () with
+	      | Ok report -> Kirin.html (Views_tools.qa_schedule_missing_page report ~lang ())
+	      | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
+	    );
     (* PBP Data Quality API - verifies T2=HOME pattern
        Usage: /qa/pbp              - normal check (200 always)
               /qa/pbp?ci=1         - CI mode (500 if below 50% threshold)
@@ -1600,26 +1706,30 @@ Sitemap: https://wkbl.win/sitemap.xml
     );
 
     (* History & Legends *)
-    Kirin.get "/history" (fun _ ->
+    Kirin.get "/history" (fun request ->
+      let lang = request_lang request in
       match Db.get_historical_seasons () with
-      | Ok seasons -> Kirin.html (Views_history.history_page seasons)
-      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+      | Ok seasons -> Kirin.html (Views_history.history_page ~lang seasons)
+      | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
     );
-    Kirin.get "/legends" (fun _ ->
+    Kirin.get "/legends" (fun request ->
+      let lang = request_lang request in
       match Db.get_legend_players () with
-      | Ok legends -> Kirin.html (Views_history.legends_page legends)
-      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+      | Ok legends -> Kirin.html (Views_history.legends_page ~lang legends)
+      | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
     );
-    Kirin.get "/coaches" (fun _ ->
+    Kirin.get "/coaches" (fun request ->
+      let lang = request_lang request in
       match Db.get_coaches () with
-      | Ok coaches -> Kirin.html (Views_history.coaches_page coaches)
-      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+      | Ok coaches -> Kirin.html (Views_history.coaches_page ~lang coaches)
+      | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
     );
     Kirin.get "/player/:id/career" (fun request ->
+      let lang = request_lang request in
       let player_name = Kirin.param "id" request |> Uri.pct_decode in
       match Db.get_player_career ~player_name () with
-      | Ok entries -> Kirin.html (Views_history.player_career_page ~player_name entries)
-      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+      | Ok entries -> Kirin.html (Views_history.player_career_page ~lang ~player_name entries)
+      | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
     );
 
     (* AI Prediction API: Get match prediction with explanation *)
@@ -1736,7 +1846,8 @@ Sitemap: https://wkbl.win/sitemap.xml
     );
 
     (* Live scores page *)
-    Kirin.get "/live" (fun _request ->
-      Kirin.html (Views.live_page ())
+    Kirin.get "/live" (fun request ->
+      let lang = request_lang request in
+      Kirin.html (Views.live_page ~lang ())
     );
   ]

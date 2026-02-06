@@ -248,9 +248,13 @@ let empty_state ?icon title desc =
   let _ = icon in
   Printf.sprintf {html|<div class="text-center py-12 px-4"><div class="text-4xl mb-4">🏀</div><h3 class="text-lg font-bold text-slate-900 dark:text-slate-200">%s</h3><p class="text-slate-500 dark:text-slate-400">%s</p></div>|html} title desc
 
-let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="") ?og_title ?og_description ?og_image ?data_freshness ~content () =
+let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json_ld="") ?og_title ?og_description ?og_image ?data_freshness ~content () =
   let _ = og_title in let _ = og_description in
-  let _ = canonical_path in let _ = description in let _ = json_ld in
+  let _ = canonical_path in
+  let _ = description in let _ = json_ld in
+
+  let tr = I18n.t lang in
+  let html_lang = I18n.html_lang lang in
   
   let og_img_html = match og_image with
     | Some url -> Printf.sprintf {html|<meta property="og:image" content="%s"><meta name="twitter:image" content="%s">|html} url url
@@ -319,8 +323,46 @@ let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="") ?og_titl
     sentry_html ^ clarity_html
   in
 
+  let nav_players = tr { ko = "선수"; en = "Players" } in
+  let nav_teams = tr { ko = "팀"; en = "Teams" } in
+  let nav_standings = tr { ko = "순위"; en = "Standings" } in
+  let nav_games = tr { ko = "경기"; en = "Games" } in
+  let nav_compare = tr { ko = "비교"; en = "Compare" } in
+  let nav_predict = tr { ko = "예측"; en = "Predict" } in
+
+  let skip_to_content = tr { ko = "본문으로 건너뛰기"; en = "Skip to content" } in
+  let aria_toggle_theme = tr { ko = "다크모드 전환"; en = "Toggle theme" } in
+  let aria_open_menu = tr { ko = "메뉴 열기"; en = "Open menu" } in
+
+  let sr_dark_on = tr { ko = "다크 모드 활성화"; en = "Dark mode on" } in
+  let sr_dark_off = tr { ko = "라이트 모드 활성화"; en = "Light mode on" } in
+  let sr_menu_open = tr { ko = "메뉴 열림"; en = "Menu opened" } in
+  let sr_menu_close = tr { ko = "메뉴 닫힘"; en = "Menu closed" } in
+
+  let lang_label = tr { ko = "언어"; en = "Language" } in
+  let lang_menu =
+    let item_cls is_active =
+      if is_active then
+        "bg-orange-500/10 text-orange-700 dark:text-orange-300 border-orange-500/30"
+      else
+        "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/60"
+    in
+    Printf.sprintf
+      {html|<details class="relative">
+        <summary class="list-none cursor-pointer select-none px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700" aria-label="%s">%s</summary>
+        <div class="absolute right-0 mt-2 w-32 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-lg overflow-hidden">
+          <a href="/lang/ko" class="block px-3 py-2 text-sm border-b border-slate-200 dark:border-slate-800 %s">한국어</a>
+          <a href="/lang/en" class="block px-3 py-2 text-sm %s">English</a>
+        </div>
+      </details>|html}
+      (escape_html lang_label)
+      (escape_html lang_label)
+      (item_cls (lang = I18n.Ko))
+      (item_cls (lang = I18n.En))
+  in
+
   Printf.sprintf {html|<!DOCTYPE html>
-<html lang="ko">
+<html lang="%s">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -435,7 +477,7 @@ let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="") ?og_titl
 </head>
 <body class="bg-slate-50 dark:bg-[#0b0e14] text-slate-900 dark:text-slate-200">
   <!-- Skip to main content link for keyboard users -->
-  <a href="#main-content" class="skip-link">본문으로 건너뛰기</a>
+  <a href="#main-content" class="skip-link">%s</a>
 
   <!-- ARIA live region for dynamic content announcements -->
   <div id="aria-live" aria-live="polite" aria-atomic="true" class="sr-only"></div>
@@ -443,43 +485,44 @@ let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="") ?og_titl
   <!-- Header with navigation and dark mode toggle -->
   <header class="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-40">
 	    <nav class="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
-	      <div class="flex items-center gap-4">
+		      <div class="flex items-center gap-4">
 	        <a href="/" class="flex items-center gap-2 font-bold text-lg text-orange-600 dark:text-orange-400">
 	          <span>🏀</span>
 	          <span>WKBL</span>
 	        </a>
-	        <div class="hidden md:flex items-center gap-4 text-sm">
-	          <a href="/players" class="text-slate-600 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors">선수</a>
-	          <a href="/teams" class="text-slate-600 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors">팀</a>
-	          <a href="/standings" class="text-slate-600 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors">순위</a>
-	          <a href="/games" class="text-slate-600 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors">경기</a>
-	          <a href="/compare" class="text-slate-600 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors">비교</a>
-	          <a href="/predict" class="text-slate-600 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors">예측</a>
-	        </div>
+		        <div class="hidden md:flex items-center gap-4 text-sm">
+		          <a href="/players" class="text-slate-600 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors">%s</a>
+		          <a href="/teams" class="text-slate-600 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors">%s</a>
+		          <a href="/standings" class="text-slate-600 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors">%s</a>
+		          <a href="/games" class="text-slate-600 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors">%s</a>
+		          <a href="/compare" class="text-slate-600 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors">%s</a>
+		          <a href="/predict" class="text-slate-600 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors">%s</a>
 	      </div>
+      </div>
       <div class="flex items-center gap-2">
         %s
-        <button id="theme-toggle" type="button" aria-label="다크모드 전환" class="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
-          <svg id="theme-icon-light" class="w-5 h-5 hidden dark:block text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"/></svg>
-          <svg id="theme-icon-dark" class="w-5 h-5 block dark:hidden text-slate-600" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>
-        </button>
-        <button id="mobile-menu-toggle" type="button" aria-label="메뉴 열기" class="md:hidden p-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+        %s
+        <button id="theme-toggle" type="button" aria-label="%s" class="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+	          <svg id="theme-icon-light" class="w-5 h-5 hidden dark:block text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"/></svg>
+	          <svg id="theme-icon-dark" class="w-5 h-5 block dark:hidden text-slate-600" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>
+	        </button>
+	        <button id="mobile-menu-toggle" type="button" aria-label="%s" class="md:hidden p-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
           <svg class="w-5 h-5 text-slate-600 dark:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
         </button>
       </div>
     </nav>
     <!-- Mobile menu -->
-	    <div id="mobile-menu" class="hidden md:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-	      <div class="px-4 py-3 space-y-2">
-	        <a href="/players" class="block py-3 px-4 rounded-lg text-base font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">선수</a>
-	        <a href="/teams" class="block py-3 px-4 rounded-lg text-base font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">팀</a>
-	        <a href="/standings" class="block py-3 px-4 rounded-lg text-base font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">순위</a>
-	        <a href="/games" class="block py-3 px-4 rounded-lg text-base font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">경기</a>
-	        <a href="/compare" class="block py-3 px-4 rounded-lg text-base font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">비교</a>
-	        <a href="/predict" class="block py-3 px-4 rounded-lg text-base font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">예측</a>
-	      </div>
-	    </div>
-	  </header>
+		    <div id="mobile-menu" class="hidden md:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+		      <div class="px-4 py-3 space-y-2">
+		        <a href="/players" class="block py-3 px-4 rounded-lg text-base font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">%s</a>
+		        <a href="/teams" class="block py-3 px-4 rounded-lg text-base font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">%s</a>
+		        <a href="/standings" class="block py-3 px-4 rounded-lg text-base font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">%s</a>
+		        <a href="/games" class="block py-3 px-4 rounded-lg text-base font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">%s</a>
+		        <a href="/compare" class="block py-3 px-4 rounded-lg text-base font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">%s</a>
+		        <a href="/predict" class="block py-3 px-4 rounded-lg text-base font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">%s</a>
+		      </div>
+		    </div>
+		  </header>
 
   <main id="main-content" role="main" tabindex="-1" class="max-w-7xl mx-auto px-4 py-6">
     %s
@@ -560,13 +603,13 @@ let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="") ?og_titl
       // Toggle handler
       if (toggle) {
         toggle.addEventListener('click', function() {
-          html.classList.toggle('dark');
-          const isDark = html.classList.contains('dark');
-          localStorage.setItem('wkbl-theme', isDark ? 'dark' : 'light');
-          window.announceToScreenReader(isDark ? '다크 모드 활성화' : '라이트 모드 활성화');
-        });
-      }
-    })();
+	          html.classList.toggle('dark');
+	          const isDark = html.classList.contains('dark');
+	          localStorage.setItem('wkbl-theme', isDark ? 'dark' : 'light');
+	          window.announceToScreenReader(isDark ? '%s' : '%s');
+	        });
+	      }
+	    })();
 
     // Mobile menu toggle
     (function() {
@@ -574,18 +617,44 @@ let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="") ?og_titl
       const mobileMenu = document.getElementById('mobile-menu');
       if (menuToggle && mobileMenu) {
         menuToggle.addEventListener('click', function() {
-          mobileMenu.classList.toggle('hidden');
-          const isOpen = !mobileMenu.classList.contains('hidden');
-          menuToggle.setAttribute('aria-expanded', isOpen);
-          window.announceToScreenReader(isOpen ? '메뉴 열림' : '메뉴 닫힘');
-        });
-      }
-    })();
-  </script>
-  <script src="/static/js/skeleton-loader.js"></script>
-  <script src="/static/js/data-freshness.js"></script>
-</body>
-</html>|html} title og_img_html freshness_html observability_html content
+	          mobileMenu.classList.toggle('hidden');
+	          const isOpen = !mobileMenu.classList.contains('hidden');
+	          menuToggle.setAttribute('aria-expanded', isOpen);
+	          window.announceToScreenReader(isOpen ? '%s' : '%s');
+	        });
+	      }
+	    })();
+	  </script>
+	  <script src="/static/js/skeleton-loader.js"></script>
+	  <script src="/static/js/data-freshness.js"></script>
+		</body>
+		</html>|html}
+	    (escape_html html_lang)
+	    title
+	    og_img_html
+	    observability_html
+	    (escape_html skip_to_content)
+	    (escape_html nav_players)
+	    (escape_html nav_teams)
+	    (escape_html nav_standings)
+	    (escape_html nav_games)
+	    (escape_html nav_compare)
+		    (escape_html nav_predict)
+		    freshness_html
+		    lang_menu
+		    (escape_html aria_toggle_theme)
+		    (escape_html aria_open_menu)
+		    (escape_html nav_players)
+		    (escape_html nav_teams)
+	    (escape_html nav_standings)
+	    (escape_html nav_games)
+	    (escape_html nav_compare)
+	    (escape_html nav_predict)
+	    content
+	    (escape_js_string sr_dark_on)
+	    (escape_js_string sr_dark_off)
+	    (escape_js_string sr_menu_open)
+	    (escape_js_string sr_menu_close)
 
 let eff_badge ?(show_label=false) eff =
   let color_cls = if eff >= 20.0 then "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/30"

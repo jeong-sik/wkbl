@@ -15,7 +15,7 @@ let multi_team_badges teams_str =
     let badges = teams |> List.map (fun t -> team_logo_tag ~class_name:"w-5 h-5" t) |> String.concat " " in
     Printf.sprintf {html|<div class="flex items-center gap-1 flex-wrap">%s</div>|html} badges
 
-let history_page (seasons: historical_season list) =
+let history_page ?(lang=I18n.Ko) (seasons: historical_season list) =
   let rows = seasons |> List.map (fun (s: historical_season) ->
     let champion = match s.hs_champion_team with Some t -> team_badge ~max_width:"max-w-[100px]" t | None -> "-" in
     let runner_up = match s.hs_runner_up with Some t -> team_badge ~max_width:"max-w-[100px]" t | None -> "-" in
@@ -48,7 +48,7 @@ let history_page (seasons: historical_season list) =
       </div>|html}
       (escape_html s.hs_season_name) champion mvp
   ) |> String.concat "\n" in
-  layout ~title:"역대 기록 | WKBL" ~content:(Printf.sprintf
+  layout ~lang ~title:"역대 기록 | WKBL" ~content:(Printf.sprintf
     {html|<div class="space-y-6">
       <div><h2 class="text-2xl font-bold text-slate-900 dark:text-slate-200">WKBL 역대 기록</h2>
         <p class="text-slate-500 dark:text-slate-400 text-sm">1998년 이후 시즌 우승, MVP 등 주요 기록을 정리했습니다.</p></div>
@@ -74,7 +74,7 @@ let history_page (seasons: historical_season list) =
     mobile_cards rows) ()
 
 (** Legends page - Hall of fame and legendary players *)
-let legends_page (legends: legend_player list) =
+let legends_page ?(lang=I18n.Ko) (legends: legend_player list) =
   (* Mobile card view *)
   let cards = legends |> List.map (fun (l: legend_player) ->
     let teams = match l.lp_teams with Some t -> multi_team_badges t | None -> "-" in
@@ -135,7 +135,7 @@ let legends_page (legends: legend_player list) =
       l.lp_championships l.lp_mvp_count l.lp_all_star_count
       l.lp_career_points l.lp_career_rebounds l.lp_career_assists
   ) |> String.concat "\n" in
-  layout ~title:"Legends | WKBL" ~content:(Printf.sprintf
+  layout ~lang ~title:"레전드 | WKBL" ~content:(Printf.sprintf
     {html|<div class="space-y-6">
       <div><h2 class="text-2xl font-bold text-slate-900 dark:text-slate-200">WKBL 레전드</h2>
         <p class="text-slate-500 dark:text-slate-400 text-sm">명예의 전당 및 역대 최고 선수들</p></div>
@@ -175,7 +175,7 @@ let legends_page (legends: legend_player list) =
     cards rows) ()
 
 (** Coaches page - Coaching records *)
-let coaches_page (coaches: coach list) =
+let coaches_page ?(lang=I18n.Ko) (coaches: coach list) =
   (* Mobile card view *)
   let cards = coaches |> List.map (fun (c: coach) ->
     let team = match c.c_team with Some t -> escape_html t | None -> "-" in
@@ -238,7 +238,7 @@ let coaches_page (coaches: coach list) =
       </tr>|html}
       (escape_html c.c_coach_name) team tenure c.c_championships c.c_regular_season_wins c.c_playoff_wins player_info
   ) |> String.concat "\n" in
-  layout ~title:"Coaches | WKBL" ~content:(Printf.sprintf
+  layout ~lang ~title:"감독 | WKBL" ~content:(Printf.sprintf
     {html|<div class="space-y-6">
       <div><h2 class="text-2xl font-bold text-slate-900 dark:text-slate-200">WKBL 감독</h2>
         <p class="text-slate-500 dark:text-slate-400 text-sm">감독 기록 및 업적</p></div>
@@ -266,7 +266,7 @@ let coaches_page (coaches: coach list) =
     cards rows) ()
 
 (** Player career page - Year by year stats for a player *)
-let player_career_page ~player_name (entries: player_career_entry list) =
+let player_career_page ?(lang=I18n.Ko) ~player_name (entries: player_career_entry list) =
   let rows = entries |> List.map (fun (e: player_career_entry) ->
     let jersey = match e.pce_jersey_number with Some n -> string_of_int n | None -> "-" in
     let gp = match e.pce_games_played with Some g -> string_of_int g | None -> "-" in
@@ -289,7 +289,7 @@ let player_career_page ~player_name (entries: player_career_entry list) =
       </tr>|html}
       (escape_html e.pce_season_id) (escape_html e.pce_team) jersey gp ppg rpg apg allstar awards
   ) |> String.concat "\n" in
-  layout ~title:(Printf.sprintf "%s 시즌별 기록 | WKBL" (escape_html player_name)) ~content:(Printf.sprintf
+  layout ~lang ~title:(Printf.sprintf "%s 시즌별 기록 | WKBL" (escape_html player_name)) ~content:(Printf.sprintf
     {html|<div class="space-y-6">
       <div><h2 class="text-2xl font-bold text-slate-900 dark:text-slate-200">%s</h2>
         <p class="text-slate-500 dark:text-slate-400 text-sm">시즌별 기록입니다.</p></div>
