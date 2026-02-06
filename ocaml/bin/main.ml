@@ -394,22 +394,27 @@ Sitemap: https://wkbl.win/sitemap.xml
       | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
     );
 
-    (* Games & Boxscores List *)
-    Kirin.get "/games" (fun request ->
-      let season = Kirin.query_opt "season" request |> Option.value ~default:"ALL" in
-      let page = Kirin.query_opt "page" request |> Option.map int_of_string |> Option.value ~default:1 in
-      match Db.get_seasons (), Db.get_games ~season ~page () with
-      | Ok seasons, Ok games ->
-          Kirin.html (Views.games_page ~page ~season ~seasons games)
-      | _ -> Kirin.server_error ()
-    );
+	    (* Games & Boxscores List *)
+	    Kirin.get "/games" (fun request ->
+	      let page = Kirin.query_opt "page" request |> Option.map int_of_string |> Option.value ~default:1 in
+	      match Db.get_seasons () with
+	      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+	      | Ok seasons ->
+	          let season = query_season_or_latest request seasons in
+	          (match Db.get_games ~season ~page () with
+	          | Ok games -> Kirin.html (Views.games_page ~page ~season ~seasons games)
+	          | Error e -> Kirin.html (Views.error_page (Db.show_db_error e)))
+	    );
 
-    Kirin.get "/games/table" (fun request ->
-      let season = Kirin.query_opt "season" request |> Option.value ~default:"ALL" in
-      match Db.get_games ~season () with
-      | Ok games -> Kirin.html (Views.games_table games)
-      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
-    );
+	    Kirin.get "/games/table" (fun request ->
+	      match Db.get_seasons () with
+	      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+	      | Ok seasons ->
+	          let season = query_season_or_latest request seasons in
+	          (match Db.get_games ~season () with
+	          | Ok games -> Kirin.html (Views.games_table games)
+	          | Error e -> Kirin.html (Views.error_page (Db.show_db_error e)))
+	    );
 
     (* Boxscores List *)
     Kirin.get "/boxscores" (fun request ->
