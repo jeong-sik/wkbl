@@ -465,10 +465,11 @@ let run_sync_schedule ~sw ~env =
   (match (completed_result, scheduled_result) with
   | Ok (Some c), Ok (Some s) ->
       Printf.printf "Season 046: %d completed, %d scheduled (Total: %d)\n" c s (c + s)
-  | _ -> ())
+  | _ -> ());
 
   (* Refresh matviews to make new games visible *)
   let _ = Db.refresh_matviews () in
+  ()
 (** Sync DataLab game results to database *)
 let run_sync_games ~sw ~env ~season_filter =
   let db_url = match get_db_url () with
