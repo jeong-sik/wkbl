@@ -930,7 +930,7 @@ let boxscore_data_notes_html ~official_link =
      <div class="pt-1 text-slate-600 dark:text-slate-400 font-bold">검증 기준</div>
      <div>• <span class="font-mono text-slate-900 dark:text-slate-200">일치 (✓)</span>: 최종 스코어와 양 팀 선수 득점 합계가 모두 맞습니다.</div>
      <div>• <span class="font-mono text-slate-900 dark:text-slate-200">추정 (Σ)</span>: 최종 스코어 또는 득점 합계가 일부 비어 있어 교차 확인이 어렵습니다. 화면에는 가능한 데이터로 계산한 스코어를 표시합니다.</div>
-     <div>• <span class="font-mono text-slate-900 dark:text-slate-200">불일치 (!)</span>: 최종 스코어와 선수 득점 합계가 모두 있는데 값이 다릅니다. (<a href="/qa" class="text-orange-600 dark:text-orange-400 hover:underline">QA</a>)</div>
+     <div>• <span class="font-mono text-slate-900 dark:text-slate-200">불일치 (!)</span>: 최종 스코어와 선수 득점 합계가 모두 있는데 값이 다릅니다. (<a href="/qa" class="text-orange-600 dark:text-orange-400 hover:underline">데이터 점검</a>)</div>
      <div class="pt-1">※ 이 검증은 “최종 득점”만 대상으로, 다른 스탯(리바운드/어시스트 등)은 별도 검증이 필요합니다.</div>
      <div>※ 동명이인 매칭 오류로 같은 기록 줄이 중복될 수 있어, 같은 줄은 1개만 표시합니다.</div>
     </div>
