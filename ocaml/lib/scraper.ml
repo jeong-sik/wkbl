@@ -1723,6 +1723,8 @@ type schedule_entry = {
   sch_time: string;              (* e.g., "16:00" *)
   sch_home_team: string;         (* Home team name *)
   sch_away_team: string;         (* Away team name *)
+  sch_home_team_code: string option; (* Numeric team code when available (e.g., "09") *)
+  sch_away_team_code: string option; (* Numeric team code when available (e.g., "03") *)
   sch_home_score: int option;    (* Home score (None if not played) *)
   sch_away_score: int option;    (* Away score (None if not played) *)
   sch_venue: string;             (* e.g., "부천체육관" *)
@@ -1742,11 +1744,82 @@ let game_params_of_href href =
 (** Extract (game_type, game_no) from schedule row action links. *)
 let extract_game_meta_from_schedule_row row =
   let open Soup in
+  let parse_js_call s =
+    let try_re re =
+      try
+        let _ = Str.search_forward re s 0 in
+        let gt = Str.matched_group 1 s in
+        let gn = Str.matched_group 2 s |> int_of_string_opt in
+        (Some gt, gn)
+      with Not_found -> (None, None)
+    in
+    (* Examples:
+       - goTodayGame('01', 62);
+       - goLive('01', 62); *)
+    let r1 = Str.regexp "goTodayGame('\\([0-9][0-9]\\)'[ ]*,[ ]*\\([0-9]+\\))" in
+    let r2 = Str.regexp "goLive('\\([0-9][0-9]\\)'[ ]*,[ ]*\\([0-9]+\\))" in
+    match try_re r1 with
+    | (Some _ as gt, gn) -> (gt, gn)
+    | (None, None) -> try_re r2
+    | other -> other
+  in
+  let parse_datalab_id id =
+    (* id format: {season(3)}{game_type(2)}{game_no(rest)} *)
+    if String.length id >= 8 then
+      let game_type = String.sub id 3 2 in
+      let game_no = String.sub id 5 (String.length id - 5) |> int_of_string_opt in
+      (Some game_type, game_no)
+    else
+      (None, None)
+  in
+  (* 1) result.asp link *)
   match row $? "a[href*='result.asp']" with
-  | None -> (None, None)
   | Some a ->
       let href = attribute "href" a |> Option.value ~default:"" |> String.trim in
       if href = "" then (None, None) else game_params_of_href href
+  | None -> (
+      (* 2) DataLab link: http://datalab.wkbl.or.kr/?id=04601062 *)
+      match row $? "a[href*='datalab.wkbl.or.kr']" with
+      | Some a ->
+          let href = attribute "href" a |> Option.value ~default:"" |> String.trim in
+          if href = "" then (None, None)
+          else
+            let uri = Uri.of_string href in
+            let id_opt = Uri.get_query_param uri "id" in
+            (match id_opt with
+            | Some id -> parse_datalab_id id
+            | None -> (None, None))
+      | None -> (
+          (* 3) JS onclick fallback *)
+          match row $? "a[onclick*='goTodayGame']" with
+          | Some a ->
+              let s = attribute "onclick" a |> Option.value ~default:"" |> String.trim in
+              if s = "" then (None, None) else parse_js_call s
+          | None ->
+              (match row $? "a[onclick*='goLive']" with
+              | Some a ->
+                  let s = attribute "onclick" a |> Option.value ~default:"" |> String.trim in
+                  if s = "" then (None, None) else parse_js_call s
+              | None -> (None, None))
+        )
+    )
+
+(** Extract numeric team_code from a team logo image src.
+    Example: "/static/images/team/teamlogo_03.png" -> Some "03" *)
+let team_code_of_teamlogo_src src =
+  let re = Str.regexp "teamlogo_\\([0-9][0-9]\\)\\.png" in
+  try
+    let _ = Str.search_forward re src 0 in
+    Some (Str.matched_group 1 src)
+  with Not_found -> None
+
+let team_code_from_logo_node node =
+  let open Soup in
+  match node $? "img[src*='teamlogo_']" with
+  | None -> None
+  | Some img ->
+      let src = attribute "src" img |> Option.value ~default:"" |> String.trim in
+      if src = "" then None else team_code_of_teamlogo_src src
 
 (** Build game_id from season_code + game_type + game_no *)
 let game_id_of_params ~season_code ~game_type_opt ~game_no_opt =
@@ -1790,39 +1863,49 @@ let parse_schedule_html ~season ~ym html =
     let date_id = attribute "id" row |> Option.value ~default:"" in
     if String.length date_id < 8 then Ok None
     else
-      let date =
-        Printf.sprintf "%s-%s-%s"
-          (String.sub date_id 0 4)
-          (String.sub date_id 4 2)
-          (String.sub date_id 6 2)
-      in
-      let tds = row |> select "td" |> to_list in
-      match List.nth_opt tds 0, List.nth_opt tds 2, List.nth_opt tds 3 with
-      | Some day_cell, Some venue_cell, Some time_cell ->
-          let* day_span =
-            select_one "span.language" day_cell
-            |> require_opt ~ctx:(Printf.sprintf "missing day span (id=%s)" date_id)
-          in
-          let* away_node =
-            select_one ".info_team.away .team_name" row
-            |> require_opt ~ctx:(Printf.sprintf "missing away team (id=%s)" date_id)
-          in
-          let* home_node =
-            select_one ".info_team.home .team_name" row
-            |> require_opt ~ctx:(Printf.sprintf "missing home team (id=%s)" date_id)
-          in
-          let day = texts_trim day_span in
-          let away_team = texts_trim away_node in
-          let home_team = texts_trim home_node in
-          let venue = texts_trim venue_cell in
-          let time = texts_trim time_cell in
-          let* away_score = parse_score_opt ~date_id row ".info_team.away .txt_score" in
-          let* home_score = parse_score_opt ~date_id row ".info_team.home .txt_score" in
+	      let date =
+	        Printf.sprintf "%s-%s-%s"
+	          (String.sub date_id 0 4)
+	          (String.sub date_id 4 2)
+	          (String.sub date_id 6 2)
+	      in
+	      let tds = row |> select "td" |> to_list in
+	      match List.nth_opt tds 0, List.nth_opt tds 2, List.nth_opt tds 3 with
+	      | Some day_cell, Some venue_cell, Some time_cell ->
+	          let* day_span =
+	            select_one "span.language" day_cell
+	            |> require_opt ~ctx:(Printf.sprintf "missing day span (id=%s)" date_id)
+	          in
+	          let* away_team_node =
+	            select_one ".info_team.away .team_name" row
+	            |> require_opt ~ctx:(Printf.sprintf "missing away team (id=%s)" date_id)
+	          in
+	          let* home_team_node =
+	            select_one ".info_team.home .team_name" row
+	            |> require_opt ~ctx:(Printf.sprintf "missing home team (id=%s)" date_id)
+	          in
+	          let away_team_code =
+	            match select_one ".info_team.away" row with
+	            | None -> None
+	            | Some node -> team_code_from_logo_node node
+	          in
+	          let home_team_code =
+	            match select_one ".info_team.home" row with
+	            | None -> None
+	            | Some node -> team_code_from_logo_node node
+	          in
+	          let day = texts_trim day_span in
+	          let away_team = texts_trim away_team_node in
+	          let home_team = texts_trim home_team_node in
+	          let venue = texts_trim venue_cell in
+	          let time = texts_trim time_cell in
+	          let* away_score = parse_score_opt ~date_id row ".info_team.away .txt_score" in
+	          let* home_score = parse_score_opt ~date_id row ".info_team.home .txt_score" in
 
-          let game_type_opt, game_no_opt = extract_game_meta_from_schedule_row row in
-          let game_id_opt = game_id_of_params ~season_code:season ~game_type_opt ~game_no_opt in
-          Ok (Some {
-            sch_game_id = game_id_opt;
+	          let game_type_opt, game_no_opt = extract_game_meta_from_schedule_row row in
+	          let game_id_opt = game_id_of_params ~season_code:season ~game_type_opt ~game_no_opt in
+	          Ok (Some {
+	            sch_game_id = game_id_opt;
             sch_game_type = game_type_opt;
             sch_game_no = game_no_opt;
             sch_date = date;
@@ -1830,6 +1913,8 @@ let parse_schedule_html ~season ~ym html =
             sch_time = time;
             sch_home_team = home_team;
             sch_away_team = away_team;
+            sch_home_team_code = home_team_code;
+            sch_away_team_code = away_team_code;
             sch_home_score = home_score;
             sch_away_score = away_score;
             sch_venue = venue;
@@ -2033,8 +2118,12 @@ let parse_schedule_api_html ~season_code ~season_name:_ html =
 
       (* Extract teams and scores from team_versus div *)
       let team_div = row $ ".team_versus" in
-      let away_team = team_div $ ".away .team_name" |> R.leaf_text in
-      let home_team = team_div $ ".home .team_name" |> R.leaf_text in
+      let away_block = team_div $ ".away" in
+      let home_block = team_div $ ".home" in
+      let away_team = away_block $ ".team_name" |> R.leaf_text in
+      let home_team = home_block $ ".team_name" |> R.leaf_text in
+      let away_team_code = team_code_from_logo_node away_block in
+      let home_team_code = team_code_from_logo_node home_block in
 
       (* Extract scores - may not exist for scheduled games *)
       let away_score = try
@@ -2073,6 +2162,8 @@ let parse_schedule_api_html ~season_code ~season_name:_ html =
         sch_time = time;
         sch_home_team = home_team;
         sch_away_team = away_team;
+        sch_home_team_code = home_team_code;
+        sch_away_team_code = away_team_code;
         sch_home_score = home_score;
         sch_away_score = away_score;
         sch_venue = venue;
@@ -2397,8 +2488,16 @@ let sync_current_season_schedule ~sw ~env () =
       let game_time = if entry.sch_time = "" then None else Some entry.sch_time in
       let venue = if entry.sch_venue = "" then None else Some entry.sch_venue in
 
-      let home_team_code = code_from_team_name entry.sch_home_team in
-      let away_team_code = code_from_team_name entry.sch_away_team in
+      let home_team_code =
+        match entry.sch_home_team_code with
+        | Some c -> c
+        | None -> code_from_team_name entry.sch_home_team
+      in
+      let away_team_code =
+        match entry.sch_away_team_code with
+        | Some c -> c
+        | None -> code_from_team_name entry.sch_away_team
+      in
 
       let upsert_res =
         Db.with_db (fun db ->

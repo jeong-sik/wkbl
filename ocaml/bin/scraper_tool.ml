@@ -86,44 +86,110 @@ let run_sync_boxscore ~sw ~env ~season_filter =
   | Ok () -> ()
   | Error e -> Printf.eprintf "DB Error: %s\n" (Db.show_db_error e); exit 1);
 
-  let season = Option.value ~default:(Scraper.current_season_code_auto ()) season_filter in
-  match Db_sync.get_games_missing_boxscore ~season () with
-  | Error e -> Printf.eprintf "Failed to fetch missing games: %s\n" (Db.show_db_error e)
-  | Ok missing_games ->
-      let total = List.length missing_games in
-      Printf.printf "Found %d games missing boxscores. Starting sync...\n%!" total;
+  let season_missing =
+    Option.value ~default:(Scraper.current_season_code_auto ()) season_filter
+  in
+  let season_mismatch = Option.value ~default:"ALL" season_filter in
+
+  let missing_games =
+    match Db_sync.get_games_missing_boxscore ~season:season_missing () with
+    | Ok xs -> xs
+    | Error e ->
+        Printf.eprintf "Failed to fetch missing games: %s\n" (Db.show_db_error e);
+        []
+  in
+
+  let mismatch_games =
+    let take n xs =
+      let rec loop acc n = function
+        | [] -> List.rev acc
+        | _ when n <= 0 -> List.rev acc
+        | x :: rest -> loop (x :: acc) (n - 1) rest
+      in
+      loop [] n xs
+    in
+    match Db_sync.get_games_score_mismatch ~season:season_mismatch () with
+    | Ok xs ->
+        (* When running daily for current season, repairing ALL historical mismatches can
+           be unexpectedly heavy. Keep it bounded by default and let manual runs go deeper. *)
+        (match season_filter with
+        | None -> take 200 xs
+        | Some _ -> xs)
+    | Error e ->
+        Printf.eprintf "Failed to fetch mismatch games: %s\n" (Db.show_db_error e);
+        []
+  in
+
+  let uniq_by_game_id (games : Db_sync.missing_boxscore_game list) =
+    let seen = Hashtbl.create 256 in
+    games
+    |> List.filter (fun g ->
+      if Hashtbl.mem seen g.Db_sync.game_id then false
+      else (Hashtbl.add seen g.Db_sync.game_id (); true)
+    )
+  in
+
+  let games = uniq_by_game_id (missing_games @ mismatch_games) in
+  let total = List.length games in
+
+  Printf.printf
+    "Found %d games missing boxscores + %d score mismatches. Starting sync (%d total)...\n%!"
+    (List.length missing_games)
+    (List.length mismatch_games)
+    total;
+
+  if total = 0 then (
+    Printf.printf "Nothing to sync.\n%!";
+  ) else (
       
       let clock = Eio.Stdenv.clock env in
-      missing_games |> List.iteri (fun i (g : Db_sync.missing_boxscore_game) ->
-        Printf.printf "[%d/%d] Syncing boxscore for game: %s\n%!" (i + 1) total g.game_id;
+      games |> List.iteri (fun i (g : Db_sync.missing_boxscore_game) ->
+        Printf.printf "[%d/%d] Syncing boxscore for game: %s\n%!" (i + 1) total g.Db_sync.game_id;
 
         let tables =
           Scraper.fetch_game_boxscore
             ~sw ~env
-            ~season_gu:g.season_code
-            ~game_type:g.game_type
-            ~game_no:g.game_no
-            ~ym:g.ym
+            ~season_gu:g.Db_sync.season_code
+            ~game_type:g.Db_sync.game_type
+            ~game_no:g.Db_sync.game_no
+            ~ym:g.Db_sync.ym
         in
         match tables with
         | [away_stats; home_stats] ->
             let upsert_team team_code stats =
               stats |> List.iter (fun s ->
-                match Db_sync.upsert_game_stat s ~game_id:g.game_id ~team_code with
+                match Db_sync.upsert_game_stat s ~game_id:g.Db_sync.game_id ~team_code with
                 | Ok () -> ()
                 | Error e ->
                     Printf.eprintf "  ✗ Failed to upsert stat for %s: %s\n"
                       s.bs_player_name (Db.show_db_error e)
               )
             in
-            upsert_team g.away_team_code away_stats;
-            upsert_team g.home_team_code home_stats;
+            upsert_team g.Db_sync.away_team_code away_stats;
+            upsert_team g.Db_sync.home_team_code home_stats;
+            let sum_pts stats =
+              stats |> List.fold_left (fun acc s -> acc + s.Scraper.bs_pts) 0
+            in
+            let away_pts = sum_pts away_stats in
+            let home_pts = sum_pts home_stats in
+            (match Db_sync.update_game_scores_if_missing ~game_id:g.Db_sync.game_id ~away_score:away_pts ~home_score:home_pts with
+            | Ok () -> ()
+            | Error e ->
+                Printf.eprintf "  ✗ Failed to backfill scores for %s: %s\n"
+                  g.Db_sync.game_id (Db.show_db_error e));
             Eio.Time.sleep clock 0.2 (* Rate limit between games *)
         | _ ->
             Printf.eprintf "  ✗ Unexpected boxscore HTML for game %s (tables=%d)\n"
-              g.game_id (List.length tables)
+              g.Db_sync.game_id (List.length tables)
       );
+      (match Db.refresh_matviews () with
+      | Ok () -> ()
+      | Error e ->
+          Printf.eprintf "  ✗ Failed to refresh materialized views: %s\n%!"
+            (Db.show_db_error e));
+
       Printf.printf "\n=== Boxscore Sync Complete ===\n"
+  )
 
 let run_draft ~sw ~env ~season_filter ~csv_output =
   let entries = match season_filter with
@@ -424,8 +490,16 @@ let run_sync_schedule ~sw ~env ~purge =
 
   entries
   |> List.iter (fun (e : Scraper.schedule_entry) ->
-    let hc = Scraper.code_from_team_name e.sch_home_team in
-    let ac = Scraper.code_from_team_name e.sch_away_team in
+    let hc =
+      match e.sch_home_team_code with
+      | Some c -> c
+      | None -> Scraper.code_from_team_name e.sch_home_team
+    in
+    let ac =
+      match e.sch_away_team_code with
+      | Some c -> c
+      | None -> Scraper.code_from_team_name e.sch_away_team
+    in
     if String.starts_with ~prefix:"XX_" hc || String.starts_with ~prefix:"XX_" ac then (
       incr error_count;
       Printf.eprintf "  ✗ %s: Unknown team - %s or %s\n" e.sch_date e.sch_home_team e.sch_away_team
@@ -651,8 +725,16 @@ let run_sync_history ~sw ~env ~season_filter ~purge =
     );
 
     entries |> List.iter (fun (e : Scraper.schedule_entry) ->
-      let hc = Scraper.code_from_team_name e.sch_home_team in
-      let ac = Scraper.code_from_team_name e.sch_away_team in
+      let hc =
+        match e.sch_home_team_code with
+        | Some c -> c
+        | None -> Scraper.code_from_team_name e.sch_home_team
+      in
+      let ac =
+        match e.sch_away_team_code with
+        | Some c -> c
+        | None -> Scraper.code_from_team_name e.sch_away_team
+      in
       if String.starts_with ~prefix:"XX_" hc || String.starts_with ~prefix:"XX_" ac then (
         incr errors;
         if !errors <= 3 then
