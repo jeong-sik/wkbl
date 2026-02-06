@@ -1287,6 +1287,26 @@ let test_seasons_catalog_unique_codes () =
   let uniq = codes |> List.fold_left (fun acc c -> S.add c acc) S.empty |> S.cardinal in
   Alcotest.(check int) "unique season_code" (List.length codes) uniq
 
+let test_season_start_year_of_datalab_code () =
+  Alcotest.(check (option int))
+    "046 -> 2025"
+    (Some 2025)
+    (Wkbl.Scraper.season_start_year_of_datalab_code "046");
+  Alcotest.(check (option int))
+    "001 -> 1980"
+    (Some 1980)
+    (Wkbl.Scraper.season_start_year_of_datalab_code "001");
+  Alcotest.(check (option int))
+    "invalid -> None"
+    None
+    (Wkbl.Scraper.season_start_year_of_datalab_code "bad")
+
+let test_is_league_team_variants () =
+  Alcotest.(check bool) "BNK썸 -> true" true (Wkbl.Scraper.is_league_team "BNK썸");
+  Alcotest.(check bool) "부산 BNK 썸 -> true" true (Wkbl.Scraper.is_league_team "부산 BNK 썸");
+  (* All-Star teams should not be included in league schedule filters *)
+  Alcotest.(check bool) "팀 포니블 -> false" false (Wkbl.Scraper.is_league_team "팀 포니블")
+
 let test_game_params_of_href () =
   let href = "/game/result.asp?season_gu=046&gun=1&game_type=01&game_no=40&ym=202601&viewType=2" in
   let (game_type, game_no) = Wkbl.Scraper.game_params_of_href href in
@@ -1614,6 +1634,8 @@ let scraper_tests = [
   Alcotest.test_case "get_last_sync_time_str" `Quick test_get_last_sync_time_str_initial;
   Alcotest.test_case "seasons_catalog name_of_code" `Quick test_seasons_catalog_name_of_code;
   Alcotest.test_case "seasons_catalog unique codes" `Quick test_seasons_catalog_unique_codes;
+  Alcotest.test_case "season_start_year_of_datalab_code" `Quick test_season_start_year_of_datalab_code;
+  Alcotest.test_case "is_league_team variants" `Quick test_is_league_team_variants;
   Alcotest.test_case "schedule sync success policy" `Quick test_schedule_sync_success_policy;
   Alcotest.test_case "schedule sync suspicion policy" `Quick test_schedule_sync_suspicion_reason_policy;
   Alcotest.test_case "game_params_of_href" `Quick test_game_params_of_href;

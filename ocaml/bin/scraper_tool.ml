@@ -417,12 +417,13 @@ let run_allstar ~sw ~env ~csv_output ~stats_output =
     )
 
 let run_schedule ~sw ~env ~month_filter ~csv_output =
+  let season_code = Scraper.current_season_code_auto () in
   let entries = match month_filter with
     | Some ym ->
         Printf.printf "Fetching schedule for %s...\n\n" ym;
-        Scraper.fetch_schedule_month ~sw ~env ~ym ~season:"046"
+        Scraper.fetch_schedule_month ~sw ~env ~ym ~season:season_code
     | None ->
-        Scraper.fetch_season_schedule ~sw ~env ~season_code:"046"
+        Scraper.fetch_season_schedule ~sw ~env ~season_code
   in
   Printf.printf "\n=== Fetched %d schedule entries ===\n\n" (List.length entries);
   if csv_output then
@@ -460,23 +461,28 @@ let run_sync_schedule ~sw ~env ~purge =
       Printf.eprintf "Database connection failed: %s\n" (Db.show_db_error e);
       exit 1);
 
+  let season_code = Scraper.current_season_code_auto () in
   let season_name =
-    List.assoc_opt "046" Scraper.all_season_codes |> Option.value ~default:"2025-2026"
+    let from_catalog = Scraper.season_name_of_code season_code in
+    if String.starts_with ~prefix:"Unknown-" from_catalog then
+      Scraper.current_season_name_auto ()
+    else
+      from_catalog
   in
-  let _ = Db.with_db (fun db -> Db.Repo.upsert_season ~season_code:"046" ~season_name db) in
+  let _ = Db.with_db (fun db -> Db.Repo.upsert_season ~season_code ~season_name db) in
 
   Printf.printf "Fetching schedule from WKBL...\n";
-  let entries = Scraper.fetch_season_schedule ~sw ~env ~season_code:"046" in
+  let entries = Scraper.fetch_season_schedule ~sw ~env ~season_code in
   Printf.printf "Fetched %d schedule entries.\n\n" (List.length entries);
 
   if purge && entries = [] then (
-    Printf.eprintf "Error: fetched 0 schedule entries; refusing to purge season 046.\n%!";
+    Printf.eprintf "Error: fetched 0 schedule entries; refusing to purge season %s.\n%!" season_code;
     exit 1
   );
 
   if purge then (
-    Printf.printf "Purging existing schedule rows for season 046...\n%!";
-    match Db.with_db (fun db -> Db.Repo.delete_schedule_by_season ~season_code:"046" db) with
+    Printf.printf "Purging existing schedule rows for season %s...\n%!" season_code;
+    match Db.with_db (fun db -> Db.Repo.delete_schedule_by_season ~season_code db) with
     | Ok () -> Printf.printf "  ✓ Purged.\n%!"
     | Error e ->
         Printf.eprintf "  ✗ Purge failed: %s\n%!" (Db.show_db_error e);
@@ -560,14 +566,14 @@ let run_sync_schedule ~sw ~env ~purge =
   Printf.printf "Schedule: %d ok, %d errors | Games: %d upserted\n" !success_count !error_count !game_success;
 
   let completed_result =
-    Db.with_db (fun db -> Db.Repo.count_schedule_by_status ~season_code:"046" ~status:"completed" db)
+    Db.with_db (fun db -> Db.Repo.count_schedule_by_status ~season_code ~status:"completed" db)
   in
   let scheduled_result =
-    Db.with_db (fun db -> Db.Repo.count_schedule_by_status ~season_code:"046" ~status:"scheduled" db)
+    Db.with_db (fun db -> Db.Repo.count_schedule_by_status ~season_code ~status:"scheduled" db)
   in
   match (completed_result, scheduled_result) with
   | Ok (Some c), Ok (Some s) ->
-      Printf.printf "Season 046: %d completed, %d scheduled (Total: %d)\n" c s (c + s)
+      Printf.printf "Season %s: %d completed, %d scheduled (Total: %d)\n" season_code c s (c + s)
   | _ -> ()
 
 (* Sync DataLab game results to database *)
@@ -593,8 +599,7 @@ let run_sync_games ~sw ~env ~season_filter =
         [(code, name)]
     | None ->
         (* Default: current season only (DataLab code) *)
-        let current_main = Scraper.current_season_code_auto () in
-        let current_code = Scraper.main_to_datalab current_main in
+        let current_code = Scraper.current_season_code_auto () in
         let name = Scraper.season_name_of_code current_code in
         [(current_code, name)]
   in
