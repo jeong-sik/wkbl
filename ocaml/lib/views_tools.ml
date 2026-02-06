@@ -81,6 +81,22 @@ let qa_dashboard_page (report: Db.qa_db_report) ?(markdown=None) () =
         ids)
     |> String.concat "\n"
   in
+  let dup_identity_rows =
+    report.qdr_duplicate_player_identity_sample
+    |> List.map (fun (row: Db.qa_duplicate_player_identity) ->
+      let ids =
+        row.qdpi_player_ids
+        |> List.map (fun id -> Printf.sprintf {html|<a href="/player/%s" class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700/60 text-[10px] font-mono text-slate-900 dark:text-slate-200 hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300">%s</a>|html} (escape_html id) (escape_html id))
+        |> String.concat " "
+      in
+      Printf.sprintf
+        {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors"><td class="px-3 py-2 text-slate-900 dark:text-slate-200 text-xs">%s</td><td class="px-3 py-2 text-slate-500 dark:text-slate-400 font-mono text-xs">%s</td><td class="px-3 py-2 text-right font-mono text-xs text-slate-900 dark:text-slate-200 tabular-nums">%d</td><td class="px-3 py-2">%s</td></tr>|html}
+        (escape_html row.qdpi_player_name)
+        (escape_html row.qdpi_birth_date)
+        row.qdpi_id_count
+        ids)
+    |> String.concat "\n"
+  in
   let schedule_missing_game_rows =
     report.qdr_schedule_missing_game_sample
     |> List.map (fun (row: Db.qa_schedule_missing_game) ->
@@ -150,7 +166,7 @@ let qa_dashboard_page (report: Db.qa_db_report) ?(markdown=None) () =
   in
   layout ~title:"QA | WKBL"
     ~content:(Printf.sprintf
-      {html|<div class="space-y-6 animate-fade-in"><div class="flex flex-col gap-2"><h2 class="text-2xl font-black text-slate-900 dark:text-slate-200">Data Quality (QA)</h2><div class="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">기록 신뢰도를 위해 <span class="font-mono text-slate-900 dark:text-slate-200">스코어 불일치</span>, <span class="font-mono text-slate-900 dark:text-slate-200">팀 수 이상</span>, <span class="font-mono text-slate-900 dark:text-slate-200">중복 스탯 row</span>, <span class="font-mono text-slate-900 dark:text-slate-200">중복 선수 ID</span>를 점검합니다. (Generated: <span class="font-mono">%s</span>)</div></div>%s<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">%s%s%s%s%s%s%s%s</div><div class="grid grid-cols-1 lg:grid-cols-3 gap-4">%s%s%s</div><div class="grid grid-cols-1 gap-4">%s<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-lg"><div class="flex items-center justify-between gap-3"><h3 class="text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-xs">Score Mismatch</h3><span class="text-[11px] text-slate-500 dark:text-slate-400 font-mono">count=%d</span></div><div class="mt-3 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed"><span class="font-mono text-slate-900 dark:text-slate-200">games.home/away_score</span> vs <span class="font-mono text-slate-900 dark:text-slate-200">SUM(game_stats.pts)</span> 비교</div><div class="mt-4 overflow-x-auto"><table class="min-w-[860px] w-full text-sm font-mono table-fixed" aria-label="스코어 불일치 목록">
+      {html|<div class="space-y-6 animate-fade-in"><div class="flex flex-col gap-2"><h2 class="text-2xl font-black text-slate-900 dark:text-slate-200">Data Quality (QA)</h2><div class="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">기록 신뢰도를 위해 <span class="font-mono text-slate-900 dark:text-slate-200">스코어 불일치</span>, <span class="font-mono text-slate-900 dark:text-slate-200">팀 수 이상</span>, <span class="font-mono text-slate-900 dark:text-slate-200">중복 스탯 row</span>, <span class="font-mono text-slate-900 dark:text-slate-200">중복 선수 ID</span>, <span class="font-mono text-slate-900 dark:text-slate-200">이름+생년월일 중복</span>을 점검합니다. (Generated: <span class="font-mono">%s</span>)</div></div>%s<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">%s%s%s%s%s%s%s%s</div><div class="grid grid-cols-1 lg:grid-cols-4 gap-4">%s%s%s%s</div><div class="grid grid-cols-1 gap-4">%s<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-lg"><div class="flex items-center justify-between gap-3"><h3 class="text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-xs">Score Mismatch</h3><span class="text-[11px] text-slate-500 dark:text-slate-400 font-mono">count=%d</span></div><div class="mt-3 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed"><span class="font-mono text-slate-900 dark:text-slate-200">games.home/away_score</span> vs <span class="font-mono text-slate-900 dark:text-slate-200">SUM(game_stats.pts)</span> 비교</div><div class="mt-4 overflow-x-auto"><table class="min-w-[860px] w-full text-sm font-mono table-fixed" aria-label="스코어 불일치 목록">
           <colgroup>
             <col style="width: 90px;"> <!-- Date -->
             <col style="width: 120px;"> <!-- Game -->
@@ -178,7 +194,14 @@ let qa_dashboard_page (report: Db.qa_db_report) ?(markdown=None) () =
             <col style="width: 80px;">  <!-- IDs -->
             <col style="width: auto;">  <!-- player_id -->
           </colgroup>
-          <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px]"><tr><th scope="col" class="px-3 py-2 text-left">Name</th><th scope="col" class="px-3 py-2 text-right" title="ID 수">IDs</th><th scope="col" class="px-3 py-2 text-left">player_id</th></tr></thead><tbody>%s</tbody></table></div></div></div>%s</div>|html}
+          <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px]"><tr><th scope="col" class="px-3 py-2 text-left">Name</th><th scope="col" class="px-3 py-2 text-right" title="ID 수">IDs</th><th scope="col" class="px-3 py-2 text-left">player_id</th></tr></thead><tbody>%s</tbody></table></div></div></div><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-lg"><div class="flex items-center justify-between gap-3"><h3 class="text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-xs">Duplicate Player Identity</h3><span class="text-[11px] text-slate-500 dark:text-slate-400 font-mono">count=%d</span></div><div class="mt-3 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">동일 이름 + 생년월일로 <span class="font-mono text-slate-900 dark:text-slate-200">player_id</span>가 여러 개인 케이스 (동일인 가능성 높음, 자동 병합 아님)</div><div class="mt-4 overflow-x-auto"><table class="min-w-[760px] w-full text-sm font-mono table-fixed" aria-label="중복 선수 신원 목록">
+          <colgroup>
+            <col style="width: 140px;"> <!-- Name -->
+            <col style="width: 120px;"> <!-- Birth -->
+            <col style="width: 80px;">  <!-- IDs -->
+            <col style="width: auto;">  <!-- player_id -->
+          </colgroup>
+          <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px]"><tr><th scope="col" class="px-3 py-2 text-left">Name</th><th scope="col" class="px-3 py-2 text-left">Birth</th><th scope="col" class="px-3 py-2 text-right" title="ID 수">IDs</th><th scope="col" class="px-3 py-2 text-left">player_id</th></tr></thead><tbody>%s</tbody></table></div></div></div>%s</div>|html}
       (escape_html report.qdr_generated_at)
       sources_block
       (kpi_card ~label:"Games" ~value_html:(int_chip report.qdr_games_total) ~hint_html:"전체 경기 수(정규/PO, 시범 제외)")
@@ -192,6 +215,7 @@ let qa_dashboard_page (report: Db.qa_db_report) ?(markdown=None) () =
       (kpi_card ~label:"Score Mismatch" ~value_html:(int_chip report.qdr_score_mismatch_count) ~hint_html:"최종 스코어 vs 합계 불일치")
       (kpi_card ~label:"Team Count != 2" ~value_html:(int_chip report.qdr_team_count_anomaly_count) ~hint_html:"한 경기 팀 수가 2가 아님")
       (kpi_card ~label:"Dup Player Rows" ~value_html:(int_chip report.qdr_duplicate_player_row_count) ~hint_html:"중복으로 라인이 2개 뜨는 원인")
+      (kpi_card ~label:"Dup Player Identity" ~value_html:(int_chip report.qdr_duplicate_player_identity_count) ~hint_html:"이름+생년월일 기준 중복 ID")
       schedule_missing_blocks
       report.qdr_score_mismatch_count
       mismatch_rows
@@ -201,6 +225,8 @@ let qa_dashboard_page (report: Db.qa_db_report) ?(markdown=None) () =
       dup_row_rows
       report.qdr_duplicate_player_name_count
       dup_name_rows
+      report.qdr_duplicate_player_identity_count
+      dup_identity_rows
       markdown_block) ()
 
 (** Draft / Trade (official) page *)
