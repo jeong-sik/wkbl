@@ -931,7 +931,7 @@ let test_extract_score_flow_dedup () =
 
 let test_game_flow_chart_empty () =
   let html = Wkbl.Views_tools.game_flow_chart ~home_team:"A" ~away_team:"B" [] in
-  Alcotest.(check bool) "empty placeholder" true (contains_substring html "No score flow data available")
+  Alcotest.(check bool) "empty placeholder" true (contains_substring html "흐름 데이터가 없습니다")
 
 let test_game_flow_chart_single_point () =
   let pt : Wkbl.Domain.score_flow_point = {
@@ -944,7 +944,7 @@ let test_game_flow_chart_single_point () =
   } in
   let html = Wkbl.Views_tools.game_flow_chart ~home_team:"A" ~away_team:"B" [pt] in
   Alcotest.(check bool) "renders svg" true (contains_substring html "<svg");
-  Alcotest.(check bool) "has header" true (contains_substring html "Game Flow")
+  Alcotest.(check bool) "has header" true (contains_substring html "경기 흐름")
 
 let score_flow_tests = [
   Alcotest.test_case "Period to number conversion" `Quick test_period_to_number;
