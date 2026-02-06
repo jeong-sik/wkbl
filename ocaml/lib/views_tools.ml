@@ -478,7 +478,7 @@ let transactions_page
           Printf.sprintf {html|<option value="%d" %s>%d</option>|html} y selected y)
       |> String.concat "\n"
     in
-    Printf.sprintf {html|<option value="0" %s>All</option>%s|html} all_selected base
+    Printf.sprintf {html|<option value="0" %s>전체</option>%s|html} all_selected base
   in
   let active_years = if active_tab = "trade" then trade_years else draft_years in
   let filter_form =
@@ -486,16 +486,16 @@ let transactions_page
       {html|<form method="get" action="/transactions" class="flex flex-col sm:flex-row sm:items-end gap-3">
   <input type="hidden" name="tab" value="%s">
   <div class="block text-xs text-slate-500 dark:text-slate-400 space-y-1">
-    <label for="filter-year" class="font-bold uppercase tracking-widest text-[10px]">Year</label>
+    <label for="filter-year" class="font-bold uppercase tracking-widest text-[10px]">연도</label>
     <select id="filter-year" name="year" class="bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700/60 rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-slate-200 focus:border-orange-500 focus:outline-none">
       %s
     </select>
   </div>
   <div class="block text-xs text-slate-500 dark:text-slate-400 space-y-1 min-w-0 flex-1">
-    <label for="filter-search" class="font-bold uppercase tracking-widest text-[10px]">Search</label>
-    <input id="filter-search" name="q" value="%s" placeholder="player / team / keyword" class="w-full bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700/60 rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-slate-200 focus:border-orange-500 focus:outline-none">
+    <label for="filter-search" class="font-bold uppercase tracking-widest text-[10px]">검색</label>
+    <input id="filter-search" name="q" value="%s" placeholder="선수 / 팀 / 키워드" class="w-full bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700/60 rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-slate-200 focus:border-orange-500 focus:outline-none">
   </div>
-  <button class="shrink-0 bg-orange-600 hover:bg-orange-500 text-slate-900 dark:text-slate-200 font-bold rounded-lg px-3 py-2 text-sm transition">Apply</button>
+  <button class="shrink-0 bg-orange-600 hover:bg-orange-500 text-slate-900 dark:text-slate-200 font-bold rounded-lg px-3 py-2 text-sm transition">적용</button>
 </form>|html}
       (escape_html active_tab)
       (year_options active_years)
@@ -536,7 +536,7 @@ let transactions_page
   <td class="px-3 py-2 min-w-0"><a class="text-slate-900 dark:text-slate-200 hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 font-bold truncate block" href="/player/%s">%s</a><div class="mt-1 text-[11px] text-slate-500 dark:text-slate-400 font-mono">%s</div></td>
   <td class="px-3 py-2">%s</td>
   <td class="px-3 py-2 text-[11px] text-slate-700 dark:text-slate-300 font-mono whitespace-pre-line break-words">%s</td>
-  <td class="px-3 py-2 text-[11px]"><a class="text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:text-slate-300 underline font-mono" href="%s" target="_blank" rel="noreferrer">Source</a></td>
+  <td class="px-3 py-2 text-[11px]"><a class="text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:text-slate-300 underline font-mono" href="%s" target="_blank" rel="noreferrer">출처</a></td>
 </tr>|html}
                 (escape_html y)
                 (escape_html (pick_label r))
@@ -561,13 +561,13 @@ let transactions_page
     </colgroup>
     <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px] whitespace-nowrap">
       <tr>
-        <th scope="col" class="px-3 py-2 text-left">Year</th>
-        <th scope="col" class="px-3 py-2 text-left" title="Draft pick order">Pick</th>
-        <th scope="col" class="px-3 py-2 text-left">Player</th>
-        <th scope="col" class="px-3 py-2 text-left">Team</th>
-        <th scope="col" class="px-3 py-2 text-left" title="Original text">Raw</th>
-        <th scope="col" class="px-3 py-2 text-left">Link</th>
-      </tr>
+	        <th scope="col" class="px-3 py-2 text-left">연도</th>
+	        <th scope="col" class="px-3 py-2 text-left" title="지명 순번">순번</th>
+	        <th scope="col" class="px-3 py-2 text-left">선수</th>
+	        <th scope="col" class="px-3 py-2 text-left">팀</th>
+	        <th scope="col" class="px-3 py-2 text-left" title="WKBL 원문">원문</th>
+	        <th scope="col" class="px-3 py-2 text-left">링크</th>
+	      </tr>
     </thead>
     <tbody>%s</tbody>
   </table>
@@ -668,7 +668,7 @@ let transactions_page
     <div class="flex flex-wrap items-center gap-2">%s%s%s</div>
   </div>
   <div class="text-slate-900 dark:text-slate-200 text-sm leading-relaxed break-words">%s</div>
-  <div class="text-[11px]"><a class="text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:text-slate-300 underline font-mono" href="%s" target="_blank" rel="noreferrer">Source</a></div>
+  <div class="text-[11px]"><a class="text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:text-slate-300 underline font-mono" href="%s" target="_blank" rel="noreferrer">출처</a></div>
 </li>|html}
                   (escape_html e.ote_event_date)
                   team_chips_html
@@ -708,7 +708,7 @@ let transactions_page
     Printf.sprintf
       {html|<div class="space-y-6 animate-fade-in">
   <div class="flex flex-col gap-2">
-    <h2 class="text-2xl font-black text-slate-900 dark:text-slate-200">Draft / Trade</h2>
+	    <h2 class="text-2xl font-black text-slate-900 dark:text-slate-200">드래프트 / 이적</h2>
     <div class="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">%s</div>
   </div>
   <div class="flex flex-wrap items-center gap-2">%s%s</div>
@@ -717,13 +717,13 @@ let transactions_page
   %s
 </div>|html}
       intro_html
-      (tab_link "draft" "Draft")
-      (tab_link "trade" "Trade")
+	      (tab_link "draft" "드래프트")
+	      (tab_link "trade" "이적")
       filter_form
       section
       sync_build_block
   in
-  layout ~title:"Draft / Trade | WKBL" ~content ()
+	  layout ~title:"드래프트 / 이적 | WKBL" ~content ()
 
 (* ===== Fantasy Calculator ===== *)
 
