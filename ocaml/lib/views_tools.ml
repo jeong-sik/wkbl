@@ -283,6 +283,7 @@ let qa_dashboard_page (report: Db.qa_db_report) ?(markdown=None) () =
 
 (** Draft / Trade (official) page *)
 let transactions_page
+  ~show_ops
   ~tab
   ~year
   ~q
@@ -349,7 +350,10 @@ let transactions_page
     let rows =
       match draft_picks with
       | [] ->
-          {html|<tr><td colspan="6" class="px-4 py-10 text-center text-slate-500 dark:text-slate-400 text-sm">No draft rows found. (Build with <span class="font-mono text-slate-700 dark:text-slate-300">WKBL_SYNC_DRAFT_TRADE=1</span> or run <span class="font-mono text-slate-700 dark:text-slate-300">scripts/wkbl_draft_trade_sync.py</span>)</td></tr>|html}
+          if show_ops then
+            {html|<tr><td colspan="6" class="px-4 py-10 text-center text-slate-500 dark:text-slate-400 text-sm">No draft rows found. (Build with <span class="font-mono text-slate-700 dark:text-slate-300">WKBL_SYNC_DRAFT_TRADE=1</span> or run <span class="font-mono text-slate-700 dark:text-slate-300">scripts/wkbl_draft_trade_sync.py</span>)</td></tr>|html}
+          else
+            {html|<tr><td colspan="6" class="px-4 py-10 text-center text-slate-500 dark:text-slate-400 text-sm">드래프트 데이터가 아직 없습니다.</td></tr>|html}
       | xs ->
           xs
           |> List.map (fun (r: draft_pick_row) ->
@@ -476,7 +480,10 @@ let transactions_page
     let rows =
       match trade_events with
       | [] ->
-          {html|<div class="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800/50 p-5 text-slate-500 dark:text-slate-400 text-sm">No trade events found. (Build with <span class="font-mono text-slate-700 dark:text-slate-300">WKBL_SYNC_DRAFT_TRADE=1</span> or run <span class="font-mono text-slate-700 dark:text-slate-300">scripts/wkbl_draft_trade_sync.py</span>)</div>|html}
+          if show_ops then
+            {html|<div class="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800/50 p-5 text-slate-500 dark:text-slate-400 text-sm">No trade events found. (Build with <span class="font-mono text-slate-700 dark:text-slate-300">WKBL_SYNC_DRAFT_TRADE=1</span> or run <span class="font-mono text-slate-700 dark:text-slate-300">scripts/wkbl_draft_trade_sync.py</span>)</div>|html}
+          else
+            {html|<div class="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800/50 p-5 text-slate-500 dark:text-slate-400 text-sm">이적 데이터가 아직 없습니다.</div>|html}
       | xs ->
           let items =
             xs
@@ -517,28 +524,42 @@ let transactions_page
     let section =
       if active_tab = "trade" then trade_list else draft_table
     in
+    let intro_html =
+      if show_ops then
+        {html|WKBL 공식 페이지 원문 기반입니다. (Draft는 <span class="font-mono text-slate-900 dark:text-slate-200">player_id(pno)</span> 기반 / Trade는 <span class="font-mono text-slate-900 dark:text-slate-200">원문 저장 + 텍스트 검색</span>)|html}
+      else
+        {html|WKBL 공식 페이지를 기준으로 정리했습니다.|html}
+    in
+    let sync_build_block =
+      if show_ops then
+        {html|<details class="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 p-5 text-xs text-slate-500 dark:text-slate-400">
+  <summary class="cursor-pointer font-bold text-slate-700 dark:text-slate-300 select-none">Sync / Build</summary>
+  <div class="mt-2 space-y-2 leading-relaxed">
+    <div>Docker 빌드에서 공식 Draft/Trade를 포함하려면 <span class="font-mono text-slate-900 dark:text-slate-200">WKBL_SYNC_DRAFT_TRADE=1</span>을 켜세요.</div>
+    <div class="text-slate-500 dark:text-slate-400">로컬 DB를 갱신하려면 아래를 실행하세요: (네트워크 필요)</div>
+    <code class="block font-mono text-slate-700 dark:text-slate-300 bg-slate-950/30 border border-slate-300 dark:border-slate-700/60 px-3 py-2 rounded overflow-x-auto whitespace-nowrap">dune exec bin/scraper_tool.exe draft</code>
+  </div>
+</details>|html}
+      else
+        ""
+    in
     Printf.sprintf
       {html|<div class="space-y-6 animate-fade-in">
   <div class="flex flex-col gap-2">
     <h2 class="text-2xl font-black text-slate-900 dark:text-slate-200">Draft / Trade</h2>
-    <div class="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">WKBL 공식 페이지 원문 기반입니다. (Draft는 <span class="font-mono text-slate-900 dark:text-slate-200">player_id(pno)</span> 기반 / Trade는 <span class="font-mono text-slate-900 dark:text-slate-200">원문 저장 + 텍스트 검색</span>)</div>
+    <div class="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">%s</div>
   </div>
   <div class="flex flex-wrap items-center gap-2">%s%s</div>
   %s
-  <details class="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 p-5 text-xs text-slate-500 dark:text-slate-400">
-    <summary class="cursor-pointer font-bold text-slate-700 dark:text-slate-300 select-none">Sync / Build</summary>
-    <div class="mt-2 space-y-2 leading-relaxed">
-      <div>Docker 빌드에서 공식 Draft/Trade를 포함하려면 <span class="font-mono text-slate-900 dark:text-slate-200">WKBL_SYNC_DRAFT_TRADE=1</span>을 켜세요.</div>
-      <div class="text-slate-500 dark:text-slate-400">로컬 DB를 갱신하려면 아래를 실행하세요: (네트워크 필요)</div>
-      <code class="block font-mono text-slate-700 dark:text-slate-300 bg-slate-950/30 border border-slate-300 dark:border-slate-700/60 px-3 py-2 rounded overflow-x-auto whitespace-nowrap">dune exec bin/scraper_tool.exe draft</code>
-    </div>
-  </details>
+  %s
   %s
 </div>|html}
+      intro_html
       (tab_link "draft" "Draft")
       (tab_link "trade" "Trade")
       filter_form
       section
+      sync_build_block
   in
   layout ~title:"Draft / Trade | WKBL" ~content ()
 
