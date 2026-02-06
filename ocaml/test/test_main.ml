@@ -1390,12 +1390,55 @@ let test_schedule_sync_success_policy () =
     false
     (schedule_sync_success ~schedule_synced:1 ~games_upserted:1 ~errors:1)
 
+let test_schedule_sync_suspicion_reason_policy () =
+  let open Wkbl.Scraper in
+  let string_opt = Alcotest.option Alcotest.string in
+  Alcotest.(check string_opt)
+    "not enforced -> none"
+    None
+    (schedule_sync_suspicion_reason_v
+       ~enforce:false
+       ~current_ym:"2026-02"
+       ~threshold_old:"2026-01-01"
+       ~dates:[]
+       ~completed_dates:[]);
+  Alcotest.(check bool)
+    "missing current month -> some"
+    true
+    (schedule_sync_suspicion_reason_v
+       ~enforce:true
+       ~current_ym:"2026-02"
+       ~threshold_old:"2026-01-01"
+       ~dates:["2026-01-31"; "2026-03-01"]
+       ~completed_dates:["2026-01-31"]
+     <> None);
+  Alcotest.(check bool)
+    "stale completed -> some"
+    true
+    (schedule_sync_suspicion_reason_v
+       ~enforce:true
+       ~current_ym:"2026-02"
+       ~threshold_old:"2026-01-20"
+       ~dates:["2026-02-01"; "2026-02-02"]
+       ~completed_dates:["2026-01-10"]
+     <> None);
+  Alcotest.(check string_opt)
+    "healthy -> none"
+    None
+    (schedule_sync_suspicion_reason_v
+       ~enforce:true
+       ~current_ym:"2026-02"
+       ~threshold_old:"2026-01-20"
+       ~dates:["2026-02-01"; "2026-02-02"]
+       ~completed_dates:["2026-02-01"])
+
 let scraper_tests = [
   Alcotest.test_case "code_from_team_name known" `Quick test_code_from_team_name_known;
   Alcotest.test_case "code_from_team_name unknown" `Quick test_code_from_team_name_unknown;
   Alcotest.test_case "code_from_team_name alternate" `Quick test_code_from_team_name_alternate;
   Alcotest.test_case "get_last_sync_time_str" `Quick test_get_last_sync_time_str_initial;
   Alcotest.test_case "schedule sync success policy" `Quick test_schedule_sync_success_policy;
+  Alcotest.test_case "schedule sync suspicion policy" `Quick test_schedule_sync_suspicion_reason_policy;
   Alcotest.test_case "game_params_of_href" `Quick test_game_params_of_href;
   Alcotest.test_case "game_id_of_params" `Quick test_game_id_of_params;
   Alcotest.test_case "parse_schedule_html extracts game meta" `Quick test_parse_schedule_html_extracts_game_meta;

@@ -2185,6 +2185,78 @@ let current_season_name_auto () =
   let season_start_year = if month >= 10 then year else year - 1 in
   Printf.sprintf "%d-%d" season_start_year (season_start_year + 1)
 
+let iso_date_of_time (t: float) =
+  let tm = Unix.localtime t in
+  Printf.sprintf "%04d-%02d-%02d"
+    (tm.Unix.tm_year + 1900)
+    (tm.Unix.tm_mon + 1)
+    tm.Unix.tm_mday
+
+let year_month_prefix_of_time (t: float) =
+  let tm = Unix.localtime t in
+  Printf.sprintf "%04d-%02d"
+    (tm.Unix.tm_year + 1900)
+    (tm.Unix.tm_mon + 1)
+
+(** Decide whether fetched schedule entries look suspiciously incomplete.
+
+    Rationale: a non-empty scrape can still miss the current month and make the
+    site appear "stuck" while logs say "synced".
+
+    Policy:
+    - Only enforce during core season months (Nov-Mar).
+    - If the current month has no entries, flag as suspicious.
+    - If the latest completed game is too old (30d) during the season, flag.
+
+    Returns [Some reason] when suspicious, else [None]. *)
+let schedule_sync_suspicion_reason_v
+    ~enforce
+    ~current_ym
+    ~threshold_old
+    ~(dates: string list)
+    ~(completed_dates: string list)
+  =
+  if not enforce then
+    None
+  else
+    let has_current_month =
+      dates
+      |> List.exists (fun d ->
+          String.length d >= 7 && String.starts_with ~prefix:current_ym d)
+    in
+    if not has_current_month then
+      Some (Printf.sprintf "no entries for current month (%s)" current_ym)
+    else
+      let max_completed =
+        completed_dates
+        |> List.fold_left
+             (fun acc d -> if String.compare d acc > 0 then d else acc)
+             "0000-00-00"
+      in
+      if max_completed = "0000-00-00" then
+        None
+      else if String.compare max_completed threshold_old < 0 then
+        Some (Printf.sprintf "latest completed game is stale (%s < %s)" max_completed threshold_old)
+      else
+        None
+
+let schedule_sync_suspicion_reason
+    ~now
+    ~(dates: string list)
+    ~(completed_dates: string list)
+  =
+  let tm = Unix.localtime now in
+  let month = tm.Unix.tm_mon + 1 in
+  let enforce = (month >= 11 || month <= 3) in
+  let current_ym = year_month_prefix_of_time now in
+  let threshold_old = iso_date_of_time (now -. (30.0 *. 86400.0)) in
+  schedule_sync_suspicion_reason_v
+    ~enforce
+    ~current_ym
+    ~threshold_old
+    ~dates
+    ~completed_dates
+
 (** Decide whether a schedule sync attempt should be treated as "successful".
 
     Important: (0 synced, 0 errors) is treated as failure, because it almost
@@ -2211,6 +2283,31 @@ let sync_current_season_schedule ~sw ~env () =
     let synced = ref 0 in
     let synced_games = ref 0 in
     let errors = ref 0 in
+    let normalized_dates =
+      entries
+      |> List.map (fun (e: schedule_entry) ->
+          if String.contains e.sch_date '-' then e.sch_date
+          else normalize_schedule_date ~season_code:current_season_code e.sch_date)
+    in
+    let normalized_completed_dates =
+      entries
+      |> List.filter (fun (e: schedule_entry) ->
+          match e.sch_home_score, e.sch_away_score with
+          | Some _, Some _ -> true
+          | _ -> false)
+      |> List.map (fun (e: schedule_entry) ->
+          if String.contains e.sch_date '-' then e.sch_date
+          else normalize_schedule_date ~season_code:current_season_code e.sch_date)
+    in
+    (match schedule_sync_suspicion_reason
+             ~now:(Unix.time ())
+             ~dates:normalized_dates
+             ~completed_dates:normalized_completed_dates
+     with
+    | None -> ()
+    | Some reason ->
+        Printf.eprintf "[Sync] Suspicious schedule data: %s\n%!" reason;
+        incr errors);
     entries |> List.iter (fun (entry : schedule_entry) ->
       let status = schedule_status_from_scores entry.sch_home_score entry.sch_away_score in
       let game_date =
