@@ -477,18 +477,25 @@ let games_table (games : game_summary list) =
 
   let rows_data =
     games
-    |> List.mapi (fun _i (g : game_summary) ->
-        let score_a = match g.home_score with Some s -> string_of_int s | None -> "-" in
-        let score_b = match g.away_score with Some s -> string_of_int s | None -> "-" in
-        
-        let home_cell = Printf.sprintf {html|<span class="inline-flex items-center justify-end gap-2 whitespace-nowrap">%s<a href="/team/%s" class="team-name group-hover:text-orange-600 dark:text-orange-400 dark:group-hover:text-orange-300 transition-colors" style="white-space: nowrap;">%s</a></span>|html} (team_logo_tag ~class_name:"w-4 h-4" g.home_team) (Uri.pct_encode g.home_team) (escape_html g.home_team) in
-        let score_cell = Printf.sprintf {html|<span class="font-bold text-orange-600 dark:text-orange-400 font-mono group-hover:scale-110 transition-transform whitespace-nowrap w-28">%s - %s</span>|html} score_a score_b in
-        let away_cell = Printf.sprintf {html|<span class="inline-flex items-center gap-2 whitespace-nowrap"><a href="/team/%s" class="team-name group-hover:text-orange-600 dark:text-orange-400 dark:group-hover:text-orange-300 transition-colors" style="white-space: nowrap;">%s</a>%s</span>|html} (Uri.pct_encode g.away_team) (escape_html g.away_team) (team_logo_tag ~class_name:"w-4 h-4" g.away_team) in
-        let action_cell = Printf.sprintf {html|<a href="/boxscore/%s" class="text-[10px] sm:text-xs bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-2 py-1 rounded text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition group-hover:ring-2 group-hover:ring-orange-500/50 whitespace-nowrap">Boxscore</a>|html} (escape_html g.game_id) in
+	    |> List.mapi (fun _i (g : game_summary) ->
+	        let score_a = match g.home_score with Some s -> string_of_int s | None -> "-" in
+	        let score_b = match g.away_score with Some s -> string_of_int s | None -> "-" in
+	        
+	        let home_cell = Printf.sprintf {html|<span class="inline-flex items-center justify-end gap-2 whitespace-nowrap">%s<a href="/team/%s" class="team-name group-hover:text-orange-600 dark:text-orange-400 dark:group-hover:text-orange-300 transition-colors" style="white-space: nowrap;">%s</a></span>|html} (team_logo_tag ~class_name:"w-4 h-4" g.home_team) (Uri.pct_encode g.home_team) (escape_html g.home_team) in
+	        let score_cell = Printf.sprintf {html|<span class="font-bold text-orange-600 dark:text-orange-400 font-mono group-hover:scale-110 transition-transform whitespace-nowrap w-28">%s - %s</span>|html} score_a score_b in
+	        let away_cell = Printf.sprintf {html|<span class="inline-flex items-center gap-2 whitespace-nowrap"><a href="/team/%s" class="team-name group-hover:text-orange-600 dark:text-orange-400 dark:group-hover:text-orange-300 transition-colors" style="white-space: nowrap;">%s</a>%s</span>|html} (Uri.pct_encode g.away_team) (escape_html g.away_team) (team_logo_tag ~class_name:"w-4 h-4" g.away_team) in
+	        let action_cell =
+	          if g.home_score = None then
+	            {html|<span class="text-xs text-slate-400 font-mono">TBD</span>|html}
+	          else
+	            Printf.sprintf
+	              {html|<a href="/boxscore/%s" class="text-[10px] sm:text-xs bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-2 py-1 rounded text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition group-hover:ring-2 group-hover:ring-orange-500/50 whitespace-nowrap">Boxscore</a>|html}
+	              (escape_html g.game_id)
+	        in
 
-        [
-          (escape_html g.game_date);
-          home_cell;
+	        [
+	          (escape_html g.game_date);
+	          home_cell;
           score_cell;
           away_cell;
           action_cell;
@@ -502,10 +509,24 @@ let games_table (games : game_summary list) =
     {html|<div class="space-y-3 sm:hidden">%s</div><div class="hidden sm:block">%s</div>|html}
     mobile_cards desktop_table
 
-let games_page ~page ~season ~seasons games =
-  let season_options = seasons |> List.map (fun (s: season_info) ->
-    Printf.sprintf {|<option value="%s" %s>%s</option>|} s.code (if s.code = season then "selected" else "") s.name
-  ) |> String.concat "" in
+	let games_page ~page ~season ~seasons games =
+	  let season_options =
+	    let base =
+	      seasons
+	      |> List.map (fun (s: season_info) ->
+	        Printf.sprintf
+	          {|<option value="%s" %s>%s</option>|}
+	          (escape_html s.code)
+	          (if s.code = season then "selected" else "")
+	          (escape_html s.name)
+	      )
+	      |> String.concat ""
+	    in
+	    Printf.sprintf
+	      {html|<option value="ALL" %s>All Seasons</option>%s|html}
+	      (if season = "ALL" then "selected" else "")
+	      base
+	  in
 
   let pagination_html = 
     let prev_btn = if page > 1 then 

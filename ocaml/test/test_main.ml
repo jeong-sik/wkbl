@@ -1214,6 +1214,72 @@ let test_game_id_of_params () =
   let gid = Wkbl.Scraper.game_id_of_params ~season_code:"046" ~game_type_opt:(Some "01") ~game_no_opt:(Some 40) in
   Alcotest.(check (option string)) "game_id" (Some "046-01-40") gid
 
+let test_parse_schedule_html_extracts_game_meta () =
+  let html = {|
+<div class="info_table01 type_list">
+  <table>
+    <tbody>
+      <tr id="20260110">
+        <td>1/10(<span class="language" data-kr="토" data-en="Sat">토</span>)</td>
+        <td>
+          <div class="team_versus">
+            <div class="info_team away">
+              <strong class="team_name language" data-kr="신한은행" data-en="SHINHAN BANK">신한은행</strong>
+              <em class="txt_score">61</em>
+            </div>
+            <span class="txt_vs">vs</span>
+            <div class="info_team home">
+              <strong class="team_name language" data-kr="삼성생명" data-en="SAMSUNG LIFE">삼성생명</strong>
+              <em class="txt_score">74</em>
+            </div>
+          </div>
+        </td>
+        <td class="language" data-kr="용인실내체육관" data-en="Yongin Indoor Gymnasium">용인실내체육관</td>
+        <td>14:00</td>
+        <td>
+          <a href="/game/result.asp?season_gu=046&gun=1&game_type=01&game_no=40&ym=202601&viewType=" class="btn_type1 language">경기기록</a>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+|} in
+  let entries = Wkbl.Scraper.parse_schedule_html ~season:"046" ~ym:"202601" html in
+  match entries with
+  | [e] ->
+      Alcotest.(check string) "date normalized from row id" "2026-01-10" e.sch_date;
+      Alcotest.(check (option string)) "game_id" (Some "046-01-40") e.sch_game_id;
+      Alcotest.(check (option string)) "game_type" (Some "01") e.sch_game_type;
+      Alcotest.(check (option int)) "game_no" (Some 40) e.sch_game_no
+  | _ -> Alcotest.fail "expected exactly one schedule entry"
+
+let test_parse_schedule_api_html_extracts_game_meta () =
+  let html = {|
+<table><tbody>
+  <tr id="20260110">
+    <td>1/10(<span class="language">토</span>)</td>
+    <td>
+      <div class="team_versus">
+        <div class="info_team away"><strong class="team_name">신한은행</strong><em class="txt_score">61</em></div>
+        <div class="info_team home"><strong class="team_name">삼성생명</strong><em class="txt_score">74</em></div>
+      </div>
+    </td>
+    <td>용인실내체육관</td>
+    <td>14:00</td>
+    <td><a href="/game/result.asp?season_gu=046&gun=1&game_type=01&game_no=40&ym=202601&viewType=">경기기록</a></td>
+  </tr>
+</tbody></table>
+|} in
+  let entries = Wkbl.Scraper.parse_schedule_api_html ~season_code:"046" ~season_name:"2025-2026" html in
+  match entries with
+  | [e] ->
+      Alcotest.(check string) "date normalized from row id" "2026-01-10" e.sch_date;
+      Alcotest.(check string) "day extracted" "토" e.sch_day;
+      Alcotest.(check (option string)) "game_id" (Some "046-01-40") e.sch_game_id;
+      Alcotest.(check (option string)) "game_type" (Some "01") e.sch_game_type;
+      Alcotest.(check (option int)) "game_no" (Some 40) e.sch_game_no
+  | _ -> Alcotest.fail "expected exactly one schedule entry"
+
 let test_normalize_game_date_formats () =
   let open Wkbl.Scraper in
   let string_opt = Alcotest.option Alcotest.string in
@@ -1230,6 +1296,8 @@ let scraper_tests = [
   Alcotest.test_case "get_last_sync_time_str" `Quick test_get_last_sync_time_str_initial;
   Alcotest.test_case "game_params_of_href" `Quick test_game_params_of_href;
   Alcotest.test_case "game_id_of_params" `Quick test_game_id_of_params;
+  Alcotest.test_case "parse_schedule_html extracts game meta" `Quick test_parse_schedule_html_extracts_game_meta;
+  Alcotest.test_case "parse_schedule_api_html extracts game meta" `Quick test_parse_schedule_api_html_extracts_game_meta;
   Alcotest.test_case "normalize_game_date formats" `Quick test_normalize_game_date_formats;
 ]
 

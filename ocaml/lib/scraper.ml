@@ -1652,6 +1652,15 @@ let game_params_of_href href =
   in
   (game_type, game_no)
 
+(** Extract (game_type, game_no) from schedule row action links. *)
+let extract_game_meta_from_schedule_row row =
+  let open Soup in
+  match row $? "a[href*='result.asp']" with
+  | None -> (None, None)
+  | Some a ->
+      let href = attribute "href" a |> Option.value ~default:"" |> String.trim in
+      if href = "" then (None, None) else game_params_of_href href
+
 (** Build game_id from season_code + game_type + game_no *)
 let game_id_of_params ~season_code ~game_type_opt ~game_no_opt =
   match game_type_opt, game_no_opt with
@@ -1664,9 +1673,7 @@ let game_id_of_params ~season_code ~game_type_opt ~game_no_opt =
 let parse_schedule_html ~season ~ym html =
   let soup = Soup.parse html in
   let games = ref [] in
-
-  (* Extract year from ym (e.g., "202601" -> "2026") *)
-  let year = String.sub ym 0 4 in
+  let _ = ym in
 
   (* Each game is in a <tr id="YYYYMMDD"> *)
   let rows = soup |> Soup.select "tbody tr" |> Soup.to_list in
@@ -1713,21 +1720,8 @@ let parse_schedule_html ~season ~ym html =
           (* Get time (4th td) *)
           let time = List.nth tds 3 |> Soup.texts |> String.concat "" |> String.trim in
 
-          (* Extract game link params if available *)
-          let href =
-            let link_opt =
-              match row |> Soup.select "a[href*='result.asp']" |> Soup.to_list with
-              | x :: _ -> Some x
-              | [] -> None
-            in
-            Option.bind link_opt (Soup.attribute "href")
-            |> Option.value ~default:""
-          in
-          let game_type_opt, game_no_opt =
-            if String.length href > 0 then game_params_of_href href else (None, None)
-          in
+          let game_type_opt, game_no_opt = extract_game_meta_from_schedule_row row in
           let game_id_opt = game_id_of_params ~season_code:season ~game_type_opt ~game_no_opt in
-
           let entry = {
             sch_game_id = game_id_opt;
             sch_game_type = game_type_opt;
@@ -1747,7 +1741,6 @@ let parse_schedule_html ~season ~ym html =
       end
     with _ -> ()
   );
-  let _ = year in  (* suppress unused warning *)
   List.rev !games
 
 (** Fetch schedule for a specific month
@@ -1949,9 +1942,26 @@ let parse_schedule_api_html ~season_code ~season_name:_ html =
   let rows = soup $$ "tr[id]" |> to_list in
   rows |> List.filter_map (fun row ->
     try
-      (* Extract date from first td *)
+      (* Prefer row id (YYYYMMDD) for a stable ISO date. *)
+      let date_id = attribute "id" row |> Option.value ~default:"" in
+      let date_iso =
+        if String.length date_id >= 8 then
+          Printf.sprintf "%s-%s-%s"
+            (String.sub date_id 0 4)
+            (String.sub date_id 4 2)
+            (String.sub date_id 6 2)
+        else
+          ""
+      in
+
+      (* Extract day of week from first td (e.g., "토") *)
       let date_td = row $ "td" in
-      let date_text = texts date_td |> String.concat "" |> String.trim in
+      let day =
+        match date_td $? "span.language" with
+        | None -> ""
+        | Some sp ->
+            leaf_text sp |> Option.value ~default:"" |> String.trim
+      in
 
       (* Extract teams and scores from team_versus div *)
       let team_div = row $ ".team_versus" in
@@ -1979,28 +1989,15 @@ let parse_schedule_api_html ~season_code ~season_name:_ html =
         List.nth tds 3 |> texts |> String.concat "" |> String.trim
       else "" in
 
-      (* Extract game link params if available *)
-      let href =
-        let link_opt =
-          match row |> select "a[href*='result.asp']" |> to_list with
-          | x :: _ -> Some x
-          | [] -> None
-        in
-        Option.bind link_opt (attribute "href")
-        |> Option.value ~default:""
-      in
-      let game_type_opt, game_no_opt =
-        if String.length href > 0 then game_params_of_href href else (None, None)
-      in
+      let game_type_opt, game_no_opt = extract_game_meta_from_schedule_row row in
       let game_id_opt = game_id_of_params ~season_code:season_code ~game_type_opt ~game_no_opt in
-
       Some {
         sch_game_id = game_id_opt;
         sch_game_type = game_type_opt;
         sch_game_no = game_no_opt;
         sch_season = season_code;
-        sch_date = date_text;
-        sch_day = "";  (* Could extract from date_text *)
+        sch_date = if date_iso <> "" then date_iso else (texts date_td |> String.concat "" |> String.trim);
+        sch_day = day;
         sch_time = time;
         sch_home_team = home_team;
         sch_away_team = away_team;
@@ -2149,16 +2146,16 @@ let get_last_sync_time_str () =
 
 (** Calculate current season code based on date
     WKBL season runs Oct-Mar, so:
-    - Oct 2025 ~ Mar 2026 = "2025-2026" season = code "044"
-    - Oct 2024 ~ Mar 2025 = "2024-2025" season = code "043"
-    Base: 1981-1982 = "001" *)
+    - Oct 2025 ~ Mar 2026 = "2025-2026" season = code "046"
+    - Oct 2024 ~ Mar 2025 = "2024-2025" season = code "045"
+    Base: 1980-1981 = "001" (season_start_year - 1979) *)
 let current_season_code_auto () =
   let tm = Unix.localtime (Unix.time ()) in
   let year = tm.Unix.tm_year + 1900 in
   let month = tm.Unix.tm_mon + 1 in
   (* Oct-Dec: current year's season, Jan-Sep: previous year's season *)
   let season_start_year = if month >= 10 then year else year - 1 in
-  let code = season_start_year - 1981 in  (* 1981 = 001 *)
+  let code = season_start_year - 1979 in  (* 1980 = 001 *)
   Printf.sprintf "%03d" code
 
 let current_season_name_auto () =
@@ -2178,30 +2175,77 @@ let sync_current_season_schedule ~sw ~env () =
     let entries = fetch_full_season_schedule ~sw ~env ~season_code:current_season_code ~season_name:current_season_name in
     Printf.printf "[Sync] Fetched %d schedule entries\n%!" (List.length entries);
     let synced = ref 0 in
+    let synced_games = ref 0 in
     let errors = ref 0 in
     entries |> List.iter (fun (entry : schedule_entry) ->
       let status = schedule_status_from_scores entry.sch_home_score entry.sch_away_score in
-      let game_date = normalize_schedule_date ~season_code:current_season_code entry.sch_date in
+      let game_date =
+        (* Prefer the ISO date from row id; fallback to normalizer for legacy formats. *)
+        if String.contains entry.sch_date '-' then entry.sch_date
+        else normalize_schedule_date ~season_code:current_season_code entry.sch_date
+      in
       let game_time = if entry.sch_time = "" then None else Some entry.sch_time in
       let venue = if entry.sch_venue = "" then None else Some entry.sch_venue in
-      match Db.with_db (fun db ->
-        Db.Repo.upsert_schedule_entry
-          ~game_date
-          ~game_time
-          ~season_code:current_season_code
-          ~home_team_code:(code_from_team_name entry.sch_home_team)
-          ~away_team_code:(code_from_team_name entry.sch_away_team)
-          ~venue
-          ~status
-          db) with
+
+      let home_team_code = code_from_team_name entry.sch_home_team in
+      let away_team_code = code_from_team_name entry.sch_away_team in
+
+      let upsert_res =
+        Db.with_db (fun db ->
+          Db.Repo.upsert_schedule_entry
+            ~game_date
+            ~game_time
+            ~season_code:current_season_code
+            ~home_team_code
+            ~away_team_code
+            ~venue
+            ~status
+            db)
+      in
+      (match upsert_res with
       | Ok () -> incr synced
       | Error e ->
-          Printf.eprintf "[Sync] Error upserting game %s: %s\n%!" game_date (Db.show_db_error e);
-          incr errors
+          Printf.eprintf "[Sync] Error upserting schedule %s: %s\n%!" game_date (Db.show_db_error e);
+          incr errors);
+
+      (* Also upsert into games table when we can derive stable identifiers. *)
+      (match (entry.sch_game_type, entry.sch_game_no) with
+      | Some game_type, Some game_no
+        when not (String.starts_with ~prefix:"XX_" home_team_code)
+             && not (String.starts_with ~prefix:"XX_" away_team_code) ->
+          let game_id = Printf.sprintf "%s-%s-%d" current_season_code game_type game_no in
+          let game_res =
+            Db.with_db (fun db ->
+	              Db.Repo.upsert_game_entry
+	                ~game_id
+	                ~season_code:current_season_code
+	                ~game_type
+	                ~game_no
+	                ~game_date:(Some game_date)
+	                ~home_team_code
+	                ~away_team_code
+	                ~home_score:entry.sch_home_score
+	                ~away_score:entry.sch_away_score
+                ~stadium:venue
+                ~attendance:None
+                db)
+          in
+          (match game_res with
+          | Ok () -> incr synced_games
+          | Error e ->
+              Printf.eprintf "[Sync] Error upserting game %s: %s\n%!" game_id (Db.show_db_error e);
+              incr errors)
+      | _ -> ())
     );
-    Printf.printf "[Sync] Complete: %d synced, %d errors\n%!" !synced !errors;
+    (* Refresh materialized views so /games reflects new rows quickly. *)
+    (match Db.refresh_matviews () with
+    | Ok () -> ()
+    | Error e -> Printf.eprintf "[Sync] Failed to refresh materialized views: %s\n%!" (Db.show_db_error e));
+
+    Printf.printf "[Sync] Complete: %d schedule synced, %d games upserted, %d errors\n%!"
+      !synced !synced_games !errors;
     (* Update last sync time on success *)
-    if !synced > 0 || !errors = 0 then
+    if (!synced > 0 || !synced_games > 0) && !errors = 0 then
       last_sync_time := Some (Unix.time ());
     (!synced, !errors)
   with exn ->
