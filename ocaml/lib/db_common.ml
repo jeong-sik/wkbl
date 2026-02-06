@@ -46,6 +46,13 @@ type qa_duplicate_player_name = {
   qdpn_player_ids: string list;
 }
 
+type qa_duplicate_player_identity = {
+  qdpi_player_name: string;
+  qdpi_birth_date: string;
+  qdpi_id_count: int;
+  qdpi_player_ids: string list;
+}
+
 type qa_schedule_missing_game = {
   qsmg_game_date: string;
   qsmg_season_code: string;
@@ -82,6 +89,8 @@ type qa_db_report = {
   qdr_duplicate_player_row_sample: qa_duplicate_player_row list;
   qdr_duplicate_player_name_count: int;
   qdr_duplicate_player_name_sample: qa_duplicate_player_name list;
+  qdr_duplicate_player_identity_count: int;
+  qdr_duplicate_player_identity_sample: qa_duplicate_player_identity list;
 }
 
 (** Leader base type for leaderboard queries *)

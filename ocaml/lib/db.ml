@@ -55,6 +55,13 @@ type qa_duplicate_player_name = {
   qdpn_player_ids: string list;
 }
 
+type qa_duplicate_player_identity = {
+  qdpi_player_name: string;
+  qdpi_birth_date: string;
+  qdpi_id_count: int;
+  qdpi_player_ids: string list;
+}
+
 type qa_schedule_missing_game = {
   qsmg_game_date: string;
   qsmg_season_code: string;
@@ -91,6 +98,8 @@ type qa_db_report = {
   qdr_duplicate_player_row_sample: qa_duplicate_player_row list;
   qdr_duplicate_player_name_count: int;
   qdr_duplicate_player_name_sample: qa_duplicate_player_name list;
+  qdr_duplicate_player_identity_count: int;
+  qdr_duplicate_player_identity_sample: qa_duplicate_player_identity list;
 }
 
 type leader_base = {
@@ -399,6 +408,13 @@ module Types = struct
       Ok (player_name, id_count, player_ids_csv)
     in
     custom ~encode ~decode (t2 string (t2 int string))
+
+  let qa_duplicate_player_identity_row =
+    let encode _ = Error "Encode not supported: read-only type" in
+    let decode (player_name, (birth_date, (id_count, player_ids_csv))) =
+      Ok (player_name, birth_date, id_count, player_ids_csv)
+    in
+    custom ~encode ~decode (t2 string (t2 string (t2 int string)))
 
   let qa_schedule_missing_game =
     let encode _ = Error "Encode not supported: read-only type" in
@@ -2142,6 +2158,37 @@ module Queries = struct
 	    ORDER BY id_count DESC, normalized_name ASC
 	    LIMIT 50
 	  |}
+
+  let qa_duplicate_player_identity_count = (unit ->? int) {|
+    SELECT COUNT(*)
+    FROM (
+      SELECT
+        TRIM(REPLACE(REPLACE(player_name, chr(92), ''), '"', '')) AS normalized_name,
+        birth_date
+      FROM players
+      WHERE birth_date IS NOT NULL
+      GROUP BY
+        TRIM(REPLACE(REPLACE(player_name, chr(92), ''), '"', '')),
+        birth_date
+      HAVING COUNT(DISTINCT player_id) > 1
+    )
+  |}
+
+  let qa_duplicate_player_identity_sample = (unit ->* Types.qa_duplicate_player_identity_row) {|
+    SELECT
+      TRIM(REPLACE(REPLACE(player_name, chr(92), ''), '"', '')) AS normalized_name,
+      TO_CHAR(birth_date, 'YYYY-MM-DD') AS birth_date,
+      COUNT(DISTINCT player_id) AS id_count,
+      STRING_AGG(DISTINCT player_id, ',' ORDER BY player_id) AS player_ids
+    FROM players
+    WHERE birth_date IS NOT NULL
+    GROUP BY
+      TRIM(REPLACE(REPLACE(player_name, chr(92), ''), '"', '')),
+      birth_date
+    HAVING COUNT(DISTINCT player_id) > 1
+    ORDER BY id_count DESC, normalized_name ASC, birth_date ASC
+    LIMIT 50
+  |}
 
   let game_info_by_id = (string ->? Types.game_info) {|
     WITH sums AS (
@@ -3997,6 +4044,8 @@ end
   let qa_duplicate_player_row_sample (module Db : Caqti_eio.CONNECTION) = Db.collect_list Queries.qa_duplicate_player_row_sample ()
   let qa_duplicate_player_name_count (module Db : Caqti_eio.CONNECTION) = Db.find_opt Queries.qa_duplicate_player_name_count ()
   let qa_duplicate_player_name_sample (module Db : Caqti_eio.CONNECTION) = Db.collect_list Queries.qa_duplicate_player_name_sample ()
+  let qa_duplicate_player_identity_count (module Db : Caqti_eio.CONNECTION) = Db.find_opt Queries.qa_duplicate_player_identity_count ()
+  let qa_duplicate_player_identity_sample (module Db : Caqti_eio.CONNECTION) = Db.collect_list Queries.qa_duplicate_player_identity_sample ()
   let qa_schedule_total (module Db : Caqti_eio.CONNECTION) = Db.find_opt Queries.qa_schedule_total ()
   let qa_schedule_completed (module Db : Caqti_eio.CONNECTION) = Db.find_opt Queries.qa_schedule_completed ()
   let qa_schedule_missing_game_count (module Db : Caqti_eio.CONNECTION) = Db.find_opt Queries.qa_schedule_missing_game_count ()
@@ -4777,6 +4826,8 @@ let get_db_quality_report () : qa_db_report db_result =
     let* dup_row_sample = with_db (fun db -> Repo.qa_duplicate_player_row_sample db) in
     let* dup_name_count_opt = with_db (fun db -> Repo.qa_duplicate_player_name_count db) in
     let* dup_name_rows = with_db (fun db -> Repo.qa_duplicate_player_name_sample db) in
+    let* dup_identity_count_opt = with_db (fun db -> Repo.qa_duplicate_player_identity_count db) in
+    let* dup_identity_rows = with_db (fun db -> Repo.qa_duplicate_player_identity_sample db) in
     let games_total = int_or_zero games_total_opt in
     let games_with_stats = int_or_zero games_with_stats_opt in
     let plus_minus_games = int_or_zero plus_minus_games_opt in
@@ -4793,6 +4844,15 @@ let get_db_quality_report () : qa_db_report db_result =
           { qdpn_player_name = name;
             qdpn_id_count = id_count;
             qdpn_player_ids = split_csv_ids ids_csv;
+          })
+    in
+    let dup_identity_sample =
+      dup_identity_rows
+      |> List.map (fun (name, birth_date, id_count, ids_csv) ->
+          { qdpi_player_name = name;
+            qdpi_birth_date = birth_date;
+            qdpi_id_count = id_count;
+            qdpi_player_ids = split_csv_ids ids_csv;
           })
     in
     Ok { qdr_generated_at = iso8601_utc ();
@@ -4816,6 +4876,8 @@ let get_db_quality_report () : qa_db_report db_result =
         qdr_duplicate_player_row_sample = dup_row_sample;
         qdr_duplicate_player_name_count = int_or_zero dup_name_count_opt;
         qdr_duplicate_player_name_sample = dup_name_sample;
+        qdr_duplicate_player_identity_count = int_or_zero dup_identity_count_opt;
+        qdr_duplicate_player_identity_sample = dup_identity_sample;
       })
 
 (* ===== History & Legends Public API ===== *)
