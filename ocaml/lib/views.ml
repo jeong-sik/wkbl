@@ -2628,9 +2628,9 @@ let live_page () =
     </div>
    </div>
 
-   <div class="text-xs text-slate-500 dark:text-slate-400 text-center">
-    Updates automatically via Server-Sent Events (SSE)
-   </div>
+	   <div class="text-xs text-slate-500 dark:text-slate-400 text-center">
+	    자동으로 업데이트됩니다.
+	   </div>
   </div>
 
   <script>
@@ -2639,9 +2639,9 @@ let live_page () =
    const statusEl = document.getElementById('connection-status');
 
    function updateStatus(connected) {
-    statusEl.innerHTML = connected
-     ? '<span class="w-2 h-2 bg-green-500 rounded-full"></span><span class="text-sm text-slate-600 dark:text-slate-400">Connected</span>'
-     : '<span class="w-2 h-2 bg-red-500 rounded-full"></span><span class="text-sm text-slate-600 dark:text-slate-400">Disconnected</span>';
+	    statusEl.innerHTML = connected
+	     ? '<span class="w-2 h-2 bg-green-500 rounded-full"></span><span class="text-sm text-slate-600 dark:text-slate-400">연결됨</span>'
+	     : '<span class="w-2 h-2 bg-red-500 rounded-full"></span><span class="text-sm text-slate-600 dark:text-slate-400">연결 끊김</span>';
    }
 
    function renderGame(game) {
@@ -2659,7 +2659,7 @@ let live_page () =
       <div class="flex justify-between items-center mb-4">
        <span class="text-lg font-semibold text-slate-900 dark:text-slate-200">${game.home}</span>
        <span class="text-xs px-2 py-1 rounded ${isScheduled ? 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400' : 'bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400'}">
-        ${isScheduled ? 'Scheduled' : 'Final'}
+	        ${isScheduled ? '예정' : '종료'}
        </span>
        <span class="text-lg font-semibold text-slate-900 dark:text-slate-200">${game.away}</span>
       </div>
@@ -2673,8 +2673,8 @@ let live_page () =
      gamesContainer.innerHTML = `
       <div class="col-span-2 bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-12 text-center">
        <span class="text-4xl mb-4 block">🏀</span>
-       <p class="text-slate-600 dark:text-slate-400">No games scheduled for today (${data.date})</p>
-       <a href="/games" class="text-orange-500 hover:underline mt-2 inline-block">View all games →</a>
+	       <p class="text-slate-600 dark:text-slate-400">오늘 예정된 경기가 없습니다. (${data.date})</p>
+	       <a href="/games" class="text-orange-500 hover:underline mt-2 inline-block">전체 경기 보기 →</a>
       </div>
      `;
     } else {
