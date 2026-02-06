@@ -501,9 +501,9 @@ let eff_badge ?(show_label=false) eff =
 
 let score_quality_badge ?(compact=false) q =
   match q with
-  | Verified -> (if compact then "<span class=\"text-sky-500\" title=\"Verified\">✓</span>" else "<span class=\"px-2 py-0.5 rounded bg-sky-500/10 text-sky-600 border border-sky-500/30 text-[10px] font-mono\">VERIFIED</span>")
-  | Derived -> (if compact then "<span class=\"text-amber-500\" title=\"Derived\">Σ</span>" else "<span class=\"px-2 py-0.5 rounded bg-amber-500/10 text-amber-600 border border-amber-500/30 text-[10px] font-mono\">DERIVED</span>")
-  | Mismatch -> (if compact then "<span class=\"text-rose-500\" title=\"Mismatch\">!</span>" else "<span class=\"px-2 py-0.5 rounded bg-rose-500/10 text-rose-600 border border-rose-500/30 text-[10px] font-mono\">MISMATCH</span>")
+  | Verified -> (if compact then "<span class=\"text-sky-500\" title=\"일치\">✓</span>" else "<span class=\"px-2 py-0.5 rounded bg-sky-500/10 text-sky-600 border border-sky-500/30 text-[10px] font-mono\">일치</span>")
+  | Derived -> (if compact then "<span class=\"text-amber-500\" title=\"추정\">Σ</span>" else "<span class=\"px-2 py-0.5 rounded bg-amber-500/10 text-amber-600 border border-amber-500/30 text-[10px] font-mono\">추정</span>")
+  | Mismatch -> (if compact then "<span class=\"text-rose-500\" title=\"불일치\">!</span>" else "<span class=\"px-2 py-0.5 rounded bg-rose-500/10 text-rose-600 border border-rose-500/30 text-[10px] font-mono\">불일치</span>")
 
 let team_scope_to_string = function PerGame -> "per_game" | Totals -> "totals"
 let wkbl_official_game_result_url id = Some ("https://www.wkbl.or.kr/game/result.asp?game_id=" ^ id)
@@ -595,8 +595,165 @@ let normalize_stat_for_radar category current_val =
     | _ -> 10.0
   in
   if max_val <= 0.0 then 0.0 else (current_val /. max_val) *. 5.0
-let career_trajectory_chart _ = "<!-- Chart Placeholder -->"
-let player_season_stats_component ~player_id:_ ~scope:_ _ = "<!-- Season Stats Placeholder -->"
+
+let player_season_stats_component ~(player_id: string) ~scope (seasons: season_stats list) =
+  let _ = scope in
+  match seasons with
+  | [] -> ""
+  | _ ->
+      let season_code_int s = try int_of_string s with _ -> 0 in
+      let seasons_desc =
+        seasons
+        |> List.sort (fun a b -> compare (season_code_int b.ss_season_code) (season_code_int a.ss_season_code))
+      in
+      let row (s: season_stats) =
+        let href =
+          Printf.sprintf "/player/%s/games?season=%s"
+            (Uri.pct_encode player_id)
+            (Uri.pct_encode s.ss_season_code)
+        in
+        let mpg =
+          if s.ss_games_played <= 0 then 0.0 else s.ss_total_minutes /. float_of_int s.ss_games_played
+        in
+        Printf.sprintf
+          {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/40 transition-colors">
+            <td class="px-3 py-2 text-left font-sans">
+              <a class="hover:text-orange-600 dark:hover:text-orange-400 transition-colors" href="%s">%s</a>
+            </td>
+            <td class="px-3 py-2 text-right font-mono">%d</td>
+            <td class="px-3 py-2 text-right font-mono">%.1f</td>
+            <td class="px-3 py-2 text-right font-mono text-orange-600 dark:text-orange-400">%.1f</td>
+            <td class="px-3 py-2 text-right font-mono">%.1f</td>
+            <td class="px-3 py-2 text-right font-mono">%.1f</td>
+            <td class="px-3 py-2 text-right font-mono">%.1f</td>
+            <td class="px-3 py-2 text-right font-mono %s">%.1f</td>
+          </tr>|html}
+          (escape_html href)
+          (escape_html s.ss_season_name)
+          s.ss_games_played
+          mpg
+          s.ss_avg_points
+          s.ss_avg_rebounds
+          s.ss_avg_assists
+          s.ss_efficiency
+          (if s.ss_margin > 0.0 then "text-sky-600 dark:text-sky-400"
+           else if s.ss_margin < 0.0 then "text-rose-600 dark:text-rose-400"
+           else "text-slate-600 dark:text-slate-400")
+          s.ss_margin
+      in
+      let rows = seasons_desc |> List.map row |> String.concat "\n" in
+      Printf.sprintf
+        {html|<details class="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 p-5 shadow-lg">
+          <summary class="cursor-pointer select-none font-bold text-slate-900 dark:text-slate-200">시즌별 요약</summary>
+          <div class="mt-2 text-[11px] text-slate-500 dark:text-slate-500 leading-relaxed">시즌을 누르면 해당 시즌 경기 로그로 이동합니다.</div>
+          <div class="mt-4 overflow-x-auto">
+            <table class="min-w-[860px] w-full text-sm table-fixed tabular-nums" aria-label="시즌별 요약">
+              <colgroup>
+                <col style="width: 160px;">
+                <col style="width: 70px;">
+                <col style="width: 70px;">
+                <col style="width: 70px;">
+                <col style="width: 70px;">
+                <col style="width: 70px;">
+                <col style="width: 80px;">
+                <col style="width: 80px;">
+              </colgroup>
+              <thead class="bg-slate-100 dark:bg-slate-800/70 text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider">
+                <tr>
+                  <th scope="col" class="px-3 py-2 text-left font-sans">시즌</th>
+                  <th scope="col" class="px-3 py-2 text-right">경기</th>
+                  <th scope="col" class="px-3 py-2 text-right" title="경기당 출전시간">MIN</th>
+                  <th scope="col" class="px-3 py-2 text-right" title="평균 득점">득점</th>
+                  <th scope="col" class="px-3 py-2 text-right" title="평균 리바운드">리바</th>
+                  <th scope="col" class="px-3 py-2 text-right" title="평균 어시스트">어시</th>
+                  <th scope="col" class="px-3 py-2 text-right" title="효율">EFF</th>
+                  <th scope="col" class="px-3 py-2 text-right" title="팀 득실마진(출전시간 가중)">MG</th>
+                </tr>
+              </thead>
+              <tbody>%s</tbody>
+            </table>
+          </div>
+        </details>|html}
+        rows
+
+let career_trajectory_chart (seasons: season_stats list) =
+  let season_code_int s = try int_of_string s with _ -> 0 in
+  let seasons_asc =
+    seasons
+    |> List.sort (fun a b -> compare (season_code_int a.ss_season_code) (season_code_int b.ss_season_code))
+  in
+  match seasons_asc with
+  | [] -> ""
+  | [_] -> ""
+  | _ ->
+      let n = List.length seasons_asc in
+      let width = 420 in
+      let height = 140 in
+      let padding = 22 in
+      let inner_w = width - (2 * padding) in
+      let inner_h = height - (2 * padding) in
+      let max_pts =
+        seasons_asc
+        |> List.fold_left (fun acc s -> max acc s.ss_avg_points) 0.0
+        |> fun m -> if m <= 0.0 then 1.0 else m
+      in
+      let x_of_i i =
+        if n <= 1 then padding
+        else padding + (i * inner_w) / (n - 1)
+      in
+      let y_of_pts v =
+        let ratio = max 0.0 (min 1.0 (v /. max_pts)) in
+        padding + int_of_float (float_of_int inner_h *. (1.0 -. ratio))
+      in
+      let pts_xy =
+        seasons_asc
+        |> List.mapi (fun i s ->
+            let x = x_of_i i in
+            let y = y_of_pts s.ss_avg_points in
+            (x, y, s))
+      in
+      let path_d =
+        match pts_xy with
+        | [] -> ""
+        | (x0, y0, _) :: tl ->
+            let rest =
+              tl |> List.map (fun (x, y, _) -> Printf.sprintf "L %d %d" x y) |> String.concat " "
+            in
+            Printf.sprintf "M %d %d %s" x0 y0 rest
+      in
+      let dots =
+        pts_xy
+        |> List.map (fun (x, y, s) ->
+            let tip = Printf.sprintf "%s: 평균 득점 %.1f" s.ss_season_name s.ss_avg_points in
+            Printf.sprintf
+              {svg|<g><title>%s</title><circle cx="%d" cy="%d" r="3.5" class="fill-orange-500"/></g>|svg}
+              (escape_html tip) x y)
+        |> String.concat "\n"
+      in
+      let first_season = (List.hd seasons_asc).ss_season_name in
+      let last_season = (List.hd (List.rev seasons_asc)).ss_season_name in
+      Printf.sprintf
+        {html|<div class="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 p-5 shadow-lg">
+          <div class="flex items-end justify-between gap-3">
+            <div>
+              <h3 class="text-slate-900 dark:text-slate-200 font-bold">평균 득점 추이</h3>
+              <div class="text-[11px] text-slate-500 dark:text-slate-500">%s → %s</div>
+            </div>
+            <div class="text-[11px] text-slate-500 dark:text-slate-500 font-mono">최대 %.1f</div>
+          </div>
+          <div class="mt-4">
+            <svg viewBox="0 0 %d %d" class="w-full max-w-xl">
+              <path d="%s" fill="none" stroke="currentColor" class="text-orange-500" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+              %s
+            </svg>
+          </div>
+        </div>|html}
+        (escape_html first_season)
+        (escape_html last_season)
+        max_pts
+        width height
+        (escape_html path_d)
+        dots
 let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2") ?(include_team=true) ?(player_info=None) (rank: int) (p: player_aggregate) =
   let id_badge = if show_player_id then player_id_badge p.player_id else "" in
   let display_name = normalize_name p.name in
@@ -658,8 +815,53 @@ let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2") ?(include_
     (stat_total_cell ~extra_classes:"hidden lg:table-cell whitespace-nowrap" ~width_style:"width: 80px; min-width: 80px;" p.avg_turnovers p.total_turnovers)
     (stat_cell ~highlight:true ~extra_classes:"whitespace-nowrap" ~width_style:"width: 80px; min-width: 80px;" p.efficiency)
     (stat_cell ~extra_classes:"hidden sm:table-cell whitespace-nowrap" ~width_style:"width: 80px; min-width: 80px;" per)
-let find_substring_from ~sub:_ _ ~from:_ = None
-let career_highs_card _ = "<!-- Career Highs Placeholder -->"
+	let find_substring_from ~(sub: string) (s: string) ~(from: int) =
+	  let len_s = String.length s in
+	  let len_sub = String.length sub in
+	  if len_sub = 0 then Some (max 0 from)
+	  else if from < 0 || from > len_s - len_sub then None
+	  else
+	    let rec loop i =
+	      if i > len_s - len_sub then None
+	      else if String.sub s i len_sub = sub then Some i
+	      else loop (i + 1)
+	    in
+	    loop from
+
+	let career_highs_card (items_opt: career_high_item list option) =
+	  match items_opt with
+	  | None | Some [] -> ""
+	  | Some items ->
+	      let item_html (it: career_high_item) =
+	        let venue = if it.chi_is_home then "홈" else "원정" in
+	        let href = Printf.sprintf "/boxscore/%s" (Uri.pct_encode it.chi_game_id) in
+	        Printf.sprintf
+	          {html|<a href="%s" class="block bg-slate-100 dark:bg-slate-800/40 border border-slate-300 dark:border-slate-700/50 rounded-lg p-4 hover:border-orange-400 dark:hover:border-orange-600 transition-colors">
+	            <div class="flex items-start justify-between gap-3">
+	              <div class="min-w-0">
+	                <div class="text-[11px] text-slate-500 dark:text-slate-500 font-mono uppercase tracking-wider">%s</div>
+	                <div class="mt-1 text-sm text-slate-700 dark:text-slate-300 truncate">%s · %s</div>
+	              </div>
+	              <div class="text-2xl font-black text-slate-900 dark:text-slate-200 font-mono tabular-nums">%d</div>
+	            </div>
+	          </a>|html}
+	          (escape_html href)
+	          (escape_html it.chi_label)
+	          (escape_html it.chi_game_date)
+	          (escape_html (venue ^ " · " ^ it.chi_opponent))
+	          it.chi_value
+	      in
+	      let items_html = items |> List.map item_html |> String.concat "\n" in
+	      Printf.sprintf
+	        {html|<div class="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 p-5 shadow-lg">
+	          <div class="flex items-center justify-between gap-3">
+	            <h3 class="text-slate-900 dark:text-slate-200 font-bold">커리어 하이</h3>
+	            <div class="text-[11px] text-slate-500 dark:text-slate-500 font-mono">%d개</div>
+	          </div>
+	          <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">%s</div>
+	        </div>|html}
+	        (List.length items)
+	        items_html
 
  (* Helper: Recent Games List *)
  let render_recent_games_for_predict team_name (games : game_summary list) limit =
@@ -678,9 +880,9 @@ let career_highs_card _ = "<!-- Career Highs Placeholder -->"
          String.compare date_b date_a) (* Descending date *)
      |> (fun l -> try List.filteri (fun i _ -> i < limit) l with _ -> l)
    in
-   if relevant = [] then
-     {html|<div class="text-slate-400 text-xs italic">No recent games</div>|html}
-   else
+	   if relevant = [] then
+	     {html|<div class="text-slate-400 text-xs italic">최근 경기 없음</div>|html}
+	   else
      let rows =
        relevant
        |> List.map (fun g ->
