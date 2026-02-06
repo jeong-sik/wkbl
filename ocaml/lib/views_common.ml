@@ -13,6 +13,41 @@ let escape_html s =
   |> List.of_seq
   |> String.concat ""
 
+let escape_js_string s =
+  (* Defensive escaping for inline <script> blocks. *)
+  s
+  |> String.to_seq
+  |> Seq.map (function
+    | '\\' -> "\\\\"
+    | '"' -> "\\\""
+    | '\n' -> "\\n"
+    | '\r' -> "\\r"
+    | '\t' -> "\\t"
+    (* Avoid accidentally closing the script tag in case env vars contain "<" *)
+    | '<' -> "\\x3C"
+    | c -> String.make 1 c)
+  |> List.of_seq
+  |> String.concat ""
+
+let env_nonempty name =
+  match Sys.getenv_opt name with
+  | None -> None
+  | Some v ->
+      let t = String.trim v in
+      if t = "" then None else Some t
+
+let sentry_public_key_of_dsn dsn =
+  match Uri.userinfo (Uri.of_string dsn) with
+  | None -> None
+  | Some ui ->
+      let public =
+        match String.split_on_char ':' ui with
+        | pub :: _ -> pub
+        | [] -> ""
+      in
+      let t = String.trim public in
+      if t = "" then None else Some t
+
 type empty_state_icon = BasketballIcon | SearchIcon | ChartIcon | UsersIcon | TableIcon
 
 type col_spec = {
@@ -226,6 +261,64 @@ let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="") ?og_titl
     | Some ts -> Printf.sprintf {|<span class="hidden sm:inline-flex items-center text-xs text-slate-500 dark:text-slate-400" data-freshness="%s"></span>|} ts
     | None -> ""
   in
+
+  let observability_html =
+    let sentry_html =
+      match env_nonempty "SENTRY_DSN" with
+      | None -> ""
+      | Some dsn ->
+          (match sentry_public_key_of_dsn dsn with
+          | None -> ""
+          | Some public_key ->
+              let env_opt = env_nonempty "SENTRY_ENVIRONMENT" in
+              let release_opt =
+                match env_nonempty "SENTRY_RELEASE" with
+                | Some r -> Some r
+                | None -> env_nonempty "RAILWAY_GIT_COMMIT_SHA"
+              in
+              let opts =
+                [ ("dsn", dsn) ]
+                @ (match env_opt with Some e -> [ ("environment", e) ] | None -> [])
+                @ (match release_opt with Some r -> [ ("release", r) ] | None -> [])
+              in
+              let opts_js =
+                opts
+                |> List.map (fun (k, v) -> Printf.sprintf {|%s: "%s"|} k (escape_js_string v))
+                |> String.concat ",\n          "
+              in
+              Printf.sprintf {html|
+  <script src="https://js.sentry-cdn.com/%s.min.js" crossorigin="anonymous"></script>
+  <script>
+    (function() {
+      if (!window.Sentry || !Sentry.onLoad) return;
+      Sentry.onLoad(function() {
+        Sentry.init({
+          %s
+        });
+      });
+    })();
+  </script>|html}
+                (escape_html public_key)
+                opts_js)
+    in
+
+    let clarity_html =
+      match env_nonempty "CLARITY_PROJECT_ID" with
+      | None -> ""
+      | Some pid ->
+          Printf.sprintf {html|
+  <script type="text/javascript">
+    (function(c,l,a,r,i,t,y){
+      c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+      t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+      y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "%s");
+  </script>|html} (escape_js_string pid)
+    in
+
+    sentry_html ^ clarity_html
+  in
+
   Printf.sprintf {html|<!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -337,7 +430,8 @@ let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="") ?og_titl
       letter-spacing: 0.05em;
       animation: live-pulse 2s infinite;
     }
-  </style>
+	  </style>
+	  %s
 </head>
 <body class="bg-slate-50 dark:bg-[#0b0e14] text-slate-900 dark:text-slate-200">
   <!-- Skip to main content link for keyboard users -->
@@ -491,7 +585,7 @@ let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="") ?og_titl
   <script src="/static/js/skeleton-loader.js"></script>
   <script src="/static/js/data-freshness.js"></script>
 </body>
-</html>|html} title og_img_html freshness_html content
+</html>|html} title og_img_html freshness_html observability_html content
 
 let eff_badge ?(show_label=false) eff =
   let color_cls = if eff >= 20.0 then "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/30"
