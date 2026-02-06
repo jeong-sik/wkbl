@@ -1206,7 +1206,8 @@ let test_get_last_sync_time_str_initial () =
 
 let test_seasons_catalog_name_of_code () =
   Alcotest.(check string) "046 -> 2025-2026" "2025-2026" (Wkbl.Seasons_catalog.name_of_code "046");
-  Alcotest.(check string) "025 -> 2007-2008" "2007-2008" (Wkbl.Seasons_catalog.name_of_code "025")
+  Alcotest.(check string) "025 -> 2007-2008" "2007-2008" (Wkbl.Seasons_catalog.name_of_code "025");
+  Alcotest.(check string) "047 inferred -> 2026-2027" "2026-2027" (Wkbl.Seasons_catalog.name_of_code "047")
 
 let test_seasons_catalog_unique_codes () =
   let module S = Set.Make (String) in
