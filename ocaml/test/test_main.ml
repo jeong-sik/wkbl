@@ -9,6 +9,17 @@ let float_eq ?(eps=0.001) a b = Float.abs (a -. b) < eps
 let float_testable =
   Alcotest.testable (Fmt.float) (fun a b -> float_eq a b)
 
+(** Simple substring check for HTML assertions in tests. *)
+let contains_substring s sub =
+  let len_s = String.length s in
+  let len_sub = String.length sub in
+  let rec loop i =
+    if i + len_sub > len_s then false
+    else if String.sub s i len_sub = sub then true
+    else loop (i + 1)
+  in
+  if len_sub = 0 then true else loop 0
+
 (* ============================================= *)
 (* MVP Score Calculation Tests                   *)
 (* ============================================= *)
@@ -705,6 +716,20 @@ let test_streak_empty_games () =
   in
   Alcotest.(check int) "no streaks for empty games" 0 (List.length streaks)
 
+let test_make_player_streak_empty_defensive () =
+  let streak =
+    Wkbl.Streaks.make_player_streak
+      ~player_id:"P001"
+      ~player_name:"Test Player"
+      ~team_name:"Test Team"
+      ~streak_type:Points20Plus
+      []
+  in
+  Alcotest.(check int) "empty streak count" 0 streak.ps_current_count;
+  Alcotest.(check string) "empty streak start_date" "" streak.ps_start_date;
+  Alcotest.(check (option string)) "empty streak end_date" None streak.ps_end_date;
+  Alcotest.(check int) "empty streak games" 0 (List.length streak.ps_games)
+
 let test_streak_type_labels () =
   Alcotest.(check string) "WinStreak" "win_streak" (streak_type_to_string WinStreak);
   Alcotest.(check string) "Points20Plus" "pts_20plus" (streak_type_to_string Points20Plus);
@@ -724,6 +749,7 @@ let streaks_tests = [
   Alcotest.test_case "Get active streaks" `Quick test_streak_get_active;
   Alcotest.test_case "Minimum streak length" `Quick test_streak_minimum_length;
   Alcotest.test_case "Empty games list" `Quick test_streak_empty_games;
+  Alcotest.test_case "Empty streak defensive" `Quick test_make_player_streak_empty_defensive;
   Alcotest.test_case "Streak type labels" `Quick test_streak_type_labels;
 ]
 
@@ -903,6 +929,23 @@ let test_extract_score_flow_dedup () =
   (* Should have: start (0-0), first 2-0, and 4-0 (deduped the duplicate 2-0) *)
   Alcotest.(check int) "Deduped flow = 3 points" 3 (List.length flow)
 
+let test_game_flow_chart_empty () =
+  let html = Wkbl.Views_tools.game_flow_chart ~home_team:"A" ~away_team:"B" [] in
+  Alcotest.(check bool) "empty placeholder" true (contains_substring html "No score flow data available")
+
+let test_game_flow_chart_single_point () =
+  let pt : Wkbl.Domain.score_flow_point = {
+    sfp_clock = "10:00";
+    sfp_period = "Q1";
+    sfp_home_score = 0;
+    sfp_away_score = 0;
+    sfp_diff = 0;
+    sfp_elapsed_seconds = 0;
+  } in
+  let html = Wkbl.Views_tools.game_flow_chart ~home_team:"A" ~away_team:"B" [pt] in
+  Alcotest.(check bool) "renders svg" true (contains_substring html "<svg");
+  Alcotest.(check bool) "has header" true (contains_substring html "Game Flow")
+
 let score_flow_tests = [
   Alcotest.test_case "Period to number conversion" `Quick test_period_to_number;
   Alcotest.test_case "Parse clock to seconds" `Quick test_parse_clock_to_seconds;
@@ -911,6 +954,11 @@ let score_flow_tests = [
   Alcotest.test_case "Extract score flow empty" `Quick test_extract_score_flow_empty;
   Alcotest.test_case "Extract score flow no scores" `Quick test_extract_score_flow_no_scores;
   Alcotest.test_case "Extract score flow dedup" `Quick test_extract_score_flow_dedup;
+]
+
+let views_tools_tests = [
+  Alcotest.test_case "game_flow_chart empty" `Quick test_game_flow_chart_empty;
+  Alcotest.test_case "game_flow_chart single point" `Quick test_game_flow_chart_single_point;
 ]
 
 (* ============================================= *)
@@ -1490,16 +1538,6 @@ let scraper_tests = [
 (* Disambiguation Line Tests                     *)
 (* ============================================= *)
 
-let contains_substring s sub =
-  let len_s = String.length s in
-  let len_sub = String.length sub in
-  let rec loop i =
-    if i + len_sub > len_s then false
-    else if String.sub s i len_sub = sub then true
-    else loop (i + 1)
-  in
-  if len_sub = 0 then true else loop 0
-
 let test_player_disambiguation_line () =
   let info : Wkbl.Domain.player_info = {
     id = "P0001";
@@ -1853,6 +1891,7 @@ let () =
     "Hot Streaks", streaks_tests;
     "Clutch Time", clutch_tests;
     "Score Flow", score_flow_tests;
+    "Views Tools", views_tools_tests;
     "Lineup Chemistry", lineup_chemistry_tests;
     "On/Off Impact", on_off_impact_tests;
     "Advanced Stats", advanced_stats_tests;

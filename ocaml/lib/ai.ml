@@ -68,6 +68,59 @@ let build_prediction_prompt ~(home: string) ~(away: string) (output: prediction_
     context_text
 
 (** Call LLM via MCP JSON-RPC to llm-mcp server *)
+let llm_mcp_url =
+  Sys.getenv_opt "WKBL_LLM_MCP_URL"
+  |> Option.value ~default:"http://localhost:8932/mcp"
+
+(* [call_llm_http] is invoked from within the main Eio event-loop (Kirin server).
+   Avoid shelling-out and avoid nested [Eio_main.run] by taking the shared Eio
+   context from the server on startup. *)
+let llm_post_json : (string -> (string, string) result) option ref = ref None
+
+let set_llm_ctx ~sw ~env =
+  llm_post_json := Some (fun body_str ->
+    let net = Eio.Stdenv.net env in
+    let clock = Eio.Stdenv.clock env in
+    let uri = Uri.of_string llm_mcp_url in
+    let headers = Cohttp.Header.of_list [
+      ("Content-Type", "application/json");
+      ("Accept", "application/json");
+    ] in
+    let client = Cohttp_eio.Client.make ~https:None net in
+    try
+      let resp, resp_body_str =
+        Eio.Time.with_timeout_exn clock 30.0 (fun () ->
+          let resp, body =
+            Cohttp_eio.Client.post
+              ~sw
+              client
+              ~headers
+              ~body:(Cohttp_eio.Body.of_string body_str)
+              uri
+          in
+          let resp_body_str =
+            Eio.Buf_read.(parse_exn take_all) body
+              ~max_size:(5 * 1024 * 1024)
+          in
+          (resp, resp_body_str)
+        )
+      in
+      let code =
+        resp
+        |> Cohttp.Response.status
+        |> Cohttp.Code.code_of_status
+      in
+      if code >= 200 && code < 300 then
+        Ok resp_body_str
+      else
+        Error (Printf.sprintf "LLM HTTP %d: %s" code (String.trim resp_body_str))
+    with
+    | Eio.Time.Timeout -> Error "LLM HTTP timeout"
+    | exn -> Error (Printexc.to_string exn))
+
+let clear_llm_ctx () =
+  llm_post_json := None
+
 let call_llm_http ~prompt =
   try
     (* Build MCP JSON-RPC request for gemini tool *)
@@ -83,15 +136,16 @@ let call_llm_http ~prompt =
         ]);
       ]);
     ]) in
-    (* Escape single quotes in JSON for shell *)
-    let escaped = String.concat "'\\''" (String.split_on_char '\'' mcp_request) in
-    let cmd = Printf.sprintf
-      "curl -s -m 30 -X POST http://localhost:8932/mcp -H 'Content-Type: application/json' -d '%s' 2>/dev/null"
-      escaped
+    let response =
+      match !llm_post_json with
+      | None ->
+          Error "LLM client not configured (Ai.set_llm_ctx not called)"
+      | Some post_json -> post_json mcp_request
     in
-    let ic = Unix.open_process_in cmd in
-    let response = In_channel.input_all ic in
-    let _ = Unix.close_process_in ic in
+
+    match response with
+    | Error _ as e -> e
+    | Ok response ->
 
     (* Parse MCP JSON-RPC response *)
     match Yojson.Safe.from_string response with

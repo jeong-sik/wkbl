@@ -104,6 +104,9 @@ let () =
   (* Run inside Eio context for DB pool initialization *)
   Eio_main.run @@ fun env ->
   Eio.Switch.run @@ fun sw ->
+  
+  (* Configure AI module to use the shared Eio context for HTTP calls (no shell-out). *)
+  Ai.set_llm_ctx ~sw ~env;
 
   (* Initialize database pool inside Eio context *)
   (match Db.init_pool ~sw ~stdenv:(env :> Caqti_eio.stdenv) db_url with
