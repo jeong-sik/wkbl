@@ -1370,11 +1370,32 @@ let test_parse_boxscore_html_two_teams () =
           Alcotest.(check int) "home pts" 12 p.bs_pts
       | _ -> Alcotest.fail "expected exactly one home player row")
   | _ -> Alcotest.fail "expected exactly two team tables"
+
+let test_schedule_sync_success_policy () =
+  let open Wkbl.Scraper in
+  Alcotest.(check bool)
+    "0 schedule, 0 games, 0 errors is not success"
+    false
+    (schedule_sync_success ~schedule_synced:0 ~games_upserted:0 ~errors:0);
+  Alcotest.(check bool)
+    "schedule > 0 and no errors is success"
+    true
+    (schedule_sync_success ~schedule_synced:1 ~games_upserted:0 ~errors:0);
+  Alcotest.(check bool)
+    "games > 0 and no errors is success"
+    true
+    (schedule_sync_success ~schedule_synced:0 ~games_upserted:1 ~errors:0);
+  Alcotest.(check bool)
+    "any errors makes it failure"
+    false
+    (schedule_sync_success ~schedule_synced:1 ~games_upserted:1 ~errors:1)
+
 let scraper_tests = [
   Alcotest.test_case "code_from_team_name known" `Quick test_code_from_team_name_known;
   Alcotest.test_case "code_from_team_name unknown" `Quick test_code_from_team_name_unknown;
   Alcotest.test_case "code_from_team_name alternate" `Quick test_code_from_team_name_alternate;
   Alcotest.test_case "get_last_sync_time_str" `Quick test_get_last_sync_time_str_initial;
+  Alcotest.test_case "schedule sync success policy" `Quick test_schedule_sync_success_policy;
   Alcotest.test_case "game_params_of_href" `Quick test_game_params_of_href;
   Alcotest.test_case "game_id_of_params" `Quick test_game_id_of_params;
   Alcotest.test_case "parse_schedule_html extracts game meta" `Quick test_parse_schedule_html_extracts_game_meta;
