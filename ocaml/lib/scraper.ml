@@ -2216,14 +2216,21 @@ let schedule_sync_suspicion_reason
     This fixes UI facts such as season dropdown labels when the DB was seeded
     with an incorrect season_code -> season_name mapping. *)
 let ensure_seasons_catalog_in_db () =
+  let current_code = current_season_code_auto () |> main_to_datalab in
+  let current_name = current_season_name_auto () in
   Db.with_db (fun db ->
-    Seasons_catalog.all
-    |> List.fold_left (fun acc (code, name) ->
-        match acc with
-        | Error _ as e -> e
-        | Ok () ->
-            Db.Repo.upsert_season ~season_code:code ~season_name:name db)
-        (Ok ()))
+    let seeded =
+      Seasons_catalog.all
+      |> List.fold_left (fun acc (code, name) ->
+          match acc with
+          | Error _ as e -> e
+          | Ok () ->
+              Db.Repo.upsert_season ~season_code:code ~season_name:name db)
+          (Ok ())
+    in
+    match seeded with
+    | Error _ as e -> e
+    | Ok () -> Db.Repo.upsert_season ~season_code:current_code ~season_name:current_name db)
 
 (** Decide whether a schedule sync attempt should be treated as "successful".
 

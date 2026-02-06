@@ -178,7 +178,7 @@ let home_page ?(player_info_map=None) ~season ~seasons ~data_as_of players =
        <span class="text-xs font-bold text-orange-700 dark:text-orange-300 uppercase tracking-wider">오늘의 경기</span>
       </div>
       <div class="flex items-center gap-3">
-       <span class="text-xs text-slate-400 dark:text-slate-500" title="최근 경기">📅 %s</span>
+       <span class="text-xs text-slate-400 dark:text-slate-500" title="최근 경기일">📅 %s</span>
        <a href="/games" class="text-xs text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300">전체 일정 →</a>
       </div>
      </div>
