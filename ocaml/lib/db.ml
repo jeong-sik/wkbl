@@ -76,6 +76,17 @@ type qa_schedule_missing_stats = {
   qsms_away_team: string;
 }
 
+type qa_schedule_coverage = {
+  qsc_season_code: string;
+  qsc_schedule_completed: int;
+  qsc_games_total: int;
+  qsc_matched: int;
+  qsc_missing: int;
+  qsc_coverage_pct: float;
+  qsc_season_uningested: bool;
+  qsc_games_missing_team: bool;
+}
+
 type qa_db_report = {
   qdr_generated_at: string;
   qdr_games_total: int;
@@ -90,6 +101,7 @@ type qa_db_report = {
   qdr_schedule_missing_stats_count: int;
   qdr_schedule_missing_stats_pct: float;
   qdr_schedule_missing_stats_sample: qa_schedule_missing_stats list;
+  qdr_schedule_coverage: qa_schedule_coverage list;
   qdr_score_mismatch_count: int;
   qdr_score_mismatch_sample: qa_score_mismatch list;
   qdr_team_count_anomaly_count: int;
@@ -437,6 +449,29 @@ module Types = struct
       }
     in
     custom ~encode ~decode (t2 string (t2 string (t2 string string)))
+
+  let qa_schedule_coverage =
+    let encode _ = Error "Encode not supported: read-only type" in
+    let decode (season_code, (schedule_completed, (games_total, (matched, (missing, (coverage_pct, (season_uningested, games_missing_team))))))) =
+      Ok { qsc_season_code = season_code;
+           qsc_schedule_completed = schedule_completed;
+           qsc_games_total = games_total;
+           qsc_matched = matched;
+           qsc_missing = missing;
+           qsc_coverage_pct = coverage_pct;
+           qsc_season_uningested = season_uningested;
+           qsc_games_missing_team = games_missing_team;
+      }
+    in
+    let t = t2 in
+    custom ~encode ~decode
+      (t string
+         (t int
+            (t int
+               (t int
+                  (t int
+                     (t float
+                        (t bool bool)))))))
 
   let boxscore_player_stat =
     let encode _ = Error "Encode not supported: read-only type" in
@@ -2018,6 +2053,54 @@ module Queries = struct
     WHERE st.stat_rows IS NULL OR st.stat_rows = 0
     ORDER BY m.game_date DESC, m.game_id DESC
     LIMIT 50
+  |}
+
+  let qa_schedule_coverage = (unit ->* Types.qa_schedule_coverage) {|
+    WITH completed AS (
+      SELECT s.season_code, s.game_date, s.home_team_code, s.away_team_code
+      FROM schedule s
+      WHERE s.status = 'completed'
+    ),
+    matched AS (
+      SELECT
+        c.season_code,
+        COUNT(*) AS schedule_completed,
+        COUNT(g.game_id) AS matched
+      FROM completed c
+      LEFT JOIN games g
+        ON g.season_code = c.season_code
+       AND g.game_date::text = c.game_date
+       AND g.home_team_code = c.home_team_code
+       AND g.away_team_code = c.away_team_code
+       AND g.game_type != '10'
+      GROUP BY c.season_code
+    ),
+    games_by_season AS (
+      SELECT
+        season_code,
+        COUNT(*) AS games_total,
+        COUNT(*) FILTER (
+          WHERE home_team_code IS NULL OR home_team_code = '' OR away_team_code IS NULL OR away_team_code = ''
+        ) AS games_missing_team
+      FROM games
+      WHERE game_type != '10'
+      GROUP BY season_code
+    )
+    SELECT
+      m.season_code,
+      m.schedule_completed,
+      COALESCE(g.games_total, 0) AS games_total,
+      m.matched,
+      (m.schedule_completed - m.matched) AS missing,
+      CASE
+        WHEN m.schedule_completed = 0 THEN 0
+        ELSE ROUND(100.0 * m.matched / m.schedule_completed, 1)
+      END AS coverage_pct,
+      COALESCE(g.games_total, 0) = 0 AS season_uningested,
+      COALESCE(g.games_missing_team, 0) > 0 AS games_missing_team
+    FROM matched m
+    LEFT JOIN games_by_season g ON g.season_code = m.season_code
+    ORDER BY m.season_code
   |}
 
   let qa_score_mismatch_count = (unit ->? int) {|
@@ -4075,6 +4158,7 @@ end
   let qa_schedule_missing_game_sample (module Db : Caqti_eio.CONNECTION) = Db.collect_list Queries.qa_schedule_missing_game_sample ()
   let qa_schedule_missing_stats_count (module Db : Caqti_eio.CONNECTION) = Db.find_opt Queries.qa_schedule_missing_stats_count ()
   let qa_schedule_missing_stats_sample (module Db : Caqti_eio.CONNECTION) = Db.collect_list Queries.qa_schedule_missing_stats_sample ()
+  let qa_schedule_coverage (module Db : Caqti_eio.CONNECTION) = Db.collect_list Queries.qa_schedule_coverage ()
   let get_game_info ~game_id (module Db : Caqti_eio.CONNECTION) = Db.find_opt Queries.game_info_by_id game_id
   let get_boxscore_stats ~game_id (module Db : Caqti_eio.CONNECTION) = Db.collect_list Queries.boxscore_stats_by_game_id game_id
   let get_leaders ~category ~scope ~season (module Db : Caqti_eio.CONNECTION) =
@@ -4841,6 +4925,7 @@ let get_db_quality_report () : qa_db_report db_result =
     let* schedule_missing_game_sample = with_db (fun db -> Repo.qa_schedule_missing_game_sample db) in
     let* schedule_missing_stats_count_opt = with_db (fun db -> Repo.qa_schedule_missing_stats_count db) in
     let* schedule_missing_stats_sample = with_db (fun db -> Repo.qa_schedule_missing_stats_sample db) in
+    let* schedule_coverage = with_db (fun db -> Repo.qa_schedule_coverage db) in
     let* mismatch_count_opt = with_db (fun db -> Repo.qa_score_mismatch_count db) in
     let* mismatch_sample = with_db (fun db -> Repo.qa_score_mismatch_sample db) in
     let* team_count_anomaly_count_opt = with_db (fun db -> Repo.qa_team_count_anomaly_count db) in
@@ -4891,6 +4976,7 @@ let get_db_quality_report () : qa_db_report db_result =
         qdr_schedule_missing_stats_count = schedule_missing_stats_count;
         qdr_schedule_missing_stats_pct = schedule_missing_stats_pct;
         qdr_schedule_missing_stats_sample = schedule_missing_stats_sample;
+        qdr_schedule_coverage = schedule_coverage;
         qdr_score_mismatch_count = int_or_zero mismatch_count_opt;
         qdr_score_mismatch_sample = mismatch_sample;
         qdr_team_count_anomaly_count = int_or_zero team_count_anomaly_count_opt;
