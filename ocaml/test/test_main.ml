@@ -1605,6 +1605,55 @@ let qa_util_tests = [
 ]
 
 (* ============================================= *)
+(* Observability Scripts Tests                   *)
+(* ============================================= *)
+
+let with_env name value f =
+  let prev = Sys.getenv_opt name in
+  Unix.putenv name value;
+  Fun.protect
+    ~finally:(fun () ->
+      match prev with
+      | Some v -> Unix.putenv name v
+      | None -> Unix.putenv name "")
+    f
+
+let test_layout_observability_off () =
+  let html =
+    with_env "SENTRY_DSN" "" (fun () ->
+      with_env "SENTRY_ENVIRONMENT" "" (fun () ->
+        with_env "CLARITY_PROJECT_ID" "" (fun () ->
+          Wkbl.Views_common.layout
+            ~title:"WKBL"
+            ~content:{html|<main id="main-content">hi</main>|html}
+            ())))
+  in
+  Alcotest.(check bool) "no sentry script" false (contains_substring html "js.sentry-cdn.com");
+  Alcotest.(check bool) "no clarity script" false (contains_substring html "clarity.ms/tag/")
+
+let test_layout_observability_on () =
+  let dsn = "https://PUBLICKEY@o0.ingest.sentry.io/0" in
+  let html =
+    with_env "SENTRY_DSN" dsn (fun () ->
+      with_env "SENTRY_ENVIRONMENT" "production" (fun () ->
+        with_env "CLARITY_PROJECT_ID" "clarity123" (fun () ->
+          Wkbl.Views_common.layout
+            ~title:"WKBL"
+            ~content:{html|<main id="main-content">hi</main>|html}
+            ())))
+  in
+  Alcotest.(check bool) "sentry loader uses public key" true (contains_substring html "js.sentry-cdn.com/PUBLICKEY.min.js");
+  Alcotest.(check bool) "sentry init includes DSN" true (contains_substring html dsn);
+  Alcotest.(check bool) "sentry init includes env" true (contains_substring html {|environment: "production"|});
+  Alcotest.(check bool) "clarity snippet base url" true (contains_substring html "clarity.ms/tag/");
+  Alcotest.(check bool) "clarity snippet includes id" true (contains_substring html "clarity123")
+
+let observability_tests = [
+  Alcotest.test_case "layout without scripts" `Quick test_layout_observability_off;
+  Alcotest.test_case "layout with scripts" `Quick test_layout_observability_on;
+]
+
+(* ============================================= *)
 (* UI Copy Tests                                 *)
 (* ============================================= *)
 
@@ -1764,5 +1813,6 @@ let () =
     "Scraper Functions", scraper_tests;
     "Disambiguation", disambiguation_tests;
     "QA Utils", qa_util_tests;
+    "Observability", observability_tests;
     "UI Copy", ui_copy_tests;
   ]
