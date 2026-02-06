@@ -18,6 +18,7 @@ module Streaks = Streaks
 module Qa = Qa
 module Clutch = Clutch
 module Scraper = Scraper
+module Seasons_catalog = Seasons_catalog
 module Cards = Cards
 module Views_charts = Views_charts
 module Ai = Ai
