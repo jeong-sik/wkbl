@@ -2185,8 +2185,15 @@ let current_season_name_auto () =
   let season_start_year = if month >= 10 then year else year - 1 in
   Printf.sprintf "%d-%d" season_start_year (season_start_year + 1)
 
+(** Decide whether a schedule sync attempt should be treated as "successful".
+
+    Important: (0 synced, 0 errors) is treated as failure, because it almost
+    always means the upstream HTML was blocked/changed and nothing was ingested. *)
+let schedule_sync_success ~schedule_synced ~games_upserted ~errors =
+  errors = 0 && (schedule_synced > 0 || games_upserted > 0)
+
 (** Sync current season schedule to database
-    Returns (synced_count, error_count) *)
+    Returns (schedule_synced, games_upserted, error_count) *)
 let sync_current_season_schedule ~sw ~env () =
   let current_season_code = current_season_code_auto () |> main_to_datalab in
   let current_season_name = current_season_name_auto () in
@@ -2194,6 +2201,13 @@ let sync_current_season_schedule ~sw ~env () =
   try
     let entries = fetch_full_season_schedule ~sw ~env ~season_code:current_season_code ~season_name:current_season_name in
     Printf.printf "[Sync] Fetched %d schedule entries\n%!" (List.length entries);
+    if entries = [] then begin
+      Printf.eprintf
+        "[Sync] No schedule entries fetched (season=%s, name=%s). Treating as failure.\n%!"
+        current_season_code
+        current_season_name;
+      (0, 0, 1)
+    end else
     let synced = ref 0 in
     let synced_games = ref 0 in
     let errors = ref 0 in
@@ -2265,12 +2279,12 @@ let sync_current_season_schedule ~sw ~env () =
     Printf.printf "[Sync] Complete: %d schedule synced, %d games upserted, %d errors\n%!"
       !synced !synced_games !errors;
     (* Update last sync time on success *)
-    if (!synced > 0 || !synced_games > 0) && !errors = 0 then
+    if schedule_sync_success ~schedule_synced:!synced ~games_upserted:!synced_games ~errors:!errors then
       last_sync_time := Some (Unix.time ());
-    (!synced, !errors)
+    (!synced, !synced_games, !errors)
   with exn ->
     Printf.eprintf "[Sync] Fatal error: %s\n%!" (Printexc.to_string exn);
-    (0, 1)
+    (0, 0, 1)
 
 (** Fetch live games from WKBL main page *)
 let fetch_live_games ~sw ~env () =
