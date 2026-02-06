@@ -120,6 +120,57 @@ let qa_dashboard_page (report: Db.qa_db_report) ?(markdown=None) () =
         (escape_html row.qsms_away_team))
     |> String.concat "\n"
   in
+  let schedule_coverage_rows =
+    let badge label cls =
+      Printf.sprintf
+        {html|<span class="px-2 py-0.5 rounded border text-[10px] font-mono %s">%s</span>|html}
+        cls
+        (escape_html label)
+    in
+    report.qdr_schedule_coverage
+    |> List.map (fun (row: Db.qa_schedule_coverage) ->
+      let coverage_html =
+        Printf.sprintf
+          {html|<span class="font-mono tabular-nums text-xs">%0.1f%%</span>|html}
+          row.qsc_coverage_pct
+      in
+      let flags =
+        []
+        |> fun acc -> if row.qsc_season_uningested then badge "no games" "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-700/60" :: acc else acc
+        |> fun acc -> if row.qsc_games_missing_team then badge "games missing team_code" "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-900/20 dark:text-rose-300 dark:border-rose-700/60" :: acc else acc
+      in
+      let flags_html =
+        match List.rev flags with
+        | [] -> {html|<span class="text-xs text-slate-400">-</span>|html}
+        | items -> String.concat " " items
+      in
+      Printf.sprintf
+        {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors"><td class="px-3 py-2 text-slate-900 dark:text-slate-200 font-mono text-xs">%s</td><td class="px-3 py-2 text-right font-mono text-xs tabular-nums">%d</td><td class="px-3 py-2 text-right font-mono text-xs tabular-nums">%d</td><td class="px-3 py-2 text-right font-mono text-xs tabular-nums">%d</td><td class="px-3 py-2 text-right font-mono text-xs tabular-nums">%d</td><td class="px-3 py-2 text-right">%s</td><td class="px-3 py-2">%s</td></tr>|html}
+        (escape_html row.qsc_season_code)
+        row.qsc_schedule_completed
+        row.qsc_games_total
+        row.qsc_matched
+        row.qsc_missing
+        coverage_html
+        flags_html)
+    |> String.concat "\n"
+  in
+  let schedule_coverage_block =
+    Printf.sprintf
+      {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-lg"><div class="flex items-center justify-between gap-3"><h3 class="text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-xs">Schedule Coverage by Season</h3><span class="text-[11px] text-slate-500 dark:text-slate-400 font-mono">rows=%d</span></div><div class="mt-3 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">완료 일정 대비 games 매칭 비율 (팀 코드 누락/미수집 시즌 포함)</div><div class="mt-4 overflow-x-auto"><table class="min-w-[880px] w-full text-sm font-mono table-fixed" aria-label="시즌별 스케줄 매칭 현황">
+        <colgroup>
+          <col style="width: 70px;"> <!-- Season -->
+          <col style="width: 90px;"> <!-- Schedule -->
+          <col style="width: 80px;"> <!-- Games -->
+          <col style="width: 80px;"> <!-- Matched -->
+          <col style="width: 80px;"> <!-- Missing -->
+          <col style="width: 90px;"> <!-- Coverage -->
+          <col style="width: auto;"> <!-- Flags -->
+        </colgroup>
+        <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px]"><tr><th scope="col" class="px-3 py-2 text-left">Season</th><th scope="col" class="px-3 py-2 text-right">Schedule</th><th scope="col" class="px-3 py-2 text-right">Games</th><th scope="col" class="px-3 py-2 text-right">Matched</th><th scope="col" class="px-3 py-2 text-right">Missing</th><th scope="col" class="px-3 py-2 text-right">Coverage</th><th scope="col" class="px-3 py-2 text-left">Flags</th></tr></thead><tbody>%s</tbody></table></div></div>|html}
+      (List.length report.qdr_schedule_coverage)
+      schedule_coverage_rows
+  in
   let markdown_block =
     match markdown with
     | None -> ""
@@ -166,7 +217,7 @@ let qa_dashboard_page (report: Db.qa_db_report) ?(markdown=None) () =
   in
   layout ~title:"QA | WKBL"
     ~content:(Printf.sprintf
-      {html|<div class="space-y-6 animate-fade-in"><div class="flex flex-col gap-2"><h2 class="text-2xl font-black text-slate-900 dark:text-slate-200">Data Quality (QA)</h2><div class="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">기록 신뢰도를 위해 <span class="font-mono text-slate-900 dark:text-slate-200">스코어 불일치</span>, <span class="font-mono text-slate-900 dark:text-slate-200">팀 수 이상</span>, <span class="font-mono text-slate-900 dark:text-slate-200">중복 스탯 row</span>, <span class="font-mono text-slate-900 dark:text-slate-200">중복 선수 ID</span>, <span class="font-mono text-slate-900 dark:text-slate-200">이름+생년월일 중복</span>을 점검합니다. (Generated: <span class="font-mono">%s</span>)</div></div>%s<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">%s%s%s%s%s%s%s%s</div><div class="grid grid-cols-1 lg:grid-cols-4 gap-4">%s%s%s%s</div><div class="grid grid-cols-1 gap-4">%s<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-lg"><div class="flex items-center justify-between gap-3"><h3 class="text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-xs">Score Mismatch</h3><span class="text-[11px] text-slate-500 dark:text-slate-400 font-mono">count=%d</span></div><div class="mt-3 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed"><span class="font-mono text-slate-900 dark:text-slate-200">games.home/away_score</span> vs <span class="font-mono text-slate-900 dark:text-slate-200">SUM(game_stats.pts)</span> 비교</div><div class="mt-4 overflow-x-auto"><table class="min-w-[860px] w-full text-sm font-mono table-fixed" aria-label="스코어 불일치 목록">
+      {html|<div class="space-y-6 animate-fade-in"><div class="flex flex-col gap-2"><h2 class="text-2xl font-black text-slate-900 dark:text-slate-200">Data Quality (QA)</h2><div class="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">기록 신뢰도를 위해 <span class="font-mono text-slate-900 dark:text-slate-200">스코어 불일치</span>, <span class="font-mono text-slate-900 dark:text-slate-200">팀 수 이상</span>, <span class="font-mono text-slate-900 dark:text-slate-200">중복 스탯 row</span>, <span class="font-mono text-slate-900 dark:text-slate-200">중복 선수 ID</span>, <span class="font-mono text-slate-900 dark:text-slate-200">이름+생년월일 중복</span>을 점검합니다. (Generated: <span class="font-mono">%s</span>)</div></div>%s<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">%s%s%s%s%s%s%s%s</div><div class="grid grid-cols-1 lg:grid-cols-4 gap-4">%s%s%s%s</div><div class="grid grid-cols-1 gap-4">%s%s<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-lg"><div class="flex items-center justify-between gap-3"><h3 class="text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-xs">Score Mismatch</h3><span class="text-[11px] text-slate-500 dark:text-slate-400 font-mono">count=%d</span></div><div class="mt-3 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed"><span class="font-mono text-slate-900 dark:text-slate-200">games.home/away_score</span> vs <span class="font-mono text-slate-900 dark:text-slate-200">SUM(game_stats.pts)</span> 비교</div><div class="mt-4 overflow-x-auto"><table class="min-w-[860px] w-full text-sm font-mono table-fixed" aria-label="스코어 불일치 목록">
           <colgroup>
             <col style="width: 90px;"> <!-- Date -->
             <col style="width: 120px;"> <!-- Game -->
@@ -216,6 +267,7 @@ let qa_dashboard_page (report: Db.qa_db_report) ?(markdown=None) () =
       (kpi_card ~label:"Team Count != 2" ~value_html:(int_chip report.qdr_team_count_anomaly_count) ~hint_html:"한 경기 팀 수가 2가 아님")
       (kpi_card ~label:"Dup Player Rows" ~value_html:(int_chip report.qdr_duplicate_player_row_count) ~hint_html:"중복으로 라인이 2개 뜨는 원인")
       (kpi_card ~label:"Dup Player Identity" ~value_html:(int_chip report.qdr_duplicate_player_identity_count) ~hint_html:"이름+생년월일 기준 중복 ID")
+      schedule_coverage_block
       schedule_missing_blocks
       report.qdr_score_mismatch_count
       mismatch_rows

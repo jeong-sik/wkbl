@@ -1454,9 +1454,51 @@ let test_split_csv_ids () =
   Alcotest.(check list_string) "empty" [] (Wkbl.Db.split_csv_ids "");
   Alcotest.(check list_string) "trim + skip empty" ["a"; "b"] (Wkbl.Db.split_csv_ids "a,, ,b,")
 
+let test_qa_dashboard_schedule_coverage () =
+  let report : Wkbl.Db.qa_db_report = {
+    qdr_generated_at = "2026-02-06T00:00:00Z";
+    qdr_games_total = 0;
+    qdr_games_with_stats = 0;
+    qdr_plus_minus_games = 0;
+    qdr_plus_minus_coverage_pct = 0.0;
+    qdr_schedule_total = 0;
+    qdr_schedule_completed = 0;
+    qdr_schedule_missing_game_count = 0;
+    qdr_schedule_missing_game_pct = 0.0;
+    qdr_schedule_missing_game_sample = [];
+    qdr_schedule_missing_stats_count = 0;
+    qdr_schedule_missing_stats_pct = 0.0;
+    qdr_schedule_missing_stats_sample = [];
+    qdr_schedule_coverage = [
+      { qsc_season_code = "001";
+        qsc_schedule_completed = 20;
+        qsc_games_total = 0;
+        qsc_matched = 0;
+        qsc_missing = 20;
+        qsc_coverage_pct = 0.0;
+        qsc_season_uningested = true;
+        qsc_games_missing_team = false;
+      }
+    ];
+    qdr_score_mismatch_count = 0;
+    qdr_score_mismatch_sample = [];
+    qdr_team_count_anomaly_count = 0;
+    qdr_team_count_anomaly_sample = [];
+    qdr_duplicate_player_row_count = 0;
+    qdr_duplicate_player_row_sample = [];
+    qdr_duplicate_player_name_count = 0;
+    qdr_duplicate_player_name_sample = [];
+    qdr_duplicate_player_identity_count = 0;
+    qdr_duplicate_player_identity_sample = [];
+  } in
+  let html = Wkbl.Views_tools.qa_dashboard_page report () in
+  Alcotest.(check bool) "contains schedule coverage header" true (contains_substring html "Schedule Coverage by Season");
+  Alcotest.(check bool) "contains no games flag" true (contains_substring html "no games")
+
 let qa_util_tests = [
   Alcotest.test_case "coverage pct" `Quick test_coverage_pct;
   Alcotest.test_case "split csv ids" `Quick test_split_csv_ids;
+  Alcotest.test_case "qa schedule coverage block" `Quick test_qa_dashboard_schedule_coverage;
 ]
 
 (* ============================================= *)

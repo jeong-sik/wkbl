@@ -67,6 +67,17 @@ type qa_schedule_missing_stats = {
   qsms_away_team: string;
 }
 
+type qa_schedule_coverage = {
+  qsc_season_code: string;
+  qsc_schedule_completed: int;
+  qsc_games_total: int;
+  qsc_matched: int;
+  qsc_missing: int;
+  qsc_coverage_pct: float;
+  qsc_season_uningested: bool;
+  qsc_games_missing_team: bool;
+}
+
 type qa_db_report = {
   qdr_generated_at: string;
   qdr_games_total: int;
@@ -81,6 +92,7 @@ type qa_db_report = {
   qdr_schedule_missing_stats_count: int;
   qdr_schedule_missing_stats_pct: float;
   qdr_schedule_missing_stats_sample: qa_schedule_missing_stats list;
+  qdr_schedule_coverage: qa_schedule_coverage list;
   qdr_score_mismatch_count: int;
   qdr_score_mismatch_sample: qa_score_mismatch list;
   qdr_team_count_anomaly_count: int;
