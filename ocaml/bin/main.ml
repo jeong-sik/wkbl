@@ -126,11 +126,21 @@ let () =
   let sync_with_retry () =
     let rec attempt n =
       Printf.printf "[Scheduler] Sync attempt %d...\n%!" (n + 1);
-      let (synced, errors) = Scraper.sync_current_season_schedule ~sw ~env () in
-      if errors = 0 || synced > 0 then
-        Printf.printf "[Scheduler] Sync successful: %d synced, %d errors\n%!" synced errors
+      let (schedule_synced, games_upserted, errors) =
+        Scraper.sync_current_season_schedule ~sw ~env ()
+      in
+      if Scraper.schedule_sync_success ~schedule_synced ~games_upserted ~errors then
+        Printf.printf
+          "[Scheduler] Sync successful: %d schedule, %d games, %d errors\n%!"
+          schedule_synced
+          games_upserted
+          errors
       else if n < Array.length retry_intervals then begin
-        Printf.printf "[Scheduler] Sync failed, retrying in %.0f minutes...\n%!"
+        Printf.printf
+          "[Scheduler] Sync failed (%d schedule, %d games, %d errors), retrying in %.0f minutes...\n%!"
+          schedule_synced
+          games_upserted
+          errors
           (retry_intervals.(n) /. 60.0);
         Eio.Time.sleep env#clock retry_intervals.(n);
         attempt (n + 1)
