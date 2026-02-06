@@ -1502,6 +1502,142 @@ let qa_util_tests = [
 ]
 
 (* ============================================= *)
+(* UI Copy Tests                                 *)
+(* ============================================= *)
+
+let test_find_substring_from () =
+  let open Wkbl.Views_common in
+  Alcotest.(check (option int)) "find at 0" (Some 0) (find_substring_from ~sub:"foo" "foo" ~from:0);
+  Alcotest.(check (option int)) "find in middle" (Some 4) (find_substring_from ~sub:"bar" "foo bar baz" ~from:0);
+  Alcotest.(check (option int)) "find after offset" (Some 8) (find_substring_from ~sub:"baz" "foo bar baz" ~from:5);
+  Alcotest.(check (option int)) "not found" None (find_substring_from ~sub:"zzz" "foo bar baz" ~from:0)
+
+let test_ui_copy_no_dev_terms () =
+  let banned = [ "PBP"; "FLOW"; "VERIFIED"; "DERIVED"; "MISMATCH"; "COALESCE"; "player_plus_minus"; "game_stats"; "SUM("; "team1/team2"; "Play-by-Play" ] in
+  let check_clean ~ctx html =
+    banned
+    |> List.iter (fun sub ->
+        Alcotest.(check bool) (ctx ^ " no " ^ sub) false (contains_substring html sub))
+  in
+
+  (* Score quality badges should be Korean *)
+  let badge_full = Wkbl.Views_common.score_quality_badge Wkbl.Domain.Verified in
+  Alcotest.(check bool) "badge label is Korean" true (contains_substring badge_full "일치");
+  check_clean ~ctx:"score_quality_badge" badge_full;
+
+  (* Boxscore action links and notes should not leak internal terms *)
+  let pbp_link = Wkbl.Views.boxscore_pbp_link_html "046-01-62" in
+  Alcotest.(check bool) "pbp link label" true (contains_substring pbp_link "문자중계");
+  check_clean ~ctx:"boxscore_pbp_link_html" pbp_link;
+
+  let flow_link = Wkbl.Views.boxscore_flow_link_html "046-01-62" in
+  Alcotest.(check bool) "flow link label" true (contains_substring flow_link "득점흐름");
+  check_clean ~ctx:"boxscore_flow_link_html" flow_link;
+
+  let notes = Wkbl.Views.boxscore_data_notes_html ~official_link:"" in
+  Alcotest.(check bool) "notes mention source" true (contains_substring notes "\xec\xb6\x9c\xec\xb2\x98");
+  check_clean ~ctx:"boxscore_data_notes_html" notes;
+
+  (* PBP page copy should be user-facing Korean labels *)
+  let game : Wkbl.Domain.game_info =
+    { gi_game_id = "046-01-62";
+      gi_game_date = "2026-02-04";
+      gi_home_team_code = "09";
+      gi_home_team_name = "하나은행";
+      gi_away_team_code = "03";
+      gi_away_team_name = "삼성생명";
+      gi_home_score = 54;
+      gi_away_score = 74;
+      gi_score_quality = Wkbl.Domain.Derived;
+    }
+  in
+  let pbp_page_html = Wkbl.Views.pbp_page ~game ~periods:[] ~selected_period:"ALL" ~events:[] in
+  Alcotest.(check bool) "pbp page title mentions Korean label" true (contains_substring pbp_page_html "문자중계");
+  check_clean ~ctx:"pbp_page" pbp_page_html
+
+let test_ops_copy_hidden_by_default () =
+  let banned = [ "dune exec"; "scraper_tool"; "WKBL_SYNC_DRAFT_TRADE"; "scripts/wkbl_draft_trade_sync.py" ] in
+  let check_clean ~ctx html =
+    banned
+    |> List.iter (fun sub ->
+        Alcotest.(check bool) (ctx ^ " no " ^ sub) false (contains_substring html sub))
+  in
+
+  let seasons_catalog : Wkbl.Domain.season_info list =
+    [ { code = "046"; name = "2025-2026" }
+    ; { code = "045"; name = "2024-2025" }
+    ]
+  in
+  let player : Wkbl.Domain.player_info =
+    { id = "TEST001"
+    ; name = "테스트"
+    ; position = Some "G"
+    ; birth_date = Some "2000-01-01"
+    ; height = Some 170
+    ; weight = None
+    }
+  in
+  let averages : Wkbl.Domain.player_aggregate =
+    { player_id = "TEST001"
+    ; name = "테스트"
+    ; team_name = "테스트팀"
+    ; games_played = 0
+    ; total_minutes = 0.0
+    ; total_points = 0
+    ; total_rebounds = 0
+    ; total_assists = 0
+    ; total_steals = 0
+    ; total_blocks = 0
+    ; total_turnovers = 0
+    ; avg_points = 0.0
+    ; avg_margin = 0.0
+    ; avg_rebounds = 0.0
+    ; avg_assists = 0.0
+    ; avg_steals = 0.0
+    ; avg_blocks = 0.0
+    ; avg_turnovers = 0.0
+    ; efficiency = 0.0
+    }
+  in
+  let profile : Wkbl.Domain.player_profile =
+    { player
+    ; averages
+    ; recent_games = []
+    ; all_star_games = []
+    ; draft = None
+    ; official_trade_events = []
+    ; external_links = []
+    ; team_stints = []
+    ; season_breakdown = []
+    ; career_highs = None
+    }
+  in
+
+  let player_html =
+    Wkbl.Views_player.player_profile_page profile ~scope:"per_game" ~seasons_catalog
+  in
+  check_clean ~ctx:"player_profile_page" player_html;
+
+  let tx_html =
+    Wkbl.Views_tools.transactions_page
+      ~show_ops:false
+      ~tab:"draft"
+      ~year:0
+      ~q:""
+      ~draft_years:[]
+      ~trade_years:[]
+      ~draft_picks:[]
+      ~trade_events:[]
+  in
+  check_clean ~ctx:"transactions_page" tx_html
+
+let ui_copy_tests = [
+  Alcotest.test_case "find_substring_from" `Quick test_find_substring_from;
+  Alcotest.test_case "ui copy avoids dev terms" `Quick test_ui_copy_no_dev_terms;
+  Alcotest.test_case "ops copy hidden by default" `Quick test_ops_copy_hidden_by_default;
+]
+
+(* ============================================= *)
 (* Main Test Runner                              *)
 (* ============================================= *)
 
@@ -1525,4 +1661,5 @@ let () =
     "Scraper Functions", scraper_tests;
     "Disambiguation", disambiguation_tests;
     "QA Utils", qa_util_tests;
+    "UI Copy", ui_copy_tests;
   ]

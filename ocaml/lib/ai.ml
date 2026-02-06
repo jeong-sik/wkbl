@@ -36,11 +36,11 @@ let build_prediction_prompt ~(home: string) ~(away: string) (output: prediction_
   in
 
   Printf.sprintf
-{|당신은 한국 여자프로농구(WKBL) 전문 해설가입니다. 다음 경기 예측 결과를 바탕으로 2-3문장의 자연스러운 해설을 작성하세요.
+ {|당신은 한국 여자프로농구(WKBL) 전문 해설가입니다. 다음 경기 예측 결과를 바탕으로 2-3문장의 자연스러운 해설을 작성하세요.
 
 ## 경기 정보
 - 홈: %s
-- 어웨이: %s
+- 원정: %s
 - 중립 경기: %s
 
 ## 예측 결과
@@ -48,12 +48,13 @@ let build_prediction_prompt ~(home: string) ~(away: string) (output: prediction_
 - 패배 예상: %s (%.1f%%)
 
 ## 분석 근거
-- ELO 레이팅: %s %.0f vs %s %.0f
-- 피타고리안 승률: %s %.1f%% vs %s %.1f%%
-- 스탯 기반 확률: %.1f%%%s
+- 전력(최근 경기 결과 기반): %s %.0f vs %s %.0f
+- 득실 기대(득점/실점 기반): %s %.1f%% vs %s %.1f%%
+- 기록 기반 확률: %.1f%%%s
 
 ## 요청
 - 승부 예측과 핵심 근거를 간결하게 설명
+- 전문 용어(ELO, 피타고리안 등) 대신 쉬운 한국어로 설명
 - 팀 이름은 정식 명칭 사용 (예: KB스타즈, 삼성생명)
 - 과도한 확신 표현 자제
 - 2-3문장으로 작성|}
@@ -191,8 +192,8 @@ let fallback_explanation ~(home: string) ~(away: string) (output: prediction_out
 
   let elo_diff = Float.abs (b.pb_elo_home -. b.pb_elo_away) in
   let elo_factor =
-    if elo_diff > 100.0 then Printf.sprintf "ELO 레이팅에서 %s%s 크게 앞서며" loser (particle_reul loser)
-    else if elo_diff > 50.0 then Printf.sprintf "ELO 레이팅에서 %s%s 앞서며" loser (particle_reul loser)
+    if elo_diff > 100.0 then Printf.sprintf "전력 지표에서 %s%s 크게 앞서며" loser (particle_reul loser)
+    else if elo_diff > 50.0 then Printf.sprintf "전력 지표에서 %s%s 앞서며" loser (particle_reul loser)
     else ""
   in
 
