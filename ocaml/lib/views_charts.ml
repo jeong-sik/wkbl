@@ -550,7 +550,7 @@ let zone_shot_chart_svg (chart: player_shot_chart) =
     chart.psc_total_made chart.psc_total_attempts chart.psc_total_pct
 
 (** Zone-based shot chart page *)
-let zone_shot_chart_page (chart: player_shot_chart) ~seasons ~current_season =
+let zone_shot_chart_page ?(lang=I18n.Ko) (chart: player_shot_chart) ~seasons ~current_season =
   let season_options = seasons |> List.map (fun (code, name) ->
     Printf.sprintf {|<option value="%s"%s>%s</option>|}
       code
@@ -637,6 +637,7 @@ let zone_shot_chart_page (chart: player_shot_chart) ~seasons ~current_season =
     chart.psc_player_id
   in
   layout
+    ~lang
     ~title:(Printf.sprintf "%s 슛 차트 | WKBL Analytics" chart.psc_player_name)
     ~canonical_path:(Printf.sprintf "/player/%s/shots" chart.psc_player_id)
     ~description:(Printf.sprintf "%s(%s)의 존별 슛 분포 - 페인트존, 미드레인지, 3점 성공률" chart.psc_player_name chart.psc_team_name)

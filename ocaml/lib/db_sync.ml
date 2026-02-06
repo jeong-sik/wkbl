@@ -39,6 +39,15 @@ module BoxscoreSync = struct
         blk = EXCLUDED.blk,
         tov = EXCLUDED.tov|}
 
+  (* Some boxscore entries include player ids we haven't seen yet (rookies, short stints, etc).
+     game_stats has a FK to players, so ensure the player row exists before inserting stats. *)
+  let upsert_player_query =
+    (t2 s s ->. unit)
+    {|INSERT INTO players (player_id, player_name)
+      VALUES ($1, $2)
+      ON CONFLICT (player_id) DO UPDATE SET
+        player_name = EXCLUDED.player_name|}
+
   let missing_game_tuple_type =
     t2 s (t2 s (t2 s (t2 i (t2 s (t2 s s)))))
 
@@ -68,9 +77,38 @@ module BoxscoreSync = struct
         AND ($1 = 'ALL' OR g.season_code = $2)
       ORDER BY g.game_date DESC|}
 
+  let games_score_mismatch_query =
+    (t2 s s ->* missing_game_tuple_type)
+    {|SELECT
+        g.game_id,
+        g.season_code,
+        g.game_type,
+        g.game_no,
+        to_char(g.game_date, 'YYYYMM') AS ym,
+        g.home_team_code,
+        g.away_team_code
+      FROM score_mismatch_games m
+      JOIN games g ON g.game_id = m.game_id
+      WHERE
+        g.game_date IS NOT NULL
+        AND g.home_score IS NOT NULL
+        AND g.away_score IS NOT NULL
+        AND g.home_team_code IS NOT NULL
+        AND g.away_team_code IS NOT NULL
+        AND ($1 = 'ALL' OR g.season_code = $2)
+      ORDER BY g.game_date DESC|}
+
   let game_teams_query =
     (s ->? t2 s s)
     {|SELECT home_team_code, away_team_code FROM games WHERE game_id = ?|}
+
+  let update_game_scores_if_missing_query =
+    (t2 s (t2 i i) ->. unit)
+    {|UPDATE games
+      SET
+        away_score = COALESCE(NULLIF(away_score, 0), $2),
+        home_score = COALESCE(NULLIF(home_score, 0), $3)
+      WHERE game_id = $1|}
 
   let upsert_game_stat (stat : Scraper.boxscore_entry) ~game_id ~team_code (module Db_conn : Caqti_eio.CONNECTION) =
     let tuple16 = 
@@ -79,13 +117,22 @@ module BoxscoreSync = struct
        (((stat.bs_def_reb, stat.bs_tot_reb), (stat.bs_ast, stat.bs_stl)),
         ((stat.bs_blk, stat.bs_tov), (stat.bs_pf, stat.bs_pts))))
     in
+    let (let*) = Result.bind in
+    let* () = Db_conn.exec upsert_player_query (stat.bs_player_id, stat.bs_player_name) in
     Db_conn.exec upsert_game_stat_query (game_id, team_code, stat.bs_player_id, tuple16)
+
+  let update_game_scores_if_missing ~game_id ~away_score ~home_score (module Db_conn : Caqti_eio.CONNECTION) =
+    Db_conn.exec update_game_scores_if_missing_query (game_id, (away_score, home_score))
 
   let missing_game_of_tuple (game_id, (season_code, (game_type, (game_no, (ym, (home_team_code, away_team_code)))))) =
     { game_id; season_code; game_type; game_no; ym; home_team_code; away_team_code }
 
   let get_games_missing_boxscore ~season (module Db_conn : Caqti_eio.CONNECTION) =
     Db_conn.collect_list games_missing_boxscore_query (season, season)
+    |> Result.map (List.map missing_game_of_tuple)
+
+  let get_games_score_mismatch ~season (module Db_conn : Caqti_eio.CONNECTION) =
+    Db_conn.collect_list games_score_mismatch_query (season, season)
     |> Result.map (List.map missing_game_of_tuple)
 
   let get_game_teams ~game_id (module Db_conn : Caqti_eio.CONNECTION) =
@@ -97,6 +144,13 @@ let upsert_game_stat stat ~game_id ~team_code =
 
 let get_games_missing_boxscore ?(season="ALL") () =
   Db.with_db (fun db -> BoxscoreSync.get_games_missing_boxscore ~season db)
+
+let get_games_score_mismatch ?(season="ALL") () =
+  Db.with_db (fun db -> BoxscoreSync.get_games_score_mismatch ~season db)
+
+let update_game_scores_if_missing ~game_id ~away_score ~home_score =
+  Db.with_db (fun db ->
+    BoxscoreSync.update_game_scores_if_missing ~game_id ~away_score ~home_score db)
 
 let get_game_teams ~game_id =
   Db.with_db (fun db -> BoxscoreSync.get_game_teams ~game_id db)

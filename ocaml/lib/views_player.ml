@@ -230,7 +230,7 @@ let advanced_stats_card (avg: player_aggregate) =
       (stat_box "PTS/G" pts_per_game "" "경기당 득점" "text-slate-700 dark:text-slate-300")
       (stat_box "MIN/G" minutes_per_game "" "경기당 출전" "text-slate-700 dark:text-slate-300")
 
-let player_profile_page ?(leaderboards=None) ?(show_ops=false) (profile: player_profile) ~scope ~(seasons_catalog: season_info list) =
+let player_profile_page ?(lang=I18n.Ko) ?(leaderboards=None) ?(show_ops=false) (profile: player_profile) ~scope ~(seasons_catalog: season_info list) =
   let _ = leaderboards in (* suppress unused warning *)
   let _ = seasons_catalog in
   let p = profile.player in
@@ -924,7 +924,7 @@ let player_profile_page ?(leaderboards=None) ?(show_ops=false) (profile: player_
     Printf.sprintf {|{"@context":"https://schema.org","@type":"Person","name":"%s","url":"https://wkbl.win%s","image":"%s","jobTitle":"Professional Basketball Player"%s%s%s}|}
       (escape_html display_name) canonical og_card_url height_val birth_val team_val
   in
-  layout ~title:(display_name ^ " | WKBL 선수")
+  layout ~lang ~title:(display_name ^ " | WKBL 선수")
     ~canonical_path:canonical
     ~description:seo_desc
     ~og_image:og_card_url
@@ -1045,7 +1045,7 @@ let player_profile_page ?(leaderboards=None) ?(show_ops=false) (profile: player_
           (milestone_tracker_card profile.averages)
           missing_data_html
           data_notes_html) ()
-let player_game_logs_page (profile: player_profile) ~(season: string) ~(seasons: season_info list) ~(include_mismatch: bool) (games: player_game_stat list) =
+let player_game_logs_page ?(lang=I18n.Ko) (profile: player_profile) ~(season: string) ~(seasons: season_info list) ~(include_mismatch: bool) (games: player_game_stat list) =
   let p = profile.player in
   let display_name = normalize_name p.name in
   let season_options =
@@ -1148,7 +1148,7 @@ let player_game_logs_page (profile: player_profile) ~(season: string) ~(seasons:
   let canonical = Printf.sprintf "/player/%s/games" p.id in
   let seo_desc = Printf.sprintf "%s 경기별 기록 - %d경기 출전, WKBL 여자농구 선수 게임 로그"
     display_name (List.length games) in
-  layout ~title:(display_name ^ " | 경기 로그")
+  layout ~lang ~title:(display_name ^ " | 경기 로그")
     ~canonical_path:canonical
     ~description:seo_desc
     ~content:(Printf.sprintf

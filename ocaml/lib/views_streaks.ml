@@ -152,6 +152,7 @@ let streak_records_table (records: streak_record list) =
 
 (** Main streaks page *)
 let streaks_page
+    ?(lang=I18n.Ko)
     ~season
     ~seasons
     ~active_player_streaks
@@ -202,7 +203,7 @@ let streaks_page
       streak_records_table all_time_records
   in
 
-  layout ~title:"연속 기록 | WKBL" ~canonical_path:"/streaks"
+  layout ~lang ~title:"연속 기록 | WKBL" ~canonical_path:"/streaks"
     ~description:"WKBL 여자농구 연속 기록 트래커. 20+ 득점, 더블더블, 팀 연승 등 진행 중인 기록과 역대 최고 기록을 확인하세요."
     ~content:(Printf.sprintf
       {html|<div class="space-y-8">

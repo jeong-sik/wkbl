@@ -4,7 +4,7 @@
 open Domain
 open Views_common
 
-let team_profile_page ?(player_info_map=None) (detail: team_full_detail) ~season ~seasons =
+let team_profile_page ?(lang=I18n.Ko) ?(player_info_map=None) (detail: team_full_detail) ~season ~seasons =
  let t = detail.tfd_team_name in
  let s = detail.tfd_standing in
  let season_options =
@@ -303,8 +303,8 @@ let team_profile_page ?(player_info_map=None) (detail: team_full_detail) ~season
      (stat_card "ORB%%" ff.orb_pct "공격 리바운드율" "text-sky-600 dark:text-sky-400")
      (stat_card "FTR" ff.ftr "자유투 시도율" "text-orange-600 dark:text-orange-400")
  in
-		 layout ~title:(t ^ " | WKBL 팀")
-		  ~content:(Printf.sprintf {html|<div class="space-y-6 sm:space-y-8 animate-fade-in"><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 sm:p-8 shadow-2xl flex flex-col md:flex-row items-center md:items-start gap-6 sm:gap-8"><div class="w-24 h-24 sm:w-32 sm:h-32 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center p-3 sm:p-4 border-2 border-slate-300 dark:border-slate-700 shadow-inner">%s</div><div class="text-center md:text-left space-y-4 w-full"><div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3"><h1 class="text-3xl sm:text-4xl font-black text-slate-900 dark:text-slate-200">%s</h1><form action="/team/%s" method="get" class="flex flex-col sm:flex-row items-stretch sm:items-center justify-center sm:justify-end gap-2 w-full sm:w-auto"><span class="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-widest font-bold">시즌</span><select name="season" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none w-full sm:w-48" onchange="this.form.submit()">%s</select></form></div>%s</div></div><div class="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8"><div class="space-y-4 lg:col-span-2"><h3 class="text-xl font-bold text-slate-900 dark:text-slate-200">로스터</h3><div class="sm:hidden space-y-3">%s</div><details class="sm:hidden bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 p-4"><summary class="cursor-pointer font-bold text-slate-700 dark:text-slate-300 select-none">전체 표</summary><div class="mt-3 overflow-x-auto">%s</div></details><div class="hidden sm:block bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-lg">%s</div></div><div class="space-y-6 lg:col-span-1"><h3 class="text-xl font-bold text-slate-900 dark:text-slate-200">경기 결과</h3>%s%s<h3 class="text-xl font-bold text-slate-900 dark:text-slate-200">최근 경기</h3><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto overflow-y-hidden shadow-lg"><table class="min-w-[480px] w-full text-xs sm:text-sm font-mono tabular-nums table-fixed" aria-label="최근 경기 결과">
+			 layout ~lang ~title:(t ^ " | WKBL 팀")
+			  ~content:(Printf.sprintf {html|<div class="space-y-6 sm:space-y-8 animate-fade-in"><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 sm:p-8 shadow-2xl flex flex-col md:flex-row items-center md:items-start gap-6 sm:gap-8"><div class="w-24 h-24 sm:w-32 sm:h-32 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center p-3 sm:p-4 border-2 border-slate-300 dark:border-slate-700 shadow-inner">%s</div><div class="text-center md:text-left space-y-4 w-full"><div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3"><h1 class="text-3xl sm:text-4xl font-black text-slate-900 dark:text-slate-200">%s</h1><form action="/team/%s" method="get" class="flex flex-col sm:flex-row items-stretch sm:items-center justify-center sm:justify-end gap-2 w-full sm:w-auto"><span class="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-widest font-bold">시즌</span><select name="season" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none w-full sm:w-48" onchange="this.form.submit()">%s</select></form></div>%s</div></div><div class="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8"><div class="space-y-4 lg:col-span-2"><h3 class="text-xl font-bold text-slate-900 dark:text-slate-200">로스터</h3><div class="sm:hidden space-y-3">%s</div><details class="sm:hidden bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 p-4"><summary class="cursor-pointer font-bold text-slate-700 dark:text-slate-300 select-none">전체 표</summary><div class="mt-3 overflow-x-auto">%s</div></details><div class="hidden sm:block bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-lg">%s</div></div><div class="space-y-6 lg:col-span-1"><h3 class="text-xl font-bold text-slate-900 dark:text-slate-200">경기 결과</h3>%s%s<h3 class="text-xl font-bold text-slate-900 dark:text-slate-200">최근 경기</h3><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto overflow-y-hidden shadow-lg"><table class="min-w-[480px] w-full text-xs sm:text-sm font-mono tabular-nums table-fixed" aria-label="최근 경기 결과">
           <colgroup>
             <col style="width: 96px;"> <!-- Date -->
             <col style="width: auto;"> <!-- Opponent -->
@@ -325,7 +325,7 @@ let team_profile_page ?(player_info_map=None) (detail: team_full_detail) ~season
 	     game_rows) ()
 
 (** Team H2H comparison page *)
-let team_h2h_page ~team1 ~team2 ~season ~seasons (games : Domain.game_info list) =
+let team_h2h_page ?(lang=I18n.Ko) ~team1 ~team2 ~season ~seasons (games : Domain.game_info list) =
   let season_options =
     let base =
       seasons
@@ -400,7 +400,7 @@ let team_h2h_page ~team1 ~team2 ~season ~seasons (games : Domain.game_info list)
       </div>|html}
     else ""
   in
-  layout ~title:(Printf.sprintf "%s 대 %s | 팀 전적 비교" team1 team2)
+  layout ~lang ~title:(Printf.sprintf "%s 대 %s | 팀 전적 비교" team1 team2)
     ~content:(Printf.sprintf
       {html|<div class="space-y-6 animate-fade-in">
         <!-- Header with team selection -->
