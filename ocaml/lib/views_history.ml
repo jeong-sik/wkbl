@@ -63,12 +63,12 @@ let history_page (seasons: historical_season list) =
             <col style="width: 140px;"> <!-- Finals MVP -->
             <col style="width: 120px;"> <!-- ROY -->
             <col style="width: 120px;"> <!-- Scoring -->
-          </colgroup>
-          <thead class="bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 text-xs uppercase">
-            <tr><th scope="col" class="px-3 py-2 text-left">시즌</th><th scope="col" class="px-3 py-2 text-left">우승</th><th scope="col" class="px-3 py-2 text-left">준우승</th><th scope="col" class="px-3 py-2 text-left" title="정규리그 MVP">MVP</th><th scope="col" class="px-3 py-2 text-left" title="파이널 MVP">Finals MVP</th><th scope="col" class="px-3 py-2 text-left" title="신인상">ROY</th><th scope="col" class="px-3 py-2 text-left" title="득점 1위">Scoring</th></tr>
-          </thead>
-          <tbody>%s</tbody>
-        </table>
+	          </colgroup>
+	          <thead class="bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 text-xs uppercase">
+	            <tr><th scope="col" class="px-3 py-2 text-left">시즌</th><th scope="col" class="px-3 py-2 text-left">우승</th><th scope="col" class="px-3 py-2 text-left">준우승</th><th scope="col" class="px-3 py-2 text-left" title="정규리그 MVP">MVP</th><th scope="col" class="px-3 py-2 text-left" title="파이널 MVP">파이널 MVP</th><th scope="col" class="px-3 py-2 text-left" title="신인상">신인상</th><th scope="col" class="px-3 py-2 text-left" title="득점 1위">득점왕</th></tr>
+	          </thead>
+	          <tbody>%s</tbody>
+	        </table>
       </div>
     </div>|html}
     mobile_cards rows) ()
@@ -80,7 +80,7 @@ let legends_page (legends: legend_player list) =
     let teams = match l.lp_teams with Some t -> multi_team_badges t | None -> "-" in
     let years = match l.lp_career_years with Some y -> escape_html y | None -> "-" in
     let achievements = match l.lp_notable_achievements with Some a -> escape_html a | None -> "" in
-    let hof_badge = if l.lp_is_hall_of_fame then {html|<span class="bg-yellow-500 text-white text-[10px] px-2 py-0.5 rounded-full ml-2">HOF</span>|html} else "" in
+    let hof_badge = if l.lp_is_hall_of_fame then {html|<span class="bg-yellow-500 text-white text-[10px] px-2 py-0.5 rounded-full ml-2">명예의 전당</span>|html} else "" in
     Printf.sprintf
       {html|<div class="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-lg p-5 shadow-md hover:shadow-lg transition-shadow">
         <div class="flex items-center justify-between mb-3">
@@ -118,7 +118,7 @@ let legends_page (legends: legend_player list) =
   let rows = legends |> List.map (fun (l: legend_player) ->
     let teams = match l.lp_teams with Some t -> multi_team_badges t | None -> "-" in
     let years = match l.lp_career_years with Some y -> escape_html y | None -> "-" in
-    let hof_badge = if l.lp_is_hall_of_fame then {html|<span class="bg-yellow-500 text-white text-[10px] px-2 py-0.5 rounded-full ml-1">HOF</span>|html} else "" in
+    let hof_badge = if l.lp_is_hall_of_fame then {html|<span class="bg-yellow-500 text-white text-[10px] px-2 py-0.5 rounded-full ml-1">명예의 전당</span>|html} else "" in
     Printf.sprintf
       {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-50 dark:hover:bg-slate-800/30">
         <td class="px-3 py-2 font-bold whitespace-nowrap">%s%s</td>
@@ -289,10 +289,10 @@ let player_career_page ~player_name (entries: player_career_entry list) =
       </tr>|html}
       (escape_html e.pce_season_id) (escape_html e.pce_team) jersey gp ppg rpg apg allstar awards
   ) |> String.concat "\n" in
-  layout ~title:(Printf.sprintf "%s Career | WKBL" (escape_html player_name)) ~content:(Printf.sprintf
+  layout ~title:(Printf.sprintf "%s 시즌별 기록 | WKBL" (escape_html player_name)) ~content:(Printf.sprintf
     {html|<div class="space-y-6">
       <div><h2 class="text-2xl font-bold text-slate-900 dark:text-slate-200">%s</h2>
-        <p class="text-slate-500 dark:text-slate-400 text-sm">Career statistics by season.</p></div>
+        <p class="text-slate-500 dark:text-slate-400 text-sm">시즌별 기록입니다.</p></div>
       <div class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 table-scroll-container shadow-lg">
         <table class="min-w-full text-sm font-mono tabular-nums table-fixed" aria-label="선수 시즌별 기록">
           <colgroup>
@@ -305,15 +305,15 @@ let player_career_page ~player_name (entries: player_career_entry list) =
             <col style="width: 60px;">  <!-- APG -->
             <col style="width: 40px;">  <!-- AllStar -->
             <col style="width: auto;">  <!-- Awards -->
-          </colgroup>
-          <thead class="bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 text-xs uppercase">
-            <tr><th scope="col" class="px-3 py-2 text-left">Season</th><th scope="col" class="px-3 py-2 text-left">Team</th><th scope="col" class="px-3 py-2 text-center" title="Jersey Number">#</th><th scope="col" class="px-3 py-2 text-center" title="Games Played">GP</th><th scope="col" class="px-3 py-2 text-center" title="Points Per Game">PPG</th><th scope="col" class="px-3 py-2 text-center" title="Rebounds Per Game">RPG</th><th scope="col" class="px-3 py-2 text-center" title="Assists Per Game">APG</th><th scope="col" class="px-3 py-2 text-center" title="All-Star Selection">★</th><th scope="col" class="px-3 py-2 text-left">Awards</th></tr>
-          </thead>
-          <tbody>%s</tbody>
-        </table>
-      </div>
-      <div class="text-center"><a href="/legends" class="text-orange-500 hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 text-sm">← Back to Legends</a></div>
-    </div>|html}
+	          </colgroup>
+	          <thead class="bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 text-xs uppercase">
+	            <tr><th scope="col" class="px-3 py-2 text-left">시즌</th><th scope="col" class="px-3 py-2 text-left">팀</th><th scope="col" class="px-3 py-2 text-center" title="등번호">#</th><th scope="col" class="px-3 py-2 text-center" title="출전 경기">GP</th><th scope="col" class="px-3 py-2 text-center" title="경기당 득점">PPG</th><th scope="col" class="px-3 py-2 text-center" title="경기당 리바운드">RPG</th><th scope="col" class="px-3 py-2 text-center" title="경기당 어시스트">APG</th><th scope="col" class="px-3 py-2 text-center" title="올스타 선정">★</th><th scope="col" class="px-3 py-2 text-left">수상</th></tr>
+	          </thead>
+	          <tbody>%s</tbody>
+	        </table>
+	      </div>
+	      <div class="text-center"><a href="/legends" class="text-orange-500 hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 text-sm">← 레전드 목록</a></div>
+	    </div>|html}
     (escape_html player_name) rows) ()
 
 (** Error page *)

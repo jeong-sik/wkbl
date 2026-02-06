@@ -517,11 +517,11 @@ let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="") ?og_titl
         error: 'bg-rose-500',
         warning: 'bg-amber-500',
         info: 'bg-sky-500'
-      };
-      var toast = document.createElement('div');
-      toast.className = colors[type] + ' text-white px-4 py-3 rounded-lg shadow-lg transform translate-x-full opacity-0 transition-all duration-300 flex items-center gap-2 max-w-sm';
-      toast.innerHTML = '<span>' + message + '</span><button onclick="this.parentElement.remove()" class="ml-2 hover:opacity-75">×</button>';
-      container.appendChild(toast);
+	      };
+	      var toast = document.createElement('div');
+	      toast.className = colors[type] + ' text-white px-4 py-3 rounded-lg shadow-lg transform translate-x-full opacity-0 transition-transform transition-opacity duration-300 flex items-center gap-2 max-w-sm';
+	      toast.innerHTML = '<span class="break-words">' + message + '</span><button type="button" aria-label="닫기" onclick="this.parentElement.remove()" class="ml-2 hover:opacity-75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 rounded">×</button>';
+	      container.appendChild(toast);
       requestAnimationFrame(function() {
         toast.classList.remove('translate-x-full', 'opacity-0');
       });

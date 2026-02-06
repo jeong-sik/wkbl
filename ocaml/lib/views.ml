@@ -445,13 +445,13 @@ let games_table (games : game_summary list) =
         Printf.sprintf
          {html|<a href="/boxscore/%s" class="text-[10px] bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-2 py-1 rounded text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white dark:text-slate-200 transition">박스스코어</a>|html}
          (escape_html g.game_id)
-      in
-      Printf.sprintf
-       {html|<div class="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-orange-300 dark:hover:border-orange-700 rounded-lg p-3 shadow-sm hover:shadow-md space-y-2 transition-all duration-200 cursor-pointer group active:scale-[0.98]" onclick="window.location='/boxscore/%s'">
-   <div class="flex items-center justify-between text-[11px] text-slate-600 dark:text-slate-400 font-mono">
-    <span>%s</span>
-    %s
-   </div>
+	      in
+	      Printf.sprintf
+	       {html|<div role="link" tabindex="0" aria-label="박스스코어 보기" class="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-orange-300 dark:hover:border-orange-700 rounded-lg p-3 shadow-sm hover:shadow-md space-y-2 transition-colors transition-shadow transition-transform duration-200 cursor-pointer group active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/40" onclick="window.location='/boxscore/%s'" onkeydown="if(event.key==='Enter'||event.key===' ') { event.preventDefault(); window.location='/boxscore/%s'; }">
+	   <div class="flex items-center justify-between text-[11px] text-slate-600 dark:text-slate-400 font-mono">
+	    <span>%s</span>
+	    %s
+	   </div>
    <div class="flex items-center justify-between gap-3">
     <div class="flex flex-col gap-1 min-w-0">
      <div class="flex items-center gap-2 text-sm font-medium">%s<a href="/team/%s" class="group-hover:text-orange-600 dark:text-orange-400 dark:group-hover:text-orange-300 transition-colors truncate">%s</a></div>
@@ -459,11 +459,12 @@ let games_table (games : game_summary list) =
     </div>
     <div class="text-right font-mono text-sm %s whitespace-nowrap group-hover:scale-110 transition-transform">%s - %s</div>
    </div>
-  </div>|html}
-       (escape_html g.game_id)
-       (escape_html g.game_date)
-       action_html
-       (team_logo_tag ~class_name:"w-4 h-4" g.home_team)
+	  </div>|html}
+	       (escape_html g.game_id)
+	       (escape_html g.game_id)
+	       (escape_html g.game_date)
+	       action_html
+	       (team_logo_tag ~class_name:"w-4 h-4" g.home_team)
        (Uri.pct_encode g.home_team)
        (escape_html g.home_team)
        (team_logo_tag ~class_name:"w-4 h-4" g.away_team)
@@ -544,11 +545,11 @@ let games_table (games : game_summary list) =
         <div class="flex items-center justify-between">
 	          <h2 class="text-2xl font-black text-slate-900 dark:text-white tracking-tight">경기 결과</h2>
 	          <form hx-get="/games" hx-target="#main-content" hx-push-url="true" class="flex items-center gap-2">
-            <select name="season" onchange="this.form.submit()" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm font-medium focus:ring-2 focus:ring-orange-500 outline-none transition-all">
-              %s
-            </select>
-          </form>
-        </div>
+	            <select name="season" onchange="this.form.submit()" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/40 transition-colors">
+	              %s
+	            </select>
+	          </form>
+	        </div>
         %s
         %s
       </div>|html} season_options (games_table games) pagination_html) ()
@@ -1627,15 +1628,15 @@ let compare_seasons_page
   | _ -> ""
  in
  let comparison_table =
-  match s1_stats, s2_stats with
-  | Some _, Some _ ->
-    Printf.sprintf
-     {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-      <div class="grid grid-cols-[1fr_100px_100px] text-sm font-bold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/50">
-       <div class="p-3">Stat</div>
-       <div class="p-3 text-center text-orange-600">%s</div>
-       <div class="p-3 text-center text-sky-600">%s</div>
-      </div>
+	   match s1_stats, s2_stats with
+	  | Some _, Some _ ->
+	    Printf.sprintf
+	     {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+	      <div class="grid grid-cols-[1fr_100px_100px] text-sm font-bold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/50">
+	       <div class="p-3">항목</div>
+	       <div class="p-3 text-center text-orange-600">%s</div>
+	       <div class="p-3 text-center text-sky-600">%s</div>
+	      </div>
       %s
       %s
       %s
@@ -1647,24 +1648,24 @@ let compare_seasons_page
       %s
       %s
       %s
-     </div>|html}
-     (escape_html (season_label s1))
-     (escape_html (season_label s2))
-     (stat_row "Games Played" (fun s -> float_of_int s.ss_games_played))
-     (stat_row "Minutes" (fun s -> s.ss_total_minutes))
-     (stat_row ~signed:true "Points" (fun s -> s.ss_avg_points))
-     (stat_row ~signed:true "Rebounds" (fun s -> s.ss_avg_rebounds))
-     (stat_row ~signed:true "Assists" (fun s -> s.ss_avg_assists))
-     (stat_row ~signed:true "Steals" (fun s -> s.ss_avg_steals))
-     (stat_row ~signed:true "Blocks" (fun s -> s.ss_avg_blocks))
-     (stat_row ~signed:true "Turnovers" (fun s -> s.ss_avg_turnovers))
-     (stat_row ~signed:true "Efficiency" (fun s -> s.ss_efficiency))
-     (stat_row ~signed:true "TS%" (fun s -> s.ss_ts_pct *. 100.0))
-     (stat_row ~signed:true "+/- Margin" (fun s -> s.ss_margin))
-  | _ ->
-    {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-8 text-center text-slate-500 dark:text-slate-400">
-     Select two seasons to compare performance.
-    </div>|html}
+	     </div>|html}
+	     (escape_html (season_label s1))
+	     (escape_html (season_label s2))
+	     (stat_row "경기" (fun s -> float_of_int s.ss_games_played))
+	     (stat_row "출전 시간" (fun s -> s.ss_total_minutes))
+	     (stat_row ~signed:true "득점" (fun s -> s.ss_avg_points))
+	     (stat_row ~signed:true "리바운드" (fun s -> s.ss_avg_rebounds))
+	     (stat_row ~signed:true "어시스트" (fun s -> s.ss_avg_assists))
+	     (stat_row ~signed:true "스틸" (fun s -> s.ss_avg_steals))
+	     (stat_row ~signed:true "블록" (fun s -> s.ss_avg_blocks))
+	     (stat_row ~signed:true "턴오버" (fun s -> s.ss_avg_turnovers))
+	     (stat_row ~signed:true "EFF" (fun s -> s.ss_efficiency))
+	     (stat_row ~signed:true "TS%" (fun s -> s.ss_ts_pct *. 100.0))
+	     (stat_row ~signed:true "MG" (fun s -> s.ss_margin))
+	  | _ ->
+	    {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-8 text-center text-slate-500 dark:text-slate-400">
+	     비교할 두 시즌을 선택하세요.
+	    </div>|html}
  in
  let trend_indicator (s: season_stats) =
   if s.ss_efficiency >= 15.0 then "🔥"
@@ -1674,16 +1675,16 @@ let compare_seasons_page
  in
  let season_card (s: season_stats) accent =
   Printf.sprintf
-   {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 border-t-4 %s">
-    <div class="flex items-center justify-between mb-3">
-     <span class="text-lg font-bold text-slate-900 dark:text-slate-200">%s</span>
-     <span class="text-2xl">%s</span>
-    </div>
-    <div class="grid grid-cols-2 gap-2 text-sm">
-     <div class="text-slate-600 dark:text-slate-400">Games</div>
-     <div class="text-right font-mono text-slate-900 dark:text-slate-200">%d</div>
-     <div class="text-slate-600 dark:text-slate-400">PPG</div>
-     <div class="text-right font-mono text-slate-900 dark:text-slate-200">%.1f</div>
+	   {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 border-t-4 %s">
+	    <div class="flex items-center justify-between mb-3">
+	     <span class="text-lg font-bold text-slate-900 dark:text-slate-200">%s</span>
+	     <span class="text-2xl">%s</span>
+	    </div>
+	    <div class="grid grid-cols-2 gap-2 text-sm">
+	     <div class="text-slate-600 dark:text-slate-400">경기</div>
+	     <div class="text-right font-mono text-slate-900 dark:text-slate-200">%d</div>
+	     <div class="text-slate-600 dark:text-slate-400">PPG</div>
+	     <div class="text-right font-mono text-slate-900 dark:text-slate-200">%.1f</div>
      <div class="text-slate-600 dark:text-slate-400">RPG</div>
      <div class="text-right font-mono text-slate-900 dark:text-slate-200">%.1f</div>
      <div class="text-slate-600 dark:text-slate-400">APG</div>
@@ -2539,13 +2540,13 @@ let clutch_page ~season ~seasons (stats: clutch_stats list) =
      s.cs_clutch_ft_made s.cs_clutch_ft_att) 
   |> String.concat "\n"
  in
- let empty_row =
-  if List.length stats = 0 then
-   Printf.sprintf {html|<tr><td colspan="8">%s</td></tr>|html}
-    (Views_common.empty_state ~icon:BasketballIcon
-     "No clutch time data"
-     "Clutch time = Q4 remaining 5 min + score diff ≤ 5 pts")
-  else ""
+	 let empty_row =
+	  if List.length stats = 0 then
+	   Printf.sprintf {html|<tr><td colspan="8">%s</td></tr>|html}
+	    (Views_common.empty_state ~icon:BasketballIcon
+	     "클러치 기록이 없습니다"
+	     "클러치 = 4쿼터 5분 이하 + 점수차 5점 이하")
+	  else ""
  in
  let table_html =
   {html|<div class="overflow-x-auto">
@@ -2560,31 +2561,31 @@ let clutch_page ~season ~seasons (stats: clutch_stats list) =
       <col style="width: 60px;">  <!-- 3PM -->
       <col style="width: 100px;"> <!-- FTM-A -->
     </colgroup>
-    <thead class="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-     <tr>
-      <th class="px-3 py-2 text-left font-sans">Player</th>
-      <th class="px-3 py-2 text-left font-sans">Team</th>
-      <th class="px-3 py-2 text-center font-sans" title="Clutch Games Played">GP</th>
-      <th class="px-3 py-2 text-center font-sans" title="Clutch Points">PTS</th>
-      <th class="px-3 py-2 text-center font-sans" title="Field Goals Made-Attempted">FGM-A</th>
-      <th class="px-3 py-2 text-center font-sans" title="Field Goal Percentage">FG%</th>
-      <th class="px-3 py-2 text-center font-sans" title="3-Pointers Made">3PM</th>
-      <th class="px-3 py-2 text-center font-sans" title="Free Throws Made-Attempted">FTM-A</th>
-     </tr>
-    </thead>
+	    <thead class="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+	     <tr>
+	      <th class="px-3 py-2 text-left font-sans">선수</th>
+	      <th class="px-3 py-2 text-left font-sans">팀</th>
+	      <th class="px-3 py-2 text-center font-sans" title="클러치 경기">GP</th>
+	      <th class="px-3 py-2 text-center font-sans" title="클러치 득점">PTS</th>
+	      <th class="px-3 py-2 text-center font-sans" title="야투 성공-시도">FGM-A</th>
+	      <th class="px-3 py-2 text-center font-sans" title="야투 성공률">FG%</th>
+	      <th class="px-3 py-2 text-center font-sans" title="3점 성공">3PM</th>
+	      <th class="px-3 py-2 text-center font-sans" title="자유투 성공-시도">FTM-A</th>
+	     </tr>
+	    </thead>
     <tbody>|html} ^ rows ^ empty_row ^ {html|</tbody>
    </table>
   </div>|html}
  in
- let content = Printf.sprintf
-  {html|<div class="space-y-6 animate-fade-in">
-   <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-    <div>
-     <h2 class="text-3xl font-black text-slate-900 dark:text-slate-200">Clutch Time Leaders</h2>
-     <p class="text-slate-600 dark:text-slate-400">
-      Q4 remaining 5 minutes + score difference ≤ 5 points
-     </p>
-    </div>
+	 let content = Printf.sprintf
+	  {html|<div class="space-y-6 animate-fade-in">
+	   <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+	    <div>
+	     <h2 class="text-3xl font-black text-slate-900 dark:text-slate-200">클러치 리더</h2>
+	     <p class="text-slate-600 dark:text-slate-400">
+	      4쿼터 5분 이하 + 점수차 5점 이하
+	     </p>
+	    </div>
     <form action="/clutch" method="get" class="flex items-center gap-3">
      <select name="season" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none w-48" onchange="this.form.submit()">
       %s
