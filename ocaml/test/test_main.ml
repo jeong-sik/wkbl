@@ -1555,9 +1555,86 @@ let test_ui_copy_no_dev_terms () =
   Alcotest.(check bool) "pbp page title mentions Korean label" true (contains_substring pbp_page_html "문자중계");
   check_clean ~ctx:"pbp_page" pbp_page_html
 
+let test_ops_copy_hidden_by_default () =
+  let banned = [ "dune exec"; "scraper_tool"; "WKBL_SYNC_DRAFT_TRADE"; "scripts/wkbl_draft_trade_sync.py" ] in
+  let check_clean ~ctx html =
+    banned
+    |> List.iter (fun sub ->
+        Alcotest.(check bool) (ctx ^ " no " ^ sub) false (contains_substring html sub))
+  in
+
+  let seasons_catalog : Wkbl.Domain.season_info list =
+    [ { code = "046"; name = "2025-2026" }
+    ; { code = "045"; name = "2024-2025" }
+    ]
+  in
+  let player : Wkbl.Domain.player_info =
+    { id = "TEST001"
+    ; name = "테스트"
+    ; position = Some "G"
+    ; birth_date = Some "2000-01-01"
+    ; height = Some 170
+    ; weight = None
+    }
+  in
+  let averages : Wkbl.Domain.player_aggregate =
+    { player_id = "TEST001"
+    ; name = "테스트"
+    ; team_name = "테스트팀"
+    ; games_played = 0
+    ; total_minutes = 0.0
+    ; total_points = 0
+    ; total_rebounds = 0
+    ; total_assists = 0
+    ; total_steals = 0
+    ; total_blocks = 0
+    ; total_turnovers = 0
+    ; avg_points = 0.0
+    ; avg_margin = 0.0
+    ; avg_rebounds = 0.0
+    ; avg_assists = 0.0
+    ; avg_steals = 0.0
+    ; avg_blocks = 0.0
+    ; avg_turnovers = 0.0
+    ; efficiency = 0.0
+    }
+  in
+  let profile : Wkbl.Domain.player_profile =
+    { player
+    ; averages
+    ; recent_games = []
+    ; all_star_games = []
+    ; draft = None
+    ; official_trade_events = []
+    ; external_links = []
+    ; team_stints = []
+    ; season_breakdown = []
+    ; career_highs = None
+    }
+  in
+
+  let player_html =
+    Wkbl.Views_player.player_profile_page profile ~scope:"per_game" ~seasons_catalog
+  in
+  check_clean ~ctx:"player_profile_page" player_html;
+
+  let tx_html =
+    Wkbl.Views_tools.transactions_page
+      ~show_ops:false
+      ~tab:"draft"
+      ~year:0
+      ~q:""
+      ~draft_years:[]
+      ~trade_years:[]
+      ~draft_picks:[]
+      ~trade_events:[]
+  in
+  check_clean ~ctx:"transactions_page" tx_html
+
 let ui_copy_tests = [
   Alcotest.test_case "find_substring_from" `Quick test_find_substring_from;
   Alcotest.test_case "ui copy avoids dev terms" `Quick test_ui_copy_no_dev_terms;
+  Alcotest.test_case "ops copy hidden by default" `Quick test_ops_copy_hidden_by_default;
 ]
 
 (* ============================================= *)
