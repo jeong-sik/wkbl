@@ -119,6 +119,12 @@ let () =
       Printf.eprintf "Failed to ensure DB schema: %s\n" (Db.show_db_error e);
       exit 1);
 
+  (* Ensure season_code -> season_name facts are correct in DB (UI dropdown labels rely on this). *)
+  (match Scraper.ensure_seasons_catalog_in_db () with
+  | Ok () -> ()
+  | Error e ->
+      Printf.eprintf "Failed to ensure seasons catalog: %s\n%!" (Db.show_db_error e));
+
   (* Background scheduler: sync game results every 12 hours with exponential backoff retry *)
   let twelve_hours = 12.0 *. 60.0 *. 60.0 in
   let retry_intervals = [| 5.0 *. 60.0; 15.0 *. 60.0; 45.0 *. 60.0 |] in  (* 5m, 15m, 45m *)
@@ -283,7 +289,13 @@ Sitemap: https://wkbl.win/sitemap.xml
           match Db.get_players ~season ~search ~limit:20 () with
           | Ok p ->
               let player_info_map = get_player_info_map () in
-              Kirin.html (Views.home_page ~player_info_map ~season ~seasons p)
+              let data_as_of =
+                match Db.get_latest_game_date () with
+                | Ok (Some d) -> d
+                | Ok None -> "없음"
+                | Error _ -> "-"
+              in
+              Kirin.html (Views.home_page ~player_info_map ~season ~seasons ~data_as_of p)
           | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
     );
 
