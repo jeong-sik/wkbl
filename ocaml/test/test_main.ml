@@ -1336,6 +1336,32 @@ let test_parse_schedule_html_extracts_game_meta () =
       Alcotest.(check (option int)) "game_no" (Some 40) e.sch_game_no
   | _ -> Alcotest.fail "expected exactly one schedule entry"
 
+let test_parse_schedule_html_extracts_game_meta_from_datalab_link () =
+  let html = {|
+<table><tbody>
+  <tr id="20260204">
+    <td>2/4(<span class="language">수</span>)</td>
+    <td>
+      <div class="team_versus">
+        <div class="info_team away"><strong class="team_name">삼성생명</strong><em class="txt_score">74</em></div>
+        <span class="txt_vs">vs</span>
+        <div class="info_team home"><strong class="team_name">하나은행</strong><em class="txt_score">54</em></div>
+      </div>
+    </td>
+    <td>용인실내체육관</td>
+    <td>19:00</td>
+    <td><a href="http://datalab.wkbl.or.kr/?id=04601062" target="_blank">Data Lab</a></td>
+  </tr>
+</tbody></table>
+|} in
+  let entries = Wkbl.Scraper.parse_schedule_html ~season:"046" ~ym:"202602" html in
+  match entries with
+  | [e] ->
+      Alcotest.(check (option string)) "game_id" (Some "046-01-62") e.sch_game_id;
+      Alcotest.(check (option string)) "game_type" (Some "01") e.sch_game_type;
+      Alcotest.(check (option int)) "game_no" (Some 62) e.sch_game_no
+  | _ -> Alcotest.fail "expected exactly one schedule entry"
+
 let test_parse_schedule_api_html_extracts_game_meta () =
   let html = {|
 <table><tbody>
@@ -1454,6 +1480,70 @@ let test_parse_boxscore_html_two_teams () =
       | _ -> Alcotest.fail "expected exactly one home player row")
   | _ -> Alcotest.fail "expected exactly two team tables"
 
+let test_parse_boxscore_html_low_minutes_player () =
+  (* Regression: short-stint players still need stable ids + points parsing. *)
+  let html = {|
+<div class="info_table01 type_record">
+  <table><tbody>
+    <tr>
+      <td><a href="/player/detail.asp?pno=096140">양혜은</a></td>
+      <td>C</td>
+      <td>01:53</td>
+      <td>1-1</td>
+      <td>0-0</td>
+      <td>0-0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>2</td>
+    </tr>
+  </tbody></table>
+</div>
+<div class="info_table01 type_record">
+  <table><tbody>
+    <tr>
+      <td><a href="/player/detail.asp?pno=095041">김정은</a></td>
+      <td>F</td>
+      <td>10:00</td>
+      <td>1-1</td>
+      <td>0-0</td>
+      <td>0-0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>2</td>
+    </tr>
+  </tbody></table>
+</div>
+|} in
+  match Wkbl.Scraper.parse_boxscore_html html with
+  | [away; home] ->
+      (match away with
+      | [p] ->
+          Alcotest.(check string) "away player_id" "096140" p.bs_player_id;
+          Alcotest.(check string) "away player_name" "양혜은" p.bs_player_name;
+          Alcotest.(check int) "away min_seconds" ((1 * 60) + 53) p.bs_min_seconds;
+          Alcotest.(check int) "away pts" 2 p.bs_pts
+      | _ -> Alcotest.fail "expected exactly one away player row");
+      (match home with
+      | [p] ->
+          Alcotest.(check string) "home player_id" "095041" p.bs_player_id;
+          Alcotest.(check string) "home player_name" "김정은" p.bs_player_name;
+          Alcotest.(check int) "home min_seconds" (10 * 60) p.bs_min_seconds;
+          Alcotest.(check int) "home pts" 2 p.bs_pts
+      | _ -> Alcotest.fail "expected exactly one home player row")
+  | _ -> Alcotest.fail "expected exactly two team tables"
+
 let test_schedule_sync_success_policy () =
   let open Wkbl.Scraper in
   Alcotest.(check bool)
@@ -1529,9 +1619,11 @@ let scraper_tests = [
   Alcotest.test_case "game_params_of_href" `Quick test_game_params_of_href;
   Alcotest.test_case "game_id_of_params" `Quick test_game_id_of_params;
   Alcotest.test_case "parse_schedule_html extracts game meta" `Quick test_parse_schedule_html_extracts_game_meta;
+  Alcotest.test_case "parse_schedule_html extracts meta from datalab link" `Quick test_parse_schedule_html_extracts_game_meta_from_datalab_link;
   Alcotest.test_case "parse_schedule_api_html extracts game meta" `Quick test_parse_schedule_api_html_extracts_game_meta;
   Alcotest.test_case "normalize_game_date formats" `Quick test_normalize_game_date_formats;
   Alcotest.test_case "parse_boxscore_html extracts two teams" `Quick test_parse_boxscore_html_two_teams;
+  Alcotest.test_case "parse_boxscore_html keeps low minutes player" `Quick test_parse_boxscore_html_low_minutes_player;
 ]
 
 (* ============================================= *)
