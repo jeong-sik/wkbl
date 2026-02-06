@@ -211,7 +211,7 @@ let format_int_compact n = if abs n < 1000 then string_of_int n else Printf.spri
 let points_total_cell ?(extra_classes="") ?(width_style="") avg total =
   let classes = String.concat " " ["px-3 py-2 text-right"; extra_classes] in
   Printf.sprintf
-    {html|<td class="%s" style="%s"><div class="flex flex-col items-end leading-tight"><span class="text-orange-600 dark:text-orange-400 font-bold font-mono">%.1f</span><span class="text-slate-400 dark:text-slate-500 text-[9px] font-mono whitespace-nowrap" title="Career Total">Σ%s</span></div></td>|html}
+    {html|<td class="%s" style="%s"><div class="flex flex-col items-end leading-tight"><span class="text-orange-600 dark:text-orange-400 font-bold font-mono">%.1f</span><span class="text-slate-400 dark:text-slate-500 text-[9px] font-mono whitespace-nowrap" title="시즌 누적">Σ%s</span></div></td>|html}
     classes
     width_style
     avg
@@ -220,7 +220,7 @@ let points_total_cell ?(extra_classes="") ?(width_style="") avg total =
 let stat_total_cell ?(extra_classes="") ?(width_style="") avg total =
   let classes = String.concat " " ["px-3 py-2 text-right"; extra_classes] in
   Printf.sprintf
-    {html|<td class="%s" style="%s"><div class="flex flex-col items-end leading-tight"><span class="text-slate-700 dark:text-slate-300 font-mono">%.1f</span><span class="text-slate-400 dark:text-slate-500 text-[9px] font-mono whitespace-nowrap" title="Career Total">Σ%s</span></div></td>|html}
+    {html|<td class="%s" style="%s"><div class="flex flex-col items-end leading-tight"><span class="text-slate-700 dark:text-slate-300 font-mono">%.1f</span><span class="text-slate-400 dark:text-slate-500 text-[9px] font-mono whitespace-nowrap" title="시즌 누적">Σ%s</span></div></td>|html}
     classes
     width_style
     avg
@@ -442,21 +442,21 @@ let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="") ?og_titl
 
   <!-- Header with navigation and dark mode toggle -->
   <header class="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-40">
-    <nav class="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
-      <div class="flex items-center gap-4">
-        <a href="/" class="flex items-center gap-2 font-bold text-lg text-orange-600 dark:text-orange-400">
-          <span>🏀</span>
-          <span>WKBL</span>
-        </a>
-        <div class="hidden md:flex items-center gap-4 text-sm">
-          <a href="/players" class="text-slate-600 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors">Players</a>
-          <a href="/teams" class="text-slate-600 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors">Teams</a>
-          <a href="/standings" class="text-slate-600 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors">Standings</a>
-          <a href="/games" class="text-slate-600 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors">Games</a>
-          <a href="/compare" class="text-slate-600 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors">Compare</a>
-          <a href="/predict" class="text-slate-600 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors">Predict</a>
-        </div>
-      </div>
+	    <nav class="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
+	      <div class="flex items-center gap-4">
+	        <a href="/" class="flex items-center gap-2 font-bold text-lg text-orange-600 dark:text-orange-400">
+	          <span>🏀</span>
+	          <span>WKBL</span>
+	        </a>
+	        <div class="hidden md:flex items-center gap-4 text-sm">
+	          <a href="/players" class="text-slate-600 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors">선수</a>
+	          <a href="/teams" class="text-slate-600 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors">팀</a>
+	          <a href="/standings" class="text-slate-600 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors">순위</a>
+	          <a href="/games" class="text-slate-600 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors">경기</a>
+	          <a href="/compare" class="text-slate-600 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors">비교</a>
+	          <a href="/predict" class="text-slate-600 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors">예측</a>
+	        </div>
+	      </div>
       <div class="flex items-center gap-2">
         %s
         <button id="theme-toggle" type="button" aria-label="다크모드 전환" class="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
@@ -469,17 +469,17 @@ let layout ~title ?(canonical_path="/") ?(description="") ?(json_ld="") ?og_titl
       </div>
     </nav>
     <!-- Mobile menu -->
-    <div id="mobile-menu" class="hidden md:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-      <div class="px-4 py-3 space-y-2">
-        <a href="/players" class="block py-3 px-4 rounded-lg text-base font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Players</a>
-        <a href="/teams" class="block py-3 px-4 rounded-lg text-base font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Teams</a>
-        <a href="/standings" class="block py-3 px-4 rounded-lg text-base font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Standings</a>
-        <a href="/games" class="block py-3 px-4 rounded-lg text-base font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Games</a>
-        <a href="/compare" class="block py-3 px-4 rounded-lg text-base font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Compare</a>
-        <a href="/predict" class="block py-3 px-4 rounded-lg text-base font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Predict</a>
-      </div>
-    </div>
-  </header>
+	    <div id="mobile-menu" class="hidden md:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+	      <div class="px-4 py-3 space-y-2">
+	        <a href="/players" class="block py-3 px-4 rounded-lg text-base font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">선수</a>
+	        <a href="/teams" class="block py-3 px-4 rounded-lg text-base font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">팀</a>
+	        <a href="/standings" class="block py-3 px-4 rounded-lg text-base font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">순위</a>
+	        <a href="/games" class="block py-3 px-4 rounded-lg text-base font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">경기</a>
+	        <a href="/compare" class="block py-3 px-4 rounded-lg text-base font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">비교</a>
+	        <a href="/predict" class="block py-3 px-4 rounded-lg text-base font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">예측</a>
+	      </div>
+	    </div>
+	  </header>
 
   <main id="main-content" role="main" tabindex="-1" class="max-w-7xl mx-auto px-4 py-6">
     %s
@@ -1052,18 +1052,18 @@ let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2") ?(include_
      Printf.sprintf
        {html|
          <div class="mt-6 bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
-           <h3 class="text-sm font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-3">Head-to-Head (Season %s)</h3>
-           <div class="flex items-center justify-between mb-4 px-4">
-             <div class="text-center">
-               <div class="text-2xl font-bold text-slate-900 dark:text-white">%d</div>
-               <div class="text-xs text-slate-500">%s Wins</div>
-             </div>
-             <div class="text-xs font-mono text-slate-400">Total %d Games</div>
-             <div class="text-center">
-               <div class="text-2xl font-bold text-slate-900 dark:text-white">%d</div>
-               <div class="text-xs text-slate-500">%s Wins</div>
-             </div>
-           </div>
+	           <h3 class="text-sm font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-3">상대 전적 (시즌 %s)</h3>
+	           <div class="flex items-center justify-between mb-4 px-4">
+	             <div class="text-center">
+	               <div class="text-2xl font-bold text-slate-900 dark:text-white">%d</div>
+	               <div class="text-xs text-slate-500">%s 승</div>
+	             </div>
+	             <div class="text-xs font-mono text-slate-400">총 %d경기</div>
+	             <div class="text-center">
+	               <div class="text-2xl font-bold text-slate-900 dark:text-white">%d</div>
+	               <div class="text-xs text-slate-500">%s 승</div>
+	             </div>
+	           </div>
            %s
          </div>
        |html}

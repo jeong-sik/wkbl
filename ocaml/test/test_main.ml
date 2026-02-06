@@ -1783,10 +1783,56 @@ let test_ops_copy_hidden_by_default () =
   in
   check_clean ~ctx:"transactions_page" tx_html
 
+let test_nav_labels_are_korean () =
+  let html =
+    Wkbl.Views_common.layout
+      ~title:"WKBL"
+      ~canonical_path:"/"
+      ~content:{html|<main id="main-content">hi</main>|html}
+      ()
+  in
+  Alcotest.(check bool) "nav 선수" true (contains_substring html ">선수<");
+  Alcotest.(check bool) "nav 팀" true (contains_substring html ">팀<");
+  Alcotest.(check bool) "nav 순위" true (contains_substring html ">순위<");
+  Alcotest.(check bool) "nav 경기" true (contains_substring html ">경기<");
+  Alcotest.(check bool) "nav 비교" true (contains_substring html ">비교<");
+  Alcotest.(check bool) "nav 예측" true (contains_substring html ">예측<");
+  Alcotest.(check bool) "nav no Players" false (contains_substring html ">Players<");
+  Alcotest.(check bool) "nav no Teams" false (contains_substring html ">Teams<")
+
+let test_totals_tooltip_is_season () =
+  let p : Wkbl.Domain.player_aggregate =
+    { player_id = "TEST001"
+    ; name = "테스트"
+    ; team_name = "테스트팀"
+    ; games_played = 10
+    ; total_minutes = 250.0
+    ; total_points = 123
+    ; total_rebounds = 45
+    ; total_assists = 67
+    ; total_steals = 8
+    ; total_blocks = 9
+    ; total_turnovers = 10
+    ; avg_points = 12.3
+    ; avg_margin = 1.2
+    ; avg_rebounds = 4.5
+    ; avg_assists = 6.7
+    ; avg_steals = 0.8
+    ; avg_blocks = 0.9
+    ; avg_turnovers = 1.0
+    ; efficiency = 15.0
+    }
+  in
+  let html = Wkbl.Views.players_table [ p ] in
+  Alcotest.(check bool) "totals tooltip is season" true (contains_substring html {|title="시즌 누적"|});
+  Alcotest.(check bool) "no career total tooltip" false (contains_substring html "Career Total")
+
 let ui_copy_tests = [
   Alcotest.test_case "find_substring_from" `Quick test_find_substring_from;
   Alcotest.test_case "ui copy avoids dev terms" `Quick test_ui_copy_no_dev_terms;
   Alcotest.test_case "ops copy hidden by default" `Quick test_ops_copy_hidden_by_default;
+  Alcotest.test_case "nav labels are Korean" `Quick test_nav_labels_are_korean;
+  Alcotest.test_case "totals tooltip is season" `Quick test_totals_tooltip_is_season;
 ]
 
 (* ============================================= *)
