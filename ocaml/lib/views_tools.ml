@@ -1091,9 +1091,10 @@ let h2h_advanced_section ~p1_name ~p2_name (games: Domain.h2h_game list) =
 (** Render game flow chart as SVG showing score difference over time.
     X-axis: Time (Q1 -> Q4 + OT), Y-axis: Score difference (home - away) *)
 let game_flow_chart ~home_team ~away_team (flow_points: Domain.score_flow_point list) =
-  if flow_points = [] then
-    {html|<div class="text-center text-slate-500 dark:text-slate-400 py-8">No score flow data available</div>|html}
-  else
+  match flow_points with
+  | [] ->
+      {html|<div class="text-center text-slate-500 dark:text-slate-400 py-8">No score flow data available</div>|html}
+  | first_pt :: rest ->
     (* Chart dimensions *)
     let width = 800 in
     let height = 300 in
@@ -1101,6 +1102,7 @@ let game_flow_chart ~home_team ~away_team (flow_points: Domain.score_flow_point 
     let padding_y = 40 in
     let chart_width = width - (2 * padding_x) in
     let chart_height = height - (2 * padding_y) in
+    let last_pt = List.fold_left (fun _ p -> p) first_pt rest in
 
     (* Calculate time range - full game is 2400 seconds (4 quarters x 10 min) *)
     let max_time =
@@ -1137,8 +1139,6 @@ let game_flow_chart ~home_team ~away_team (flow_points: Domain.score_flow_point 
     (* Area fill path (from line to zero baseline) *)
     let area_path =
       let baseline_y = y_scale 0 in
-      let first_pt = List.hd flow_points in
-      let last_pt = List.hd (List.rev flow_points) in
       let first_x = x_scale first_pt.Domain.sfp_elapsed_seconds in
       let last_x = x_scale last_pt.Domain.sfp_elapsed_seconds in
       Printf.sprintf "%s L %d %d L %d %d Z" path_d last_x baseline_y first_x baseline_y
@@ -1211,7 +1211,7 @@ let game_flow_chart ~home_team ~away_team (flow_points: Domain.score_flow_point 
     in
 
     (* Determine fill color based on final score *)
-    let final_diff = (List.hd (List.rev flow_points)).Domain.sfp_diff in
+    let final_diff = last_pt.Domain.sfp_diff in
     let gradient_id = "flowGradient" in
     let (gradient_color, line_color) =
       if final_diff > 0 then ("#0ea5e920", "#0ea5e9")  (* Sky blue for home lead *)

@@ -1458,43 +1458,49 @@ let fetch_championship_history ~sw ~env =
   rows |> Soup.iter (fun row ->
     let tds = Soup.select "td" row |> Soup.to_list in
     (* First row of each championship has 6 cells (with rowspans) *)
-    if List.length tds >= 6 then begin
-      incr edition;
-      let season = extract_td_text (List.nth tds 0) in
-      let finals_result = extract_td_text (List.nth tds 2) in
-      let champion = extract_td_text (List.nth tds 4) in
-      let regular_champ = extract_td_text (List.nth tds 5) in
+    match
+      List.nth_opt tds 0,
+      List.nth_opt tds 1,
+      List.nth_opt tds 2,
+      List.nth_opt tds 4,
+      List.nth_opt tds 5
+    with
+    | Some season_td, Some matchup_td, Some finals_td, Some champion_td, Some regular_td ->
+        incr edition;
+        let season = extract_td_text season_td in
+        let finals_result = extract_td_text finals_td in
+        let champion = extract_td_text champion_td in
+        let regular_champ = extract_td_text regular_td in
 
-      (* Extract runner-up from matchup (td 1) - format: "TeamA : TeamB" *)
-      let matchup_td = List.nth tds 1 in
-      let home_span = Soup.select_one "span.home_team" matchup_td in
-      let away_span = Soup.select_one "span.away_team" matchup_td in
-      let home_team = match home_span with
-        | Some s -> Soup.attribute "data-kr" s |> Option.value ~default:""
-        | None -> "" in
-      let away_team = match away_span with
-        | Some s -> Soup.attribute "data-kr" s |> Option.value ~default:""
-        | None -> "" in
+        (* Extract runner-up from matchup (td 1) - format: "TeamA : TeamB" *)
+        let home_span = Soup.select_one "span.home_team" matchup_td in
+        let away_span = Soup.select_one "span.away_team" matchup_td in
+        let home_team = match home_span with
+          | Some s -> Soup.attribute "data-kr" s |> Option.value ~default:""
+          | None -> "" in
+        let away_team = match away_span with
+          | Some s -> Soup.attribute "data-kr" s |> Option.value ~default:""
+          | None -> "" in
 
-      (* Determine runner-up: the team that's not the champion *)
-      let runner_up =
-        if String.equal champion home_team then away_team
-        else if String.equal champion away_team then home_team
-        else if String.length home_team > 0 then home_team
-        else away_team
-      in
+        (* Determine runner-up: the team that's not the champion *)
+        let runner_up =
+          if String.equal champion home_team then away_team
+          else if String.equal champion away_team then home_team
+          else if String.length home_team > 0 then home_team
+          else away_team
+        in
 
-      (* Skip if no champion (e.g., COVID cancelled season) *)
-      if String.length champion > 0 && not (String.equal champion "-") then
-        records := {
-          champ_season = season;
-          champ_edition = !edition;
-          champion_team = champion;
-          runner_up_team = runner_up;
-          finals_result;
-          regular_champion = regular_champ;
-        } :: !records
-    end
+        (* Skip if no champion (e.g., COVID cancelled season) *)
+        if String.length champion > 0 && not (String.equal champion "-") then
+          records := {
+            champ_season = season;
+            champ_edition = !edition;
+            champion_team = champion;
+            runner_up_team = runner_up;
+            finals_result;
+            regular_champion = regular_champ;
+          } :: !records
+    | _ -> ()
   );
 
   Printf.printf "  Found %d championship records\n%!" (List.length !records);
@@ -1518,11 +1524,14 @@ let fetch_allstar_history ~sw ~env =
        rows |> Soup.iter (fun row ->
          let tds = Soup.select "td" row |> Soup.to_list in
          if List.length tds = 2 then begin
-           let edition_text = List.nth tds 0 |> Soup.leaf_text |> Option.value ~default:"" |> String.trim in
-           let season_text = List.nth tds 1 |> Soup.leaf_text |> Option.value ~default:"" |> String.trim in
-           match int_of_string_opt edition_text with
-           | Some edition -> edition_seasons := (edition, season_text) :: !edition_seasons
-           | None -> ()
+           match List.nth_opt tds 0, List.nth_opt tds 1 with
+           | Some edition_td, Some season_td ->
+               let edition_text = Soup.leaf_text edition_td |> Option.value ~default:"" |> String.trim in
+               let season_text = Soup.leaf_text season_td |> Option.value ~default:"" |> String.trim in
+               (match int_of_string_opt edition_text with
+               | Some edition -> edition_seasons := (edition, season_text) :: !edition_seasons
+               | None -> ())
+           | _ -> ()
          end
        )
    | [] -> ()
@@ -1541,15 +1550,14 @@ let fetch_allstar_history ~sw ~env =
       let tds = Soup.select "td" row |> Soup.to_list in
       (* Detail table has 7 columns: venue, home, score, away, mvp, scorer, best_perf *)
       if List.length tds >= 5 then begin
-        let venue = extract_td_text (List.nth tds 0) in
-        let mvp = extract_td_text (List.nth tds 4) in
+        let venue = List.nth_opt tds 0 |> Option.map extract_td_text |> Option.value ~default:"" in
+        let mvp = List.nth_opt tds 4 |> Option.map extract_td_text |> Option.value ~default:"" in
 
         (* Get edition/season from the collected list *)
         let (edition, season) =
-          if !detail_idx < List.length !edition_seasons then
-            List.nth !edition_seasons !detail_idx
-          else
-            (0, "")
+          match List.nth_opt !edition_seasons !detail_idx with
+          | Some x -> x
+          | None -> (0, "")
         in
         incr detail_idx;
 
@@ -1750,58 +1758,70 @@ let game_id_of_params ~season_code ~game_type_opt ~game_no_opt =
     Returns list of schedule entries
 *)
 let parse_schedule_html ~season ~ym html =
-  let soup = Soup.parse html in
+  let open Soup in
+  let ( let* ) r f = match r with Ok x -> f x | Error _ as e -> e in
+  let soup = parse html in
   let games = ref [] in
-  let _ = ym in
+  let errors = ref [] in
 
-  (* Each game is in a <tr id="YYYYMMDD"> *)
-  let rows = soup |> Soup.select "tbody tr" |> Soup.to_list in
-  rows |> List.iter (fun row ->
-    try
-      (* Get date from tr id attribute *)
-      let date_id = Soup.attribute "id" row |> Option.value ~default:"" in
-      if String.length date_id >= 8 then begin
-        let date = Printf.sprintf "%s-%s-%s"
+  let texts_trim node =
+    node |> texts |> String.concat "" |> String.trim
+  in
+
+  let require_opt ~ctx = function
+    | Some x -> Ok x
+    | None -> Error ctx
+  in
+
+  let parse_score_opt ~date_id row sel =
+    match select_one sel row with
+    | None -> Ok None
+    | Some node ->
+        let s = texts_trim node in
+        if s = "" then Ok None
+        else (
+          match int_of_string_opt s with
+          | Some v -> Ok (Some v)
+          | None -> Error (Printf.sprintf "invalid score (%s id=%s): %S" sel date_id s)
+        )
+  in
+
+  let parse_row row : (schedule_entry option, string) result =
+    let date_id = attribute "id" row |> Option.value ~default:"" in
+    if String.length date_id < 8 then Ok None
+    else
+      let date =
+        Printf.sprintf "%s-%s-%s"
           (String.sub date_id 0 4)
           (String.sub date_id 4 2)
-          (String.sub date_id 6 2) in
-
-        (* Get day of week from first td *)
-        let tds = row |> Soup.select "td" |> Soup.to_list in
-        if List.length tds >= 4 then begin
-          let day_cell = List.nth tds 0 in
-          let day = day_cell |> Soup.select "span.language" |> Soup.to_list
-            |> List.hd |> Soup.texts |> String.concat "" |> String.trim in
-
-          (* Get teams and scores *)
-          let away_team = row |> Soup.select ".info_team.away .team_name"
-            |> Soup.to_list |> List.hd |> Soup.texts |> String.concat "" |> String.trim in
-          let home_team = row |> Soup.select ".info_team.home .team_name"
-            |> Soup.to_list |> List.hd |> Soup.texts |> String.concat "" |> String.trim in
-
-          let away_score =
-            try
-              let s = row |> Soup.select ".info_team.away .txt_score"
-                |> Soup.to_list |> List.hd |> Soup.texts |> String.concat "" |> String.trim in
-              if String.length s > 0 then Some (int_of_string s) else None
-            with _ -> None in
-
-          let home_score =
-            try
-              let s = row |> Soup.select ".info_team.home .txt_score"
-                |> Soup.to_list |> List.hd |> Soup.texts |> String.concat "" |> String.trim in
-              if String.length s > 0 then Some (int_of_string s) else None
-            with _ -> None in
-
-          (* Get venue (3rd td) *)
-          let venue = List.nth tds 2 |> Soup.texts |> String.concat "" |> String.trim in
-
-          (* Get time (4th td) *)
-          let time = List.nth tds 3 |> Soup.texts |> String.concat "" |> String.trim in
+          (String.sub date_id 6 2)
+      in
+      let tds = row |> select "td" |> to_list in
+      match List.nth_opt tds 0, List.nth_opt tds 2, List.nth_opt tds 3 with
+      | Some day_cell, Some venue_cell, Some time_cell ->
+          let* day_span =
+            select_one "span.language" day_cell
+            |> require_opt ~ctx:(Printf.sprintf "missing day span (id=%s)" date_id)
+          in
+          let* away_node =
+            select_one ".info_team.away .team_name" row
+            |> require_opt ~ctx:(Printf.sprintf "missing away team (id=%s)" date_id)
+          in
+          let* home_node =
+            select_one ".info_team.home .team_name" row
+            |> require_opt ~ctx:(Printf.sprintf "missing home team (id=%s)" date_id)
+          in
+          let day = texts_trim day_span in
+          let away_team = texts_trim away_node in
+          let home_team = texts_trim home_node in
+          let venue = texts_trim venue_cell in
+          let time = texts_trim time_cell in
+          let* away_score = parse_score_opt ~date_id row ".info_team.away .txt_score" in
+          let* home_score = parse_score_opt ~date_id row ".info_team.home .txt_score" in
 
           let game_type_opt, game_no_opt = extract_game_meta_from_schedule_row row in
           let game_id_opt = game_id_of_params ~season_code:season ~game_type_opt ~game_no_opt in
-          let entry = {
+          Ok (Some {
             sch_game_id = game_id_opt;
             sch_game_type = game_type_opt;
             sch_game_no = game_no_opt;
@@ -1814,12 +1834,31 @@ let parse_schedule_html ~season ~ym html =
             sch_away_score = away_score;
             sch_venue = venue;
             sch_season = season;
-          } in
-          games := entry :: !games
-        end
-      end
-    with _ -> ()
+          })
+      | _ ->
+          Error (Printf.sprintf "missing schedule tds (id=%s)" date_id)
+  in
+
+  (* Each game is in a <tr id="YYYYMMDD"> *)
+  let rows = soup |> select "tbody tr" |> to_list in
+  rows |> List.iter (fun row ->
+    match parse_row row with
+    | Ok None -> ()
+    | Ok (Some entry) -> games := entry :: !games
+    | Error e -> errors := e :: !errors
   );
+  if !errors <> [] then begin
+    let errs = List.rev !errors in
+    Printf.eprintf "[schedule parse] season=%s ym=%s errors=%d\n%!" season ym (List.length errs);
+    let rec print_first n = function
+      | [] -> ()
+      | _ when n <= 0 -> ()
+      | e :: rest ->
+          Printf.eprintf "  - %s\n%!" e;
+          print_first (n - 1) rest
+    in
+    print_first 3 errs
+  end;
   List.rev !games
 
 (** Fetch schedule for a specific month
@@ -2009,14 +2048,18 @@ let parse_schedule_api_html ~season_code ~season_name:_ html =
 
       (* Extract venue - third td *)
       let tds = row $$ "td" |> to_list in
-      let venue = if List.length tds >= 3 then
-        List.nth tds 2 |> texts |> String.concat "" |> String.trim
-      else "" in
+      let venue =
+        match List.nth_opt tds 2 with
+        | Some td -> td |> texts |> String.concat "" |> String.trim
+        | None -> ""
+      in
 
       (* Extract time - fourth td *)
-      let time = if List.length tds >= 4 then
-        List.nth tds 3 |> texts |> String.concat "" |> String.trim
-      else "" in
+      let time =
+        match List.nth_opt tds 3 with
+        | Some td -> td |> texts |> String.concat "" |> String.trim
+        | None -> ""
+      in
 
       let game_type_opt, game_no_opt = extract_game_meta_from_schedule_row row in
       let game_id_opt = game_id_of_params ~season_code:season_code ~game_type_opt ~game_no_opt in

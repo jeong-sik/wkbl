@@ -28,20 +28,38 @@ let game_qualifies_for_streak (game: player_game_stat) streak_type =
 
 (** Helper to create a player streak record from accumulated games *)
 let make_player_streak ~player_id ~player_name ~team_name ~streak_type (current_streak: player_game_stat list) : player_streak =
-  let games_rev = List.rev current_streak in
-  let first_game = List.hd games_rev in
-  let last_game = List.hd current_streak in
-  {
-    ps_player_id = player_id;
-    ps_player_name = player_name;
-    ps_team_name = team_name;
-    ps_streak_type = streak_type;
-    ps_current_count = List.length current_streak;
-    ps_is_active = false;
-    ps_start_date = first_game.game_date;
-    ps_end_date = Some last_game.game_date;
-    ps_games = games_rev;
-  }
+  match current_streak with
+  | [] ->
+      (* Defensive: should not happen because [find_consecutive_streaks] checks length. *)
+      {
+        ps_player_id = player_id;
+        ps_player_name = player_name;
+        ps_team_name = team_name;
+        ps_streak_type = streak_type;
+        ps_current_count = 0;
+        ps_is_active = false;
+        ps_start_date = "";
+        ps_end_date = None;
+        ps_games = [];
+      }
+  | last_game :: _ ->
+      let games_rev = List.rev current_streak in
+      let first_game =
+        match games_rev with
+        | first :: _ -> first
+        | [] -> last_game
+      in
+      {
+        ps_player_id = player_id;
+        ps_player_name = player_name;
+        ps_team_name = team_name;
+        ps_streak_type = streak_type;
+        ps_current_count = List.length current_streak;
+        ps_is_active = false;
+        ps_start_date = first_game.game_date;
+        ps_end_date = Some last_game.game_date;
+        ps_games = games_rev;
+      }
 
 (** Generic streak finder - extracts common iteration logic *)
 let find_consecutive_streaks ~qualifies ~make_streak items =
@@ -135,18 +153,34 @@ let get_active_streaks (streaks: player_streak list) : player_streak list =
 
 (** Helper to create a team streak record from accumulated games *)
 let make_team_streak ~team_name (current_streak: team_game_result list) : team_streak =
-  let games_rev = List.rev current_streak in
-  let first = List.hd games_rev in
-  let last = List.hd current_streak in
-  {
-    ts_team_name = team_name;
-    ts_streak_type = WinStreak;
-    ts_current_count = List.length current_streak;
-    ts_is_active = false;
-    ts_start_date = first.tgr_game_date;
-    ts_end_date = Some last.tgr_game_date;
-    ts_game_ids = List.map (fun g -> g.tgr_game_id) games_rev;
-  }
+  match current_streak with
+  | [] ->
+      (* Defensive: should not happen because [find_consecutive_streaks] checks length. *)
+      {
+        ts_team_name = team_name;
+        ts_streak_type = WinStreak;
+        ts_current_count = 0;
+        ts_is_active = false;
+        ts_start_date = "";
+        ts_end_date = None;
+        ts_game_ids = [];
+      }
+  | last :: _ ->
+      let games_rev = List.rev current_streak in
+      let first =
+        match games_rev with
+        | first :: _ -> first
+        | [] -> last
+      in
+      {
+        ts_team_name = team_name;
+        ts_streak_type = WinStreak;
+        ts_current_count = List.length current_streak;
+        ts_is_active = false;
+        ts_start_date = first.tgr_game_date;
+        ts_end_date = Some last.tgr_game_date;
+        ts_game_ids = List.map (fun g -> g.tgr_game_id) games_rev;
+      }
 
 (** Calculate team win streaks from game results *)
 let calculate_team_win_streaks ~team_name (results: team_game_result list) : team_streak list =
