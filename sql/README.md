@@ -28,6 +28,7 @@ WKBL_DATABASE_URL (same as above)
 | `000_schema_backup.sql` | Full DDL backup (pg_dump --schema-only) |
 | `004_history_tables.sql` | History tables (historical_seasons, legend_players, etc.) |
 | `005_history_data.sql` | History seed data |
+| `006_qa_indexes.sql` | QA performance indexes (schedule ↔ games joins) |
 
 ## Main Tables
 

@@ -39,6 +39,8 @@ Usage:
   scraper_tool schedule [--csv]        Fetch season schedule (경기 일정)
   scraper_tool schedule --month=YYYYMM Fetch specific month schedule
   scraper_tool sync schedule [--purge] Sync current season schedule to database
+  scraper_tool sync games              Sync DataLab game results to database
+  scraper_tool sync games --season=X   Sync specific season game results
   scraper_tool sync boxscore           Sync missing boxscores to database
   scraper_tool sync history [--purge]            Sync ALL historical games to database (1998-2026)
   scraper_tool sync history --season=X [--purge] Sync specific season to database
@@ -84,31 +86,42 @@ let run_sync_boxscore ~sw ~env ~season_filter =
   | Ok () -> ()
   | Error e -> Printf.eprintf "DB Error: %s\n" (Db.show_db_error e); exit 1);
 
-  let season = Option.value ~default:"ALL" season_filter in
-  match Db_sync.get_games_without_stats ~season () with
+  let season = Option.value ~default:(Scraper.current_season_code_auto ()) season_filter in
+  match Db_sync.get_games_missing_boxscore ~season () with
   | Error e -> Printf.eprintf "Failed to fetch missing games: %s\n" (Db.show_db_error e)
-  | Ok game_ids ->
-      let total = List.length game_ids in
+  | Ok missing_games ->
+      let total = List.length missing_games in
       Printf.printf "Found %d games missing boxscores. Starting sync...\n%!" total;
       
       let clock = Eio.Stdenv.clock env in
-      game_ids |> List.iteri (fun i game_id ->
-        Printf.printf "[%d/%d] Syncing boxscore for game: %s\n%!" (i + 1) total game_id;
-        
-        match Db_sync.get_game_teams ~game_id with
-        | Ok (Some (home_code, away_code)) ->
-            (* Fetch and sync for both teams *)
-            let teams = [home_code; away_code] in
-            teams |> List.iter (fun team_code ->
-              let stats = Scraper.fetch_game_boxscore ~sw ~env ~game_id ~team_code in
+      missing_games |> List.iteri (fun i (g : Db_sync.missing_boxscore_game) ->
+        Printf.printf "[%d/%d] Syncing boxscore for game: %s\n%!" (i + 1) total g.game_id;
+
+        let tables =
+          Scraper.fetch_game_boxscore
+            ~sw ~env
+            ~season_gu:g.season_code
+            ~game_type:g.game_type
+            ~game_no:g.game_no
+            ~ym:g.ym
+        in
+        match tables with
+        | [away_stats; home_stats] ->
+            let upsert_team team_code stats =
               stats |> List.iter (fun s ->
-                match Db_sync.upsert_game_stat s ~game_id ~team_code with
+                match Db_sync.upsert_game_stat s ~game_id:g.game_id ~team_code with
                 | Ok () -> ()
-                | Error e -> Printf.eprintf "  ✗ Failed to upsert stat for %s: %s\n" s.bs_player_name (Db.show_db_error e)
-              );
-              Eio.Time.sleep clock 0.2 (* Rate limit between team requests *)
-            )
-        | _ -> Printf.eprintf "  ✗ Could not find teams for game %s\n" game_id
+                | Error e ->
+                    Printf.eprintf "  ✗ Failed to upsert stat for %s: %s\n"
+                      s.bs_player_name (Db.show_db_error e)
+              )
+            in
+            upsert_team g.away_team_code away_stats;
+            upsert_team g.home_team_code home_stats;
+            Eio.Time.sleep clock 0.2 (* Rate limit between games *)
+        | _ ->
+            Printf.eprintf "  ✗ Unexpected boxscore HTML for game %s (tables=%d)\n"
+              g.game_id (List.length tables)
       );
       Printf.printf "\n=== Boxscore Sync Complete ===\n"
 
@@ -366,15 +379,14 @@ let run_schedule ~sw ~env ~month_filter ~csv_output =
 
 (** Sync schedule data to Supabase database *)
 let run_sync_schedule ~sw ~env ~purge =
-  (* Get DB URL *)
-  let db_url = match get_db_url () with
+  let db_url =
+    match get_db_url () with
     | Some url -> url
     | None ->
         Printf.eprintf "Error: DATABASE_URL or WKBL_DATABASE_URL not set\n";
         exit 1
   in
 
-  (* Initialize DB pool *)
   Printf.printf "Connecting to database...\n";
   (match Db.init_pool ~sw ~stdenv:(env :> Caqti_eio.stdenv) db_url with
   | Ok () -> Printf.printf "Database connected.\n"
@@ -382,7 +394,11 @@ let run_sync_schedule ~sw ~env ~purge =
       Printf.eprintf "Database connection failed: %s\n" (Db.show_db_error e);
       exit 1);
 
-  (* Fetch schedule from WKBL website *)
+  let season_name =
+    List.assoc_opt "046" Scraper.all_season_codes |> Option.value ~default:"2025-2026"
+  in
+  let _ = Db.with_db (fun db -> Db.Repo.upsert_season ~season_code:"046" ~season_name db) in
+
   Printf.printf "Fetching schedule from WKBL...\n";
   let entries = Scraper.fetch_season_schedule ~sw ~env ~season_code:"046" in
   Printf.printf "Fetched %d schedule entries.\n\n" (List.length entries);
@@ -401,49 +417,178 @@ let run_sync_schedule ~sw ~env ~purge =
         exit 1
   );
 
-  (* Sync each entry *)
   let success_count = ref 0 in
   let error_count = ref 0 in
-  entries |> List.iter (fun (e : Scraper.schedule_entry) ->
-    (* Convert team names to numeric team codes for DB sync *)
-    let home_code = Scraper.code_from_team_name e.sch_home_team in
-    let away_code = Scraper.code_from_team_name e.sch_away_team in
-    let status = Scraper.schedule_status_from_scores e.sch_home_score e.sch_away_score in
-    let game_date = Scraper.normalize_schedule_date ~season_code:e.sch_season e.sch_date in
-    let result = Db.with_db (fun db ->
-      Db.Repo.upsert_schedule_entry
-        ~game_date
-        ~game_time:(Some e.sch_time)
-        ~season_code:e.sch_season
-        ~home_team_code:home_code
-        ~away_team_code:away_code
-        ~venue:(Some e.sch_venue)
-        ~status
-        db
-    ) in
-    (match result with
-    | Ok () ->
-        incr success_count;
-        Printf.printf "  ✓ %s: %s vs %s (%s)\n" game_date e.sch_away_team e.sch_home_team status
-    | Error db_err ->
-        incr error_count;
-        Printf.eprintf "  ✗ %s: %s\n" game_date (Db.show_db_error db_err))
+  let game_success = ref 0 in
+  let seen_games = Hashtbl.create (List.length entries * 2 + 1) in
+
+  entries
+  |> List.iter (fun (e : Scraper.schedule_entry) ->
+    let hc = Scraper.code_from_team_name e.sch_home_team in
+    let ac = Scraper.code_from_team_name e.sch_away_team in
+    if String.starts_with ~prefix:"XX_" hc || String.starts_with ~prefix:"XX_" ac then (
+      incr error_count;
+      Printf.eprintf "  ✗ %s: Unknown team - %s or %s\n" e.sch_date e.sch_home_team e.sch_away_team
+    ) else (
+      let status = Scraper.schedule_status_from_scores e.sch_home_score e.sch_away_score in
+      let game_date = Scraper.normalize_schedule_date ~season_code:e.sch_season e.sch_date in
+      let venue = if String.trim e.sch_venue = "" then None else Some e.sch_venue in
+      let result_schedule =
+        Db.with_db (fun db ->
+          Db.Repo.upsert_schedule_entry
+            ~game_date
+            ~game_time:(Some e.sch_time)
+            ~season_code:e.sch_season
+            ~home_team_code:hc
+            ~away_team_code:ac
+            ~venue
+            ~status
+            db)
+      in
+
+      (match (e.sch_game_id, e.sch_game_type, e.sch_game_no) with
+      | Some game_id, Some game_type, Some game_no ->
+          if not (Hashtbl.mem seen_games game_id) then (
+            Hashtbl.add seen_games game_id true;
+            match Db.with_db (fun db ->
+              Db.Repo.upsert_game_entry
+                ~game_id
+                ~season_code:e.sch_season
+                ~game_type
+                ~game_no
+                ~game_date:(Some game_date)
+                ~home_team_code:hc
+                ~away_team_code:ac
+                ~home_score:e.sch_home_score
+                ~away_score:e.sch_away_score
+                ~stadium:venue
+                ~attendance:None
+                db
+            ) with
+            | Ok () -> incr game_success
+            | Error _ -> ()
+          )
+      | _ -> ());
+
+      match result_schedule with
+      | Ok () ->
+          incr success_count;
+          Printf.printf "  ✓ %s: %s vs %s (%s)\n" e.sch_date e.sch_away_team e.sch_home_team status
+      | Error db_err ->
+          incr error_count;
+          Printf.eprintf "  ✗ %s: %s\n" e.sch_date (Db.show_db_error db_err)
+    )
   );
 
-  Printf.printf "\n=== Sync Complete ===\n";
-  Printf.printf "Success: %d, Errors: %d\n" !success_count !error_count;
+  let _ = Db.refresh_matviews () in
 
-  (* Show summary - count from schedule table *)
-  let completed_result = Db.with_db (fun db ->
-    Db.Repo.count_schedule_by_status ~season_code:"046" ~status:"completed" db
-  ) in
-  let scheduled_result = Db.with_db (fun db ->
-    Db.Repo.count_schedule_by_status ~season_code:"046" ~status:"scheduled" db
-  ) in
+  Printf.printf "\n=== Sync Complete ===\n";
+  Printf.printf "Schedule: %d ok, %d errors | Games: %d upserted\n" !success_count !error_count !game_success;
+
+  let completed_result =
+    Db.with_db (fun db -> Db.Repo.count_schedule_by_status ~season_code:"046" ~status:"completed" db)
+  in
+  let scheduled_result =
+    Db.with_db (fun db -> Db.Repo.count_schedule_by_status ~season_code:"046" ~status:"scheduled" db)
+  in
   (match (completed_result, scheduled_result) with
   | Ok (Some c), Ok (Some s) ->
       Printf.printf "Season 046: %d completed, %d scheduled (Total: %d)\n" c s (c + s)
-  | _ -> ())
+  | _ -> ());
+
+(* Sync DataLab game results to database *)
+let run_sync_games ~sw ~env ~season_filter =
+  let db_url = match get_db_url () with
+    | Some url -> url
+    | None ->
+        Printf.eprintf "Error: DATABASE_URL or WKBL_DATABASE_URL not set\n";
+        exit 1
+  in
+
+  Printf.printf "Connecting to database...\n";
+  (match Db.init_pool ~sw ~stdenv:(env :> Caqti_eio.stdenv) db_url with
+  | Ok () -> Printf.printf "Database connected.\n"
+  | Error e ->
+      Printf.eprintf "Database connection failed: %s\n" (Db.show_db_error e);
+      exit 1);
+
+  let seasons = match season_filter with
+    | Some code ->
+        let name = List.assoc_opt code Scraper.datalab_season_codes
+          |> Option.value ~default:"Unknown" in
+        [(code, name)]
+    | None ->
+        (* Default: current season only (DataLab code) *)
+        let current_main = Scraper.current_season_code_auto () in
+        let current_code = Scraper.main_to_datalab current_main in
+        let name = Scraper.season_name_of_code current_code in
+        [(current_code, name)]
+  in
+
+  let games = Scraper.fetch_all_games ~sw ~env ~seasons () in
+  Printf.printf "\nFetched %d game records. Syncing...\n%!" (List.length games);
+
+  let parse_game_id game_id =
+    match String.split_on_char '-' game_id with
+    | [season; game_type; game_no_str] ->
+        int_of_string_opt game_no_str |> Option.map (fun game_no ->
+          (season, game_type, game_no))
+    | _ -> None
+  in
+
+  let synced = ref 0 in
+  let skipped = ref 0 in
+  let errors = ref 0 in
+
+  games |> List.iter (fun (g : Scraper.game_record) ->
+    match parse_game_id g.game_id with
+    | None ->
+        incr skipped;
+        if !skipped <= 5 then
+          Printf.eprintf "  ✗ Skip (bad game_id): %s\n" g.game_id
+    | Some (season_code, game_type, game_no) ->
+        let hc = Scraper.code_from_team_name g.home_team_name in
+        let ac = Scraper.code_from_team_name g.away_team_name in
+        if String.starts_with ~prefix:"XX_" hc || String.starts_with ~prefix:"XX_" ac then (
+          incr skipped;
+          if !skipped <= 5 then
+            Printf.eprintf "  ✗ Unknown team codes: %s vs %s\n" g.home_team_name g.away_team_name
+        ) else (
+            let game_date = Scraper.normalize_game_date g.game_date in
+            let home_score = if g.home_team_score > 0 then Some g.home_team_score else None in
+            let away_score = if g.away_team_score > 0 then Some g.away_team_score else None in
+            let stadium = if String.trim g.court_name = "" then None else Some g.court_name in
+            let season_code =
+              if String.length g.game_season = 3 then g.game_season else season_code
+            in
+            (match Db.with_db (fun db ->
+              Db.Repo.upsert_game
+                ~game_id:g.game_id
+                ~season_code
+                ~game_type
+                ~game_no
+                ~game_date
+                ~home_team_code:hc
+                ~away_team_code:ac
+                ~home_score
+                ~away_score
+                ~stadium
+                db
+            ) with
+            | Ok () -> incr synced
+            | Error e ->
+                incr errors;
+                if !errors <= 5 then
+                  Printf.eprintf "  ✗ DB error (%s): %s\n" g.game_id (Db.show_db_error e))
+        )
+  );
+
+  (match Db.with_db (fun db -> Db.Repo.refresh_matviews db) with
+  | Ok () -> ()
+  | Error e -> Printf.eprintf "  ✗ Failed to refresh matviews: %s\n" (Db.show_db_error e));
+
+  Printf.printf "\n=== Sync Complete ===\n";
+  Printf.printf "Synced: %d, Skipped: %d, Errors: %d\n%!" !synced !skipped !errors
 
 (** Sync ALL historical schedules (1998-2026) to database *)
 let run_sync_history ~sw ~env ~season_filter ~purge =
@@ -477,8 +622,10 @@ let run_sync_history ~sw ~env ~season_filter ~purge =
   let total_success = ref 0 in
   let total_error = ref 0 in
 
-  seasons |> List.iter (fun (season_code, season_name) ->
-    Printf.printf "=== %s (%s) ===\n" season_name season_code;
+	  seasons |> List.iter (fun (season_code, season_name) ->
+	    Printf.printf "=== %s (%s) ===\n" season_name season_code;
+
+    let _ = Db.with_db (fun db -> Db.Repo.upsert_season ~season_code ~season_name db) in
 
     (* Fetch schedule for this season *)
     let entries = Scraper.fetch_full_season_schedule ~sw ~env ~season_code ~season_name in
@@ -486,6 +633,8 @@ let run_sync_history ~sw ~env ~season_filter ~purge =
 
     let success = ref 0 in
     let errors = ref 0 in
+    let game_success = ref 0 in
+    let seen_games = Hashtbl.create (List.length entries * 2 + 1) in
 
     if purge && entries = [] then (
       Printf.eprintf "Error: fetched 0 schedule entries; refusing to purge season %s.\n%!" season_code;
@@ -502,32 +651,65 @@ let run_sync_history ~sw ~env ~season_filter ~purge =
     );
 
     entries |> List.iter (fun (e : Scraper.schedule_entry) ->
-      (* Convert team names to codes *)
-      let home_code = Scraper.code_from_team_name e.sch_home_team in
-      let away_code = Scraper.code_from_team_name e.sch_away_team in
-      let status = Scraper.schedule_status_from_scores e.sch_home_score e.sch_away_score in
-      (* Normalize date format: "1/10(월)" → "2000-01-10" *)
-      let game_date = Scraper.normalize_schedule_date ~season_code e.sch_date in
-      let result = Db.with_db (fun db ->
-        Db.Repo.upsert_schedule_entry
-          ~game_date
-          ~game_time:(Some e.sch_time)
-          ~season_code
-          ~home_team_code:home_code
-          ~away_team_code:away_code
-          ~venue:(Some e.sch_venue)
-          ~status
-          db
-      ) in
-      (match result with
-      | Ok () -> incr success
-      | Error _ -> incr errors)
+      let hc = Scraper.code_from_team_name e.sch_home_team in
+      let ac = Scraper.code_from_team_name e.sch_away_team in
+      if String.starts_with ~prefix:"XX_" hc || String.starts_with ~prefix:"XX_" ac then (
+        incr errors;
+        if !errors <= 3 then
+          Printf.eprintf "  ✗ Unknown team: %s or %s\n" e.sch_home_team e.sch_away_team
+      ) else (
+        let status = Scraper.schedule_status_from_scores e.sch_home_score e.sch_away_score in
+        let game_date = Scraper.normalize_schedule_date ~season_code e.sch_date in
+        let venue = if String.trim e.sch_venue = "" then None else Some e.sch_venue in
+        let result_schedule =
+          Db.with_db (fun db ->
+            Db.Repo.upsert_schedule_entry
+              ~game_date
+              ~game_time:(Some e.sch_time)
+              ~season_code
+              ~home_team_code:hc
+              ~away_team_code:ac
+              ~venue
+              ~status
+              db)
+        in
+
+        (match (e.sch_game_id, e.sch_game_type, e.sch_game_no) with
+        | Some game_id, Some game_type, Some game_no ->
+            if not (Hashtbl.mem seen_games game_id) then (
+              Hashtbl.add seen_games game_id true;
+              match Db.with_db (fun db ->
+                Db.Repo.upsert_game_entry
+                  ~game_id
+                  ~season_code
+                  ~game_type
+                  ~game_no
+                  ~game_date:(Some game_date)
+                  ~home_team_code:hc
+                  ~away_team_code:ac
+                  ~home_score:e.sch_home_score
+                  ~away_score:e.sch_away_score
+                  ~stadium:venue
+                  ~attendance:None
+                  db
+              ) with
+              | Ok () -> incr game_success
+              | Error _ -> ()
+            )
+        | _ -> ());
+
+        match result_schedule with
+        | Ok () -> incr success
+        | Error _ -> incr errors
+      )
     );
 
-    Printf.printf "  ✓ %d synced, %d errors\n\n" !success !errors;
+    Printf.printf "  ✓ schedule: %d synced, %d errors | games: %d upserted\n\n" !success !errors !game_success;
     total_success := !total_success + !success;
     total_error := !total_error + !errors
   );
+
+  let _ = Db.refresh_matviews () in
 
   Printf.printf "\n=== History Sync Complete ===\n";
   Printf.printf "Total: %d synced, %d errors\n" !total_success !total_error
@@ -616,6 +798,9 @@ let () =
   | "sync" :: "schedule" :: _ ->
       run_with_rng @@ fun ~sw ~env ->
       run_sync_schedule ~sw ~env ~purge
+  | "sync" :: "games" :: _ ->
+      run_with_rng @@ fun ~sw ~env ->
+      run_sync_games ~sw ~env ~season_filter
   | "sync" :: "boxscore" :: _ ->
       run_with_rng @@ fun ~sw ~env ->
       run_sync_boxscore ~sw ~env ~season_filter
@@ -623,7 +808,7 @@ let () =
       run_with_rng @@ fun ~sw ~env ->
       run_sync_history ~sw ~env ~season_filter ~purge
   | "sync" :: _ ->
-      Printf.eprintf "Unknown sync subcommand. Use 'schedule' or 'history'\n%s" usage;
+      Printf.eprintf "Unknown sync subcommand. Use 'schedule', 'games', 'boxscore', or 'history'\n%s" usage;
       exit 1
   | "history" :: _ ->
       run_with_rng @@ fun ~sw ~env ->

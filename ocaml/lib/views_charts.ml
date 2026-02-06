@@ -565,7 +565,7 @@ let zone_shot_chart_page (chart: player_shot_chart) ~seasons ~current_season =
       <h1 class="text-2xl font-bold text-slate-900 dark:text-white">
         🎯 %s 슛 차트
       </h1>
-      <p class="text-slate-600 dark:text-slate-400">%s · PBP 기반 존 분석</p>
+      <p class="text-slate-600 dark:text-slate-400">%s · 문자중계 기반 존 분석</p>
     </div>
 
     <!-- Season filter -->
