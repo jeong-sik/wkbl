@@ -387,6 +387,11 @@ let run_sync_schedule ~sw ~env ~purge =
   let entries = Scraper.fetch_season_schedule ~sw ~env ~season_code:"046" in
   Printf.printf "Fetched %d schedule entries.\n\n" (List.length entries);
 
+  if purge && entries = [] then (
+    Printf.eprintf "Error: fetched 0 schedule entries; refusing to purge season 046.\n%!";
+    exit 1
+  );
+
   if purge then (
     Printf.printf "Purging existing schedule rows for season 046...\n%!";
     match Db.with_db (fun db -> Db.Repo.delete_schedule_by_season ~season_code:"046" db) with
@@ -481,6 +486,11 @@ let run_sync_history ~sw ~env ~season_filter ~purge =
 
     let success = ref 0 in
     let errors = ref 0 in
+
+    if purge && entries = [] then (
+      Printf.eprintf "Error: fetched 0 schedule entries; refusing to purge season %s.\n%!" season_code;
+      exit 1
+    );
 
     if purge then (
       Printf.printf "  Purging existing schedule rows for season %s...\n%!" season_code;
