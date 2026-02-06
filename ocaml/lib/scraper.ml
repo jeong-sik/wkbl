@@ -1964,16 +1964,32 @@ let fetch_schedule_month ~sw ~env ~ym ~season =
 (** Fetch full season schedule (October to March)
     @param season_code e.g., "046" for 2025-2026 season
 *)
-(** Check if a team name belongs to a recognized WKBL league team (current or historical) *)
+(** Check if a team name belongs to a recognized WKBL league team (current or historical).
+
+    This uses [Domain.team_code_of_string], which normalizes whitespace quirks
+    (NBSP, double spaces) and handles known aliases like "BNK썸".
+
+    We exclude All-Star teams ("AS") because schedule pages can include special
+    events that are not part of the regular season dataset. *)
 let is_league_team name =
-  let n = String.trim name in
-  match n with
-  | "우리은행" | "삼성생명" | "신한은행" | "KB스타즈" | "하나은행" | "BNK 썸"
-  | "하나원큐" | "KB국민은행" | "하나외환" | "신세계" | "금호생명" | "KDB생명" | "현대" | "한빛은행" | "국민은행" | "OK저축은행" -> true
-  | _ -> false
+  match Domain.team_code_of_string name with
+  | Some "AS" -> false
+  | Some _ -> true
+  | None -> false
+
+(** Convert DataLab season code to the season start year.
+
+    DataLab season codes follow: 1980 = 001, so start_year = code + 1979. *)
+let season_start_year_of_datalab_code (season_code : string) : int option =
+  match int_of_string_opt (String.trim season_code) with
+  | Some n when n > 0 -> Some (n + 1979)
+  | _ -> None
 
 let fetch_season_schedule ~sw ~env ~season_code =
-  let start_year = 2025 in  (* For season 046, starts in 2025 *)
+  let start_year =
+    season_start_year_of_datalab_code season_code
+    |> Option.value ~default:((Unix.localtime (Unix.time ())).Unix.tm_year + 1900)
+  in
   let months = [
     (start_year, 10);     (* October *)
     (start_year, 11);     (* November *)
