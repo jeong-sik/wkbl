@@ -1289,6 +1289,87 @@ let test_normalize_game_date_formats () =
   Alcotest.(check string_opt) "Slash format" (Some "2026-01-23") (normalize_game_date "2026/01/23");
   Alcotest.(check string_opt) "With text" (Some "2026-01-23") (normalize_game_date "2026.01.23 (금)");
   Alcotest.(check string_opt) "Invalid" None (normalize_game_date "no-date")
+
+let test_parse_boxscore_html_two_teams () =
+  let html = {|
+<div class="info_table01 type_record">
+  <table><tbody>
+    <tr>
+      <td><a href="/player/detail.asp?pno=095633">신이슬</a></td>
+      <td>G</td>
+      <td>27:10</td>
+      <td>0-3</td>
+      <td>0-2</td>
+      <td>1-2</td>
+      <td>2</td>
+      <td>1</td>
+      <td>3</td>
+      <td>1</td>
+      <td>3</td>
+      <td>1</td>
+      <td>3</td>
+      <td>1</td>
+      <td>1</td>
+    </tr>
+  </tbody></table>
+</div>
+<div class="info_table01 type_record">
+  <table><tbody>
+    <tr>
+      <td><a href="/player/detail.asp?pno=095499">진안</a></td>
+      <td>C</td>
+      <td>32:00</td>
+      <td>5-10</td>
+      <td>0-0</td>
+      <td>2-4</td>
+      <td>1</td>
+      <td>5</td>
+      <td>6</td>
+      <td>2</td>
+      <td>1</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>12</td>
+    </tr>
+  </tbody></table>
+</div>
+|} in
+  match Wkbl.Scraper.parse_boxscore_html html with
+  | [away; home] ->
+      (match away with
+      | [p] ->
+          Alcotest.(check string) "away player_id" "095633" p.bs_player_id;
+          Alcotest.(check string) "away player_name" "신이슬" p.bs_player_name;
+          Alcotest.(check int) "away min_seconds" ((27 * 60) + 10) p.bs_min_seconds;
+          Alcotest.(check int) "away fg2 made" 0 p.bs_fg2_m;
+          Alcotest.(check int) "away fg2 att" 3 p.bs_fg2_a;
+          Alcotest.(check int) "away fg3 made" 0 p.bs_fg3_m;
+          Alcotest.(check int) "away fg3 att" 2 p.bs_fg3_a;
+          Alcotest.(check int) "away ft made" 1 p.bs_ft_m;
+          Alcotest.(check int) "away ft att" 2 p.bs_ft_a;
+          Alcotest.(check int) "away off" 2 p.bs_off_reb;
+          Alcotest.(check int) "away def" 1 p.bs_def_reb;
+          Alcotest.(check int) "away tot" 3 p.bs_tot_reb;
+          Alcotest.(check int) "away ast" 1 p.bs_ast;
+          Alcotest.(check int) "away pf" 3 p.bs_pf;
+          Alcotest.(check int) "away stl" 1 p.bs_stl;
+          Alcotest.(check int) "away tov" 3 p.bs_tov;
+          Alcotest.(check int) "away blk" 1 p.bs_blk;
+          Alcotest.(check int) "away pts" 1 p.bs_pts
+      | _ -> Alcotest.fail "expected exactly one away player row");
+      (match home with
+      | [p] ->
+          Alcotest.(check string) "home player_id" "095499" p.bs_player_id;
+          Alcotest.(check string) "home player_name" "진안" p.bs_player_name;
+          Alcotest.(check int) "home min_seconds" (32 * 60) p.bs_min_seconds;
+          Alcotest.(check int) "home fg2 made" 5 p.bs_fg2_m;
+          Alcotest.(check int) "home fg2 att" 10 p.bs_fg2_a;
+          Alcotest.(check int) "home ft att" 4 p.bs_ft_a;
+          Alcotest.(check int) "home tot" 6 p.bs_tot_reb;
+          Alcotest.(check int) "home pts" 12 p.bs_pts
+      | _ -> Alcotest.fail "expected exactly one home player row")
+  | _ -> Alcotest.fail "expected exactly two team tables"
 let scraper_tests = [
   Alcotest.test_case "code_from_team_name known" `Quick test_code_from_team_name_known;
   Alcotest.test_case "code_from_team_name unknown" `Quick test_code_from_team_name_unknown;
@@ -1299,6 +1380,7 @@ let scraper_tests = [
   Alcotest.test_case "parse_schedule_html extracts game meta" `Quick test_parse_schedule_html_extracts_game_meta;
   Alcotest.test_case "parse_schedule_api_html extracts game meta" `Quick test_parse_schedule_api_html_extracts_game_meta;
   Alcotest.test_case "normalize_game_date formats" `Quick test_normalize_game_date_formats;
+  Alcotest.test_case "parse_boxscore_html extracts two teams" `Quick test_parse_boxscore_html_two_teams;
 ]
 
 (* ============================================= *)
