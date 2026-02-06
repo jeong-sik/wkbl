@@ -491,10 +491,10 @@ let run_sync_schedule ~sw ~env ~purge =
   let scheduled_result =
     Db.with_db (fun db -> Db.Repo.count_schedule_by_status ~season_code:"046" ~status:"scheduled" db)
   in
-  (match (completed_result, scheduled_result) with
+  match (completed_result, scheduled_result) with
   | Ok (Some c), Ok (Some s) ->
       Printf.printf "Season 046: %d completed, %d scheduled (Total: %d)\n" c s (c + s)
-  | _ -> ());
+  | _ -> ()
 
 (* Sync DataLab game results to database *)
 let run_sync_games ~sw ~env ~season_filter =
