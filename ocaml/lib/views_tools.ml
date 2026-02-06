@@ -748,8 +748,8 @@ let rec fantasy_calculator_page
     <span id="%s-value" class="text-sm font-mono font-bold text-slate-900 dark:text-slate-200">%.1f</span>
   </div>
   <input type="range" id="%s" name="%s" value="%.1f" min="%.1f" max="%.1f" step="%.1f"
-         class="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-orange-500"
-         oninput="document.getElementById('%s-value').textContent = this.value">
+	         class="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-orange-500"
+	         oninput="document.getElementById('%s-value').textContent = this.value; updateFormula();">
 </div>|html}
       id label id value id id value min_val max_val step id
   in
@@ -758,60 +758,78 @@ let rec fantasy_calculator_page
       {html|<form id="fantasy-form" hx-get="/fantasy/calculate" hx-target="#fantasy-results" hx-trigger="change delay:300ms" hx-swap="innerHTML"
             class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-lg space-y-5">
   <div class="flex items-center justify-between">
-    <h3 class="text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-xs">Scoring Rules</h3>
-    <button type="button" onclick="resetRules()" class="text-[11px] text-slate-500 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 font-mono">Reset</button>
-  </div>
-  <input type="hidden" name="season" value="%s">
-  <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+	    <h3 class="text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-xs">점수 규칙</h3>
+	    <button type="button" onclick="resetRules()" class="text-[11px] text-slate-500 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 font-mono">기본값</button>
+	  </div>
+	  <input type="hidden" name="season" value="%s">
+	  <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+	    %s
     %s
     %s
     %s
     %s
     %s
-    %s
-  </div>
-  <div class="pt-2 text-[11px] text-slate-500 dark:text-slate-400">
-    <span class="font-mono">Fantasy Score</span> = (PTS × <span class="font-mono text-slate-700 dark:text-slate-300">pts</span>) + (REB × <span class="font-mono text-slate-700 dark:text-slate-300">reb</span>) + (AST × <span class="font-mono text-slate-700 dark:text-slate-300">ast</span>) + (STL × <span class="font-mono text-slate-700 dark:text-slate-300">stl</span>) + (BLK × <span class="font-mono text-slate-700 dark:text-slate-300">blk</span>) + (TOV × <span class="font-mono text-slate-700 dark:text-slate-300">tov</span>)
-  </div>
-</form>
-<script>
-function resetRules() {
-  document.getElementById('pts').value = 1.0;
-  document.getElementById('reb').value = 1.2;
-  document.getElementById('ast').value = 1.5;
+	  </div>
+	  <div class="pt-2 text-[11px] text-slate-500 dark:text-slate-400">
+	    <span id="fantasy-formula" class="tabular-nums"></span>
+	  </div>
+	</form>
+	<script>
+	function getRuleValue(id) {
+	  const el = document.getElementById(id);
+	  if (!el) return '0.0';
+	  const n = parseFloat(el.value);
+	  if (Number.isNaN(n)) return '0.0';
+	  return n.toFixed(1);
+	}
+
+	function updateFormula() {
+	  const text =
+	    `판타지 점수 = 득점×${getRuleValue('pts')} + 리바운드×${getRuleValue('reb')} + 어시스트×${getRuleValue('ast')} + 스틸×${getRuleValue('stl')} + 블록×${getRuleValue('blk')} + 턴오버×${getRuleValue('tov')}`;
+	  const out = document.getElementById('fantasy-formula');
+	  if (out) out.textContent = text;
+	}
+
+	function resetRules() {
+	  document.getElementById('pts').value = 1.0;
+	  document.getElementById('reb').value = 1.2;
+	  document.getElementById('ast').value = 1.5;
   document.getElementById('stl').value = 2.0;
   document.getElementById('blk').value = 2.0;
   document.getElementById('tov').value = -1.0;
-  ['pts', 'reb', 'ast', 'stl', 'blk', 'tov'].forEach(id => {
-    document.getElementById(id + '-value').textContent = document.getElementById(id).value;
-  });
-  htmx.trigger('#fantasy-form', 'change');
-}
-</script>|html}
+	  ['pts', 'reb', 'ast', 'stl', 'blk', 'tov'].forEach(id => {
+	    document.getElementById(id + '-value').textContent = document.getElementById(id).value;
+	  });
+	  updateFormula();
+	  htmx.trigger('#fantasy-form', 'change');
+	}
+
+	updateFormula();
+	</script>|html}
       (escape_html season)
-      (slider_input ~id:"pts" ~label:"Points" ~value:rules.fsr_points ~min_val:0.0 ~max_val:3.0 ~step:0.1)
-      (slider_input ~id:"reb" ~label:"Rebounds" ~value:rules.fsr_rebounds ~min_val:0.0 ~max_val:3.0 ~step:0.1)
-      (slider_input ~id:"ast" ~label:"Assists" ~value:rules.fsr_assists ~min_val:0.0 ~max_val:3.0 ~step:0.1)
-      (slider_input ~id:"stl" ~label:"Steals" ~value:rules.fsr_steals ~min_val:0.0 ~max_val:5.0 ~step:0.1)
-      (slider_input ~id:"blk" ~label:"Blocks" ~value:rules.fsr_blocks ~min_val:0.0 ~max_val:5.0 ~step:0.1)
-      (slider_input ~id:"tov" ~label:"Turnovers" ~value:rules.fsr_turnovers ~min_val:(-3.0) ~max_val:0.0 ~step:0.1)
-  in
+	      (slider_input ~id:"pts" ~label:"득점" ~value:rules.fsr_points ~min_val:0.0 ~max_val:3.0 ~step:0.1)
+	      (slider_input ~id:"reb" ~label:"리바운드" ~value:rules.fsr_rebounds ~min_val:0.0 ~max_val:3.0 ~step:0.1)
+	      (slider_input ~id:"ast" ~label:"어시스트" ~value:rules.fsr_assists ~min_val:0.0 ~max_val:3.0 ~step:0.1)
+	      (slider_input ~id:"stl" ~label:"스틸" ~value:rules.fsr_steals ~min_val:0.0 ~max_val:5.0 ~step:0.1)
+	      (slider_input ~id:"blk" ~label:"블록" ~value:rules.fsr_blocks ~min_val:0.0 ~max_val:5.0 ~step:0.1)
+	      (slider_input ~id:"tov" ~label:"턴오버" ~value:rules.fsr_turnovers ~min_val:(-3.0) ~max_val:0.0 ~step:0.1)
+	  in
   let results_table = fantasy_results_table scores in
-  let content =
-    Printf.sprintf
-      {html|<div class="space-y-6 animate-fade-in">
-  <div class="flex flex-col gap-2">
-    <h2 class="text-2xl font-black text-slate-900 dark:text-slate-200">Fantasy Calculator</h2>
-    <div class="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">
-      슬라이더를 조정하여 나만의 Fantasy 포인트 가중치를 설정하세요. 결과는 실시간으로 업데이트됩니다.
-    </div>
-  </div>
-  <div class="flex items-center gap-3">
-    <label for="season-select" class="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest">Season</label>
-    <select id="season-select" class="bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700/60 rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-slate-200 focus:border-orange-500 focus:outline-none"
-            onchange="window.location.href='/fantasy?season=' + this.value">
-      %s
-    </select>
+	  let content =
+	    Printf.sprintf
+	      {html|<div class="space-y-6 animate-fade-in">
+	  <div class="flex flex-col gap-2">
+	    <h2 class="text-2xl font-black text-slate-900 dark:text-slate-200">판타지 계산기</h2>
+	    <div class="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">
+	      슬라이더를 조정해 판타지 포인트 가중치를 설정하세요. 결과는 자동으로 업데이트됩니다.
+	    </div>
+	  </div>
+	  <div class="flex items-center gap-3">
+	    <label for="season-select" class="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest">시즌</label>
+	    <select id="season-select" class="bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700/60 rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-slate-200 focus:border-orange-500 focus:outline-none"
+	            onchange="window.location.href='/fantasy?season=' + this.value">
+	      %s
+	    </select>
   </div>
   %s
   <div id="fantasy-results" data-skeleton="stats" data-skeleton-count="4">
@@ -820,9 +838,9 @@ function resetRules() {
 </div>|html}
       season_options
       rules_form
-      results_table
-  in
-  layout ~title:"Fantasy Calculator | WKBL" ~content ()
+	      results_table
+	  in
+	  layout ~title:"판타지 계산기 | WKBL" ~content ()
 
 (** Fantasy results table partial (for HTMX updates) *)
 and fantasy_results_table (scores: fantasy_player_score list) =
@@ -885,22 +903,22 @@ and fantasy_results_table (scores: fantasy_player_score list) =
       <col style="width: 70px;">  <!-- BLK -->
       <col style="width: 70px;">  <!-- TOV -->
     </colgroup>
-    <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px] whitespace-nowrap">
-      <tr>
-        <th scope="col" class="px-3 py-2 text-left">#</th>
-        <th scope="col" class="px-3 py-2 text-left">Player</th>
-        <th scope="col" class="px-3 py-2 text-left">Team</th>
-        <th scope="col" class="px-3 py-2 text-right" title="Games Played">GP</th>
-        <th scope="col" class="px-3 py-2 text-right" title="Total Fantasy Points">Total</th>
-        <th scope="col" class="px-3 py-2 text-right" title="Average per game">AVG</th>
-        <th scope="col" class="px-3 py-2 text-right" title="Points contribution">PTS</th>
-        <th scope="col" class="px-3 py-2 text-right" title="Rebounds contribution">REB</th>
-        <th scope="col" class="px-3 py-2 text-right" title="Assists contribution">AST</th>
-        <th scope="col" class="px-3 py-2 text-right" title="Steals contribution">STL</th>
-        <th scope="col" class="px-3 py-2 text-right" title="Blocks contribution">BLK</th>
-        <th scope="col" class="px-3 py-2 text-right" title="Turnovers (negative)">TOV</th>
-      </tr>
-    </thead>
+	    <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px] whitespace-nowrap">
+	      <tr>
+	        <th scope="col" class="px-3 py-2 text-left">#</th>
+	        <th scope="col" class="px-3 py-2 text-left">선수</th>
+	        <th scope="col" class="px-3 py-2 text-left">팀</th>
+	        <th scope="col" class="px-3 py-2 text-right" title="출전 경기">GP</th>
+	        <th scope="col" class="px-3 py-2 text-right" title="누적 판타지 점수">합계</th>
+	        <th scope="col" class="px-3 py-2 text-right" title="경기당 평균">평균</th>
+	        <th scope="col" class="px-3 py-2 text-right" title="득점 기여">PTS</th>
+	        <th scope="col" class="px-3 py-2 text-right" title="리바운드 기여">REB</th>
+	        <th scope="col" class="px-3 py-2 text-right" title="어시스트 기여">AST</th>
+	        <th scope="col" class="px-3 py-2 text-right" title="스틸 기여">STL</th>
+	        <th scope="col" class="px-3 py-2 text-right" title="블록 기여">BLK</th>
+	        <th scope="col" class="px-3 py-2 text-right" title="턴오버(감점)">TOV</th>
+	      </tr>
+	    </thead>
     <tbody>%s</tbody>
   </table>
 </div>
@@ -1090,7 +1108,7 @@ let h2h_advanced_section ~p1_name ~p2_name (games: Domain.h2h_game list) =
     X-axis: Time (Q1 -> Q4 + OT), Y-axis: Score difference (home - away) *)
 let game_flow_chart ~home_team ~away_team (flow_points: Domain.score_flow_point list) =
   if flow_points = [] then
-    {html|<div class="text-center text-slate-500 dark:text-slate-400 py-8">No score flow data available</div>|html}
+    {html|<div class="text-center text-slate-500 dark:text-slate-400 py-8">득점 흐름 데이터가 없습니다</div>|html}
   else
     (* Chart dimensions *)
     let width = 800 in
@@ -1222,19 +1240,19 @@ let game_flow_chart ~home_team ~away_team (flow_points: Domain.score_flow_point 
         <div class="flex items-center justify-between mb-4">
           <h3 class="text-lg font-bold text-slate-900 dark:text-slate-200 flex items-center gap-2">
             <span class="w-1 h-6 bg-orange-500 rounded-full"></span>
-            Game Flow
-          </h3>
-          <div class="flex items-center gap-4 text-xs">
-            <div class="flex items-center gap-1">
-              <span class="w-3 h-3 rounded-full bg-sky-500"></span>
-              <span class="text-slate-600 dark:text-slate-400">%s leads</span>
-            </div>
-            <div class="flex items-center gap-1">
-              <span class="w-3 h-3 rounded-full bg-orange-500"></span>
-              <span class="text-slate-600 dark:text-slate-400">%s leads</span>
-            </div>
-          </div>
-        </div>
+	            득점 흐름
+	          </h3>
+	          <div class="flex items-center gap-4 text-xs">
+	            <div class="flex items-center gap-1">
+	              <span class="w-3 h-3 rounded-full bg-sky-500"></span>
+	              <span class="text-slate-600 dark:text-slate-400">%s 리드</span>
+	            </div>
+	            <div class="flex items-center gap-1">
+	              <span class="w-3 h-3 rounded-full bg-orange-500"></span>
+	              <span class="text-slate-600 dark:text-slate-400">%s 리드</span>
+	            </div>
+	          </div>
+	        </div>
         <div class="overflow-x-auto">
           <svg viewBox="0 0 %d %d" class="w-full min-w-[600px]" preserveAspectRatio="xMidYMid meet">
             <defs>
@@ -1327,7 +1345,7 @@ let game_flow_page ~(game: Domain.game_info) (flow_points: Domain.score_flow_poi
       {html|<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
         <div class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-4 text-center">
           <div class="text-2xl font-black text-slate-900 dark:text-slate-200 font-mono">%d</div>
-          <div class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider mt-1">Lead Changes</div>
+          <div class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider mt-1">리드 변경</div>
         </div>
         <div class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-4 text-center">
           <div class="text-2xl font-black text-sky-600 dark:text-sky-400 font-mono">+%d</div>
@@ -1342,7 +1360,7 @@ let game_flow_page ~(game: Domain.game_info) (flow_points: Domain.score_flow_poi
             <span class="text-sky-600 dark:text-sky-400">%s</span> /
             <span class="text-orange-600 dark:text-orange-400">%s</span>
           </div>
-          <div class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider mt-1">Time with Lead</div>
+          <div class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider mt-1">리드 시간</div>
         </div>
       </div>|html}
       lead_changes
@@ -1351,21 +1369,21 @@ let game_flow_page ~(game: Domain.game_info) (flow_points: Domain.score_flow_poi
       (format_time home_lead_time) (format_time away_lead_time)
   in
 
-  layout ~title:(Printf.sprintf "Game Flow: %s vs %s" game.gi_home_team_name game.gi_away_team_name)
-    ~content:(Printf.sprintf
-      {html|<div class="space-y-6 animate-fade-in">
-        <div class="text-center">
-          <h1 class="text-2xl font-black text-slate-900 dark:text-slate-200">%s vs %s</h1>
-          <div class="text-slate-500 dark:text-slate-400 text-sm mt-1">%s</div>
-          <div class="text-3xl font-black text-slate-900 dark:text-slate-200 mt-2">%d - %d</div>
-        </div>
-        %s
-        %s
-        <div class="flex justify-center gap-4">
-          <a href="/boxscore/%s" class="px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-200 hover:border-slate-500 transition">← Boxscore</a>
-          <a href="/boxscore/%s/pbp" class="px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-200 hover:border-slate-500 transition">Play-by-Play →</a>
-        </div>
-      </div>|html}
+  layout ~title:(Printf.sprintf "득점 흐름: %s 대 %s" game.gi_home_team_name game.gi_away_team_name)
+	    ~content:(Printf.sprintf
+	      {html|<div class="space-y-6 animate-fade-in">
+	        <div class="text-center">
+	          <h1 class="text-2xl font-black text-slate-900 dark:text-slate-200">%s 대 %s</h1>
+	          <div class="text-slate-500 dark:text-slate-400 text-sm mt-1">%s</div>
+	          <div class="text-3xl font-black text-slate-900 dark:text-slate-200 mt-2">%d - %d</div>
+	        </div>
+	        %s
+	        %s
+	        <div class="flex justify-center gap-4">
+	          <a href="/boxscore/%s" class="px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-200 hover:border-slate-500 transition">← 기록</a>
+	          <a href="/boxscore/%s/pbp" class="px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-200 hover:border-slate-500 transition">문자중계 →</a>
+	        </div>
+	      </div>|html}
       (escape_html game.gi_home_team_name) (escape_html game.gi_away_team_name)
       (escape_html game.gi_game_date)
       game.gi_home_score game.gi_away_score
@@ -1436,7 +1454,7 @@ let render_synergy_row (syn: Domain.lineup_synergy) (rank: int) : string =
 (** Render lineup table *)
 let render_lineup_table ~title (lineups: Domain.lineup_stats list) : string =
   if lineups = [] then
-    Printf.sprintf {html|<div class="text-center text-slate-500 dark:text-slate-400 py-8">%s: No data available</div>|html} title
+    Printf.sprintf {html|<div class="text-center text-slate-500 dark:text-slate-400 py-8">%s: 데이터가 없습니다</div>|html} title
   else
     let rows = lineups |> List.mapi (fun i l -> render_lineup_row l (i + 1)) |> String.concat "\n" in
     Printf.sprintf
@@ -1456,15 +1474,15 @@ let render_lineup_table ~title (lineups: Domain.lineup_stats list) : string =
               <col style="width: 80px;">  <!-- +/-/min -->
             </colgroup>
             <thead class="bg-slate-50 dark:bg-slate-800/30">
-              <tr class="text-left text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                <th scope="col" class="px-3 py-2 text-center font-sans">#</th>
-                <th scope="col" class="px-3 py-2 font-sans">Players</th>
-                <th scope="col" class="px-3 py-2 text-center font-sans" title="Games Played">Games</th>
-                <th scope="col" class="px-3 py-2 text-center font-sans" title="Minutes Played">Min</th>
-                <th scope="col" class="px-3 py-2 text-center font-sans" title="Points">Pts</th>
-                <th scope="col" class="px-3 py-2 text-center font-sans" title="Plus/Minus">+/-</th>
-                <th scope="col" class="px-3 py-2 text-center font-sans" title="Plus/Minus per minute">+/-/min</th>
-              </tr>
+	              <tr class="text-left text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
+	                <th scope="col" class="px-3 py-2 text-center font-sans">#</th>
+	                <th scope="col" class="px-3 py-2 font-sans">선수</th>
+	                <th scope="col" class="px-3 py-2 text-center font-sans" title="출전 경기">경기</th>
+	                <th scope="col" class="px-3 py-2 text-center font-sans" title="출전 시간(분)">분</th>
+	                <th scope="col" class="px-3 py-2 text-center font-sans" title="득점">득점</th>
+	                <th scope="col" class="px-3 py-2 text-center font-sans" title="Plus/Minus">+/-</th>
+	                <th scope="col" class="px-3 py-2 text-center font-sans" title="분당 +/-">+/-/분</th>
+	              </tr>
             </thead>
             <tbody class="text-slate-700 dark:text-slate-300">
               %s
@@ -1477,14 +1495,14 @@ let render_lineup_table ~title (lineups: Domain.lineup_stats list) : string =
 (** Render synergy table *)
 let render_synergy_table (synergies: Domain.lineup_synergy list) : string =
   if synergies = [] then
-    {html|<div class="text-center text-slate-500 dark:text-slate-400 py-8">Player Synergies: No data available</div>|html}
+    {html|<div class="text-center text-slate-500 dark:text-slate-400 py-8">선수 궁합: 데이터가 없습니다</div>|html}
   else
     let rows = synergies |> List.mapi (fun i s -> render_synergy_row s (i + 1)) |> String.concat "\n" in
     Printf.sprintf
       {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-        <div class="px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
-          <h2 class="font-bold text-slate-900 dark:text-slate-200">Player Synergies (Top Pairs)</h2>
-        </div>
+	        <div class="px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
+	          <h2 class="font-bold text-slate-900 dark:text-slate-200">선수 궁합 (상위 조합)</h2>
+	        </div>
         <div class="overflow-x-auto">
           <table class="w-full text-sm table-fixed font-mono tabular-nums" aria-label="선수 시너지 순위">
             <colgroup>

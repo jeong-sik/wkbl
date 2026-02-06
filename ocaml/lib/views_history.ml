@@ -65,7 +65,7 @@ let history_page (seasons: historical_season list) =
             <col style="width: 120px;"> <!-- Scoring -->
           </colgroup>
           <thead class="bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 text-xs uppercase">
-            <tr><th scope="col" class="px-3 py-2 text-left">시즌</th><th scope="col" class="px-3 py-2 text-left">우승</th><th scope="col" class="px-3 py-2 text-left">준우승</th><th scope="col" class="px-3 py-2 text-left" title="정규리그 MVP">MVP</th><th scope="col" class="px-3 py-2 text-left" title="파이널 MVP">Finals MVP</th><th scope="col" class="px-3 py-2 text-left" title="신인상">ROY</th><th scope="col" class="px-3 py-2 text-left" title="득점 1위">Scoring</th></tr>
+            <tr><th scope="col" class="px-3 py-2 text-left">시즌</th><th scope="col" class="px-3 py-2 text-left">우승</th><th scope="col" class="px-3 py-2 text-left">준우승</th><th scope="col" class="px-3 py-2 text-left" title="정규리그 MVP">MVP</th><th scope="col" class="px-3 py-2 text-left" title="파이널 MVP">파이널 MVP</th><th scope="col" class="px-3 py-2 text-left" title="신인상">신인상</th><th scope="col" class="px-3 py-2 text-left" title="득점 1위">득점</th></tr>
           </thead>
           <tbody>%s</tbody>
         </table>
@@ -135,7 +135,7 @@ let legends_page (legends: legend_player list) =
       l.lp_championships l.lp_mvp_count l.lp_all_star_count
       l.lp_career_points l.lp_career_rebounds l.lp_career_assists
   ) |> String.concat "\n" in
-  layout ~title:"Legends | WKBL" ~content:(Printf.sprintf
+  layout ~title:"레전드 | WKBL" ~content:(Printf.sprintf
     {html|<div class="space-y-6">
       <div><h2 class="text-2xl font-bold text-slate-900 dark:text-slate-200">WKBL 레전드</h2>
         <p class="text-slate-500 dark:text-slate-400 text-sm">명예의 전당 및 역대 최고 선수들</p></div>
@@ -238,7 +238,7 @@ let coaches_page (coaches: coach list) =
       </tr>|html}
       (escape_html c.c_coach_name) team tenure c.c_championships c.c_regular_season_wins c.c_playoff_wins player_info
   ) |> String.concat "\n" in
-  layout ~title:"Coaches | WKBL" ~content:(Printf.sprintf
+  layout ~title:"감독 | WKBL" ~content:(Printf.sprintf
     {html|<div class="space-y-6">
       <div><h2 class="text-2xl font-bold text-slate-900 dark:text-slate-200">WKBL 감독</h2>
         <p class="text-slate-500 dark:text-slate-400 text-sm">감독 기록 및 업적</p></div>
@@ -289,10 +289,10 @@ let player_career_page ~player_name (entries: player_career_entry list) =
       </tr>|html}
       (escape_html e.pce_season_id) (escape_html e.pce_team) jersey gp ppg rpg apg allstar awards
   ) |> String.concat "\n" in
-  layout ~title:(Printf.sprintf "%s Career | WKBL" (escape_html player_name)) ~content:(Printf.sprintf
+  layout ~title:(Printf.sprintf "%s 선수 경력 | WKBL" (escape_html player_name)) ~content:(Printf.sprintf
     {html|<div class="space-y-6">
       <div><h2 class="text-2xl font-bold text-slate-900 dark:text-slate-200">%s</h2>
-        <p class="text-slate-500 dark:text-slate-400 text-sm">Career statistics by season.</p></div>
+        <p class="text-slate-500 dark:text-slate-400 text-sm">시즌별 기록을 정리했습니다.</p></div>
       <div class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 table-scroll-container shadow-lg">
         <table class="min-w-full text-sm font-mono tabular-nums table-fixed" aria-label="선수 시즌별 기록">
           <colgroup>
@@ -307,12 +307,12 @@ let player_career_page ~player_name (entries: player_career_entry list) =
             <col style="width: auto;">  <!-- Awards -->
           </colgroup>
           <thead class="bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 text-xs uppercase">
-            <tr><th scope="col" class="px-3 py-2 text-left">Season</th><th scope="col" class="px-3 py-2 text-left">Team</th><th scope="col" class="px-3 py-2 text-center" title="Jersey Number">#</th><th scope="col" class="px-3 py-2 text-center" title="Games Played">GP</th><th scope="col" class="px-3 py-2 text-center" title="Points Per Game">PPG</th><th scope="col" class="px-3 py-2 text-center" title="Rebounds Per Game">RPG</th><th scope="col" class="px-3 py-2 text-center" title="Assists Per Game">APG</th><th scope="col" class="px-3 py-2 text-center" title="All-Star Selection">★</th><th scope="col" class="px-3 py-2 text-left">Awards</th></tr>
+            <tr><th scope="col" class="px-3 py-2 text-left">시즌</th><th scope="col" class="px-3 py-2 text-left">팀</th><th scope="col" class="px-3 py-2 text-center" title="등번호">#</th><th scope="col" class="px-3 py-2 text-center" title="출전 경기">GP</th><th scope="col" class="px-3 py-2 text-center" title="경기당 득점">PPG</th><th scope="col" class="px-3 py-2 text-center" title="경기당 리바운드">RPG</th><th scope="col" class="px-3 py-2 text-center" title="경기당 어시스트">APG</th><th scope="col" class="px-3 py-2 text-center" title="올스타">★</th><th scope="col" class="px-3 py-2 text-left">수상</th></tr>
           </thead>
           <tbody>%s</tbody>
         </table>
       </div>
-      <div class="text-center"><a href="/legends" class="text-orange-500 hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 text-sm">← Back to Legends</a></div>
+      <div class="text-center"><a href="/legends" class="text-orange-500 hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 text-sm">← 레전드로 돌아가기</a></div>
     </div>|html}
     (escape_html player_name) rows) ()
 

@@ -1827,12 +1827,155 @@ let test_totals_tooltip_is_season () =
   Alcotest.(check bool) "totals tooltip is cumulative" true (contains_substring html {|title="누적"|});
   Alcotest.(check bool) "no career total tooltip" false (contains_substring html "Career Total")
 
+let test_secondary_pages_copy_is_korean () =
+  (* /history should not leak English labels that are visible on the page. *)
+  let seasons : historical_season list =
+    [ { hs_season_id = "S1"
+      ; hs_season_name = "2025-2026"
+      ; hs_champion_team = Some "우리은행"
+      ; hs_runner_up = Some "BNK 썸"
+      ; hs_regular_mvp = Some "테스트"
+      ; hs_finals_mvp = Some "테스트"
+      ; hs_rookie_of_year = Some "테스트"
+      ; hs_scoring_leader = Some "테스트"
+      ; hs_notes = None
+      }
+    ]
+  in
+  let history_html = Wkbl.Views_history.history_page seasons in
+  Alcotest.(check bool) "history finals mvp header is Korean" true (contains_substring history_html ">파이널 MVP<");
+  Alcotest.(check bool) "history rookie header is Korean" true (contains_substring history_html ">신인상<");
+  Alcotest.(check bool) "history scoring header is Korean" true (contains_substring history_html ">득점<");
+  Alcotest.(check bool) "history no Finals MVP" false (contains_substring history_html ">Finals MVP<");
+  Alcotest.(check bool) "history no ROY" false (contains_substring history_html ">ROY<");
+  Alcotest.(check bool) "history no Scoring" false (contains_substring history_html ">Scoring<");
+
+  (* /legends and /coaches meta titles should be Korean. *)
+  let legends_html = Wkbl.Views_history.legends_page [] in
+  Alcotest.(check bool) "legends title is Korean" true (contains_substring legends_html "<title>레전드 | WKBL</title>");
+  Alcotest.(check bool) "legends no English title" false (contains_substring legends_html "<title>Legends | WKBL</title>");
+
+  let coaches_html = Wkbl.Views_history.coaches_page [] in
+  Alcotest.(check bool) "coaches title is Korean" true (contains_substring coaches_html "<title>감독 | WKBL</title>");
+  Alcotest.(check bool) "coaches no English title" false (contains_substring coaches_html "<title>Coaches | WKBL</title>");
+
+  (* Player career page copy should be Korean. *)
+  let entries : player_career_entry list =
+    [ { pce_player_name = "테스트"
+      ; pce_season_id = "046"
+      ; pce_team = "우리은행"
+      ; pce_jersey_number = Some 7
+      ; pce_games_played = Some 30
+      ; pce_points_per_game = Some 10.1
+      ; pce_rebounds_per_game = Some 3.3
+      ; pce_assists_per_game = Some 2.2
+      ; pce_is_allstar = false
+      ; pce_awards = None
+      }
+    ]
+  in
+  let career_html = Wkbl.Views_history.player_career_page ~player_name:"테스트" entries in
+  Alcotest.(check bool) "career title contains Korean" true (contains_substring career_html "선수 경력");
+  Alcotest.(check bool) "career no English description" false (contains_substring career_html "Career statistics by season.");
+  Alcotest.(check bool) "career back link is Korean" true (contains_substring career_html "레전드로 돌아가기");
+
+  (* /fantasy should not show English labels (and should avoid dev-ish formula labels). *)
+  let seasons_catalog : season_info list =
+    [ { code = "046"; name = "2025-2026" }
+    ; { code = "045"; name = "2024-2025" }
+    ]
+  in
+  let scores : fantasy_player_score list =
+    [ { fps_player_id = "P1"
+      ; fps_player_name = "테스트"
+      ; fps_team_name = "우리은행"
+      ; fps_games_played = 1
+      ; fps_total_score = 10.0
+      ; fps_avg_score = 10.0
+      ; fps_pts_contrib = 5.0
+      ; fps_reb_contrib = 2.0
+      ; fps_ast_contrib = 2.0
+      ; fps_stl_contrib = 1.0
+      ; fps_blk_contrib = 0.0
+      ; fps_tov_contrib = 0.0
+      }
+    ]
+  in
+  let fantasy_html =
+    Wkbl.Views_tools.fantasy_calculator_page
+      ~season:"046"
+      ~seasons:seasons_catalog
+      ~rules:default_fantasy_rules
+      ~scores
+  in
+  Alcotest.(check bool) "fantasy contains Korean title" true (contains_substring fantasy_html "판타지 계산기");
+  Alcotest.(check bool) "fantasy contains scoring rules label" true (contains_substring fantasy_html ">점수 규칙<");
+  Alcotest.(check bool) "fantasy contains season label" true (contains_substring fantasy_html ">시즌<");
+  Alcotest.(check bool) "fantasy contains default button label" true (contains_substring fantasy_html ">기본값<");
+  Alcotest.(check bool) "fantasy formula is Korean" true (contains_substring fantasy_html "판타지 점수");
+  Alcotest.(check bool) "fantasy no English title" false (contains_substring fantasy_html "Fantasy Calculator");
+  Alcotest.(check bool) "fantasy no English season label" false (contains_substring fantasy_html ">Season<");
+  Alcotest.(check bool) "fantasy no Scoring Rules" false (contains_substring fantasy_html "Scoring Rules");
+  Alcotest.(check bool) "fantasy no Reset" false (contains_substring fantasy_html ">Reset<");
+
+  (* /lineups table headers should be Korean. *)
+  let mk_player n : lineup_player =
+    { lp_player_id = Printf.sprintf "P%d" n
+    ; lp_player_name = Printf.sprintf "선수%d" n
+    ; lp_position = None
+    }
+  in
+  let lineup : lineup_stats =
+    { ls_players = [ mk_player 1; mk_player 2; mk_player 3; mk_player 4; mk_player 5 ]
+    ; ls_team_name = "우리은행"
+    ; ls_games_together = 3
+    ; ls_total_minutes = 12.3
+    ; ls_total_pts = 30
+    ; ls_total_opp_pts = 25
+    ; ls_plus_minus = 5
+    ; ls_avg_pts_per_min = 2.0
+    ; ls_avg_margin_per_min = 0.4
+    }
+  in
+  let lineup_html = Wkbl.Views_tools.render_lineup_table ~title:"테스트" [ lineup ] in
+  Alcotest.(check bool) "lineups has Korean header 선수" true (contains_substring lineup_html ">선수<");
+  Alcotest.(check bool) "lineups has Korean header 경기" true (contains_substring lineup_html ">경기<");
+  Alcotest.(check bool) "lineups no Players header" false (contains_substring lineup_html ">Players<");
+  Alcotest.(check bool) "lineups no Games header" false (contains_substring lineup_html ">Games<");
+
+  let synergy_empty = Wkbl.Views_tools.render_synergy_table [] in
+  Alcotest.(check bool) "synergy no English label" false (contains_substring synergy_empty "Player Synergies");
+  Alcotest.(check bool) "synergy has Korean label" true (contains_substring synergy_empty "선수 궁합");
+
+  (* /boxscore/{id}/flow should be Korean. *)
+  let game : game_info =
+    { gi_game_id = "046-01-62"
+    ; gi_game_date = "2026-02-04"
+    ; gi_home_team_code = "09"
+    ; gi_home_team_name = "하나은행"
+    ; gi_away_team_code = "03"
+    ; gi_away_team_name = "삼성생명"
+    ; gi_home_score = 54
+    ; gi_away_score = 74
+    ; gi_score_quality = Derived
+    }
+  in
+  let flow_html = Wkbl.Views_tools.game_flow_page ~game [] in
+  Alcotest.(check bool) "flow page contains Korean label" true (contains_substring flow_html "득점 흐름");
+  Alcotest.(check bool) "flow page no English Game Flow" false (contains_substring flow_html "Game Flow");
+  Alcotest.(check bool) "flow page no English Lead Changes" false (contains_substring flow_html "Lead Changes");
+  Alcotest.(check bool) "flow page no English Time with Lead" false (contains_substring flow_html "Time with Lead");
+  Alcotest.(check bool) "flow page no English no-data" false (contains_substring flow_html "No score flow data available");
+  Alcotest.(check bool) "flow page has Korean boxscore label" true (contains_substring flow_html "← 기록");
+  Alcotest.(check bool) "flow page has Korean pbp label" true (contains_substring flow_html "문자중계")
+
 let ui_copy_tests = [
   Alcotest.test_case "find_substring_from" `Quick test_find_substring_from;
   Alcotest.test_case "ui copy avoids dev terms" `Quick test_ui_copy_no_dev_terms;
   Alcotest.test_case "ops copy hidden by default" `Quick test_ops_copy_hidden_by_default;
   Alcotest.test_case "nav labels are Korean" `Quick test_nav_labels_are_korean;
   Alcotest.test_case "totals tooltip is season" `Quick test_totals_tooltip_is_season;
+  Alcotest.test_case "secondary pages copy is Korean" `Quick test_secondary_pages_copy_is_korean;
 ]
 
 (* ============================================= *)
