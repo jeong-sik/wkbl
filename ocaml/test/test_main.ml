@@ -1358,6 +1358,26 @@ let disambiguation_tests = [
 ]
 
 (* ============================================= *)
+(* QA Utility Tests                              *)
+(* ============================================= *)
+
+let test_coverage_pct () =
+  Alcotest.(check float_testable) "zero total" 0.0 (Wkbl.Db_common.coverage_pct ~total:0 ~covered:10);
+  Alcotest.(check float_testable) "half" 50.0 (Wkbl.Db_common.coverage_pct ~total:10 ~covered:5);
+  Alcotest.(check float_testable) "rounding" 33.3 (Wkbl.Db_common.coverage_pct ~total:3 ~covered:1)
+
+let test_split_csv_ids () =
+  let list_string = Alcotest.(list string) in
+  Alcotest.(check list_string) "basic" ["a"; "b"; "c"] (Wkbl.Db.split_csv_ids "a, b, c");
+  Alcotest.(check list_string) "empty" [] (Wkbl.Db.split_csv_ids "");
+  Alcotest.(check list_string) "trim + skip empty" ["a"; "b"] (Wkbl.Db.split_csv_ids "a,, ,b,")
+
+let qa_util_tests = [
+  Alcotest.test_case "coverage pct" `Quick test_coverage_pct;
+  Alcotest.test_case "split csv ids" `Quick test_split_csv_ids;
+]
+
+(* ============================================= *)
 (* Main Test Runner                              *)
 (* ============================================= *)
 
@@ -1380,4 +1400,5 @@ let () =
     "Advanced Stats", advanced_stats_tests;
     "Scraper Functions", scraper_tests;
     "Disambiguation", disambiguation_tests;
+    "QA Utils", qa_util_tests;
   ]
