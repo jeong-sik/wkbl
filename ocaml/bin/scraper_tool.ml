@@ -483,9 +483,12 @@ let run_sync_history ~sw ~env ~season_filter ~purge =
     let errors = ref 0 in
 
     if purge then (
+      Printf.printf "  Purging existing schedule rows for season %s...\n%!" season_code;
       match Db.with_db (fun db -> Db.Repo.delete_schedule_by_season ~season_code db) with
-      | Ok () -> ()
-      | Error _ -> incr errors
+      | Ok () -> Printf.printf "  ✓ Purged.\n%!"
+      | Error e ->
+          Printf.eprintf "  ✗ Purge failed: %s\n%!" (Db.show_db_error e);
+          exit 1
     );
 
     entries |> List.iter (fun (e : Scraper.schedule_entry) ->
