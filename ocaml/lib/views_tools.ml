@@ -36,7 +36,7 @@ let qa_dashboard_page (report: Db.qa_db_report) ?(markdown=None) () =
         (escape_html row.qsm_game_date)
         (Uri.pct_encode row.qsm_game_id)
         (escape_html row.qsm_game_id)
-        (escape_html (row.qsm_home_team ^ " vs " ^ row.qsm_away_team))
+        (escape_html (row.qsm_home_team ^ " 대 " ^ row.qsm_away_team))
         (escape_html stored)
         (escape_html summed)
         (escape_html home_delta)
@@ -101,7 +101,7 @@ let qa_dashboard_page (report: Db.qa_db_report) ?(markdown=None) () =
     report.qdr_schedule_missing_game_sample
     |> List.map (fun (row: Db.qa_schedule_missing_game) ->
       Printf.sprintf
-        {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors"><td class="px-3 py-2 text-slate-500 dark:text-slate-400 font-mono text-xs whitespace-nowrap">%s</td><td class="px-3 py-2 text-xs font-mono">%s</td><td class="px-3 py-2 text-xs">%s vs %s</td></tr>|html}
+        {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors"><td class="px-3 py-2 text-slate-500 dark:text-slate-400 font-mono text-xs whitespace-nowrap">%s</td><td class="px-3 py-2 text-xs font-mono">%s</td><td class="px-3 py-2 text-xs">%s 대 %s</td></tr>|html}
         (escape_html row.qsmg_game_date)
         (escape_html row.qsmg_season_code)
         (escape_html row.qsmg_home_team)
@@ -112,7 +112,7 @@ let qa_dashboard_page (report: Db.qa_db_report) ?(markdown=None) () =
     report.qdr_schedule_missing_stats_sample
     |> List.map (fun (row: Db.qa_schedule_missing_stats) ->
       Printf.sprintf
-        {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors"><td class="px-3 py-2 text-slate-500 dark:text-slate-400 font-mono text-xs whitespace-nowrap">%s</td><td class="px-3 py-2 text-slate-900 dark:text-slate-200 font-mono text-xs"><a class="hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300" href="/boxscore/%s">%s</a></td><td class="px-3 py-2 text-xs">%s vs %s</td></tr>|html}
+        {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors"><td class="px-3 py-2 text-slate-500 dark:text-slate-400 font-mono text-xs whitespace-nowrap">%s</td><td class="px-3 py-2 text-slate-900 dark:text-slate-200 font-mono text-xs"><a class="hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300" href="/boxscore/%s">%s</a></td><td class="px-3 py-2 text-xs">%s 대 %s</td></tr>|html}
         (escape_html row.qsms_game_date)
         (Uri.pct_encode row.qsms_game_id)
         (escape_html row.qsms_game_id)
@@ -136,8 +136,8 @@ let qa_dashboard_page (report: Db.qa_db_report) ?(markdown=None) () =
       in
       let flags =
         []
-        |> fun acc -> if row.qsc_season_uningested then badge "no games" "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-700/60" :: acc else acc
-        |> fun acc -> if row.qsc_games_missing_team then badge "games missing team_code" "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-900/20 dark:text-rose-300 dark:border-rose-700/60" :: acc else acc
+        |> fun acc -> if row.qsc_season_uningested then badge "경기 없음" "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-700/60" :: acc else acc
+        |> fun acc -> if row.qsc_games_missing_team then badge "팀 정보 누락" "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-900/20 dark:text-rose-300 dark:border-rose-700/60" :: acc else acc
       in
       let flags_html =
         match List.rev flags with
@@ -157,7 +157,7 @@ let qa_dashboard_page (report: Db.qa_db_report) ?(markdown=None) () =
   in
   let schedule_coverage_block =
     Printf.sprintf
-      {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-lg"><div class="flex items-center justify-between gap-3"><h3 class="text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-xs">Schedule Coverage by Season</h3><span class="text-[11px] text-slate-500 dark:text-slate-400 font-mono">rows=%d</span></div><div class="mt-3 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">완료 일정 대비 games 매칭 비율 (팀 코드 누락/미수집 시즌 포함)</div><div class="mt-4 overflow-x-auto"><table class="min-w-[880px] w-full text-sm font-mono table-fixed" aria-label="시즌별 스케줄 매칭 현황">
+      {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-lg"><div class="flex items-center justify-between gap-3"><h3 class="text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-xs">시즌별 일정-경기 매칭</h3><span class="text-[11px] text-slate-500 dark:text-slate-400 font-mono">항목 %d</span></div><div class="mt-3 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">종료된 일정 대비 경기 매칭 비율 (팀 정보 누락/미수집 시즌 포함)</div><div class="mt-4 overflow-x-auto"><table class="min-w-[880px] w-full text-sm font-mono table-fixed" aria-label="시즌별 일정-경기 매칭 현황">
         <colgroup>
           <col style="width: 70px;"> <!-- Season -->
           <col style="width: 90px;"> <!-- Schedule -->
@@ -167,7 +167,7 @@ let qa_dashboard_page (report: Db.qa_db_report) ?(markdown=None) () =
           <col style="width: 90px;"> <!-- Coverage -->
           <col style="width: auto;"> <!-- Flags -->
         </colgroup>
-        <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px]"><tr><th scope="col" class="px-3 py-2 text-left">Season</th><th scope="col" class="px-3 py-2 text-right">Schedule</th><th scope="col" class="px-3 py-2 text-right">Games</th><th scope="col" class="px-3 py-2 text-right">Matched</th><th scope="col" class="px-3 py-2 text-right">Missing</th><th scope="col" class="px-3 py-2 text-right">Coverage</th><th scope="col" class="px-3 py-2 text-left">Flags</th></tr></thead><tbody>%s</tbody></table></div></div>|html}
+        <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px]"><tr><th scope="col" class="px-3 py-2 text-left">시즌</th><th scope="col" class="px-3 py-2 text-right">종료 일정</th><th scope="col" class="px-3 py-2 text-right">경기</th><th scope="col" class="px-3 py-2 text-right">매칭</th><th scope="col" class="px-3 py-2 text-right">누락</th><th scope="col" class="px-3 py-2 text-right">비율</th><th scope="col" class="px-3 py-2 text-left">표시</th></tr></thead><tbody>%s</tbody></table></div></div>|html}
       (List.length report.qdr_schedule_coverage)
       schedule_coverage_rows
   in
@@ -197,27 +197,27 @@ let qa_dashboard_page (report: Db.qa_db_report) ?(markdown=None) () =
 	  in
   let schedule_missing_blocks =
     Printf.sprintf
-	      {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-lg"><div class="flex items-center justify-between gap-3"><h3 class="text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-xs">Schedule Missing Games</h3><span class="text-[11px] text-slate-500 dark:text-slate-400 font-mono">count=%d</span></div><div class="mt-3 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">완료된 일정이지만 경기 ID 매칭이 되지 않음</div><div class="mt-4 overflow-x-auto"><table class="min-w-[520px] w-full text-sm font-mono table-fixed" aria-label="스케줄-게임 누락 목록">
-          <colgroup>
-            <col style="width: 90px;"> <!-- Date -->
-            <col style="width: 80px;"> <!-- Season -->
-            <col style="width: auto;"> <!-- Matchup -->
-          </colgroup>
-	          <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px]"><tr><th scope="col" class="px-3 py-2 text-left">Date</th><th scope="col" class="px-3 py-2 text-left">Season</th><th scope="col" class="px-3 py-2 text-left">Matchup</th></tr></thead><tbody>%s</tbody></table></div></div><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-lg"><div class="flex items-center justify-between gap-3"><h3 class="text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-xs">Schedule Missing Stats</h3><span class="text-[11px] text-slate-500 dark:text-slate-400 font-mono">count=%d</span></div><div class="mt-3 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">경기 정보는 있으나 선수 기록이 없음</div><div class="mt-4 overflow-x-auto"><table class="min-w-[620px] w-full text-sm font-mono table-fixed" aria-label="스케줄-스탯 누락 목록">
-          <colgroup>
-            <col style="width: 90px;"> <!-- Date -->
-            <col style="width: 120px;"> <!-- Game -->
-            <col style="width: auto;"> <!-- Matchup -->
-          </colgroup>
-          <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px]"><tr><th scope="col" class="px-3 py-2 text-left">Date</th><th scope="col" class="px-3 py-2 text-left">Game</th><th scope="col" class="px-3 py-2 text-left">Matchup</th></tr></thead><tbody>%s</tbody></table></div></div>|html}
+		      {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-lg"><div class="flex items-center justify-between gap-3"><h3 class="text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-xs">일정-경기 누락</h3><span class="text-[11px] text-slate-500 dark:text-slate-400 font-mono">건수 %d</span></div><div class="mt-3 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">종료된 일정이지만 경기 매칭이 되지 않음</div><div class="mt-4 overflow-x-auto"><table class="min-w-[520px] w-full text-sm font-mono table-fixed" aria-label="일정-경기 누락 목록">
+	          <colgroup>
+	            <col style="width: 90px;"> <!-- Date -->
+	            <col style="width: 80px;"> <!-- Season -->
+	            <col style="width: auto;"> <!-- Matchup -->
+	          </colgroup>
+		          <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px]"><tr><th scope="col" class="px-3 py-2 text-left">날짜</th><th scope="col" class="px-3 py-2 text-left">시즌</th><th scope="col" class="px-3 py-2 text-left">대진</th></tr></thead><tbody>%s</tbody></table></div></div><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-lg"><div class="flex items-center justify-between gap-3"><h3 class="text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-xs">선수 기록 누락</h3><span class="text-[11px] text-slate-500 dark:text-slate-400 font-mono">건수 %d</span></div><div class="mt-3 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">경기 정보는 있으나 선수 기록이 없음</div><div class="mt-4 overflow-x-auto"><table class="min-w-[620px] w-full text-sm font-mono table-fixed" aria-label="일정-선수 기록 누락 목록">
+	          <colgroup>
+	            <col style="width: 90px;"> <!-- Date -->
+	            <col style="width: 120px;"> <!-- Game -->
+	            <col style="width: auto;"> <!-- Matchup -->
+	          </colgroup>
+	          <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px]"><tr><th scope="col" class="px-3 py-2 text-left">날짜</th><th scope="col" class="px-3 py-2 text-left">경기</th><th scope="col" class="px-3 py-2 text-left">대진</th></tr></thead><tbody>%s</tbody></table></div></div>|html}
       report.qdr_schedule_missing_game_count
       schedule_missing_game_rows
       report.qdr_schedule_missing_stats_count
       schedule_missing_stats_rows
   in
-  layout ~title:"QA | WKBL"
+  layout ~title:"데이터 점검 | WKBL"
     ~content:(Printf.sprintf
-      {html|<div class="space-y-6 animate-fade-in"><div class="flex flex-col gap-2"><h2 class="text-2xl font-black text-slate-900 dark:text-slate-200">Data Quality (QA)</h2><div class="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">기록 신뢰도를 위해 <span class="font-mono text-slate-900 dark:text-slate-200">스코어 불일치</span>, <span class="font-mono text-slate-900 dark:text-slate-200">팀 수 이상</span>, <span class="font-mono text-slate-900 dark:text-slate-200">중복 스탯 행</span>, <span class="font-mono text-slate-900 dark:text-slate-200">중복 선수 ID</span>, <span class="font-mono text-slate-900 dark:text-slate-200">이름+생년월일 중복</span>을 점검합니다. (생성: <span class="font-mono">%s</span>)</div></div>%s<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">%s%s%s%s%s%s%s%s</div><div class="grid grid-cols-1 lg:grid-cols-4 gap-4">%s%s%s%s</div><div class="grid grid-cols-1 gap-4">%s%s<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-lg"><div class="flex items-center justify-between gap-3"><h3 class="text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-xs">Score Mismatch</h3><span class="text-[11px] text-slate-500 dark:text-slate-400 font-mono">count=%d</span></div><div class="mt-3 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">최종 스코어 vs 선수 득점 합계 비교</div><div class="mt-4 overflow-x-auto"><table class="min-w-[860px] w-full text-sm font-mono table-fixed" aria-label="스코어 불일치 목록">
+      {html|<div class="space-y-6 animate-fade-in"><div class="flex flex-col gap-2"><h2 class="text-2xl font-black text-slate-900 dark:text-slate-200">데이터 점검</h2><div class="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">기록 신뢰도를 위해 <span class="font-mono text-slate-900 dark:text-slate-200">스코어 불일치</span>, <span class="font-mono text-slate-900 dark:text-slate-200">팀 수 이상</span>, <span class="font-mono text-slate-900 dark:text-slate-200">중복 기록</span>, <span class="font-mono text-slate-900 dark:text-slate-200">중복 선수 고유번호</span>, <span class="font-mono text-slate-900 dark:text-slate-200">이름+생년월일 중복</span>을 점검합니다. (생성: <span class="font-mono">%s</span>)</div></div>%s<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">%s%s%s%s%s%s%s%s</div><div class="grid grid-cols-1 lg:grid-cols-4 gap-4">%s%s%s%s</div><div class="grid grid-cols-1 gap-4">%s%s<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-lg"><div class="flex items-center justify-between gap-3"><h3 class="text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-xs">스코어 불일치</h3><span class="text-[11px] text-slate-500 dark:text-slate-400 font-mono">건수 %d</span></div><div class="mt-3 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">최종 스코어와 선수 득점 합계를 비교합니다.</div><div class="mt-4 overflow-x-auto"><table class="min-w-[860px] w-full text-sm font-mono table-fixed" aria-label="스코어 불일치 목록">
           <colgroup>
             <col style="width: 90px;"> <!-- Date -->
             <col style="width: 120px;"> <!-- Game -->
@@ -227,32 +227,32 @@ let qa_dashboard_page (report: Db.qa_db_report) ?(markdown=None) () =
             <col style="width: 80px;"> <!-- HΔ -->
             <col style="width: 80px;"> <!-- AΔ -->
           </colgroup>
-	          <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px]"><tr><th scope="col" class="px-3 py-2 text-left">Date</th><th scope="col" class="px-3 py-2 text-left">Game</th><th scope="col" class="px-3 py-2 text-left">Matchup</th><th scope="col" class="px-3 py-2 text-right" title="저장된 스코어">Stored</th><th scope="col" class="px-3 py-2 text-right" title="합산된 스코어">Summed</th><th scope="col" class="px-3 py-2 text-right" title="홈팀 차이">HΔ</th><th scope="col" class="px-3 py-2 text-right" title="원정팀 차이">AΔ</th></tr></thead><tbody>%s</tbody></table></div></div><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-lg"><div class="flex items-center justify-between gap-3"><h3 class="text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-xs">Team Count Anomaly</h3><span class="text-[11px] text-slate-500 dark:text-slate-400 font-mono">count=%d</span></div><div class="mt-3 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">한 경기에서 팀이 2개가 아닌 케이스</div><div class="mt-4 overflow-x-auto"><table class="min-w-[320px] w-full text-sm font-mono table-fixed" aria-label="팀 수 이상 목록">
+		          <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px]"><tr><th scope="col" class="px-3 py-2 text-left">날짜</th><th scope="col" class="px-3 py-2 text-left">경기</th><th scope="col" class="px-3 py-2 text-left">대진</th><th scope="col" class="px-3 py-2 text-right" title="저장된 스코어">저장</th><th scope="col" class="px-3 py-2 text-right" title="합산된 스코어">합산</th><th scope="col" class="px-3 py-2 text-right" title="홈팀 차이">홈Δ</th><th scope="col" class="px-3 py-2 text-right" title="원정팀 차이">원정Δ</th></tr></thead><tbody>%s</tbody></table></div></div><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-lg"><div class="flex items-center justify-between gap-3"><h3 class="text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-xs">팀 수 이상</h3><span class="text-[11px] text-slate-500 dark:text-slate-400 font-mono">건수 %d</span></div><div class="mt-3 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">한 경기에서 팀 정보가 2개가 아닌 경우입니다.</div><div class="mt-4 overflow-x-auto"><table class="min-w-[320px] w-full text-sm font-mono table-fixed" aria-label="팀 수 이상 목록">
           <colgroup>
             <col style="width: auto;"> <!-- Game -->
             <col style="width: 90px;"> <!-- Teams -->
           </colgroup>
-          <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px]"><tr><th scope="col" class="px-3 py-2 text-left">Game</th><th scope="col" class="px-3 py-2 text-right" title="팀 수">Teams</th></tr></thead><tbody>%s</tbody></table></div></div><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-lg"><div class="flex items-center justify-between gap-3"><h3 class="text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-xs">Duplicate Player Rows</h3><span class="text-[11px] text-slate-500 dark:text-slate-400 font-mono">count=%d</span></div><div class="mt-3 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed"><span class="font-mono text-slate-900 dark:text-slate-200">(game_id, team_code, player_id)</span> 중복</div><div class="mt-4 overflow-x-auto"><table class="min-w-[720px] w-full text-sm font-mono table-fixed" aria-label="중복 선수 스탯 목록">
+          <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px]"><tr><th scope="col" class="px-3 py-2 text-left">경기</th><th scope="col" class="px-3 py-2 text-right" title="팀 수">팀 수</th></tr></thead><tbody>%s</tbody></table></div></div><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-lg"><div class="flex items-center justify-between gap-3"><h3 class="text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-xs">중복 선수 기록</h3><span class="text-[11px] text-slate-500 dark:text-slate-400 font-mono">건수 %d</span></div><div class="mt-3 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">한 경기에서 같은 선수가 여러 줄로 저장된 경우입니다.</div><div class="mt-4 overflow-x-auto"><table class="min-w-[720px] w-full text-sm font-mono table-fixed" aria-label="중복 선수 기록 목록">
           <colgroup>
             <col style="width: 120px;"> <!-- Game -->
             <col style="width: 160px;"> <!-- Team -->
             <col style="width: auto;">  <!-- Player -->
             <col style="width: 80px;">  <!-- Rows -->
           </colgroup>
-          <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px]"><tr><th scope="col" class="px-3 py-2 text-left">Game</th><th scope="col" class="px-3 py-2 text-left">Team</th><th scope="col" class="px-3 py-2 text-left">Player</th><th scope="col" class="px-3 py-2 text-right" title="중복 행 수">Rows</th></tr></thead><tbody>%s</tbody></table></div></div><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-lg"><div class="flex items-center justify-between gap-3"><h3 class="text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-xs">Duplicate Player Names</h3><span class="text-[11px] text-slate-500 dark:text-slate-400 font-mono">count=%d</span></div><div class="mt-3 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">동일 이름으로 <span class="font-mono text-slate-900 dark:text-slate-200">player_id</span>가 여러  개인 케이스</div><div class="mt-4 overflow-x-auto"><table class="min-w-[720px] w-full text-sm font-mono table-fixed" aria-label="중복 선수 이름 목록">
+          <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px]"><tr><th scope="col" class="px-3 py-2 text-left">경기</th><th scope="col" class="px-3 py-2 text-left">팀</th><th scope="col" class="px-3 py-2 text-left">선수</th><th scope="col" class="px-3 py-2 text-right" title="중복 행 수">행 수</th></tr></thead><tbody>%s</tbody></table></div></div><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-lg"><div class="flex items-center justify-between gap-3"><h3 class="text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-xs">동명이인(고유번호 여러 개)</h3><span class="text-[11px] text-slate-500 dark:text-slate-400 font-mono">건수 %d</span></div><div class="mt-3 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">동일 이름으로 선수 고유번호가 여러 개인 경우입니다.</div><div class="mt-4 overflow-x-auto"><table class="min-w-[720px] w-full text-sm font-mono table-fixed" aria-label="동명이인 목록">
           <colgroup>
             <col style="width: 120px;"> <!-- Name -->
             <col style="width: 80px;">  <!-- IDs -->
             <col style="width: auto;">  <!-- player_id -->
           </colgroup>
-          <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px]"><tr><th scope="col" class="px-3 py-2 text-left">Name</th><th scope="col" class="px-3 py-2 text-right" title="ID 수">IDs</th><th scope="col" class="px-3 py-2 text-left">player_id</th></tr></thead><tbody>%s</tbody></table></div></div></div><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-lg"><div class="flex items-center justify-between gap-3"><h3 class="text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-xs">Duplicate Player Identity</h3><span class="text-[11px] text-slate-500 dark:text-slate-400 font-mono">count=%d</span></div><div class="mt-3 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">동일 이름 + 생년월일로 <span class="font-mono text-slate-900 dark:text-slate-200">player_id</span>가 여러 개인 케이스 (동일인 가능성 높음, 자동 병합 아님)</div><div class="mt-4 overflow-x-auto"><table class="min-w-[760px] w-full text-sm font-mono table-fixed" aria-label="중복 선수 신원 목록">
+          <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px]"><tr><th scope="col" class="px-3 py-2 text-left">이름</th><th scope="col" class="px-3 py-2 text-right" title="고유번호 수">고유번호 수</th><th scope="col" class="px-3 py-2 text-left">고유번호</th></tr></thead><tbody>%s</tbody></table></div></div></div><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-lg"><div class="flex items-center justify-between gap-3"><h3 class="text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-xs">동일인 추정(이름+생년월일)</h3><span class="text-[11px] text-slate-500 dark:text-slate-400 font-mono">건수 %d</span></div><div class="mt-3 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">동일 이름+생년월일로 선수 고유번호가 여러 개인 경우입니다. (자동으로 합치지 않습니다.)</div><div class="mt-4 overflow-x-auto"><table class="min-w-[760px] w-full text-sm font-mono table-fixed" aria-label="동일인 추정 목록">
           <colgroup>
             <col style="width: 140px;"> <!-- Name -->
             <col style="width: 120px;"> <!-- Birth -->
             <col style="width: 80px;">  <!-- IDs -->
             <col style="width: auto;">  <!-- player_id -->
           </colgroup>
-          <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px]"><tr><th scope="col" class="px-3 py-2 text-left">Name</th><th scope="col" class="px-3 py-2 text-left">Birth</th><th scope="col" class="px-3 py-2 text-right" title="ID 수">IDs</th><th scope="col" class="px-3 py-2 text-left">player_id</th></tr></thead><tbody>%s</tbody></table></div></div></div>%s</div>|html}
+          <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px]"><tr><th scope="col" class="px-3 py-2 text-left">이름</th><th scope="col" class="px-3 py-2 text-left">생년월일</th><th scope="col" class="px-3 py-2 text-right" title="고유번호 수">고유번호 수</th><th scope="col" class="px-3 py-2 text-left">고유번호</th></tr></thead><tbody>%s</tbody></table></div></div></div>%s</div>|html}
       (escape_html report.qdr_generated_at)
       sources_block
       (kpi_card ~label:"경기" ~value_html:(int_chip report.qdr_games_total) ~hint_html:"전체 경기 수(정규/PO, 시범 제외)")
@@ -297,22 +297,22 @@ let qa_schedule_missing_page (report: Db.qa_schedule_missing_report) () =
   in
   let reason_label reason =
     match reason with
-    | "games_UNKNOWN_team_code" -> "Games uses UNKNOWN team_code"
-    | "team_code_mismatch" -> "Team Code Mismatch (same date)"
-    | "schedule_alpha_code" -> "Schedule has alpha/unknown code"
-    | "schedule_allstar_AS" -> "Schedule All-Star placeholder (AS)"
-    | "no_game_on_date" -> "No game on that date"
-    | "home_away_swapped" -> "Home/Away swapped"
+    | "games_UNKNOWN_team_code" -> "팀 정보 누락"
+    | "team_code_mismatch" -> "팀 정보 불일치(같은 날짜)"
+    | "schedule_alpha_code" -> "일정 팀 코드 형식 이상"
+    | "schedule_allstar_AS" -> "올스타(AS) placeholder"
+    | "no_game_on_date" -> "해당 날짜 경기 없음"
+    | "home_away_swapped" -> "홈/원정 뒤바뀜"
     | other -> other
   in
   let reason_hint reason =
     match reason with
-    | "games_UNKNOWN_team_code" -> "해당 날짜에 game이 존재하지만 한쪽 team_code가 UNKNOWN이라 schedule과 key 매칭이 실패합니다."
-    | "team_code_mismatch" -> "해당 날짜에 game이 존재하지만 양 팀 코드 조합이 다릅니다. (schedule sync/정규화 문제 가능)"
-    | "schedule_alpha_code" -> "schedule의 팀 코드가 숫자(2자리)가 아닙니다. (예: SG, XX_*)"
-    | "schedule_allstar_AS" -> "schedule이 올스타를 AS로 뭉뚱그려 저장하여 games(87/88, 83/84 등)와 매칭되지 않습니다."
-    | "no_game_on_date" -> "schedule은 completed인데 games에 해당 날짜가 존재하지 않습니다. (games ingestion 누락 가능)"
-    | "home_away_swapped" -> "schedule과 games의 home/away가 뒤바뀐 케이스"
+    | "games_UNKNOWN_team_code" -> "해당 날짜에 경기는 있으나 팀 정보가 비어 있어 매칭에 실패합니다."
+    | "team_code_mismatch" -> "해당 날짜에 경기는 있으나 홈/원정 팀 조합이 다릅니다."
+    | "schedule_alpha_code" -> "일정의 팀 코드 형식이 예상과 다릅니다. (예: SG, XX_*)"
+    | "schedule_allstar_AS" -> "올스타 일정이 AS로 저장되어 일반 경기와 매칭되지 않습니다."
+    | "no_game_on_date" -> "종료된 일정인데 해당 날짜의 경기가 없습니다."
+    | "home_away_swapped" -> "홈/원정이 뒤바뀐 경우입니다."
     | _ -> ""
   in
   let reason_rows =
@@ -324,7 +324,7 @@ let qa_schedule_missing_page (report: Db.qa_schedule_missing_report) () =
   <td class="px-3 py-2 text-slate-700 dark:text-slate-300 text-xs">%s</td>
   <td class="px-3 py-2 text-right font-mono text-xs text-slate-900 dark:text-slate-200 tabular-nums">%d</td>
 </tr>|html}
-        (escape_html reason)
+        (escape_html (reason_label reason))
         (escape_html (reason_hint reason))
         n)
     |> String.concat "\n"
@@ -344,7 +344,7 @@ let qa_schedule_missing_page (report: Db.qa_schedule_missing_report) () =
       let sample_rows =
         rows
         |> List.map (fun (r: Db.qa_schedule_missing_sample) ->
-          let matchup = Printf.sprintf "%s vs %s" r.qsmp_home_team_code r.qsmp_away_team_code in
+          let matchup = Printf.sprintf "%s 대 %s" r.qsmp_home_team_code r.qsmp_away_team_code in
           let games_info = r.qsmp_games_info |> Option.value ~default:"" in
           Printf.sprintf
             {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors">
@@ -365,7 +365,7 @@ let qa_schedule_missing_page (report: Db.qa_schedule_missing_report) () =
         {html|<details class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-lg"><summary class="cursor-pointer select-none text-slate-700 dark:text-slate-300 font-bold">%s <span class="ml-2 text-[11px] text-slate-500 dark:text-slate-400 font-mono">sample=%d</span></summary>
   <div class="mt-3 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">%s</div>
   <div class="mt-4 overflow-x-auto">
-    <table class="min-w-[980px] w-full text-sm font-mono table-fixed" aria-label="schedule missing sample">
+	    <table class="min-w-[980px] w-full text-sm font-mono table-fixed" aria-label="일정 누락 샘플">
       <colgroup>
         <col style="width: 80px;">
         <col style="width: 110px;">
@@ -375,13 +375,13 @@ let qa_schedule_missing_page (report: Db.qa_schedule_missing_report) () =
       </colgroup>
       <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px]">
         <tr>
-          <th scope="col" class="px-3 py-2 text-left">Season</th>
-          <th scope="col" class="px-3 py-2 text-left">Date</th>
-          <th scope="col" class="px-3 py-2 text-left">Schedule</th>
-          <th scope="col" class="px-3 py-2 text-right">Games@Date</th>
-          <th scope="col" class="px-3 py-2 text-left">Games (id(code-code))</th>
-        </tr>
-      </thead>
+	          <th scope="col" class="px-3 py-2 text-left">시즌</th>
+	          <th scope="col" class="px-3 py-2 text-left">날짜</th>
+	          <th scope="col" class="px-3 py-2 text-left">대진</th>
+	          <th scope="col" class="px-3 py-2 text-right">당일 경기 수</th>
+	          <th scope="col" class="px-3 py-2 text-left">경기 목록</th>
+	        </tr>
+	      </thead>
       <tbody>%s</tbody>
     </table>
   </div>
@@ -393,17 +393,17 @@ let qa_schedule_missing_page (report: Db.qa_schedule_missing_report) () =
     |> String.concat "\n"
   in
   let s = report.qsmr_summary in
-  layout ~title:"QA | Schedule Missing | WKBL"
+  layout ~title:"데이터 점검 | 일정 누락 | WKBL"
     ~content:(Printf.sprintf
       {html|<div class="space-y-6 animate-fade-in">
   <div class="flex flex-col gap-2">
-    <h2 class="text-2xl font-black text-slate-900 dark:text-slate-200">Schedule Missing (Ingested Seasons)</h2>
+    <h2 class="text-2xl font-black text-slate-900 dark:text-slate-200">일정 누락(수집된 시즌)</h2>
     <div class="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">
-      기준: <span class="font-mono text-slate-900 dark:text-slate-200">schedule(status='completed')</span> 중에서 <span class="font-mono text-slate-900 dark:text-slate-200">games</span>에 key 매칭이 없는 row.
-      <span class="ml-2">Generated: <span class="font-mono">%s</span></span>
+      종료된 일정 중에서 수집된 경기와 매칭되지 않는 항목입니다.
+      <span class="ml-2">생성: <span class="font-mono">%s</span></span>
     </div>
     <div class="text-slate-500 dark:text-slate-400 text-xs leading-relaxed">
-      참고: games가 아예 없는 시즌(미수집 시즌)은 별도로 집계합니다.
+      참고: 경기가 아예 없는 시즌(미수집 시즌)은 별도로 집계합니다.
     </div>
   </div>
 
@@ -411,24 +411,24 @@ let qa_schedule_missing_page (report: Db.qa_schedule_missing_report) () =
     %s%s%s
   </div>
 
-  <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-lg">
-    <div class="flex items-center justify-between gap-3">
-      <h3 class="text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-xs">Reason Breakdown (Ingested Seasons)</h3>
-    </div>
-    <div class="mt-4 overflow-x-auto">
-      <table class="min-w-[860px] w-full text-sm table-fixed" aria-label="schedule missing reasons">
-        <colgroup>
-          <col style="width: 220px;">
-          <col style="width: auto;">
+	  <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-lg">
+	    <div class="flex items-center justify-between gap-3">
+	      <h3 class="text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-xs">원인별 분류(수집된 시즌)</h3>
+	    </div>
+	    <div class="mt-4 overflow-x-auto">
+	      <table class="min-w-[860px] w-full text-sm table-fixed" aria-label="일정 누락 원인">
+	        <colgroup>
+	          <col style="width: 220px;">
+	          <col style="width: auto;">
           <col style="width: 90px;">
         </colgroup>
-        <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px]">
-          <tr>
-            <th scope="col" class="px-3 py-2 text-left">Reason</th>
-            <th scope="col" class="px-3 py-2 text-left">Hint</th>
-            <th scope="col" class="px-3 py-2 text-right">Count</th>
-          </tr>
-        </thead>
+	        <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px]">
+	          <tr>
+	            <th scope="col" class="px-3 py-2 text-left">원인</th>
+	            <th scope="col" class="px-3 py-2 text-left">설명</th>
+	            <th scope="col" class="px-3 py-2 text-right">건수</th>
+	          </tr>
+	        </thead>
         <tbody>%s</tbody>
       </table>
     </div>
@@ -437,9 +437,9 @@ let qa_schedule_missing_page (report: Db.qa_schedule_missing_report) () =
   <div class="space-y-4">%s</div>
 </div>|html}
       (escape_html report.qsmr_generated_at)
-      (kpi_card ~label:"Missing (ingested seasons)" ~value_html:(int_chip s.qsms_missing_ingested) ~hint_html:"games가 존재하는 시즌에서만 계산")
-      (kpi_card ~label:"Missing (no games season)" ~value_html:(int_chip s.qsms_missing_uningested) ~hint_html:"games가 0인 시즌(미수집)에서 schedule missing")
-      (kpi_card ~label:"Missing (total)" ~value_html:(int_chip s.qsms_missing_total) ~hint_html:"ingested + no-games")
+      (kpi_card ~label:"누락(수집된 시즌)" ~value_html:(int_chip s.qsms_missing_ingested) ~hint_html:"경기가 수집된 시즌에서만 계산")
+      (kpi_card ~label:"누락(미수집 시즌)" ~value_html:(int_chip s.qsms_missing_uningested) ~hint_html:"경기가 없는 시즌(미수집)에서 일정 누락")
+      (kpi_card ~label:"누락(전체)" ~value_html:(int_chip s.qsms_missing_total) ~hint_html:"수집된 시즌 + 미수집 시즌")
       reason_rows
       sample_blocks) ()
 
@@ -513,7 +513,7 @@ let transactions_page
       match draft_picks with
       | [] ->
           if show_ops then
-            {html|<tr><td colspan="6" class="px-4 py-10 text-center text-slate-500 dark:text-slate-400 text-sm">No draft rows found. (Build with <span class="font-mono text-slate-700 dark:text-slate-300">WKBL_SYNC_DRAFT_TRADE=1</span> or run <span class="font-mono text-slate-700 dark:text-slate-300">scripts/wkbl_draft_trade_sync.py</span>)</td></tr>|html}
+            {html|<tr><td colspan="6" class="px-4 py-10 text-center text-slate-500 dark:text-slate-400 text-sm">드래프트 데이터가 아직 없습니다. (운영자: 수집 설정을 확인해주세요.)</td></tr>|html}
           else
             {html|<tr><td colspan="6" class="px-4 py-10 text-center text-slate-500 dark:text-slate-400 text-sm">드래프트 데이터가 아직 없습니다.</td></tr>|html}
       | xs ->
@@ -643,7 +643,7 @@ let transactions_page
       match trade_events with
       | [] ->
           if show_ops then
-            {html|<div class="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800/50 p-5 text-slate-500 dark:text-slate-400 text-sm">No trade events found. (Build with <span class="font-mono text-slate-700 dark:text-slate-300">WKBL_SYNC_DRAFT_TRADE=1</span> or run <span class="font-mono text-slate-700 dark:text-slate-300">scripts/wkbl_draft_trade_sync.py</span>)</div>|html}
+            {html|<div class="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800/50 p-5 text-slate-500 dark:text-slate-400 text-sm">이적 데이터가 아직 없습니다. (운영자: 수집 설정을 확인해주세요.)</div>|html}
           else
             {html|<div class="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800/50 p-5 text-slate-500 dark:text-slate-400 text-sm">이적 데이터가 아직 없습니다.</div>|html}
       | xs ->
@@ -688,18 +688,16 @@ let transactions_page
     in
     let intro_html =
       if show_ops then
-        {html|WKBL 공식 페이지 원문 기반입니다. (Draft는 <span class="font-mono text-slate-900 dark:text-slate-200">player_id(pno)</span> 기반 / Trade는 <span class="font-mono text-slate-900 dark:text-slate-200">원문 저장 + 텍스트 검색</span>)|html}
+        {html|WKBL 공식 페이지 원문 기반입니다. 드래프트는 공식 페이지의 선수 고유번호를 사용하고, 이적은 원문을 저장해 검색합니다.|html}
       else
         {html|WKBL 공식 페이지를 기준으로 정리했습니다.|html}
     in
     let sync_build_block =
       if show_ops then
         {html|<details class="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 p-5 text-xs text-slate-500 dark:text-slate-400">
-  <summary class="cursor-pointer font-bold text-slate-700 dark:text-slate-300 select-none">Sync / Build</summary>
+  <summary class="cursor-pointer font-bold text-slate-700 dark:text-slate-300 select-none">운영자 안내</summary>
   <div class="mt-2 space-y-2 leading-relaxed">
-    <div>Docker 빌드에서 공식 Draft/Trade를 포함하려면 <span class="font-mono text-slate-900 dark:text-slate-200">WKBL_SYNC_DRAFT_TRADE=1</span>을 켜세요.</div>
-    <div class="text-slate-500 dark:text-slate-400">로컬 DB를 갱신하려면 아래를 실행하세요: (네트워크 필요)</div>
-    <code class="block font-mono text-slate-700 dark:text-slate-300 bg-slate-950/30 border border-slate-300 dark:border-slate-700/60 px-3 py-2 rounded overflow-x-auto whitespace-nowrap">dune exec bin/scraper_tool.exe draft</code>
+    <div>드래프트/이적 데이터는 별도의 수집 과정이 필요합니다.</div>
   </div>
 </details>|html}
       else
@@ -1501,12 +1499,12 @@ let render_synergy_table (synergies: Domain.lineup_synergy list) : string =
             <thead class="bg-slate-50 dark:bg-slate-800/30">
               <tr class="text-left text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
                 <th scope="col" class="px-3 py-2 text-center font-sans">#</th>
-                <th scope="col" class="px-3 py-2 font-sans">Player 1</th>
-                <th scope="col" class="px-3 py-2 font-sans">Player 2</th>
-                <th scope="col" class="px-3 py-2 text-center font-sans" title="Games together">Games</th>
-                <th scope="col" class="px-3 py-2 text-center font-sans" title="Minutes together">Min</th>
-                <th scope="col" class="px-3 py-2 text-center font-sans" title="Plus/Minus per minute">+/-/min</th>
-                <th scope="col" class="px-3 py-2 text-center font-sans" title="Synergy score">Synergy</th>
+                <th scope="col" class="px-3 py-2 font-sans">선수 1</th>
+                <th scope="col" class="px-3 py-2 font-sans">선수 2</th>
+                <th scope="col" class="px-3 py-2 text-center font-sans" title="함께 뛴 경기">경기</th>
+                <th scope="col" class="px-3 py-2 text-center font-sans" title="함께 뛴 시간(분)">분</th>
+                <th scope="col" class="px-3 py-2 text-center font-sans" title="분당 +/-">+/-/분</th>
+                <th scope="col" class="px-3 py-2 text-center font-sans" title="궁합 점수">궁합</th>
               </tr>
             </thead>
             <tbody class="text-slate-700 dark:text-slate-300">
@@ -1537,49 +1535,49 @@ let lineup_chemistry_page
           (escape_html s.code) selected (escape_html s.name))
     |> String.concat "\n" in
 
-  let filter_form = Printf.sprintf
-    {html|<form class="flex flex-wrap gap-4 items-end mb-6" hx-get="/lineups/table" hx-target="#lineup-content" hx-swap="innerHTML">
-      <div>
-        <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">Team</label>
-        <select name="team" class="px-3 py-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-sm">
-          <option value="ALL"%s>All Teams</option>
-          %s
-        </select>
-      </div>
-      <div>
-        <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">Season</label>
-        <select name="season" class="px-3 py-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-sm">
-          <option value="ALL"%s>All Seasons</option>
-          %s
-        </select>
-      </div>
-      <button type="submit" class="px-3 py-2 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-sm font-medium transition">
-        Apply Filter
-      </button>
-    </form>|html}
+	  let filter_form = Printf.sprintf
+	    {html|<form class="flex flex-wrap gap-4 items-end mb-6" hx-get="/lineups/table" hx-target="#lineup-content" hx-swap="innerHTML">
+	      <div>
+	        <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">팀</label>
+	        <select name="team" class="px-3 py-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-sm">
+	          <option value="ALL"%s>전체 팀</option>
+	          %s
+	        </select>
+	      </div>
+	      <div>
+	        <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">시즌</label>
+	        <select name="season" class="px-3 py-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-sm">
+	          <option value="ALL"%s>전체 시즌</option>
+	          %s
+	        </select>
+	      </div>
+	      <button type="submit" class="px-3 py-2 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-sm font-medium transition">
+	        적용
+	      </button>
+	    </form>|html}
     (if selected_team = "ALL" then " selected" else "") team_options
     (if selected_season = "ALL" then " selected" else "") season_options
   in
 
-  let frequent_table = render_lineup_table
-    ~title:"Most Frequent Lineups (Top 10 by Minutes)"
-    chemistry.lc_frequent_lineups in
+	  let frequent_table = render_lineup_table
+	    ~title:"자주 쓰는 라인업 (출전 시간 TOP 10)"
+	    chemistry.lc_frequent_lineups in
 
-  let top_table = render_lineup_table
-    ~title:"Best Performing Lineups (Top 10 by +/-)"
-    chemistry.lc_top_lineups in
+	  let top_table = render_lineup_table
+	    ~title:"성과 좋은 라인업 (+/- TOP 10)"
+	    chemistry.lc_top_lineups in
 
   let synergy_table = render_synergy_table chemistry.lc_synergies in
 
-  layout ~title:"Lineup Chemistry"
-    ~content:(Printf.sprintf
-      {html|<div class="space-y-6 animate-fade-in">
-        <div class="flex items-center justify-between">
-          <h1 class="text-2xl font-black text-slate-900 dark:text-slate-200">Lineup Chemistry</h1>
-          <span class="text-sm text-slate-500 dark:text-slate-400">5-Player Lineup Analysis</span>
-        </div>
-        %s
-        <div id="lineup-content" class="space-y-6" data-skeleton="cards" data-skeleton-count="3">
+	  layout ~title:"라인업 궁합 | WKBL"
+	    ~content:(Printf.sprintf
+	      {html|<div class="space-y-6 animate-fade-in">
+	        <div class="flex items-center justify-between">
+	          <h1 class="text-2xl font-black text-slate-900 dark:text-slate-200">라인업 궁합</h1>
+	          <span class="text-sm text-slate-500 dark:text-slate-400">5인 라인업 분석</span>
+	        </div>
+	        %s
+	        <div id="lineup-content" class="space-y-6" data-skeleton="cards" data-skeleton-count="3">
           %s
           %s
           %s
@@ -1593,11 +1591,11 @@ let lineup_chemistry_page
 (** Lineup chemistry table content (for HTMX partial update) *)
 let lineup_chemistry_table_content (chemistry: Domain.lineup_chemistry) : string =
   let frequent_table = render_lineup_table
-    ~title:"Most Frequent Lineups (Top 10 by Minutes)"
+    ~title:"자주 쓰는 라인업 (출전 시간 TOP 10)"
     chemistry.lc_frequent_lineups in
 
   let top_table = render_lineup_table
-    ~title:"Best Performing Lineups (Top 10 by +/-)"
+    ~title:"성과 좋은 라인업 (+/- TOP 10)"
     chemistry.lc_top_lineups in
 
   let synergy_table = render_synergy_table chemistry.lc_synergies in
@@ -1663,7 +1661,7 @@ let on_off_impact_table (impacts: Domain.on_off_impact list) : string =
   Printf.sprintf
     {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-lg overflow-hidden">
       <div class="overflow-x-auto">
-        <table class="w-full text-sm table-fixed" aria-label="득실 차이 순위">
+        <table class="w-full text-sm table-fixed" aria-label="온/오프 영향력">
           <colgroup>
             <col style="width: 64px;"> <!-- # -->
             <col style="width: auto;"> <!-- Player -->
@@ -1674,16 +1672,16 @@ let on_off_impact_table (impacts: Domain.on_off_impact list) : string =
             <col style="width: 100px;"> <!-- Games w/ +/- -->
           </colgroup>
           <thead class="bg-slate-50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-300">
-            <tr>
-              <th scope="col" class="py-2 px-4 text-center font-semibold">#</th>
-              <th scope="col" class="py-2 px-4 text-left font-semibold">Player</th>
-              <th scope="col" class="py-2 px-4 text-center font-semibold" title="Games Played">GP</th>
-              <th scope="col" class="py-2 px-4 text-center font-semibold" title="Minutes Played">MIN</th>
-              <th scope="col" class="py-2 px-4 text-center font-semibold" title="Plus/Minus average per game">+/- AVG</th>
-              <th scope="col" class="py-2 px-4 text-center font-semibold" title="Total Plus/Minus">+/- Total</th>
-              <th scope="col" class="py-2 px-4 text-center font-semibold" title="Games with Plus/Minus data">Games w/ +/-</th>
-            </tr>
-          </thead>
+	            <tr>
+	              <th scope="col" class="py-2 px-4 text-center font-semibold">#</th>
+	              <th scope="col" class="py-2 px-4 text-left font-semibold">선수</th>
+	              <th scope="col" class="py-2 px-4 text-center font-semibold" title="출전 경기">GP</th>
+	              <th scope="col" class="py-2 px-4 text-center font-semibold" title="출전 시간(분)">MIN</th>
+	              <th scope="col" class="py-2 px-4 text-center font-semibold" title="경기당 평균 +/-">+/- AVG</th>
+	              <th scope="col" class="py-2 px-4 text-center font-semibold" title="누적 +/-">+/- Total</th>
+	              <th scope="col" class="py-2 px-4 text-center font-semibold" title="+/-가 있는 경기">+/- 경기</th>
+	            </tr>
+	          </thead>
           <tbody class="text-slate-700 dark:text-slate-300">
             %s
           </tbody>
@@ -1705,31 +1703,31 @@ let on_off_impact_page
       (escape_html s.name)
   ) |> String.concat "\n" in
 
-  let filter_form = Printf.sprintf
-    {html|<form method="get" action="/on-off" class="flex flex-wrap items-end gap-4 p-4 bg-slate-100 dark:bg-slate-800/50 rounded-xl mb-6">
-      <div>
-        <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">Season</label>
-        <select name="season" class="px-3 py-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-sm">
-          <option value="ALL"%s>All Seasons</option>
-          %s
-        </select>
-      </div>
-      <button type="submit" class="px-3 py-2 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-sm font-medium transition">
-        Apply Filter
-      </button>
-    </form>|html}
+	  let filter_form = Printf.sprintf
+	    {html|<form method="get" action="/on-off" class="flex flex-wrap items-end gap-4 p-4 bg-slate-100 dark:bg-slate-800/50 rounded-xl mb-6">
+	      <div>
+	        <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">시즌</label>
+	        <select name="season" class="px-3 py-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-sm">
+	          <option value="ALL"%s>전체 시즌</option>
+	          %s
+	        </select>
+	      </div>
+	      <button type="submit" class="px-3 py-2 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-sm font-medium transition">
+	        적용
+	      </button>
+	    </form>|html}
     (if season = "ALL" then " selected" else "") season_options
   in
 
-  let content =
-    if List.length impacts = 0 then
-      {html|<div class="text-center py-12 text-slate-500 dark:text-slate-400">
-        <div class="text-4xl mb-4">📊</div>
-        <div>No on/off impact data available for this season.</div>
-        <div class="text-sm mt-2">Players need at least 5 games and 50 minutes played.</div>
-      </div>|html}
-    else
-      on_off_impact_table impacts
+	  let content =
+	    if List.length impacts = 0 then
+	      {html|<div class="text-center py-12 text-slate-500 dark:text-slate-400">
+	        <div class="text-4xl mb-4">📊</div>
+	        <div>이 시즌의 온/오프 영향력 데이터가 없습니다.</div>
+	        <div class="text-sm mt-2">최소 5경기, 50분 이상 출전한 선수만 계산됩니다.</div>
+	      </div>|html}
+	    else
+	      on_off_impact_table impacts
   in
 
   (* Summary stats *)
@@ -1745,21 +1743,21 @@ let on_off_impact_page
     | h :: _ -> Some h
   in
 
-  let summary_cards = Printf.sprintf
-    {html|<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-      <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-lg">
-        <div class="text-slate-500 dark:text-slate-400 text-xs uppercase tracking-widest font-bold">Players Tracked</div>
-        <div class="text-2xl font-black text-slate-900 dark:text-slate-200 mt-1 font-mono tabular-nums">%d</div>
-      </div>
-      <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-lg">
-        <div class="text-slate-500 dark:text-slate-400 text-xs uppercase tracking-widest font-bold">Avg +/- per Game</div>
-        <div class="text-2xl font-black mt-1 font-mono tabular-nums">%s</div>
-      </div>
-      <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-lg">
-        <div class="text-slate-500 dark:text-slate-400 text-xs uppercase tracking-widest font-bold">Best Impact Player</div>
-        <div class="text-lg font-black text-slate-900 dark:text-slate-200 mt-1">%s</div>
-      </div>
-    </div>|html}
+	  let summary_cards = Printf.sprintf
+	    {html|<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+	      <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-lg">
+	        <div class="text-slate-500 dark:text-slate-400 text-xs uppercase tracking-widest font-bold">집계된 선수</div>
+	        <div class="text-2xl font-black text-slate-900 dark:text-slate-200 mt-1 font-mono tabular-nums">%d</div>
+	      </div>
+	      <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-lg">
+	        <div class="text-slate-500 dark:text-slate-400 text-xs uppercase tracking-widest font-bold">경기당 평균 +/-</div>
+	        <div class="text-2xl font-black mt-1 font-mono tabular-nums">%s</div>
+	      </div>
+	      <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-lg">
+	        <div class="text-slate-500 dark:text-slate-400 text-xs uppercase tracking-widest font-bold">최고 영향력 선수</div>
+	        <div class="text-lg font-black text-slate-900 dark:text-slate-200 mt-1">%s</div>
+	      </div>
+	    </div>|html}
     total_players
     (format_plus_minus avg_pm)
     (match best_player with
@@ -1768,19 +1766,19 @@ let on_off_impact_page
      | None -> "-")
   in
 
-  layout ~title:"On/Off Impact | WKBL"
+  layout ~title:"온/오프 영향력 | WKBL"
     ~content:(Printf.sprintf
       {html|<div class="space-y-6 animate-fade-in">
         <div class="flex items-center justify-between">
-          <h1 class="text-2xl font-black text-slate-900 dark:text-slate-200">On/Off Impact</h1>
-          <span class="text-sm text-slate-500 dark:text-slate-400">Player Plus/Minus Analysis</span>
+          <h1 class="text-2xl font-black text-slate-900 dark:text-slate-200">온/오프 영향력</h1>
+          <span class="text-sm text-slate-500 dark:text-slate-400">선수 +/- 분석</span>
         </div>
         %s
         %s
         %s
         <div class="text-xs text-slate-500 dark:text-slate-400 mt-4">
-          <p><strong>+/- (Plus/Minus):</strong> Point differential when player is on court. Positive = team outscores opponents, Negative = team gets outscored.</p>
-          <p class="mt-1"><strong>Note:</strong> +/- data availability depends on official box score coverage.</p>
+          <p><strong>+/-:</strong> 코트에 있을 때의 득실 차이입니다. +면 팀 득점이 더 많고, -면 실점이 더 많습니다.</p>
+          <p class="mt-1"><strong>참고:</strong> +/- 데이터는 공식 기록 제공 범위에 따라 일부 경기에서만 제공됩니다.</p>
         </div>
       </div>|html}
       filter_form summary_cards content) ()

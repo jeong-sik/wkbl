@@ -62,8 +62,8 @@ let players_table ?(player_info_map=None) (players: player_aggregate list) =
   (* 1. Define Columns *)
   let cols = [
     col "#" ~w:(px 50) ~align:`Center;
-    col "Player" ~w:(px 200);
-    col "Team" ~w:(px 130);
+    col "선수" ~w:(px 200);
+    col "팀" ~w:(px 130);
     col "GP" ~w:(px 60) ~align:`Right ~resp:`Hidden_sm;
     col "PTS" ~w:(px 90) ~align:`Right ~sort:"pts";
     col "MG" ~w:(px 80) ~align:`Right ~resp:`Hidden_md ~sort:"mg";
@@ -127,11 +127,11 @@ let players_table ?(player_info_map=None) (players: player_aggregate list) =
 
         (* Complex cells constructed as strings *)
         let pts_cell = 
-          Printf.sprintf {html|<div class="flex flex-col items-end leading-tight"><span class="text-orange-600 dark:text-orange-400 font-bold font-mono">%.1f</span><span class="text-slate-400 dark:text-slate-500 text-[9px] font-mono whitespace-nowrap" title="시즌 누적">Σ%s</span></div>|html} 
+          Printf.sprintf {html|<div class="flex flex-col items-end leading-tight"><span class="text-orange-600 dark:text-orange-400 font-bold font-mono">%.1f</span><span class="text-slate-400 dark:text-slate-500 text-[9px] font-mono whitespace-nowrap" title="누적">Σ%s</span></div>|html} 
           p.avg_points (format_int_compact p.total_points)
         in
         let stat_cell v total =
-          Printf.sprintf {html|<div class="flex flex-col items-end leading-tight"><span class="text-slate-700 dark:text-slate-300 font-mono">%.1f</span><span class="text-slate-400 dark:text-slate-500 text-[9px] font-mono whitespace-nowrap" title="시즌 누적">Σ%s</span></div>|html}
+          Printf.sprintf {html|<div class="flex flex-col items-end leading-tight"><span class="text-slate-700 dark:text-slate-300 font-mono">%.1f</span><span class="text-slate-400 dark:text-slate-500 text-[9px] font-mono whitespace-nowrap" title="누적">Σ%s</span></div>|html}
           v (format_int_compact total)
         in
         
@@ -210,8 +210,8 @@ let players_page ?(player_info_map=None) ~season ~seasons ~search ~sort ~include
 	   {html|<details class="bg-white dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-800/50 p-4 text-xs text-slate-600 dark:text-slate-400">
 	    <summary class="cursor-pointer font-bold text-slate-700 dark:text-slate-300 select-none">MG 안내 (왜 몇 명은 안 보이나요?)</summary>
 	    <div class="mt-2 space-y-1 leading-relaxed">
-	     <div><span class="font-mono text-slate-900 dark:text-slate-200">MG</span> = (팀 득점 - 상대 득점)의 출전시간 가중 평균입 니다.</div>
-	     <div>개인 <span class="font-mono text-slate-900 dark:text-slate-200">+/-</span>는 문자중계 기반이며, 데이터가 없거나 문자중계/박스스코어 최종 스코어 불일치 등 품질 이슈가 있으면 <span class="font-mono text-slate-900 dark:text-slate-200">-</span>로 표시합니다.</div>
+		     <div><span class="font-mono text-slate-900 dark:text-slate-200">MG</span> = (팀 득점 - 상대 득점)의 출전시간 가중 평균입니다.</div>
+		     <div>개인 <span class="font-mono text-slate-900 dark:text-slate-200">+/-</span>는 문자중계 기반이며, 데이터가 없거나 문자중계/박스스코어 최종 스코어 불일치 등 품질 문제가 있으면 <span class="font-mono text-slate-900 dark:text-slate-200">-</span>로 표시합니다.</div>
 	             <div>표본 안정성을 위해 <span class="font-mono text-slate-900 dark:text-slate-200">MG</span> 정렬 시 <span class="font-mono text-slate-900 dark:text-slate-200">스코어가 있는 경기</span> 기준 총 출전 <span class="font-mono text-slate-900 dark:text-slate-200">100분 이상</span> 선수만 표시합니다.</div>
 	            </div>
 	           </details>|html}
@@ -371,7 +371,7 @@ let standings_table ~season (standings : team_standing list) =
     col "GB" ~w:(px 60) ~align:`Right ~sort:"gb" ~resp:`Hidden_sm;
     col "PS/G" ~w:(px 80) ~align:`Right ~sort:"ps" ~resp:`Hidden_md;
     col "PA/G" ~w:(px 80) ~align:`Right ~sort:"pa" ~resp:`Hidden_md;
-    col "DIFF" ~w:(px 80) ~align:`Right ~sort:"diff" ~resp:`Hidden_sm;
+    col "득실" ~w:(px 80) ~align:`Right ~sort:"diff" ~resp:`Hidden_sm;
   ] in
 
   let rows_data =
@@ -396,7 +396,7 @@ let standings_table ~season (standings : team_standing list) =
       
       let diff_color = if s.diff >= 0.0 then "text-emerald-600 dark:text-emerald-400" else "text-rose-600 dark:text-rose-400" in
       let diff_str = if s.diff > 0.0 then Printf.sprintf "+%.1f" s.diff else Printf.sprintf "%.1f" s.diff in
-      let diff_cell = Printf.sprintf {html|<div class="flex flex-col items-end leading-tight"><span class="%s font-mono font-bold">%s</span><span class="text-slate-500 dark:text-slate-400 text-[10px] font-mono">DIFF</span></div>|html} diff_color diff_str in
+      let diff_cell = Printf.sprintf {html|<div class="flex flex-col items-end leading-tight"><span class="%s font-mono font-bold">%s</span><span class="text-slate-500 dark:text-slate-400 text-[10px] font-mono">득실</span></div>|html} diff_color diff_str in
 
       [
         team_cell;
@@ -645,7 +645,7 @@ let boxscores_page ~season ~seasons games =
 
 let boxscore_player_table (title: string) (players: boxscore_player_stat list) =
   let cols = [
-    col "Player" ~w:(px 180);
+    col "선수" ~w:(px 180);
     col "MP" ~w:(px 60) ~align:`Right ~resp:`Hidden_sm;
     col "PTS" ~w:(px 60) ~align:`Right ~highlight:true;
     col "+/- " ~w:(px 60) ~align:`Right ~resp:`Hidden_sm;
@@ -1482,7 +1482,7 @@ let compare_page
        Printf.sprintf
         {html|<div class="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 p-6 mt-6">
          <div class="text-center mb-4">
-          <h3 class="text-slate-600 dark:text-slate-400 text-sm font-bold uppercase">Season Trend (PTS)</h3>
+          <h3 class="text-slate-600 dark:text-slate-400 text-sm font-bold uppercase">시즌 추이 (PTS)</h3>
           <p class="text-[10px] text-slate-400 dark:text-slate-500 mt-1">시즌별 평균 득점 추이</p>
          </div>
          <div class="flex justify-center">
@@ -1534,10 +1534,10 @@ let compare_page
     <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
      <div>
       <h2 class="text-3xl font-black text-slate-900 dark:text-slate-200">선수 비교</h2>
-      <p class="text-slate-600 dark:text-slate-400 text-sm">동명이인/표기 이슈를 피하려면 <span class="font-mono text-slate-900 dark:text-slate-200">선수 ID</span>를 선택해 비교합니다.</p>
+      <p class="text-slate-600 dark:text-slate-400 text-sm">동명이인/표기 차이를 피하려면 <span class="font-mono text-slate-900 dark:text-slate-200">선수 고유번호</span>를 선택해 비교합니다.</p>
       <p class="text-slate-600 dark:text-slate-400 text-xs mt-1">선수 1/2는 시즌을 각각 선택할 수 있습니다. 시즌이 다르면 맞대결 기록은 표시하지 않습니다.</p>
      </div>
-     <button id="share-compare-btn" type="button" onclick="shareCompareUrl()" class="hidden md:flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition text-sm font-medium" aria-label="비교 URL 복사">
+     <button id="share-compare-btn" type="button" onclick="shareCompareUrl()" class="hidden md:flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition text-sm font-medium" aria-label="비교 링크 복사">
       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path></svg>
       <span>공유</span>
      </button>
@@ -1870,25 +1870,25 @@ let prediction_result_card ~(home: string) ~(away: string) (output: prediction_o
      <div class="text-sm text-slate-600 dark:text-slate-400 font-mono uppercase tracking-widest mb-1">예측</div>
      <div class="text-3xl font-black text-slate-900 dark:text-slate-200 tracking-tight">%s</div>
      <div class="mt-1 text-xs text-slate-500 dark:text-slate-400 font-medium truncate flex items-center gap-2">
-       <span>%s vs %s</span>
-       <span class="px-1.5 py-0.5 rounded text-[10px] font-bold %s">%s</span>
-     </div>
-    </div>
-    <div class="flex gap-4 text-right shrink-0">
-     <div>
-       <div class="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-bold">Total</div>
-       <div class="text-xl font-black font-mono text-slate-800 dark:text-slate-300">%.1f</div>
-     </div>
-     <div>
-       <div class="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-bold">Spread</div>
-       <div class="text-xl font-black font-mono text-slate-800 dark:text-slate-300">+%s</div>
-     </div>
-     <div>
-       <div class="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-bold">Winner</div>
-       <div class="text-xl font-black %s">%s</div>
-     </div>
-    </div>
-   </div>
+	       <span>%s 대 %s</span>
+	       <span class="px-1.5 py-0.5 rounded text-[10px] font-bold %s">%s</span>
+	     </div>
+	    </div>
+	    <div class="flex gap-4 text-right shrink-0">
+	     <div>
+	       <div class="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-bold">총점</div>
+	       <div class="text-xl font-black font-mono text-slate-800 dark:text-slate-300">%.1f</div>
+	     </div>
+	     <div>
+	       <div class="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-bold">점수차</div>
+	       <div class="text-xl font-black font-mono text-slate-800 dark:text-slate-300">+%s</div>
+	     </div>
+	     <div>
+	       <div class="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-bold">승리 팀</div>
+	       <div class="text-xl font-black %s">%s</div>
+	     </div>
+	    </div>
+	   </div>
    <div class="space-y-3 pt-2">
     <div class="flex justify-between text-[10px] font-black uppercase tracking-widest text-slate-500">
      <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-orange-500"></span>%s</span>
@@ -1902,16 +1902,16 @@ let prediction_result_card ~(home: string) ~(away: string) (output: prediction_o
      </div>
     </div>
     <div class="flex justify-between font-mono">
-     <div class="flex flex-col">
-       <span class="text-2xl font-black text-orange-600 dark:text-orange-400 leading-none">%.1f%%</span>
-       <span class="text-[9px] text-slate-400 font-bold uppercase mt-1">Win Prob</span>
-     </div>
-     <div class="flex flex-col items-end">
-       <span class="text-2xl font-black text-sky-600 dark:text-sky-400 leading-none">%.1f%%</span>
-       <span class="text-[9px] text-slate-400 font-bold uppercase mt-1">Win Prob</span>
-     </div>
-    </div>
-   </div>
+	     <div class="flex flex-col">
+	       <span class="text-2xl font-black text-orange-600 dark:text-orange-400 leading-none">%.1f%%</span>
+	       <span class="text-[9px] text-slate-400 font-bold uppercase mt-1">승리 확률</span>
+	     </div>
+	     <div class="flex flex-col items-end">
+	       <span class="text-2xl font-black text-sky-600 dark:text-sky-400 leading-none">%.1f%%</span>
+	       <span class="text-[9px] text-slate-400 font-bold uppercase mt-1">승리 확률</span>
+	     </div>
+	    </div>
+	   </div>
    <!-- AI Analysis -->
    <div class="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/30 dark:to-purple-950/30 border border-indigo-200 dark:border-indigo-800/50 rounded-lg p-4">
     <div class="flex items-center gap-2 mb-2">
@@ -2013,21 +2013,21 @@ let upcoming_games_section (upcoming: Domain.schedule_entry list) =
      <div class="text-xs text-slate-400 mb-1">%s%s</div>
      <div class="flex items-center justify-between">
       <span class="text-sm font-medium text-slate-200 group-hover:text-orange-400">%s</span>
-      <span class="text-xs text-slate-500">vs</span>
-      <span class="text-sm font-medium text-slate-200 group-hover:text-orange-400">%s</span>
-     </div>
-    </a>|html}
+	      <span class="text-xs text-slate-500">대</span>
+	      <span class="text-sm font-medium text-slate-200 group-hover:text-orange-400">%s</span>
+	     </div>
+	    </a>|html}
     (escape_html home_name) (escape_html away_name)
     (escape_html g.sch_game_date) time_str
     (escape_html home_name) (escape_html away_name)
   in
   let cards = upcoming |> List.map game_card |> String.concat "\n" in
-  Printf.sprintf
-   {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 mb-6">
-    <h3 class="text-sm font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-3">📅 Upcoming Games</h3>
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">%s</div>
-   </div>|html}
-   cards
+	  Printf.sprintf
+	   {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 mb-6">
+	    <h3 class="text-sm font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-3">📅 예정 경기</h3>
+	    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">%s</div>
+	   </div>|html}
+	   cards
 
 let predict_page ~season ~seasons ~teams ~home ~away ~is_neutral ~context_enabled ~include_mismatch ~upcoming ?(games=[]) (result: prediction_output option) (error: string option) =
  let season_options =
@@ -2044,10 +2044,10 @@ let predict_page ~season ~seasons ~teams ~home ~away ~is_neutral ~context_enable
  let result_html =
   match result, error with
   | _, Some e -> Views_common.error_with_retry ~message:e ()
-  | None, None ->
-    Printf.sprintf
-    {html|<div class="text-slate-600 dark:text-slate-400 text-sm">Select teams to see a prediction.</div>|html}
-  | Some r, _ ->
+	  | None, None ->
+	    Printf.sprintf
+	    {html|<div class="text-slate-600 dark:text-slate-400 text-sm">팀을 선택해 예측을 확인하세요.</div>|html}
+	  | Some r, _ ->
       let insight_html =
         if games <> [] then
           Printf.sprintf

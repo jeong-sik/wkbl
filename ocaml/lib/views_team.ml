@@ -400,12 +400,12 @@ let team_h2h_page ~team1 ~team2 ~season ~seasons (games : Domain.game_info list)
       </div>|html}
     else ""
   in
-  layout ~title:(Printf.sprintf "%s vs %s | H2H" team1 team2)
+  layout ~title:(Printf.sprintf "%s 대 %s | 팀 전적 비교" team1 team2)
     ~content:(Printf.sprintf
       {html|<div class="space-y-6 animate-fade-in">
         <!-- Header with team selection -->
         <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-xl">
-          <h1 class="text-2xl font-black text-slate-900 dark:text-slate-200 text-center mb-6">팀 간 전적 비교 (H2H)</h1>
+          <h1 class="text-2xl font-black text-slate-900 dark:text-slate-200 text-center mb-6">팀 간 전적 비교</h1>
           <form action="/teams/h2h" method="get" class="flex flex-col md:flex-row items-center justify-center gap-4">
             <div class="flex items-center gap-3">
               %s
@@ -413,7 +413,7 @@ let team_h2h_page ~team1 ~team2 ~season ~seasons (games : Domain.game_info list)
               <input type="text" id="h2h-team1" name="team1" value="%s" placeholder="팀 1" aria-label="첫 번째 팀"
                 class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm w-36 focus:border-orange-500 focus:outline-none" />
             </div>
-            <span class="text-xl font-bold text-slate-400" aria-hidden="true">VS</span>
+            <span class="text-xl font-bold text-slate-400" aria-hidden="true">대</span>
             <div class="flex items-center gap-3">
               <label for="h2h-team2" class="sr-only">두 번째 팀</label>
               <input type="text" id="h2h-team2" name="team2" value="%s" placeholder="팀 2" aria-label="두 번째 팀"
@@ -441,7 +441,7 @@ let team_h2h_page ~team1 ~team2 ~season ~seasons (games : Domain.game_info list)
             </div>
             <!-- VS & Stats -->
             <div class="text-center">
-              <div class="text-4xl font-black text-slate-400 mb-2">VS</div>
+              <div class="text-4xl font-black text-slate-400 mb-2">대</div>
               <div class="text-sm text-slate-500 dark:text-slate-400">총 %d경기</div>
               <div class="text-lg font-bold %s">평균 %s%.1f점</div>
             </div>
@@ -462,7 +462,7 @@ let team_h2h_page ~team1 ~team2 ~season ~seasons (games : Domain.game_info list)
             <thead class="bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-xs">
               <tr>
                 <th scope="col" class="px-3 py-2 text-left">날짜</th>
-                <th scope="col" class="px-3 py-2 text-center" title="Home/Away">H/A</th>
+                <th scope="col" class="px-3 py-2 text-center whitespace-nowrap" title="홈/원정">홈/원정</th>
                 <th scope="col" class="px-3 py-2 text-center">결과</th>
                 <th scope="col" class="px-3 py-2 text-right">스코어</th>
                 <th scope="col" class="px-3 py-2 text-right">점차</th>

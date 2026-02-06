@@ -1514,7 +1514,7 @@ let test_player_disambiguation_line () =
   Alcotest.(check bool) "contains position" true (contains_substring html "G");
   Alcotest.(check bool) "contains year" true (contains_substring html "1999");
   Alcotest.(check bool) "contains height" true (contains_substring html "175cm");
-  Alcotest.(check bool) "contains id" true (contains_substring html "ID P0001")
+  Alcotest.(check bool) "contains id" true (contains_substring html "고유번호 P0001")
 
 let test_leader_card_disambiguation () =
   let leaders : Wkbl.Domain.leader_entry list = [
@@ -1532,8 +1532,8 @@ let test_leader_card_disambiguation () =
   let map = Hashtbl.create 4 in
   Hashtbl.replace map info1.id info1;
   let html = Wkbl.Views.leader_card ~player_info_map:(Some map) "Test" leaders in
-  Alcotest.(check bool) "contains leader id P1" true (contains_substring html "ID P1");
-  Alcotest.(check bool) "contains leader id P2" true (contains_substring html "ID P2");
+  Alcotest.(check bool) "contains leader id P1" true (contains_substring html "고유번호 P1");
+  Alcotest.(check bool) "contains leader id P2" true (contains_substring html "고유번호 P2");
   Alcotest.(check bool) "contains leader year" true (contains_substring html "1990");
   Alcotest.(check bool) "contains leader height" true (contains_substring html "180cm")
 
@@ -1595,8 +1595,8 @@ let test_qa_dashboard_schedule_coverage () =
     qdr_duplicate_player_identity_sample = [];
   } in
   let html = Wkbl.Views_tools.qa_dashboard_page report () in
-  Alcotest.(check bool) "contains schedule coverage header" true (contains_substring html "Schedule Coverage by Season");
-  Alcotest.(check bool) "contains no games flag" true (contains_substring html "no games")
+  Alcotest.(check bool) "contains schedule coverage header" true (contains_substring html "시즌별 일정-경기 매칭");
+  Alcotest.(check bool) "contains no games flag" true (contains_substring html "경기 없음")
 
 let qa_util_tests = [
   Alcotest.test_case "coverage pct" `Quick test_coverage_pct;
@@ -1824,7 +1824,7 @@ let test_totals_tooltip_is_season () =
     }
   in
   let html = Wkbl.Views.players_table [ p ] in
-  Alcotest.(check bool) "totals tooltip is season" true (contains_substring html {|title="시즌 누적"|});
+  Alcotest.(check bool) "totals tooltip is cumulative" true (contains_substring html {|title="누적"|});
   Alcotest.(check bool) "no career total tooltip" false (contains_substring html "Career Total")
 
 let ui_copy_tests = [

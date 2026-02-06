@@ -178,7 +178,7 @@ let player_disambiguation_line ~team_name ~player_id (info_opt: player_info opti
       | Some h when h > 0 -> parts := !parts @ [Printf.sprintf "%dcm" h]
       | _ -> ())
   | None -> ());
-  parts := !parts @ [Printf.sprintf "ID %s" player_id];
+  parts := !parts @ [Printf.sprintf "고유번호 %s" player_id];
   let text = String.concat " · " !parts in
   Printf.sprintf
     {html|<div class="text-[10px] text-slate-500 dark:text-slate-400 font-mono whitespace-nowrap">%s</div>|html}
@@ -202,7 +202,7 @@ let player_img_tag ?(class_name="w-12 h-12") player_id _name =
 
 let player_id_badge player_id =
   Printf.sprintf
-    {html|<span class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800/50 border border-slate-300 dark:border-slate-700/50 text-[10px] font-mono text-slate-500">ID %s</span>|html}
+    {html|<span class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800/50 border border-slate-300 dark:border-slate-700/50 text-[10px] font-mono text-slate-500">고유번호 %s</span>|html}
     (escape_html player_id)
 
 let format_int_commas n = string_of_int n
@@ -211,7 +211,7 @@ let format_int_compact n = if abs n < 1000 then string_of_int n else Printf.spri
 let points_total_cell ?(extra_classes="") ?(width_style="") avg total =
   let classes = String.concat " " ["px-3 py-2 text-right"; extra_classes] in
   Printf.sprintf
-    {html|<td class="%s" style="%s"><div class="flex flex-col items-end leading-tight"><span class="text-orange-600 dark:text-orange-400 font-bold font-mono">%.1f</span><span class="text-slate-400 dark:text-slate-500 text-[9px] font-mono whitespace-nowrap" title="시즌 누적">Σ%s</span></div></td>|html}
+    {html|<td class="%s" style="%s"><div class="flex flex-col items-end leading-tight"><span class="text-orange-600 dark:text-orange-400 font-bold font-mono">%.1f</span><span class="text-slate-400 dark:text-slate-500 text-[9px] font-mono whitespace-nowrap" title="누적">Σ%s</span></div></td>|html}
     classes
     width_style
     avg
@@ -220,7 +220,7 @@ let points_total_cell ?(extra_classes="") ?(width_style="") avg total =
 let stat_total_cell ?(extra_classes="") ?(width_style="") avg total =
   let classes = String.concat " " ["px-3 py-2 text-right"; extra_classes] in
   Printf.sprintf
-    {html|<td class="%s" style="%s"><div class="flex flex-col items-end leading-tight"><span class="text-slate-700 dark:text-slate-300 font-mono">%.1f</span><span class="text-slate-400 dark:text-slate-500 text-[9px] font-mono whitespace-nowrap" title="시즌 누적">Σ%s</span></div></td>|html}
+    {html|<td class="%s" style="%s"><div class="flex flex-col items-end leading-tight"><span class="text-slate-700 dark:text-slate-300 font-mono">%.1f</span><span class="text-slate-400 dark:text-slate-500 text-[9px] font-mono whitespace-nowrap" title="누적">Σ%s</span></div></td>|html}
     classes
     width_style
     avg

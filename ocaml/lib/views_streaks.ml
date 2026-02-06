@@ -166,7 +166,7 @@ let streaks_page
           Printf.sprintf {html|<option value="%s" %s>%s</option>|html} s.code selected (escape_html s.name))
       |> String.concat "\n"
     in
-    Printf.sprintf {html|<option value="ALL" %s>All Seasons</option>%s|html}
+    Printf.sprintf {html|<option value="ALL" %s>전체 시즌</option>%s|html}
       (if season = "ALL" then "selected" else "") base
   in
 
@@ -202,14 +202,14 @@ let streaks_page
       streak_records_table all_time_records
   in
 
-  layout ~title:"Hot Streaks | WKBL" ~canonical_path:"/streaks"
-    ~description:"WKBL 여자농구 핫 스트릭 - 연속 기록 트래커. 20+ 득점, 더블더블, 팀 연승 등 진행 중인 기록과 역대 최고 기록을 확인하세요."
+  layout ~title:"연속 기록 | WKBL" ~canonical_path:"/streaks"
+    ~description:"WKBL 여자농구 연속 기록 트래커. 20+ 득점, 더블더블, 팀 연승 등 진행 중인 기록과 역대 최고 기록을 확인하세요."
     ~content:(Printf.sprintf
       {html|<div class="space-y-8">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-200">Hot Streaks</h1>
-            <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">연속 기록 트래커 - 선수 및 팀의 핫 스트릭을 확인하세요.</p>
+            <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-200">연속 기록</h1>
+            <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">연속 기록 트래커 - 선수 및 팀 기록을 확인하세요.</p>
           </div>
           <form class="flex gap-2" hx-get="/streaks" hx-target="body" hx-trigger="change" hx-push-url="true">
             <label for="season-select" class="sr-only">시즌 선택</label>

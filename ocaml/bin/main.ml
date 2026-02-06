@@ -1139,7 +1139,7 @@ Sitemap: https://wkbl.win/sitemap.xml
           if String.trim home = "" || String.trim away = "" then
             render None None
           else if normalize_label home = normalize_label away then
-            render None (Some "Home/Away teams must be different.")
+            render None (Some "홈 팀과 원정 팀은 달라야 합니다.")
           else
             match Db.get_team_stats ~season ~scope:Totals ~include_mismatch (), Db.get_scored_games ~season ~include_mismatch () with
             | Ok totals, Ok games ->
