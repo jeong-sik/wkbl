@@ -113,7 +113,7 @@ let mvp_race_table (candidates: mvp_candidate list) =
       rows
 
 (** MVP Race page *)
-let mvp_race_page ~season ~seasons (candidates: mvp_candidate list) =
+let mvp_race_page ?(lang=I18n.Ko) ~season ~seasons (candidates: mvp_candidate list) =
   let season_options =
     let base =
       seasons
@@ -144,7 +144,7 @@ let mvp_race_page ~season ~seasons (candidates: mvp_candidate list) =
       </div>
     </details>|html}
   in
-  layout ~title:"MVP 레이스 | WKBL" ~canonical_path:"/mvp-race"
+  layout ~lang ~title:"MVP 레이스 | WKBL" ~canonical_path:"/mvp-race"
     ~description:"WKBL 여자농구 MVP 레이스 - 시즌 MVP 후보 순위와 점수를 확인하세요."
     ~content:(Printf.sprintf
       {html|<div class="space-y-6">
