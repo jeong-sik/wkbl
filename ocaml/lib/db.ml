@@ -1053,6 +1053,18 @@ module Queries = struct
     ON CONFLICT (player_name) DO NOTHING
   |}
 
+  (* Seed historical/defunct teams so FK updates can use them. *)
+  let seed_historical_teams = (unit ->. unit) {|
+    INSERT INTO teams (team_code, team_name_kr, team_name_en)
+    VALUES
+      ('02', '금호생명', 'Kumho Life'),
+      ('04', '신세계', 'Shinsegae'),
+      ('06', '현대', 'Hyundai'),
+      ('12', 'LG', 'LG'),
+      ('13', '한화', 'Hanwha')
+    ON CONFLICT (team_code) DO NOTHING
+  |}
+
   let ensure_player_plus_minus_table = (unit ->. unit) {|
     CREATE TABLE IF NOT EXISTS player_plus_minus (
       game_id TEXT NOT NULL,
@@ -3830,6 +3842,7 @@ end
       let (let*) = Result.bind in
       let* () = Db.exec Queries.ensure_legend_players_table () in
       let* () = Db.exec Queries.seed_legend_players () in
+      let* () = Db.exec Queries.seed_historical_teams () in
       
       (* Use games_calc_v2 instead of dropping old view synchronously *)
       (* let* () = Db.exec Queries.drop_games_calc_view () in *)
