@@ -53,12 +53,18 @@ let all : (string * string) list = [
 ]
 
 let name_of_code code =
-  List.assoc_opt code all
-  |> Option.value ~default:(Printf.sprintf "Unknown-%s" code)
+  match List.assoc_opt code all with
+  | Some name -> name
+  | None ->
+      (* Future-proof regular seasons: WKBL season codes follow (season_start_year - 1979). *)
+      (match int_of_string_opt code with
+      | Some n when n >= 31 ->
+          let start_year = n + 1979 in
+          Printf.sprintf "%04d-%04d" start_year (start_year + 1)
+      | _ -> Printf.sprintf "Unknown-%s" code)
 
 let is_regular_season_name name =
   String.length name >= 9 && name.[4] = '-'
 
 let regular : (string * string) list =
   all |> List.filter (fun (_code, name) -> is_regular_season_name name)
-
