@@ -281,6 +281,168 @@ let qa_dashboard_page (report: Db.qa_db_report) ?(markdown=None) () =
       dup_identity_rows
       markdown_block) ()
 
+(** Schedule Missing QA:
+    Focuses on "completed schedule rows that do not match games" for seasons that have games ingested.
+    This is primarily used to detect schedule sync issues and team-code mapping issues. *)
+let qa_schedule_missing_page (report: Db.qa_schedule_missing_report) () =
+  let int_chip v =
+    Printf.sprintf {html|<div class="text-2xl font-black text-slate-900 dark:text-slate-200 font-mono tabular-nums">%d</div>|html} v
+  in
+  let kpi_card ~label ~value_html ~hint_html =
+    Printf.sprintf
+      {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 shadow-lg"><div class="text-slate-500 dark:text-slate-400 text-[11px] uppercase tracking-widest font-bold">%s</div><div class="mt-2">%s</div><div class="mt-2 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">%s</div></div>|html}
+      (escape_html label)
+      value_html
+      hint_html
+  in
+  let reason_label reason =
+    match reason with
+    | "games_UNKNOWN_team_code" -> "Games uses UNKNOWN team_code"
+    | "team_code_mismatch" -> "Team Code Mismatch (same date)"
+    | "schedule_alpha_code" -> "Schedule has alpha/unknown code"
+    | "schedule_allstar_AS" -> "Schedule All-Star placeholder (AS)"
+    | "no_game_on_date" -> "No game on that date"
+    | "home_away_swapped" -> "Home/Away swapped"
+    | other -> other
+  in
+  let reason_hint reason =
+    match reason with
+    | "games_UNKNOWN_team_code" -> "해당 날짜에 game이 존재하지만 한쪽 team_code가 UNKNOWN이라 schedule과 key 매칭이 실패합니다."
+    | "team_code_mismatch" -> "해당 날짜에 game이 존재하지만 양 팀 코드 조합이 다릅니다. (schedule sync/정규화 문제 가능)"
+    | "schedule_alpha_code" -> "schedule의 팀 코드가 숫자(2자리)가 아닙니다. (예: SG, XX_*)"
+    | "schedule_allstar_AS" -> "schedule이 올스타를 AS로 뭉뚱그려 저장하여 games(87/88, 83/84 등)와 매칭되지 않습니다."
+    | "no_game_on_date" -> "schedule은 completed인데 games에 해당 날짜가 존재하지 않습니다. (games ingestion 누락 가능)"
+    | "home_away_swapped" -> "schedule과 games의 home/away가 뒤바뀐 케이스"
+    | _ -> ""
+  in
+  let reason_rows =
+    report.qsmr_reason_counts
+    |> List.map (fun (reason, n) ->
+      Printf.sprintf
+        {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors">
+  <td class="px-3 py-2 text-slate-900 dark:text-slate-200 text-xs font-mono">%s</td>
+  <td class="px-3 py-2 text-slate-700 dark:text-slate-300 text-xs">%s</td>
+  <td class="px-3 py-2 text-right font-mono text-xs text-slate-900 dark:text-slate-200 tabular-nums">%d</td>
+</tr>|html}
+        (escape_html reason)
+        (escape_html (reason_hint reason))
+        n)
+    |> String.concat "\n"
+  in
+  let samples_by_reason =
+    report.qsmr_samples
+    |> List.fold_left (fun acc (row: Db.qa_schedule_missing_sample) ->
+      let existing = match List.assoc_opt row.qsmp_reason acc with Some xs -> xs | None -> [] in
+      (row.qsmp_reason, row :: existing) :: (List.remove_assoc row.qsmp_reason acc)
+    ) []
+    |> List.map (fun (reason, rows) -> (reason, List.rev rows))
+    |> List.sort (fun (a, _) (b, _) -> String.compare a b)
+  in
+  let sample_blocks =
+    samples_by_reason
+    |> List.map (fun (reason, rows) ->
+      let sample_rows =
+        rows
+        |> List.map (fun (r: Db.qa_schedule_missing_sample) ->
+          let matchup = Printf.sprintf "%s vs %s" r.qsmp_home_team_code r.qsmp_away_team_code in
+          let games_info = r.qsmp_games_info |> Option.value ~default:"" in
+          Printf.sprintf
+            {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors">
+  <td class="px-3 py-2 text-slate-500 dark:text-slate-400 font-mono text-xs whitespace-nowrap">%s</td>
+  <td class="px-3 py-2 text-slate-900 dark:text-slate-200 font-mono text-xs whitespace-nowrap">%s</td>
+  <td class="px-3 py-2 text-slate-900 dark:text-slate-200 font-mono text-xs">%s</td>
+  <td class="px-3 py-2 text-right font-mono text-xs text-slate-900 dark:text-slate-200 tabular-nums">%d</td>
+  <td class="px-3 py-2 text-slate-700 dark:text-slate-300 font-mono text-[11px] break-all">%s</td>
+</tr>|html}
+            (escape_html r.qsmp_season_code)
+            (escape_html r.qsmp_game_date)
+            (escape_html matchup)
+            r.qsmp_games_on_date
+            (escape_html games_info))
+        |> String.concat "\n"
+      in
+      Printf.sprintf
+        {html|<details class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-lg"><summary class="cursor-pointer select-none text-slate-700 dark:text-slate-300 font-bold">%s <span class="ml-2 text-[11px] text-slate-500 dark:text-slate-400 font-mono">sample=%d</span></summary>
+  <div class="mt-3 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">%s</div>
+  <div class="mt-4 overflow-x-auto">
+    <table class="min-w-[980px] w-full text-sm font-mono table-fixed" aria-label="schedule missing sample">
+      <colgroup>
+        <col style="width: 80px;">
+        <col style="width: 110px;">
+        <col style="width: 180px;">
+        <col style="width: 90px;">
+        <col style="width: auto;">
+      </colgroup>
+      <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px]">
+        <tr>
+          <th scope="col" class="px-3 py-2 text-left">Season</th>
+          <th scope="col" class="px-3 py-2 text-left">Date</th>
+          <th scope="col" class="px-3 py-2 text-left">Schedule</th>
+          <th scope="col" class="px-3 py-2 text-right">Games@Date</th>
+          <th scope="col" class="px-3 py-2 text-left">Games (id(code-code))</th>
+        </tr>
+      </thead>
+      <tbody>%s</tbody>
+    </table>
+  </div>
+</details>|html}
+        (escape_html (reason_label reason))
+        (List.length rows)
+        (escape_html (reason_hint reason))
+        sample_rows)
+    |> String.concat "\n"
+  in
+  let s = report.qsmr_summary in
+  layout ~title:"QA | Schedule Missing | WKBL"
+    ~content:(Printf.sprintf
+      {html|<div class="space-y-6 animate-fade-in">
+  <div class="flex flex-col gap-2">
+    <h2 class="text-2xl font-black text-slate-900 dark:text-slate-200">Schedule Missing (Ingested Seasons)</h2>
+    <div class="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">
+      기준: <span class="font-mono text-slate-900 dark:text-slate-200">schedule(status='completed')</span> 중에서 <span class="font-mono text-slate-900 dark:text-slate-200">games</span>에 key 매칭이 없는 row.
+      <span class="ml-2">Generated: <span class="font-mono">%s</span></span>
+    </div>
+    <div class="text-slate-500 dark:text-slate-400 text-xs leading-relaxed">
+      참고: games가 아예 없는 시즌(미수집 시즌)은 별도로 집계합니다.
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+    %s%s%s
+  </div>
+
+  <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-lg">
+    <div class="flex items-center justify-between gap-3">
+      <h3 class="text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-xs">Reason Breakdown (Ingested Seasons)</h3>
+    </div>
+    <div class="mt-4 overflow-x-auto">
+      <table class="min-w-[860px] w-full text-sm table-fixed" aria-label="schedule missing reasons">
+        <colgroup>
+          <col style="width: 220px;">
+          <col style="width: auto;">
+          <col style="width: 90px;">
+        </colgroup>
+        <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px]">
+          <tr>
+            <th scope="col" class="px-3 py-2 text-left">Reason</th>
+            <th scope="col" class="px-3 py-2 text-left">Hint</th>
+            <th scope="col" class="px-3 py-2 text-right">Count</th>
+          </tr>
+        </thead>
+        <tbody>%s</tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="space-y-4">%s</div>
+</div>|html}
+      (escape_html report.qsmr_generated_at)
+      (kpi_card ~label:"Missing (ingested seasons)" ~value_html:(int_chip s.qsms_missing_ingested) ~hint_html:"games가 존재하는 시즌에서만 계산")
+      (kpi_card ~label:"Missing (no games season)" ~value_html:(int_chip s.qsms_missing_uningested) ~hint_html:"games가 0인 시즌(미수집)에서 schedule missing")
+      (kpi_card ~label:"Missing (total)" ~value_html:(int_chip s.qsms_missing_total) ~hint_html:"ingested + no-games")
+      reason_rows
+      sample_blocks) ()
+
 (** Draft / Trade (official) page *)
 let transactions_page
   ~show_ops

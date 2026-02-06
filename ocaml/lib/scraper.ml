@@ -917,10 +917,13 @@ let team_name_to_code = [
   ("삼성생명", "03");
   ("우리은행", "05");
   ("신한은행", "07");
+  ("KDB생명", "08"); ("KDB 생명", "08"); ("KDB", "08");
   ("하나은행", "09"); ("하나원큐", "09");
-  ("BNK썸", "11"); ("BNK 썸", "11");
+  ("OK저축은행", "10"); ("OK 저축은행", "10"); ("OK", "10");
+  ("BNK썸", "11"); ("BNK 썸", "11"); ("BNK", "11");
   (* Historical teams (defunct/renamed) *)
   ("금호생명", "02");  (* 2003-2011, became 하나외환 *)
+  ("하나외환", "02");  (* franchise name used in some seasons *)
   ("신세계", "04");    (* 1998-2011 *)
   ("현대", "06");      (* 1998-2011, became 하나외환 *)
   ("국민은행", "01");  (* Pre-KB era name *)
@@ -928,12 +931,68 @@ let team_name_to_code = [
   ("농협", "08");      (* 2003-2004 briefly *)
   ("LG", "12");        (* 1998-2001 *)
   ("한화", "13");      (* 1998-2000 *)
+  (* All-star / special events (teams table has 83/84/87/88/91/92) *)
+  ("한국 올스타", "83"); ("한국올스타", "83");
+  ("일본 올스타", "84"); ("일본올스타", "84");
+  ("핑크스타", "87");
+  ("블루스타", "88");
+  ("남부선발", "91"); ("남부 선발", "91");
+  ("중부선발", "92"); ("중부 선발", "92");
 ]
+
+(** Normalize schedule team name strings for code lookup.
+    Keeps this simple (no regex deps) since inputs are short. *)
+let normalize_team_name s =
+  let s = String.trim s in
+  let b = Buffer.create (String.length s) in
+  let rec loop i in_space =
+    if i >= String.length s then
+      ()
+    else
+      match s.[i] with
+      | ' ' | '\t' | '\n' | '\r' ->
+          if in_space then
+            loop (i + 1) true
+          else (
+            Buffer.add_char b ' ';
+            loop (i + 1) true
+          )
+      | c ->
+          Buffer.add_char b c;
+          loop (i + 1) false
+  in
+  loop 0 false;
+  Buffer.contents b
+
+(** Domain.team_code_of_string returns alpha codes (WO/KB/SS/...)
+    while the DB uses numeric codes (01/03/05/...). *)
+let numeric_code_of_domain_team_code = function
+  | "KB" -> Some "01"
+  | "SS" -> Some "03"
+  | "WO" -> Some "05"
+  | "SH" -> Some "07"
+  | "KD" -> Some "08"
+  | "HN" -> Some "09"
+  | "OK" -> Some "10"
+  | "BN" -> Some "11"
+  | "GH" -> Some "02"
+  | "SG" -> Some "04"
+  | "HD" -> Some "06"
+  | _ -> None
 
 (** Convert team name to code for database sync *)
 let code_from_team_name name =
-  List.assoc_opt name team_name_to_code
-  |> Option.value ~default:(Printf.sprintf "XX_%s" (String.sub name 0 (min 3 (String.length name))))
+  let name = normalize_team_name name in
+  match List.assoc_opt name team_name_to_code with
+  | Some code -> code
+  | None ->
+      (* Fallback: Domain matching (more tolerant), then map alpha→numeric *)
+      (match Domain.team_code_of_string name with
+      | Some alpha_code ->
+          (match numeric_code_of_domain_team_code alpha_code with
+          | Some code -> code
+          | None -> Printf.sprintf "XX_%s" (String.sub name 0 (min 3 (String.length name))))
+      | None -> Printf.sprintf "XX_%s" (String.sub name 0 (min 3 (String.length name))))
 
 (** DataLab uses different season codes (offset by +2 from main site)
     Main site: 044 = 2025-2026
@@ -2085,8 +2144,10 @@ let fetch_all_historical_schedules ~sw ~env ?(seasons=all_season_codes) () =
     Input: "1/10(월)" or "12/25(일)" → Output: "2000-01-10" *)
 let normalize_schedule_date ~season_code date_str =
   let clean = String.trim date_str in
-  (* Fast path: already in YYYY-MM-DD or YYYY.MM.DD/ YYYY/MM/DD *)
-  let date_re = Str.regexp "\\([0-9][0-9][0-9][0-9]\\)[./-]\\([0-9][0-9]?\\)[./-]\\([0-9][0-9]?\\)" in
+  (* Fast path: already in YYYY-MM-DD or YYYY.MM.DD / YYYY/MM/DD *)
+  let date_re =
+    Str.regexp "\\([0-9][0-9][0-9][0-9]\\)[./-]\\([0-9][0-9]?\\)[./-]\\([0-9][0-9]?\\)"
+  in
   if Str.string_match date_re clean 0 then
     let y = int_of_string (Str.matched_group 1 clean) in
     let m = int_of_string (Str.matched_group 2 clean) in

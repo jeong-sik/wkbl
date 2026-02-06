@@ -1481,6 +1481,11 @@ Sitemap: https://wkbl.win/sitemap.xml
       | Ok report -> Kirin.html (Views_tools.qa_dashboard_page report ~markdown ())
       | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
     );
+    Kirin.get "/qa/schedule-missing" (fun _ ->
+      match Db.get_schedule_missing_report () with
+      | Ok report -> Kirin.html (Views_tools.qa_schedule_missing_page report ())
+      | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
+    );
     (* PBP Data Quality API - verifies T2=HOME pattern
        Usage: /qa/pbp              - normal check (200 always)
               /qa/pbp?ci=1         - CI mode (500 if below 50% threshold)
