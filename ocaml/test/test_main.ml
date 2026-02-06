@@ -1502,6 +1502,65 @@ let qa_util_tests = [
 ]
 
 (* ============================================= *)
+(* UI Copy Tests                                 *)
+(* ============================================= *)
+
+let test_find_substring_from () =
+  let open Wkbl.Views_common in
+  Alcotest.(check (option int)) "find at 0" (Some 0) (find_substring_from ~sub:"foo" "foo" ~from:0);
+  Alcotest.(check (option int)) "find in middle" (Some 4) (find_substring_from ~sub:"bar" "foo bar baz" ~from:0);
+  Alcotest.(check (option int)) "find after offset" (Some 8) (find_substring_from ~sub:"baz" "foo bar baz" ~from:5);
+  Alcotest.(check (option int)) "not found" None (find_substring_from ~sub:"zzz" "foo bar baz" ~from:0)
+
+let test_ui_copy_no_dev_terms () =
+  let banned = [ "PBP"; "FLOW"; "VERIFIED"; "DERIVED"; "MISMATCH"; "COALESCE"; "player_plus_minus"; "game_stats"; "SUM("; "team1/team2"; "Play-by-Play" ] in
+  let check_clean ~ctx html =
+    banned
+    |> List.iter (fun sub ->
+        Alcotest.(check bool) (ctx ^ " no " ^ sub) false (contains_substring html sub))
+  in
+
+  (* Score quality badges should be Korean *)
+  let badge_full = Wkbl.Views_common.score_quality_badge Wkbl.Domain.Verified in
+  Alcotest.(check bool) "badge label is Korean" true (contains_substring badge_full "일치");
+  check_clean ~ctx:"score_quality_badge" badge_full;
+
+  (* Boxscore action links and notes should not leak internal terms *)
+  let pbp_link = Wkbl.Views.boxscore_pbp_link_html "046-01-62" in
+  Alcotest.(check bool) "pbp link label" true (contains_substring pbp_link "문자중계");
+  check_clean ~ctx:"boxscore_pbp_link_html" pbp_link;
+
+  let flow_link = Wkbl.Views.boxscore_flow_link_html "046-01-62" in
+  Alcotest.(check bool) "flow link label" true (contains_substring flow_link "득점흐름");
+  check_clean ~ctx:"boxscore_flow_link_html" flow_link;
+
+  let notes = Wkbl.Views.boxscore_data_notes_html ~official_link:"" in
+  Alcotest.(check bool) "notes mention source" true (contains_substring notes "\xec\xb6\x9c\xec\xb2\x98");
+  check_clean ~ctx:"boxscore_data_notes_html" notes;
+
+  (* PBP page copy should be user-facing Korean labels *)
+  let game : Wkbl.Domain.game_info =
+    { gi_game_id = "046-01-62";
+      gi_game_date = "2026-02-04";
+      gi_home_team_code = "09";
+      gi_home_team_name = "하나은행";
+      gi_away_team_code = "03";
+      gi_away_team_name = "삼성생명";
+      gi_home_score = 54;
+      gi_away_score = 74;
+      gi_score_quality = Wkbl.Domain.Derived;
+    }
+  in
+  let pbp_page_html = Wkbl.Views.pbp_page ~game ~periods:[] ~selected_period:"ALL" ~events:[] in
+  Alcotest.(check bool) "pbp page title mentions Korean label" true (contains_substring pbp_page_html "문자중계");
+  check_clean ~ctx:"pbp_page" pbp_page_html
+
+let ui_copy_tests = [
+  Alcotest.test_case "find_substring_from" `Quick test_find_substring_from;
+  Alcotest.test_case "ui copy avoids dev terms" `Quick test_ui_copy_no_dev_terms;
+]
+
+(* ============================================= *)
 (* Main Test Runner                              *)
 (* ============================================= *)
 
@@ -1525,4 +1584,5 @@ let () =
     "Scraper Functions", scraper_tests;
     "Disambiguation", disambiguation_tests;
     "QA Utils", qa_util_tests;
+    "UI Copy", ui_copy_tests;
   ]
