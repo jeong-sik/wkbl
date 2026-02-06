@@ -155,7 +155,7 @@ let players_table ?(player_info_map=None) (players: player_aggregate list) =
   
   render_fixed_table ~id:"players-table-inner" ~min_width:"min-w-[1100px]" ~cols rows_data
 
-let home_page ?(player_info_map=None) ~season ~seasons players =
+let home_page ?(player_info_map=None) ~season ~seasons ~data_as_of players =
  let season_options =
   seasons
   |> List.map (fun (s: season_info) ->
@@ -178,7 +178,7 @@ let home_page ?(player_info_map=None) ~season ~seasons players =
        <span class="text-xs font-bold text-orange-700 dark:text-orange-300 uppercase tracking-wider">오늘의 경기</span>
       </div>
       <div class="flex items-center gap-3">
-       <span class="text-xs text-slate-400 dark:text-slate-500" title="마지막 동기화">🔄 %s</span>
+       <span class="text-xs text-slate-400 dark:text-slate-500" title="최근 경기일">📅 %s</span>
        <a href="/games" class="text-xs text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300">전체 일정 →</a>
       </div>
      </div>
@@ -188,7 +188,7 @@ let home_page ?(player_info_map=None) ~season ~seasons players =
      </div>
     </div>
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"><h2 class="text-xl font-bold text-slate-900 dark:text-slate-200">Top Players by Efficiency</h2><form class="flex gap-2 items-center" hx-get="/home/table" hx-target="#players-table-inner tbody" hx-trigger="change" hx-indicator="#table-loading"><select name="season" aria-label="시즌 선택" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-1.5 text-sm focus:border-orange-500 focus:outline-none">%s</select><input type="text" placeholder="Search player..." aria-label="선수 검색" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-1.5 text-sm focus:border-orange-500 focus:outline-none" hx-get="/home/table" hx-trigger="keyup changed delay:300ms" hx-target="#players-table-inner tbody" hx-indicator="#table-loading" name="search"><span id="table-loading" class="htmx-indicator"><span class="w-4 h-4 border-2 border-slate-300 border-t-orange-500 rounded-full animate-spin inline-block"></span></span></form></div><div id="players-table" class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 scroll-shadow overflow-y-hidden" data-skeleton="table" data-skeleton-count="10" data-skeleton-cols="8">%s</div></div>|html}
-   (Scraper.get_last_sync_time_str ()) live_widget season_options table) ()
+   (escape_html data_as_of) live_widget season_options table) ()
 
 let players_page ?(player_info_map=None) ~season ~seasons ~search ~sort ~include_mismatch players =
  let season_options =
@@ -578,7 +578,7 @@ let boxscores_table (games : game_summary list) =
         {html|<div class="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-lg p-3 shadow-sm space-y-2">
    <div class="flex items-center justify-between text-[11px] text-slate-600 dark:text-slate-400 font-mono">
     <span>%s</span>
-    <span class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700/60 text-[10px] font-mono %s whitespace-nowrap">Δ %s</span>
+    <span class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700/60 text-[10px] font-mono %s whitespace-nowrap">점수차 %s</span>
    </div>
    <div class="flex items-center justify-between gap-3">
     <div class="flex flex-col gap-1 min-w-0 w-full">
@@ -1814,7 +1814,7 @@ let prediction_result_card ~(home: string) ~(away: string) (output: prediction_o
 	  | None ->
 	    ("",
 	     {html|<div>기본 모델(전력/득실 기대/기록)만 사용합니다.</div>
-	     <div class="text-slate-600 dark:text-slate-400">컨텍스트 옵션을 켜면 “최근 5경기 폼/코어 로스터/휴식”을 Δ로 소폭 반영합니다. (부상/전술/문자중계 등은 미반영)</div>|html})
+		     <div class="text-slate-600 dark:text-slate-400">옵션을 켜면 최근 5경기 흐름/주요 선수 출전/휴식일을 조금 반영합니다. (부상/전술/실시간 상황은 반영하지 못합니다.)</div>|html})
   | Some ctx ->
     let delta_pp = ctx.pcb_delta *. 100.0 in
     let delta_cls =
@@ -1823,7 +1823,7 @@ let prediction_result_card ~(home: string) ~(away: string) (output: prediction_o
      else "text-slate-700 dark:text-slate-300"
     in
     let delta_str =
-     if delta_pp > 0.0 then Printf.sprintf "+%.1f%%p" delta_pp else Printf.sprintf "%.1f%%p" delta_pp
+     if delta_pp > 0.0 then Printf.sprintf "+%.1f%%" delta_pp else Printf.sprintf "%.1f%%" delta_pp
     in
     let form_home_pct = pct ctx.pcb_form_home in
     let form_away_pct = pct ctx.pcb_form_away in
@@ -1835,7 +1835,7 @@ let prediction_result_card ~(home: string) ~(away: string) (output: prediction_o
     in
     let rest_text =
      match ctx.pcb_rest_home_days, ctx.pcb_rest_away_days with
-     | Some h, Some a -> Printf.sprintf "%dd vs %dd" h a
+     | Some h, Some a -> Printf.sprintf "%d일 vs %d일" h a
      | _ -> "-"
     in
     ( Printf.sprintf
@@ -1856,7 +1856,7 @@ let prediction_result_card ~(home: string) ~(away: string) (output: prediction_o
       form_away_pct
       (escape_html roster_text)
       (escape_html rest_text),
-	     {html|<div>컨텍스트(최근 5경기 폼/코어 로스터/휴식)를 Δ로 소폭 반영합니다. (최대 ±8%p)</div><div class="text-slate-600 dark:text-slate-400">로스터는 “마지막 경기 출전” 기준으로 추정하며, 부상/전술/문자중계 컨텍스트는 여전히 미반영입니다.</div>|html}
+	     {html|<div>최근 5경기 흐름/주요 선수 출전/휴식일을 조금 반영합니다. (반영 폭은 작게 제한합니다.)</div><div class="text-slate-600 dark:text-slate-400">주요 선수는 “최근 경기 출전” 기준으로 추정합니다. 부상/전술/실시간 상황은 반영하지 못합니다.</div>|html}
 	    )
  in
  let winner_class =
@@ -2378,17 +2378,17 @@ let awards_page ~player_info_map ~season ~seasons ~include_mismatch ~prev_season
   match prev_season_name with
   | None ->
     Printf.sprintf
-     {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 shadow-lg"><h3 class="text-slate-600 dark:text-slate-400 font-bold uppercase tracking-wider text-xs mb-4">MIP (ΔEFF)</h3><div class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">전 시즌 대비 <span class="font-mono text-slate-700 dark:text-slate-300">EFF (AVG(game_score))</span> 변화(Δ)를 계산합니다. 시즌 선택 시에만 표시됩니다.</div></div>|html}
+     {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 shadow-lg"><h3 class="text-slate-600 dark:text-slate-400 font-bold uppercase tracking-wider text-xs mb-4">MIP (EFF 변화)</h3><div class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">전 시즌 대비 <span class="font-mono text-slate-700 dark:text-slate-300">EFF(경기 기여도) 평균</span> 변화를 계산합니다. 시즌 선택 시에만 표시됩니다.</div></div>|html}
   | Some prev_name ->
     if mip_list = [] then
      Printf.sprintf
-      {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 shadow-lg"><h3 class="text-slate-600 dark:text-slate-400 font-bold uppercase tracking-wider text-xs mb-4">MIP (ΔEFF)</h3><div class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">%s 대비 ΔEFF 계산에 필요한 표본이 부족합니다. (두 시즌 모두 <span class="font-mono text-slate-700 dark:text-slate-300">GP≥10</span>)</div></div>|html}
+      {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 shadow-lg"><h3 class="text-slate-600 dark:text-slate-400 font-bold uppercase tracking-wider text-xs mb-4">MIP (EFF 변화)</h3><div class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">%s 대비 EFF 변화 계산에 필요한 표본이 부족합니다. (두 시즌 모두 10경기 이상)</div></div>|html}
       (escape_html prev_name)
     else
-     leader_card_signed ~player_info_map (Printf.sprintf "MIP (ΔEFF vs %s)" prev_name) mip_list
+     leader_card_signed ~player_info_map (Printf.sprintf "MIP (EFF 변화 vs %s)" prev_name) mip_list
  in
  let disclaimer_html =
-  {html|<div class="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800/60 p-5 text-slate-600 dark:text-slate-400 text-sm leading-relaxed"><div class="font-bold text-slate-700 dark:text-slate-300 mb-2">Stat Awards (unofficial)</div><ul class="list-disc list-inside space-y-1"><li>MVP: <span class="font-mono text-slate-700 dark:text-slate-300">EFF = AVG(game_score)</span> 상위</li><li>MIP: 전 시즌 대비 <span class="font-mono text-slate-700 dark:text-slate-300">ΔEFF</span> 상위 (두 시즌 모두 <span class="font-mono text-slate-700 dark:text-slate-300">GP≥10</span>)</li><li>공식 수상 데이터가 DB에 없어서, 현재는 박스스코어 기반 지표로만 추정합니다.</li></ul></div>|html}
+  {html|<div class="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800/60 p-5 text-slate-600 dark:text-slate-400 text-sm leading-relaxed"><div class="font-bold text-slate-700 dark:text-slate-300 mb-2">통계 기반 수상 (비공식)</div><ul class="list-disc list-inside space-y-1"><li>MVP: <span class="font-mono text-slate-700 dark:text-slate-300">EFF(경기 기여도) 평균</span> 상위</li><li>MIP: 전 시즌 대비 <span class="font-mono text-slate-700 dark:text-slate-300">EFF 변화</span> 상위 (두 시즌 모두 10경기 이상)</li><li>공식 수상 데이터가 아직 없어서, 현재는 박스스코어 기반 지표로만 추정합니다.</li></ul></div>|html}
  in
  layout
   ~title:"Awards - WKBL"

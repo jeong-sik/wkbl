@@ -1442,7 +1442,15 @@ module Queries = struct
     ORDER BY event_index ASC
   |}
   let all_teams = (unit ->* Types.team_info) "SELECT team_code, team_name_kr FROM teams ORDER BY team_name_kr"
-  let all_seasons = (unit ->* Types.season_info) "SELECT season_code, season_name FROM seasons ORDER BY season_code"
+  let all_seasons = (unit ->* Types.season_info) {|
+    SELECT DISTINCT
+      g.season_code,
+      COALESCE(s.season_name, g.season_code) as season_name
+    FROM games g
+    LEFT JOIN seasons s ON s.season_code = g.season_code
+    WHERE g.season_code IS NOT NULL
+    ORDER BY g.season_code
+  |}
 
   (** Latest game date for data freshness display *)
   let latest_game_date = (unit ->? string) "SELECT MAX(game_date) FROM games WHERE home_score IS NOT NULL"

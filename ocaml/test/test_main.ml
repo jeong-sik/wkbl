@@ -1228,6 +1228,17 @@ let test_get_last_sync_time_str_initial () =
   (* Either "동기화 기록 없음" or a time string is valid *)
   Alcotest.(check bool) "Sync time string not empty" true (String.length result > 0)
 
+let test_seasons_catalog_name_of_code () =
+  Alcotest.(check string) "046 -> 2025-2026" "2025-2026" (Wkbl.Seasons_catalog.name_of_code "046");
+  Alcotest.(check string) "025 -> 2007-2008" "2007-2008" (Wkbl.Seasons_catalog.name_of_code "025");
+  Alcotest.(check string) "047 inferred -> 2026-2027" "2026-2027" (Wkbl.Seasons_catalog.name_of_code "047")
+
+let test_seasons_catalog_unique_codes () =
+  let module S = Set.Make (String) in
+  let codes = Wkbl.Seasons_catalog.all |> List.map fst in
+  let uniq = codes |> List.fold_left (fun acc c -> S.add c acc) S.empty |> S.cardinal in
+  Alcotest.(check int) "unique season_code" (List.length codes) uniq
+
 let test_game_params_of_href () =
   let href = "/game/result.asp?season_gu=046&gun=1&game_type=01&game_no=40&ym=202601&viewType=2" in
   let (game_type, game_no) = Wkbl.Scraper.game_params_of_href href in
@@ -1463,6 +1474,8 @@ let scraper_tests = [
   Alcotest.test_case "code_from_team_name extended" `Quick test_code_from_team_name_extended;
   Alcotest.test_case "normalize_schedule_date formats" `Quick test_normalize_schedule_date_formats;
   Alcotest.test_case "get_last_sync_time_str" `Quick test_get_last_sync_time_str_initial;
+  Alcotest.test_case "seasons_catalog name_of_code" `Quick test_seasons_catalog_name_of_code;
+  Alcotest.test_case "seasons_catalog unique codes" `Quick test_seasons_catalog_unique_codes;
   Alcotest.test_case "schedule sync success policy" `Quick test_schedule_sync_success_policy;
   Alcotest.test_case "schedule sync suspicion policy" `Quick test_schedule_sync_suspicion_reason_policy;
   Alcotest.test_case "game_params_of_href" `Quick test_game_params_of_href;
