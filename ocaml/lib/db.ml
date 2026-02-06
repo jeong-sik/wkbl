@@ -3580,36 +3580,36 @@ module Queries = struct
     DO UPDATE SET season_name = EXCLUDED.season_name
   |}
 
-  (** UPSERT game entry *)
+  (** UPSERT game row from schedule/results scrape *)
   let upsert_game =
-    (t2 string                      (* game_id *)
-      (t2 string                    (* season_code *)
-        (t2 string                  (* game_type *)
-          (t2 int                   (* game_no *)
-            (t2 (option string)     (* game_date *)
-              (t2 string            (* home_team_code *)
-                (t2 string          (* away_team_code *)
-                  (t2 (option int)  (* home_score *)
+    (t2 string                    (* game_id *)
+      (t2 string                  (* season_code *)
+        (t2 string                (* game_type *)
+          (t2 int                 (* game_no *)
+            (t2 (option string)   (* game_date: YYYY-MM-DD *)
+              (t2 string          (* home_team_code *)
+                (t2 string        (* away_team_code *)
+                  (t2 (option int) (* home_score *)
                     (t2 (option int) (* away_score *)
-                      (option string) (* stadium *)
-                    )))))))) ->. unit) {|
-    INSERT INTO games (
-      game_id, season_code, game_type, game_no,
-      game_date, home_team_code, away_team_code,
-      home_score, away_score, stadium
-    )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                      (t2 (option string) (* stadium *)
+                        (option int) (* attendance *)
+                      ))))))))) ->. unit) {|
+    INSERT INTO games
+      (game_id, season_code, game_type, game_no, game_date, home_team_code, away_team_code, home_score, away_score, stadium, attendance)
+    VALUES
+      ($1, $2, $3, $4, $5::date, $6, $7, $8, $9, $10, $11)
     ON CONFLICT (game_id)
     DO UPDATE SET
-      season_code = COALESCE(EXCLUDED.season_code, games.season_code),
-      game_type = COALESCE(EXCLUDED.game_type, games.game_type),
-      game_no = COALESCE(EXCLUDED.game_no, games.game_no),
+      season_code = EXCLUDED.season_code,
+      game_type = EXCLUDED.game_type,
+      game_no = EXCLUDED.game_no,
       game_date = COALESCE(EXCLUDED.game_date, games.game_date),
       home_team_code = COALESCE(EXCLUDED.home_team_code, games.home_team_code),
       away_team_code = COALESCE(EXCLUDED.away_team_code, games.away_team_code),
       home_score = COALESCE(EXCLUDED.home_score, games.home_score),
       away_score = COALESCE(EXCLUDED.away_score, games.away_score),
-      stadium = COALESCE(EXCLUDED.stadium, games.stadium)
+      stadium = COALESCE(EXCLUDED.stadium, games.stadium),
+      attendance = COALESCE(EXCLUDED.attendance, games.attendance)
   |}
   (** Count schedule entries by season and status *)
   let count_schedule_by_status = (t2 string string ->? int) {|
@@ -3769,34 +3769,57 @@ end
   let upsert_season ~season_code ~season_name (module Db : Caqti_eio.CONNECTION) =
     Db.exec Queries.upsert_season (season_code, season_name)
 
-  (** Upsert a single game entry *)
-  let upsert_game_entry
+  (** Upsert a single game row *)
+	  let upsert_game_entry
+	      ~game_id
+	      ~season_code
+	      ~game_type
+	      ~game_no
+	      ~game_date
+      ~home_team_code
+      ~away_team_code
+      ~home_score
+      ~away_score
+      ~stadium
+	      ~attendance
+	      (module Db : Caqti_eio.CONNECTION) =
+	    let game_date_opt =
+	      match game_date with
+	      | None -> None
+	      | Some s ->
+	          let trimmed = String.trim s in
+	          if trimmed = "" then None else Some trimmed
+	    in
+	    Db.exec Queries.upsert_game
+	      (game_id,
+	        (season_code,
+          (game_type,
+            (game_no,
+              (game_date_opt,
+                (home_team_code,
+                  (away_team_code,
+                    (home_score,
+                      (away_score,
+                        (stadium, attendance))))))))))
+
+  (** Upsert a game record (scores + metadata) *)
+  let upsert_game
       ~game_id ~season_code ~game_type ~game_no ~game_date
       ~home_team_code ~away_team_code ~home_score ~away_score ~stadium
       (module Db : Caqti_eio.CONNECTION) =
-    Db.exec Queries.upsert_game
-      (game_id,
-        (season_code,
-          (game_type,
-            (game_no,
-              (game_date,
-                (home_team_code,
-                  (away_team_code,
-                    (home_score,
-                  (away_score, stadium)))))))))
-  (** Upsert a game record (scores + metadata) *)
-  let upsert_game ~game_id ~season_code ~game_type ~game_no ~game_date
-      ~home_team_code ~away_team_code ~home_score ~away_score ~stadium (module Db : Caqti_eio.CONNECTION) =
-    Db.exec Queries.upsert_game
-      (game_id,
-        (season_code,
-          (game_type,
-            (game_no,
-              (game_date,
-                (home_team_code,
-                  (away_team_code,
-                    (home_score,
-                      (away_score, stadium)))))))))
+    upsert_game_entry
+      ~game_id
+      ~season_code
+      ~game_type
+      ~game_no
+      ~game_date
+      ~home_team_code
+      ~away_team_code
+      ~home_score
+      ~away_score
+      ~stadium
+      ~attendance:None
+      (module Db)
   (** Count schedule entries by season and status *)
   let count_schedule_by_status ~season_code ~status (module Db : Caqti_eio.CONNECTION) =
     Db.find_opt Queries.count_schedule_by_status (season_code, status)
