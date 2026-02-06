@@ -1188,6 +1188,7 @@ Sitemap: https://wkbl.win/sitemap.xml
     Kirin.get "/player/:id" (fun request ->
       let player_id = Kirin.param "id" request in
       let scope = Kirin.query_opt "scope" request |> Option.value ~default:"per_game" in
+      let show_ops = query_bool request "ops" in
       match Db.get_player_profile ~player_id () with
       | Ok (Some profile) ->
           let final_profile =
@@ -1236,7 +1237,7 @@ Sitemap: https://wkbl.win/sitemap.xml
             | Error _ ->
                 None
           in
-          Kirin.html (Views_player.player_profile_page ~leaderboards final_profile ~scope ~seasons_catalog)
+          Kirin.html (Views_player.player_profile_page ~leaderboards ~show_ops final_profile ~scope ~seasons_catalog)
       | Ok None -> Kirin.html (Views.error_page "Player not found")
       | Error e -> Kirin.html (Views.error_page (Db.show_db_error e))
     );
@@ -1353,6 +1354,7 @@ Sitemap: https://wkbl.win/sitemap.xml
         |> Option.map String.lowercase_ascii
         |> Option.value ~default:"draft"
       in
+      let show_ops = query_bool request "ops" in
       let year =
         let year_str_opt = Kirin.query_opt "year" request in
         match year_str_opt with
@@ -1369,6 +1371,7 @@ Sitemap: https://wkbl.win/sitemap.xml
             | Ok events ->
                 Kirin.html
                   (Views_tools.transactions_page
+                     ~show_ops
                      ~tab
                      ~year
                      ~q
@@ -1382,6 +1385,7 @@ Sitemap: https://wkbl.win/sitemap.xml
             | Ok picks ->
                 Kirin.html
                   (Views_tools.transactions_page
+                     ~show_ops
                      ~tab:"draft"
                      ~year
                      ~q
