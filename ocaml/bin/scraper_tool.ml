@@ -86,31 +86,42 @@ let run_sync_boxscore ~sw ~env ~season_filter =
   | Ok () -> ()
   | Error e -> Printf.eprintf "DB Error: %s\n" (Db.show_db_error e); exit 1);
 
-  let season = Option.value ~default:"ALL" season_filter in
-  match Db_sync.get_games_without_stats ~season () with
+  let season = Option.value ~default:(Scraper.current_season_code_auto ()) season_filter in
+  match Db_sync.get_games_missing_boxscore ~season () with
   | Error e -> Printf.eprintf "Failed to fetch missing games: %s\n" (Db.show_db_error e)
-  | Ok game_ids ->
-      let total = List.length game_ids in
+  | Ok missing_games ->
+      let total = List.length missing_games in
       Printf.printf "Found %d games missing boxscores. Starting sync...\n%!" total;
       
       let clock = Eio.Stdenv.clock env in
-      game_ids |> List.iteri (fun i game_id ->
-        Printf.printf "[%d/%d] Syncing boxscore for game: %s\n%!" (i + 1) total game_id;
-        
-        match Db_sync.get_game_teams ~game_id with
-        | Ok (Some (home_code, away_code)) ->
-            (* Fetch and sync for both teams *)
-            let teams = [home_code; away_code] in
-            teams |> List.iter (fun team_code ->
-              let stats = Scraper.fetch_game_boxscore ~sw ~env ~game_id ~team_code in
+      missing_games |> List.iteri (fun i (g : Db_sync.missing_boxscore_game) ->
+        Printf.printf "[%d/%d] Syncing boxscore for game: %s\n%!" (i + 1) total g.game_id;
+
+        let tables =
+          Scraper.fetch_game_boxscore
+            ~sw ~env
+            ~season_gu:g.season_code
+            ~game_type:g.game_type
+            ~game_no:g.game_no
+            ~ym:g.ym
+        in
+        match tables with
+        | [away_stats; home_stats] ->
+            let upsert_team team_code stats =
               stats |> List.iter (fun s ->
-                match Db_sync.upsert_game_stat s ~game_id ~team_code with
+                match Db_sync.upsert_game_stat s ~game_id:g.game_id ~team_code with
                 | Ok () -> ()
-                | Error e -> Printf.eprintf "  ✗ Failed to upsert stat for %s: %s\n" s.bs_player_name (Db.show_db_error e)
-              );
-              Eio.Time.sleep clock 0.2 (* Rate limit between team requests *)
-            )
-        | _ -> Printf.eprintf "  ✗ Could not find teams for game %s\n" game_id
+                | Error e ->
+                    Printf.eprintf "  ✗ Failed to upsert stat for %s: %s\n"
+                      s.bs_player_name (Db.show_db_error e)
+              )
+            in
+            upsert_team g.away_team_code away_stats;
+            upsert_team g.home_team_code home_stats;
+            Eio.Time.sleep clock 0.2 (* Rate limit between games *)
+        | _ ->
+            Printf.eprintf "  ✗ Unexpected boxscore HTML for game %s (tables=%d)\n"
+              g.game_id (List.length tables)
       );
       Printf.printf "\n=== Boxscore Sync Complete ===\n"
 

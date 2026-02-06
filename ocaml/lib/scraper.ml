@@ -120,13 +120,18 @@ let fetch_url ~sw ~env url =
       Printf.eprintf "HTTP error for %s: %s\n" url (Printexc.to_string exn);
       ""
 
-(** POST request with form data *)
-let post_url ~sw ~env url body_params =
+(** POST request with form data.
+    Some WKBL endpoints require an AJAX-style request (Accept + X-Requested-With)
+    and a game-specific Referer. *)
+let post_url ~sw ~env ~referer url body_params =
   let net = Eio.Stdenv.net env in
   let headers = Cohttp.Header.of_list [
     ("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) WKBL-Stats-Bot/1.0");
-    ("Content-Type", "application/x-www-form-urlencoded");
-    ("Referer", "https://www.wkbl.or.kr/game/result.asp");
+    ("Accept", "text/plain, */*; q=0.01");
+    ("Accept-Language", "ko-KR,ko;q=0.9");
+    ("X-Requested-With", "XMLHttpRequest");
+    ("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8");
+    ("Referer", referer);
     ("Origin", "https://www.wkbl.or.kr");
   ] in
   let uri = Uri.of_string url in
@@ -169,80 +174,95 @@ type boxscore_entry = {
   bs_pts: int;
 }
 
-(** Parse boxscore table from AJAX HTML response *)
+(** Parse one team boxscore table from WKBL "ajax_game_result_2.asp" HTML. *)
+let parse_boxscore_table table =
+  let open Soup in
+  let cell_text td = td |> texts |> String.concat "" |> String.trim in
+  let parse_int s = s |> String.trim |> int_of_string_opt |> Option.value ~default:0 in
+  let parse_min min_str =
+    let parts = String.split_on_char ':' (String.trim min_str) in
+    match parts with
+    | [m; s] -> (parse_int m * 60) + parse_int s
+    | [m] -> parse_int m * 60
+    | _ -> 0
+  in
+  let parse_made_attempt s =
+    match String.split_on_char '-' (String.trim s) with
+    | [m; a] -> (parse_int m, parse_int a)
+    | _ -> (0, 0)
+  in
+  table |> select "tbody tr" |> to_list |> List.filter_map (fun row ->
+    let tds = row $$ "td" |> to_list in
+    match tds with
+    | player_td :: _pos_td :: min_td :: fg2_td :: fg3_td :: ft_td
+      :: off_td :: def_td :: tot_td :: ast_td :: pf_td :: stl_td :: tov_td :: blk_td :: pts_td :: _ ->
+        let a_opt = player_td $? "a" in
+        let player_id =
+          match a_opt with
+          | None -> ""
+          | Some a ->
+              let href = attribute "href" a |> Option.value ~default:"" in
+              let uri = Uri.of_string href in
+              Uri.get_query_param uri "pno" |> Option.value ~default:""
+        in
+        let player_name =
+          match a_opt with
+          | Some a -> leaf_text a |> Option.value ~default:"" |> String.trim
+          | None -> cell_text player_td
+        in
+        if player_id = "" || player_name = "" then None
+        else
+          let fg2_m, fg2_a = parse_made_attempt (cell_text fg2_td) in
+          let fg3_m, fg3_a = parse_made_attempt (cell_text fg3_td) in
+          let ft_m, ft_a = parse_made_attempt (cell_text ft_td) in
+          Some {
+            bs_player_id = player_id;
+            bs_player_name = player_name;
+            bs_min_seconds = parse_min (cell_text min_td);
+            bs_fg2_m = fg2_m;
+            bs_fg2_a = fg2_a;
+            bs_fg3_m = fg3_m;
+            bs_fg3_a = fg3_a;
+            bs_ft_m = ft_m;
+            bs_ft_a = ft_a;
+            bs_off_reb = parse_int (cell_text off_td);
+            bs_def_reb = parse_int (cell_text def_td);
+            bs_tot_reb = parse_int (cell_text tot_td);
+            bs_ast = parse_int (cell_text ast_td);
+            bs_pf = parse_int (cell_text pf_td);
+            bs_stl = parse_int (cell_text stl_td);
+            bs_tov = parse_int (cell_text tov_td);
+            bs_blk = parse_int (cell_text blk_td);
+            bs_pts = parse_int (cell_text pts_td);
+          }
+    | _ -> None
+  )
+
+(** Parse per-team boxscore tables from WKBL "ajax_game_result_2.asp" HTML.
+    Returns one list per team in the order shown on the WKBL site: [away; home]. *)
 let parse_boxscore_html html =
   let open Soup in
   let soup = parse html in
-  let rows = soup $$ "table tbody tr" |> to_list in
-  rows |> List.filter_map (fun row ->
-    try
-      let tds = row $$ "td" |> to_list in
-      (* Player name and photo usually in first/second cells *)
-      let name_cell = row $ ".name" in
-      let player_name = leaf_text name_cell |> Option.value ~default:"" |> String.trim in
-      
-      (* Extract player ID from photo URL if possible *)
-      let player_id = 
-        match row $? "img" with
-        | Some img -> 
-            let src = attribute "src" img |> Option.value ~default:"" in
-            let re = Str.regexp {|m_\([0-9]+\)\.|} in
-            if Str.string_match re src 0 then Str.matched_group 1 src else ""
-        | None -> ""
-      in
+  soup |> select ".info_table01.type_record table" |> to_list |> List.map parse_boxscore_table
 
-      if player_name <> "" && player_id <> "" then
-        let get_int idx = 
-          if idx < List.length tds then
-            List.nth tds idx |> texts |> String.concat "" |> String.trim |> int_of_string_opt |> Option.value ~default:0
-          else 0
-        in
-        (* Standard WKBL Boxscore Column Mapping (may need adjustment) *)
-        let parse_min min_str =
-          let parts = String.split_on_char ':' min_str in
-          match parts with
-          | m :: s :: _ -> (int_of_string m * 60) + (int_of_string s)
-          | m :: _ -> (int_of_string m * 60)
-          | [] -> 0
-        in
-        let min_str = List.nth tds 2 |> texts |> String.concat "" |> String.trim in
-        
-        Some {
-          bs_player_id = player_id;
-          bs_player_name = player_name;
-          bs_min_seconds = parse_min min_str;
-          bs_fg2_m = get_int 3;  (* Simplified: need to check actual col index *)
-          bs_fg2_a = get_int 4;
-          bs_fg3_m = get_int 5;
-          bs_fg3_a = get_int 6;
-          bs_ft_m = get_int 7;
-          bs_ft_a = get_int 8;
-          bs_off_reb = get_int 9;
-          bs_def_reb = get_int 10;
-          bs_tot_reb = get_int 11;
-          bs_ast = get_int 12;
-          bs_stl = get_int 13;
-          bs_blk = get_int 14;
-          bs_tov = get_int 15;
-          bs_pf = get_int 16;
-          bs_pts = get_int 17;
-        }
-      else None
-    with _ -> None
-  )
-
-(** Fetch boxscore for a game and team *)
-let fetch_game_boxscore ~sw ~env ~game_id ~team_code =
+(** Fetch per-team boxscores for a game.
+    Note: WKBL expects (season_gu, game_type, game_no, ym) rather than (s_pcode, s_team). *)
+let fetch_game_boxscore ~sw ~env ~season_gu ~game_type ~game_no ~ym =
   let url = "https://www.wkbl.or.kr/game/ajax/ajax_game_result_2.asp" in
+  let referer =
+    Printf.sprintf "https://www.wkbl.or.kr/game/result.asp?season_gu=%s&gun=1&game_type=%s&game_no=%d&ym=%s&viewType=1"
+      season_gu game_type game_no ym
+  in
   let params = [
-    ("s_pcode", [game_id]);
-    ("s_team", [team_code]);
+    ("season_gu", [season_gu]);
+    ("game_type", [game_type]);
+    ("game_no", [string_of_int game_no]);
+    ("ym", [ym]);
+    ("h_player", [""]);
+    ("a_player", [""]);
   ] in
-  let html = post_url ~sw ~env url params in
-  if String.length html > 0 then
-    parse_boxscore_html html
-  else
-    []
+  let html = post_url ~sw ~env ~referer url params in
+  if String.length html > 0 then parse_boxscore_html html else []
 
 (** Draft entry type *)
 type draft_entry = {
