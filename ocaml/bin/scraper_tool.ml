@@ -38,10 +38,10 @@ Usage:
   scraper_tool allstar --stats         Show all-star MVP statistics (통계 분석)
   scraper_tool schedule [--csv]        Fetch season schedule (경기 일정)
   scraper_tool schedule --month=YYYYMM Fetch specific month schedule
-  scraper_tool sync schedule           Sync current season schedule to database
+  scraper_tool sync schedule [--purge] Sync current season schedule to database
   scraper_tool sync boxscore           Sync missing boxscores to database
-  scraper_tool sync history            Sync ALL historical games to database (1998-2026)
-  scraper_tool sync history --season=X Sync specific season to database
+  scraper_tool sync history [--purge]            Sync ALL historical games to database (1998-2026)
+  scraper_tool sync history --season=X [--purge] Sync specific season to database
   scraper_tool history [--csv]         Fetch ALL historical games (1998-2026, 43 seasons!)
   scraper_tool history --season=CODE   Fetch specific season from full history
   scraper_tool --help                  Show this help
@@ -365,7 +365,7 @@ let run_schedule ~sw ~env ~month_filter ~csv_output =
     )
 
 (** Sync schedule data to Supabase database *)
-let run_sync_schedule ~sw ~env =
+let run_sync_schedule ~sw ~env ~purge =
   (* Get DB URL *)
   let db_url = match get_db_url () with
     | Some url -> url
@@ -387,40 +387,42 @@ let run_sync_schedule ~sw ~env =
   let entries = Scraper.fetch_season_schedule ~sw ~env ~season_code:"046" in
   Printf.printf "Fetched %d schedule entries.\n\n" (List.length entries);
 
+  if purge then (
+    Printf.printf "Purging existing schedule rows for season 046...\n%!";
+    match Db.with_db (fun db -> Db.Repo.delete_schedule_by_season ~season_code:"046" db) with
+    | Ok () -> Printf.printf "  ✓ Purged.\n%!"
+    | Error e ->
+        Printf.eprintf "  ✗ Purge failed: %s\n%!" (Db.show_db_error e);
+        exit 1
+  );
+
   (* Sync each entry *)
   let success_count = ref 0 in
   let error_count = ref 0 in
   entries |> List.iter (fun (e : Scraper.schedule_entry) ->
-    (* Convert team names to team codes *)
-    let home_code = Domain.team_code_of_string e.sch_home_team in
-    let away_code = Domain.team_code_of_string e.sch_away_team in
-    match (home_code, away_code) with
-    | Some hc, Some ac ->
-        let status = match (e.sch_home_score, e.sch_away_score) with
-          | Some _, Some _ -> "completed"
-          | _ -> "scheduled"
-        in
-        let result = Db.with_db (fun db ->
-          Db.Repo.upsert_schedule_entry
-            ~game_date:e.sch_date
-            ~game_time:(Some e.sch_time)
-            ~season_code:e.sch_season
-            ~home_team_code:hc
-            ~away_team_code:ac
-            ~venue:(Some e.sch_venue)
-            ~status
-            db
-        ) in
-        (match result with
-        | Ok () ->
-            incr success_count;
-            Printf.printf "  ✓ %s: %s vs %s (%s)\n" e.sch_date e.sch_away_team e.sch_home_team status
-        | Error db_err ->
-            incr error_count;
-            Printf.eprintf "  ✗ %s: %s\n" e.sch_date (Db.show_db_error db_err))
-    | _ ->
+    (* Convert team names to numeric team codes for DB sync *)
+    let home_code = Scraper.code_from_team_name e.sch_home_team in
+    let away_code = Scraper.code_from_team_name e.sch_away_team in
+    let status = Scraper.schedule_status_from_scores e.sch_home_score e.sch_away_score in
+    let game_date = Scraper.normalize_schedule_date ~season_code:e.sch_season e.sch_date in
+    let result = Db.with_db (fun db ->
+      Db.Repo.upsert_schedule_entry
+        ~game_date
+        ~game_time:(Some e.sch_time)
+        ~season_code:e.sch_season
+        ~home_team_code:home_code
+        ~away_team_code:away_code
+        ~venue:(Some e.sch_venue)
+        ~status
+        db
+    ) in
+    (match result with
+    | Ok () ->
+        incr success_count;
+        Printf.printf "  ✓ %s: %s vs %s (%s)\n" game_date e.sch_away_team e.sch_home_team status
+    | Error db_err ->
         incr error_count;
-        Printf.eprintf "  ✗ %s: Unknown team - %s or %s\n" e.sch_date e.sch_home_team e.sch_away_team
+        Printf.eprintf "  ✗ %s: %s\n" game_date (Db.show_db_error db_err))
   );
 
   Printf.printf "\n=== Sync Complete ===\n";
@@ -439,7 +441,7 @@ let run_sync_schedule ~sw ~env =
   | _ -> ())
 
 (** Sync ALL historical schedules (1998-2026) to database *)
-let run_sync_history ~sw ~env ~season_filter =
+let run_sync_history ~sw ~env ~season_filter ~purge =
   (* Get DB URL *)
   let db_url = match get_db_url () with
     | Some url -> url
@@ -480,36 +482,33 @@ let run_sync_history ~sw ~env ~season_filter =
     let success = ref 0 in
     let errors = ref 0 in
 
+    if purge then (
+      match Db.with_db (fun db -> Db.Repo.delete_schedule_by_season ~season_code db) with
+      | Ok () -> ()
+      | Error _ -> incr errors
+    );
+
     entries |> List.iter (fun (e : Scraper.schedule_entry) ->
       (* Convert team names to codes *)
-      let home_code = Domain.team_code_of_string e.sch_home_team in
-      let away_code = Domain.team_code_of_string e.sch_away_team in
-      match (home_code, away_code) with
-      | Some hc, Some ac ->
-          let status = match (e.sch_home_score, e.sch_away_score) with
-            | Some _, Some _ -> "completed"
-            | _ -> "scheduled"
-          in
-          (* Normalize date format: "1/10(월)" → "2000-01-10" *)
-          let game_date = Scraper.normalize_schedule_date ~season_code e.sch_date in
-          let result = Db.with_db (fun db ->
-            Db.Repo.upsert_schedule_entry
-              ~game_date
-              ~game_time:(Some e.sch_time)
-              ~season_code
-              ~home_team_code:hc
-              ~away_team_code:ac
-              ~venue:(Some e.sch_venue)
-              ~status
-              db
-          ) in
-          (match result with
-          | Ok () -> incr success
-          | Error _ -> incr errors)
-      | _ ->
-          incr errors;
-          if !errors <= 3 then  (* Only show first few errors per season *)
-            Printf.eprintf "  ✗ Unknown team: %s or %s\n" e.sch_home_team e.sch_away_team
+      let home_code = Scraper.code_from_team_name e.sch_home_team in
+      let away_code = Scraper.code_from_team_name e.sch_away_team in
+      let status = Scraper.schedule_status_from_scores e.sch_home_score e.sch_away_score in
+      (* Normalize date format: "1/10(월)" → "2000-01-10" *)
+      let game_date = Scraper.normalize_schedule_date ~season_code e.sch_date in
+      let result = Db.with_db (fun db ->
+        Db.Repo.upsert_schedule_entry
+          ~game_date
+          ~game_time:(Some e.sch_time)
+          ~season_code
+          ~home_team_code:home_code
+          ~away_team_code:away_code
+          ~venue:(Some e.sch_venue)
+          ~status
+          db
+      ) in
+      (match result with
+      | Ok () -> incr success
+      | Error _ -> incr errors)
     );
 
     Printf.printf "  ✓ %d synced, %d errors\n\n" !success !errors;
@@ -542,6 +541,7 @@ let () =
       else None
     )
   in
+  let purge = List.mem "--purge" args in
 
   match args with
   | [] | "--help" :: _ | "-h" :: _ ->
@@ -602,13 +602,13 @@ let () =
       run_schedule ~sw ~env ~month_filter ~csv_output
   | "sync" :: "schedule" :: _ ->
       run_with_rng @@ fun ~sw ~env ->
-      run_sync_schedule ~sw ~env
+      run_sync_schedule ~sw ~env ~purge
   | "sync" :: "boxscore" :: _ ->
       run_with_rng @@ fun ~sw ~env ->
       run_sync_boxscore ~sw ~env ~season_filter
   | "sync" :: "history" :: _ ->
       run_with_rng @@ fun ~sw ~env ->
-      run_sync_history ~sw ~env ~season_filter
+      run_sync_history ~sw ~env ~season_filter ~purge
   | "sync" :: _ ->
       Printf.eprintf "Unknown sync subcommand. Use 'schedule' or 'history'\n%s" usage;
       exit 1

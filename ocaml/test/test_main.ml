@@ -1198,6 +1198,30 @@ let test_code_from_team_name_alternate () =
   Alcotest.(check string) "하나원큐 -> 09" "09" (Wkbl.Scraper.code_from_team_name "하나원큐");
   Alcotest.(check string) "BNK 썸 (space)" "11" (Wkbl.Scraper.code_from_team_name "BNK 썸")
 
+let test_code_from_team_name_extended () =
+  (* Modern team variants *)
+  Alcotest.(check string) "KDB생명 -> 08" "08" (Wkbl.Scraper.code_from_team_name "KDB생명");
+  Alcotest.(check string) "OK저축은행 -> 10" "10" (Wkbl.Scraper.code_from_team_name "OK저축은행");
+  (* Domain fallback + alpha->numeric mapping *)
+  Alcotest.(check string) "KEB하나은행 -> 09" "09" (Wkbl.Scraper.code_from_team_name "KEB하나은행");
+  (* All-star teams should be mapped explicitly (no AS/XX_ placeholder) *)
+  Alcotest.(check string) "핑크스타 -> 87" "87" (Wkbl.Scraper.code_from_team_name "핑크스타");
+  Alcotest.(check string) "블루스타 -> 88" "88" (Wkbl.Scraper.code_from_team_name "블루스타");
+  Alcotest.(check string) "남부선발 -> 91" "91" (Wkbl.Scraper.code_from_team_name "남부선발");
+  Alcotest.(check string) "중부선발 -> 92" "92" (Wkbl.Scraper.code_from_team_name "중부선발");
+  Alcotest.(check string) "한국 올스타 -> 83" "83" (Wkbl.Scraper.code_from_team_name "한국 올스타");
+  Alcotest.(check string) "일본 올스타 -> 84" "84" (Wkbl.Scraper.code_from_team_name "일본 올스타")
+
+let test_normalize_schedule_date_formats () =
+  (* ISO passthrough *)
+  Alcotest.(check string) "ISO passthrough" "2016-10-29"
+    (Wkbl.Scraper.normalize_schedule_date ~season_code:"037" "2016-10-29");
+  (* M/D(day) parsing *)
+  Alcotest.(check string) "10/29(토)" "2016-10-29"
+    (Wkbl.Scraper.normalize_schedule_date ~season_code:"037" "10/29(토)");
+  Alcotest.(check string) "3/6(월) -> next year" "2017-03-06"
+    (Wkbl.Scraper.normalize_schedule_date ~season_code:"037" "3/6(월)")
+
 let test_get_last_sync_time_str_initial () =
   (* Initial state should show no sync record *)
   let result = Wkbl.Scraper.get_last_sync_time_str () in
@@ -1208,6 +1232,8 @@ let scraper_tests = [
   Alcotest.test_case "code_from_team_name known" `Quick test_code_from_team_name_known;
   Alcotest.test_case "code_from_team_name unknown" `Quick test_code_from_team_name_unknown;
   Alcotest.test_case "code_from_team_name alternate" `Quick test_code_from_team_name_alternate;
+  Alcotest.test_case "code_from_team_name extended" `Quick test_code_from_team_name_extended;
+  Alcotest.test_case "normalize_schedule_date formats" `Quick test_normalize_schedule_date_formats;
   Alcotest.test_case "get_last_sync_time_str" `Quick test_get_last_sync_time_str_initial;
 ]
 
