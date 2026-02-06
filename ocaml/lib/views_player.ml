@@ -287,11 +287,11 @@ let player_profile_page ?(leaderboards=None) ?(show_ops=false) (profile: player_
         title_attr
         label
     in
-    let source_chip ~source_url =
-      Printf.sprintf
-        {html|<a href="%s" target="_blank" rel="noopener noreferrer" class="bg-white/10 dark:bg-slate-800/20 backdrop-blur-sm text-slate-600 dark:text-slate-400 px-2 py-1 rounded text-xs font-mono hover:text-slate-900 dark:hover:text-white transition" title="Source">src</a>|html}
-        (escape_html source_url)
-    in
+	    let source_chip ~source_url =
+	      Printf.sprintf
+	        {html|<a href="%s" target="_blank" rel="noopener noreferrer" class="bg-white/10 dark:bg-slate-800/20 backdrop-blur-sm text-slate-600 dark:text-slate-400 px-2 py-1 rounded text-xs font-mono hover:text-slate-900 dark:hover:text-white transition" title="출처">출처</a>|html}
+	        (escape_html source_url)
+	    in
     let name = normalize_label p.name in
     let team = normalize_label current_team in  (* Use current team, not career average *)
     let base_query = if team = "" then name else Printf.sprintf "%s %s" name team in
@@ -491,7 +491,7 @@ let player_profile_page ?(leaderboards=None) ?(show_ops=false) (profile: player_
       ""
     else
       Printf.sprintf
-        {html|<div class="space-y-4"><div class="flex flex-col gap-1"><h3 class="text-xl font-bold text-slate-900 dark:text-white">All-Star Games</h3><p class="text-[11px] text-slate-500 dark:text-slate-500">올스타전(<span class="font-mono text-slate-700 dark:text-slate-300">game_type=10</span>) 기록은 시즌/커리어 테이블에서 제외하고 여기서만 보여줍니다.</p></div><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-lg"><table class="min-w-[680px] sm:min-w-[920px] w-full text-sm font-mono table-fixed" aria-label="올스타전 기록">
+        {html|<div class="space-y-4"><div class="flex flex-col gap-1"><h3 class="text-xl font-bold text-slate-900 dark:text-white">올스타전</h3><p class="text-[11px] text-slate-500 dark:text-slate-500">올스타전(<span class="font-mono text-slate-700 dark:text-slate-300">game_type=10</span>) 기록은 시즌/커리어 테이블에서 제외하고 여기서만 보여줍니다.</p></div><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-lg"><table class="min-w-[680px] sm:min-w-[920px] w-full text-sm font-mono table-fixed" aria-label="올스타전 기록">
                 <colgroup>
                   <col style="width: 110px;"> <!-- Date -->
                   <col style="width: auto;">  <!-- Opponent -->
@@ -503,7 +503,7 @@ let player_profile_page ?(leaderboards=None) ?(show_ops=false) (profile: player_
                   <col class="hidden sm:table-column" style="width: 72px;"> <!-- STL -->
                   <col class="hidden sm:table-column" style="width: 72px;"> <!-- BLK -->
                 </colgroup>
-                <thead class="bg-slate-100/80 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-600 dark:text-slate-400 uppercase tracking-wider text-xs whitespace-nowrap"><tr><th scope="col" class="px-3 py-2 text-left font-sans">Date</th><th scope="col" class="px-3 py-2 text-left font-sans">Opponent</th><th scope="col" class="px-3 py-2 text-right" title="Minutes">MIN</th><th scope="col" class="px-3 py-2 text-right text-orange-600 dark:text-orange-400" title="Points">PTS</th><th scope="col" class="px-3 py-2 text-right" title="Plus/Minus">+/-</th><th scope="col" class="px-3 py-2 text-right" title="Rebounds">REB</th><th scope="col" class="px-3 py-2 text-right hidden sm:table-cell" title="Assists">AST</th><th scope="col" class="px-3 py-2 text-right hidden sm:table-cell" title="Steals">STL</th><th scope="col" class="px-3 py-2 text-right hidden sm:table-cell" title="Blocks">BLK</th></tr></thead><tbody>%s</tbody></table></div></div>|html}
+                <thead class="bg-slate-100/80 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-600 dark:text-slate-400 uppercase tracking-wider text-xs whitespace-nowrap"><tr><th scope="col" class="px-3 py-2 text-left font-sans">날짜</th><th scope="col" class="px-3 py-2 text-left font-sans">상대</th><th scope="col" class="px-3 py-2 text-right" title="출전시간">MIN</th><th scope="col" class="px-3 py-2 text-right text-orange-600 dark:text-orange-400" title="득점">PTS</th><th scope="col" class="px-3 py-2 text-right" title="+/-">+/-</th><th scope="col" class="px-3 py-2 text-right" title="리바운드">REB</th><th scope="col" class="px-3 py-2 text-right hidden sm:table-cell" title="어시스트">AST</th><th scope="col" class="px-3 py-2 text-right hidden sm:table-cell" title="스틸">STL</th><th scope="col" class="px-3 py-2 text-right hidden sm:table-cell" title="블록">BLK</th></tr></thead><tbody>%s</tbody></table></div></div>|html}
         all_star_rows
   in
   let team_movement_html =
@@ -547,9 +547,9 @@ let player_profile_page ?(leaderboards=None) ?(show_ops=false) (profile: player_
                 if is_current then "bg-orange-500 border-orange-400"
                 else "bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700"
               in
-              let current_chip =
-                if is_current then
-                  {html|<span class="px-2 py-0.5 rounded bg-orange-500/10 border border-orange-500/30 text-[10px] font-mono text-orange-700 whitespace-nowrap">Current</span>|html}
+                let current_chip =
+                  if is_current then
+                  {html|<span class="px-2 py-0.5 rounded bg-orange-500/10 border border-orange-500/30 text-[10px] font-mono text-orange-700 whitespace-nowrap">현재</span>|html}
                 else
                   ""
               in
@@ -575,10 +575,10 @@ let player_profile_page ?(leaderboards=None) ?(show_ops=false) (profile: player_
 	                      (team_badge ~max_width:badge_max_width team_name)
 	              in
 	              Printf.sprintf
-	                {html|<div class="text-slate-700 dark:text-slate-300 font-mono text-[11px] whitespace-pre-line break-words">%s</div>%s<div class="mt-2 text-[11px]"><a class="text-slate-600 dark:text-slate-400 hover:text-slate-700 dark:text-slate-300 underline" href="%s" target="_blank" rel="noreferrer">Source</a></div>|html}
-	                (escape_html d.pd_raw_text)
-	                team_html
-	                (escape_html d.pd_source_url)
+		                {html|<div class="text-slate-700 dark:text-slate-300 font-mono text-[11px] whitespace-pre-line break-words">%s</div>%s<div class="mt-2 text-[11px]"><a class="text-slate-600 dark:text-slate-400 hover:text-slate-700 dark:text-slate-300 underline" href="%s" target="_blank" rel="noreferrer">출처</a></div>|html}
+		                (escape_html d.pd_raw_text)
+		                team_html
+		                (escape_html d.pd_source_url)
 	        in
 	        let trade_count = List.length profile.official_trade_events in
 	        let trade_source =
@@ -617,14 +617,14 @@ let player_profile_page ?(leaderboards=None) ?(show_ops=false) (profile: player_
 	        in
 	        let official_html =
 	          Printf.sprintf
-	            {html|<div class="mt-4 pt-4 border-t border-slate-200 dark:border-slate-800/60"><div class="flex items-start justify-between gap-4"><div class="min-w-0"><div class="text-slate-600 dark:text-slate-400 font-bold uppercase tracking-widest text-[11px] flex items-center gap-2"><span class="text-base">🧩</span> Official Draft / Trade</div><div class="mt-1 text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed break-words">WKBL 공식 페이지 원문 기준입니다. Trade는 <span class="font-mono text-slate-700 dark:text-slate-300">이름 포함</span>으로만 매칭합니다.</div></div><a class="text-[11px] text-slate-600 dark:text-slate-400 hover:text-slate-700 dark:text-slate-300 underline font-mono shrink-0 whitespace-nowrap" href="%s" target="_blank" rel="noreferrer">Source</a></div><div class="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-3 text-xs"><div class="bg-slate-100 dark:bg-slate-800/40 border border-slate-300 dark:border-slate-700/50 rounded-lg p-3 min-w-0"><div class="text-slate-600 dark:text-slate-400 font-mono uppercase tracking-widest text-[11px]">Draft</div><div class="mt-2 min-w-0">%s</div></div><div class="bg-slate-100 dark:bg-slate-800/40 border border-slate-300 dark:border-slate-700/50 rounded-lg p-3 min-w-0"><div class="flex items-center justify-between gap-3"><div class="text-slate-600 dark:text-slate-400 font-mono uppercase tracking-widest text-[11px]">Trade</div><span class="text-[11px] font-mono text-slate-600 dark:text-slate-400 whitespace-nowrap">n=%d</span></div>%s</div></div></div>|html}
+		            {html|<div class="mt-4 pt-4 border-t border-slate-200 dark:border-slate-800/60"><div class="flex items-start justify-between gap-4"><div class="min-w-0"><div class="text-slate-600 dark:text-slate-400 font-bold uppercase tracking-widest text-[11px] flex items-center gap-2"><span class="text-base">🧩</span> 공식 드래프트 / 이적</div><div class="mt-1 text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed break-words">WKBL 공식 페이지 원문 기준입니다. 이적은 <span class="font-mono text-slate-700 dark:text-slate-300">이름 포함</span>으로만 매칭합니다.</div></div><a class="text-[11px] text-slate-600 dark:text-slate-400 hover:text-slate-700 dark:text-slate-300 underline font-mono shrink-0 whitespace-nowrap" href="%s" target="_blank" rel="noreferrer">출처</a></div><div class="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-3 text-xs"><div class="bg-slate-100 dark:bg-slate-800/40 border border-slate-300 dark:border-slate-700/50 rounded-lg p-3 min-w-0"><div class="text-slate-600 dark:text-slate-400 font-mono uppercase tracking-widest text-[11px]">드래프트</div><div class="mt-2 min-w-0">%s</div></div><div class="bg-slate-100 dark:bg-slate-800/40 border border-slate-300 dark:border-slate-700/50 rounded-lg p-3 min-w-0"><div class="flex items-center justify-between gap-3"><div class="text-slate-600 dark:text-slate-400 font-mono uppercase tracking-widest text-[11px]">이적</div><span class="text-[11px] font-mono text-slate-600 dark:text-slate-400 whitespace-nowrap">n=%d</span></div>%s</div></div></div>|html}
 	            (escape_html trade_source)
 	            draft_value_html
 	            trade_count
 	            trade_details_html
 	        in
 	        Printf.sprintf
-	          {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 sm:p-6 shadow-lg"><div class="flex items-start justify-between gap-4 mb-4"><div class="min-w-0"><h3 class="text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-xs flex items-center gap-2"><span class="text-lg">🔁</span> Team Movement</h3><div class="mt-1 text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed break-words">박스스코어 출전팀 변화로 추정한 연보입니다. (기간=첫/마지막 출전일)</div></div><span class="text-[11px] text-slate-600 dark:text-slate-400 font-mono shrink-0">박스스코어</span></div><div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3 gap-3 text-xs"><div class="bg-slate-100 dark:bg-slate-800/40 border border-slate-300 dark:border-slate-700/50 rounded-lg p-3 min-w-0"><div class="text-slate-600 dark:text-slate-400 font-mono uppercase tracking-widest text-[11px]">Current</div><div class="mt-2 text-slate-700 dark:text-slate-300 min-w-0">%s</div></div><div class="bg-slate-100 dark:bg-slate-800/40 border border-slate-300 dark:border-slate-700/50 rounded-lg p-3"><div class="text-slate-600 dark:text-slate-400 font-mono uppercase tracking-widest text-[11px]">Transfers</div><div class="mt-2 font-mono text-slate-900 dark:text-slate-200 text-lg font-black">%d</div></div><div class="bg-slate-100 dark:bg-slate-800/40 border border-slate-300 dark:border-slate-700/50 rounded-lg p-3 min-w-0"><div class="text-slate-600 dark:text-slate-400 font-mono uppercase tracking-widest text-[11px]">Latest</div><div class="mt-2 text-slate-700 dark:text-slate-300 min-w-0">%s</div></div></div><div class="mt-4 rounded-lg border border-slate-200 dark:border-slate-800/60 bg-slate-950/30 p-4"><ol class="relative border-l border-slate-200 dark:border-slate-800/60 ml-2 space-y-4">%s</ol></div>%s</div>|html}
+		          {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 sm:p-6 shadow-lg"><div class="flex items-start justify-between gap-4 mb-4"><div class="min-w-0"><h3 class="text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-xs flex items-center gap-2"><span class="text-lg">🔁</span> 팀 이동</h3><div class="mt-1 text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed break-words">박스스코어 출전팀 변화로 추정한 연보입니다. (기간=첫/마지막 출전일)</div></div><span class="text-[11px] text-slate-600 dark:text-slate-400 font-mono shrink-0">박스스코어</span></div><div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3 gap-3 text-xs"><div class="bg-slate-100 dark:bg-slate-800/40 border border-slate-300 dark:border-slate-700/50 rounded-lg p-3 min-w-0"><div class="text-slate-600 dark:text-slate-400 font-mono uppercase tracking-widest text-[11px]">현재</div><div class="mt-2 text-slate-700 dark:text-slate-300 min-w-0">%s</div></div><div class="bg-slate-100 dark:bg-slate-800/40 border border-slate-300 dark:border-slate-700/50 rounded-lg p-3"><div class="text-slate-600 dark:text-slate-400 font-mono uppercase tracking-widest text-[11px]">이적</div><div class="mt-2 font-mono text-slate-900 dark:text-slate-200 text-lg font-black">%d</div></div><div class="bg-slate-100 dark:bg-slate-800/40 border border-slate-300 dark:border-slate-700/50 rounded-lg p-3 min-w-0"><div class="text-slate-600 dark:text-slate-400 font-mono uppercase tracking-widest text-[11px]">최근</div><div class="mt-2 text-slate-700 dark:text-slate-300 min-w-0">%s</div></div></div><div class="mt-4 rounded-lg border border-slate-200 dark:border-slate-800/60 bg-slate-950/30 p-4"><ol class="relative border-l border-slate-200 dark:border-slate-800/60 ml-2 space-y-4">%s</ol></div>%s</div>|html}
 	          current_team_html transfers last_move_value_html stint_rows official_html
   in
 
@@ -636,9 +636,9 @@ let player_profile_page ?(leaderboards=None) ?(show_ops=false) (profile: player_
         let scope_value = scope |> String.trim |> String.lowercase_ascii in
         let scope_label =
           match scope_value with
-          | "totals" -> "Totals"
-          | "per_36" -> "Per 36"
-          | _ -> "Per Game"
+          | "totals" -> "누적"
+          | "per_36" -> "36분 환산"
+          | _ -> "경기당"
         in
         let leaders_href =
           Printf.sprintf
@@ -730,7 +730,7 @@ let player_profile_page ?(leaderboards=None) ?(show_ops=false) (profile: player_
               Printf.sprintf {html|<div class="space-y-2">%s</div>|html} (String.concat "\n" rows)
         in
 	        Printf.sprintf
-	          {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 sm:p-6 shadow-lg"><div class="flex items-start justify-between gap-4 mb-4"><div class="min-w-0"><h3 class="text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-xs flex items-center gap-2"><span class="text-lg">🏅</span> Leaderboards</h3><div class="mt-1 text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed"><span class="font-mono text-slate-700 dark:text-slate-300">%s</span> · <span class="font-mono text-slate-700 dark:text-slate-300">%s</span> · Top 5</div></div><a href="%s" class="text-[11px] text-slate-600 dark:text-slate-400 hover:text-slate-700 dark:text-slate-300 underline font-mono shrink-0 whitespace-nowrap">Leaders</a></div>%s</div>|html}
+		          {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 sm:p-6 shadow-lg"><div class="flex items-start justify-between gap-4 mb-4"><div class="min-w-0"><h3 class="text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-xs flex items-center gap-2"><span class="text-lg">🏅</span> 리더보드</h3><div class="mt-1 text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed"><span class="font-mono text-slate-700 dark:text-slate-300">%s</span> · <span class="font-mono text-slate-700 dark:text-slate-300">%s</span> · 상위 5</div></div><a href="%s" class="text-[11px] text-slate-600 dark:text-slate-400 hover:text-slate-700 dark:text-slate-300 underline font-mono shrink-0 whitespace-nowrap">리더</a></div>%s</div>|html}
 	          (escape_html lb_season_name)
 	          (escape_html scope_label)
 	          (escape_html leaders_href)
@@ -863,45 +863,45 @@ let player_profile_page ?(leaderboards=None) ?(show_ops=false) (profile: player_
 		      in
 		      let draft_chip =
 		        match profile.draft with
-		        | Some _ ->
-		            {html|<span class="px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-[10px] font-mono text-emerald-700 dark:text-emerald-400 whitespace-nowrap">Draft ✓</span>|html}
-	        | None ->
-	            {html|<span class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700/60 text-[10px] font-mono text-slate-700 dark:text-slate-300 whitespace-nowrap">Draft -</span>|html}
-	      in
+			        | Some _ ->
+			            {html|<span class="px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-[10px] font-mono text-emerald-700 dark:text-emerald-400 whitespace-nowrap">드래프트 ✓</span>|html}
+		        | None ->
+		            {html|<span class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700/60 text-[10px] font-mono text-slate-700 dark:text-slate-300 whitespace-nowrap">드래프트 -</span>|html}
+		      in
 	      let trade_count = List.length profile.official_trade_events in
-	      let trade_chip =
-	        Printf.sprintf
-	          {html|<span class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700/60 text-[10px] font-mono text-slate-700 dark:text-slate-300 whitespace-nowrap">Trade n=%d</span>|html}
-	          trade_count
-	      in
+		      let trade_chip =
+		        Printf.sprintf
+		          {html|<span class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700/60 text-[10px] font-mono text-slate-700 dark:text-slate-300 whitespace-nowrap">이적 %d건</span>|html}
+		          trade_count
+		      in
 	      let draft_value_html =
 	        match profile.draft with
 	        | None -> {html|<span class="text-slate-600 dark:text-slate-400">-</span>|html}
-	        | Some (d: player_draft) ->
-	            Printf.sprintf
-	              {html|<div class="text-slate-900 dark:text-slate-200 font-mono text-[11px] whitespace-pre-line break-words">%s</div><a class="mt-2 inline-block text-[11px] text-slate-600 dark:text-slate-400 hover:text-slate-700 dark:text-slate-300 underline font-mono" href="%s" target="_blank" rel="noreferrer">Source</a>|html}
-	              (escape_html d.pd_raw_text)
-	              (escape_html d.pd_source_url)
+		        | Some (d: player_draft) ->
+		            Printf.sprintf
+		              {html|<div class="text-slate-900 dark:text-slate-200 font-mono text-[11px] whitespace-pre-line break-words">%s</div><a class="mt-2 inline-block text-[11px] text-slate-600 dark:text-slate-400 hover:text-slate-700 dark:text-slate-300 underline font-mono" href="%s" target="_blank" rel="noreferrer">출처</a>|html}
+		              (escape_html d.pd_raw_text)
+		              (escape_html d.pd_source_url)
 	      in
 	      let trade_value_html =
-	        if trade_count <= 0 then
-	          {html|<span class="text-slate-600 dark:text-slate-400">-</span>|html}
-	        else
-	          {html|<span class="text-slate-900 dark:text-slate-200 font-mono text-[11px]">Matched events available</span>|html}
-		      in
-		      Printf.sprintf
-		        {html|<div class="bg-slate-100 dark:bg-slate-800/40 border border-slate-300 dark:border-slate-700/50 rounded-lg p-4 sm:p-5 min-w-0"><div class="flex flex-wrap items-start justify-between gap-3 min-w-0"><div class="text-slate-600 dark:text-slate-400 font-bold uppercase tracking-widest text-[11px] flex items-center gap-2"><span class="text-base">🧩</span> Draft / Trade</div><div class="flex flex-wrap items-center gap-2">%s%s<a class="px-2 py-0.5 rounded bg-white dark:bg-slate-900/40 border border-slate-300 dark:border-slate-700/60 text-[10px] font-mono text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white dark:text-slate-200 hover:bg-slate-100 dark:bg-slate-800/60 transition whitespace-nowrap" href="/transactions">Browse</a></div></div><div class="mt-3 text-slate-600 dark:text-slate-400 text-xs leading-relaxed space-y-3"><div><div class="text-[10px] text-slate-600 dark:text-slate-400 font-mono uppercase tracking-widest">Draft</div><div class="mt-1">%s</div></div><div><div class="text-[10px] text-slate-600 dark:text-slate-400 font-mono uppercase tracking-widest">Trade</div><div class="mt-1">%s</div><div class="mt-2 text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">공식 이적현황 원문에서 <span class="font-mono text-slate-700 dark:text-slate-300">이름 포함</span>으로만 매칭합니다. (동명이인/표기 차이로 오매칭/누락 가능)</div></div>%s</div></div>|html}
-		        draft_chip
-		        trade_chip
-		        draft_value_html
+		        if trade_count <= 0 then
+		          {html|<span class="text-slate-600 dark:text-slate-400">-</span>|html}
+		        else
+		          {html|<span class="text-slate-900 dark:text-slate-200 font-mono text-[11px]">매칭된 이벤트가 있습니다.</span>|html}
+			      in
+			      Printf.sprintf
+			        {html|<div class="bg-slate-100 dark:bg-slate-800/40 border border-slate-300 dark:border-slate-700/50 rounded-lg p-4 sm:p-5 min-w-0"><div class="flex flex-wrap items-start justify-between gap-3 min-w-0"><div class="text-slate-600 dark:text-slate-400 font-bold uppercase tracking-widest text-[11px] flex items-center gap-2"><span class="text-base">🧩</span> 드래프트 / 이적</div><div class="flex flex-wrap items-center gap-2">%s%s<a class="px-2 py-0.5 rounded bg-white dark:bg-slate-900/40 border border-slate-300 dark:border-slate-700/60 text-[10px] font-mono text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white dark:text-slate-200 hover:bg-slate-100 dark:bg-slate-800/60 transition whitespace-nowrap" href="/transactions">목록</a></div></div><div class="mt-3 text-slate-600 dark:text-slate-400 text-xs leading-relaxed space-y-3"><div><div class="text-[10px] text-slate-600 dark:text-slate-400 font-mono uppercase tracking-widest">드래프트</div><div class="mt-1">%s</div></div><div><div class="text-[10px] text-slate-600 dark:text-slate-400 font-mono uppercase tracking-widest">이적</div><div class="mt-1">%s</div><div class="mt-2 text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">공식 이적현황 원문에서 <span class="font-mono text-slate-700 dark:text-slate-300">이름 포함</span>으로만 매칭합니다. (동명이인/표기 차이로 오매칭/누락 가능)</div></div>%s</div></div>|html}
+			        draft_chip
+			        trade_chip
+			        draft_value_html
 		        trade_value_html
 		        ops_sync_html
 		    in
-	    Printf.sprintf
-	      {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 sm:p-6 shadow-lg"><div class="flex items-start justify-between gap-4 mb-4"><h3 class="text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-xs flex items-center gap-2"><span class="text-lg">🧾</span> Data Notes</h3><span class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700/60 text-[10px] font-mono text-slate-700 dark:text-slate-300 whitespace-nowrap">Coverage</span></div><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-3 md:gap-4">%s%s<div class="md:col-span-2 lg:col-span-1 xl:col-span-2">%s</div></div></div>|html}
-	      seasons_card_html
-	      pbp_card_html
-	      draft_card_html
+		    Printf.sprintf
+		      {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 sm:p-6 shadow-lg"><div class="flex items-start justify-between gap-4 mb-4"><h3 class="text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-xs flex items-center gap-2"><span class="text-lg">🧾</span> 데이터 안내</h3><span class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700/60 text-[10px] font-mono text-slate-700 dark:text-slate-300 whitespace-nowrap">현황</span></div><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-3 md:gap-4">%s%s<div class="md:col-span-2 lg:col-span-1 xl:col-span-2">%s</div></div></div>|html}
+		      seasons_card_html
+		      pbp_card_html
+		      draft_card_html
   in
 		  let missing_data_html =
 		    if profile.season_breakdown = [] && profile.recent_games = [] && profile.all_star_games = [] && profile.draft = None && profile.official_trade_events = [] then
@@ -930,7 +930,7 @@ let player_profile_page ?(leaderboards=None) ?(show_ops=false) (profile: player_
     Printf.sprintf {|{"@context":"https://schema.org","@type":"Person","name":"%s","url":"https://wkbl.win%s","image":"%s","jobTitle":"Professional Basketball Player"%s%s%s}|}
       (escape_html display_name) canonical og_card_url height_val birth_val team_val
   in
-  layout ~title:(display_name ^ " | WKBL Profile")
+  layout ~title:(display_name ^ " | WKBL 선수")
     ~canonical_path:canonical
     ~description:seo_desc
     ~og_image:og_card_url
@@ -994,15 +994,15 @@ let player_profile_page ?(leaderboards=None) ?(show_ops=false) (profile: player_
                 </colgroup>
                 <thead class="bg-slate-100/80 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-600 dark:text-slate-400 uppercase tracking-wider text-[10px] sm:text-xs whitespace-nowrap">
                   <tr>
-                    <th scope="col" class="px-3 py-2 text-left font-sans">Date</th>
-                    <th scope="col" class="px-3 py-2 text-left font-sans">Opponent</th>
-                    <th scope="col" class="px-3 py-2 text-right" title="Minutes">MIN</th>
-                    <th scope="col" class="px-3 py-2 text-right text-orange-600 dark:text-orange-400" title="Points">PTS</th>
-                    <th scope="col" class="px-3 py-2 text-right" title="Plus/Minus">+/-</th>
-                    <th scope="col" class="px-3 py-2 text-right" title="Rebounds">REB</th>
-                    <th scope="col" class="px-3 py-2 text-right hidden sm:table-cell" title="Assists">AST</th>
-                    <th scope="col" class="px-3 py-2 text-right hidden sm:table-cell" title="Steals">STL</th>
-                    <th scope="col" class="px-3 py-2 text-right hidden sm:table-cell" title="Blocks">BLK</th>
+                    <th scope="col" class="px-3 py-2 text-left font-sans">날짜</th>
+                    <th scope="col" class="px-3 py-2 text-left font-sans">상대</th>
+                    <th scope="col" class="px-3 py-2 text-right" title="출전시간">MIN</th>
+                    <th scope="col" class="px-3 py-2 text-right text-orange-600 dark:text-orange-400" title="득점">PTS</th>
+                    <th scope="col" class="px-3 py-2 text-right" title="+/-">+/-</th>
+                    <th scope="col" class="px-3 py-2 text-right" title="리바운드">REB</th>
+                    <th scope="col" class="px-3 py-2 text-right hidden sm:table-cell" title="어시스트">AST</th>
+                    <th scope="col" class="px-3 py-2 text-right hidden sm:table-cell" title="스틸">STL</th>
+                    <th scope="col" class="px-3 py-2 text-right hidden sm:table-cell" title="블록">BLK</th>
                   </tr>
                 </thead>
                 <tbody>%s</tbody>
@@ -1062,7 +1062,7 @@ let player_game_logs_page (profile: player_profile) ~(season: string) ~(seasons:
           Printf.sprintf {html|<option value="%s" %s>%s</option>|html} s.code selected (escape_html s.name))
       |> String.concat "\n"
     in
-    Printf.sprintf {html|<option value="ALL" %s>All Seasons</option>%s|html} (if season = "ALL" then "selected" else "") base
+    Printf.sprintf {html|<option value="ALL" %s>전체 시즌</option>%s|html} (if season = "ALL" then "selected" else "") base
   in
   let include_checked = if include_mismatch then "checked" else "" in
   let verified_cnt, derived_cnt, mismatch_cnt =
@@ -1082,7 +1082,7 @@ let player_game_logs_page (profile: player_profile) ~(season: string) ~(seasons:
   in
   let rows =
     if games = [] then
-      {html|<tr><td colspan="5" class="sm:hidden px-4 py-10 text-center text-slate-600 dark:text-slate-400 text-sm">No games found.</td><td colspan="9" class="hidden sm:table-cell px-4 py-10 text-center text-slate-600 dark:text-slate-400 text-sm">No games found.</td></tr>|html}
+      {html|<tr><td colspan="5" class="sm:hidden px-4 py-10 text-center text-slate-600 dark:text-slate-400 text-sm">경기 기록이 없습니다.</td><td colspan="9" class="hidden sm:table-cell px-4 py-10 text-center text-slate-600 dark:text-slate-400 text-sm">경기 기록이 없습니다.</td></tr>|html}
     else
       games
       |> List.map (fun (g: player_game_stat) ->
@@ -1154,11 +1154,11 @@ let player_game_logs_page (profile: player_profile) ~(season: string) ~(seasons:
   let canonical = Printf.sprintf "/player/%s/games" p.id in
   let seo_desc = Printf.sprintf "%s 경기별 기록 - %d경기 출전, WKBL 여자농구 선수 게임 로그"
     display_name (List.length games) in
-  layout ~title:(display_name ^ " | Game Log")
+  layout ~title:(display_name ^ " | 경기 로그")
     ~canonical_path:canonical
     ~description:seo_desc
     ~content:(Printf.sprintf
-      {html|<div class="space-y-8 animate-fade-in"><div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4"><div class="flex items-center gap-4"><div class="shrink-0">%s</div><div class="min-w-0"><div class="text-sm text-slate-600 dark:text-slate-400"><a href="/player/%s" class="hover:text-slate-900 dark:hover:text-white dark:text-slate-200 transition">← Profile</a></div><h2 class="text-3xl font-black text-slate-900 dark:text-slate-200 truncate">%s <span class="text-slate-600 dark:text-slate-400 text-lg font-mono">Game Log</span></h2><div class="mt-1 text-slate-600 dark:text-slate-400 text-sm">총 %d경기</div></div></div><div class="flex flex-col items-start sm:items-end gap-3"><form action="/player/%s/games" method="get" class="flex flex-wrap items-center justify-end gap-2"><select name="season" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none" onchange="this.form.submit()">%s</select><label class="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 whitespace-nowrap"><input type="checkbox" name="include_mismatch" value="1" %s class="h-4 w-4 rounded border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 accent-orange-500" onchange="this.form.submit()"><span>불일치 포함</span></label></form>%s</div></div><p class="text-[11px] text-slate-600 dark:text-slate-400">개인 <span class="font-mono text-slate-700 dark:text-slate-300">+/-</span>는 문자중계 기반입니다. 문자중계가 없으면 <span class="font-mono text-slate-700 dark:text-slate-300">M</span>으로 팀 득실마진(경기 최종 점수)을 대신 표시합니다. (데이터가 없거나 품질 이슈면 <span class="font-mono text-slate-700 dark:text-slate-300">-</span>)</p><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-lg"><table class="min-w-[680px] sm:min-w-[920px] w-full text-sm font-mono table-fixed tabular-nums" aria-label="선수별 게임 로그">
+      {html|<div class="space-y-8 animate-fade-in"><div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4"><div class="flex items-center gap-4"><div class="shrink-0">%s</div><div class="min-w-0"><div class="text-sm text-slate-600 dark:text-slate-400"><a href="/player/%s" class="hover:text-slate-900 dark:hover:text-white dark:text-slate-200 transition">← 프로필</a></div><h2 class="text-3xl font-black text-slate-900 dark:text-slate-200 truncate">%s <span class="text-slate-600 dark:text-slate-400 text-lg font-mono">경기 로그</span></h2><div class="mt-1 text-slate-600 dark:text-slate-400 text-sm">총 %d경기</div></div></div><div class="flex flex-col items-start sm:items-end gap-3"><form action="/player/%s/games" method="get" class="flex flex-wrap items-center justify-end gap-2"><select name="season" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none" onchange="this.form.submit()">%s</select><label class="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 whitespace-nowrap"><input type="checkbox" name="include_mismatch" value="1" %s class="h-4 w-4 rounded border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 accent-orange-500" onchange="this.form.submit()"><span>불일치 포함</span></label></form>%s</div></div><p class="text-[11px] text-slate-600 dark:text-slate-400">개인 <span class="font-mono text-slate-700 dark:text-slate-300">+/-</span>는 문자중계 기반입니다. 문자중계가 없으면 <span class="font-mono text-slate-700 dark:text-slate-300">M</span>으로 팀 득실마진(경기 최종 점수)을 대신 표시합니다. (데이터가 없거나 품질 이슈면 <span class="font-mono text-slate-700 dark:text-slate-300">-</span>)</p><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-lg"><table class="min-w-[680px] sm:min-w-[920px] w-full text-sm font-mono table-fixed tabular-nums" aria-label="선수별 게임 로그">
           <colgroup>
             <col style="width: 110px;"> <!-- Date -->
             <col style="width: auto;">  <!-- Opponent -->
@@ -1170,7 +1170,7 @@ let player_game_logs_page (profile: player_profile) ~(season: string) ~(seasons:
             <col class="hidden sm:table-column" style="width: 72px;"> <!-- STL -->
             <col class="hidden sm:table-column" style="width: 72px;"> <!-- BLK -->
           </colgroup>
-          <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-600 dark:text-slate-400 uppercase tracking-wider text-xs"><tr><th scope="col" class="px-3 py-2 text-left font-sans whitespace-nowrap">Date</th><th scope="col" class="px-3 py-2 text-left font-sans">Opponent</th><th scope="col" class="px-3 py-2 text-right hidden sm:table-cell" title="Minutes">MIN</th><th scope="col" class="px-3 py-2 text-right text-orange-600 dark:text-orange-400" title="Points">PTS</th><th scope="col" class="px-3 py-2 text-right" title="Plus/Minus">+/-</th><th scope="col" class="px-3 py-2 text-right" title="Rebounds">REB</th><th scope="col" class="px-3 py-2 text-right hidden sm:table-cell" title="Assists">AST</th><th scope="col" class="px-3 py-2 text-right hidden sm:table-cell" title="Steals">STL</th><th scope="col" class="px-3 py-2 text-right hidden sm:table-cell" title="Blocks">BLK</th></tr></thead><tbody>%s</tbody></table></div>|html></div>|html}
+          <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-600 dark:text-slate-400 uppercase tracking-wider text-xs"><tr><th scope="col" class="px-3 py-2 text-left font-sans whitespace-nowrap">날짜</th><th scope="col" class="px-3 py-2 text-left font-sans">상대</th><th scope="col" class="px-3 py-2 text-right hidden sm:table-cell" title="출전시간">MIN</th><th scope="col" class="px-3 py-2 text-right text-orange-600 dark:text-orange-400" title="득점">PTS</th><th scope="col" class="px-3 py-2 text-right" title="+/-">+/-</th><th scope="col" class="px-3 py-2 text-right" title="리바운드">REB</th><th scope="col" class="px-3 py-2 text-right hidden sm:table-cell" title="어시스트">AST</th><th scope="col" class="px-3 py-2 text-right hidden sm:table-cell" title="스틸">STL</th><th scope="col" class="px-3 py-2 text-right hidden sm:table-cell" title="블록">BLK</th></tr></thead><tbody>%s</tbody></table></div>|html></div>|html}
       (player_img_tag ~class_name:"w-14 h-14 border border-slate-300 dark:border-slate-700 shadow-lg" p.id p.name)
       (Uri.pct_encode p.id)
       (escape_html display_name)

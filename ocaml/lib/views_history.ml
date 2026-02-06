@@ -42,16 +42,16 @@ let history_page (seasons: historical_season list) =
       {html|<div class="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-lg p-4 space-y-2">
         <div class="font-bold text-orange-600 dark:text-orange-400 text-lg">%s</div>
         <div class="grid grid-cols-2 gap-2 text-sm">
-          <div><span class="text-slate-500 dark:text-slate-400">Champion:</span> <span class="font-medium">%s</span></div>
+          <div><span class="text-slate-500 dark:text-slate-400">우승:</span> <span class="font-medium">%s</span></div>
           <div><span class="text-slate-500 dark:text-slate-400">MVP:</span> <span class="font-medium">%s</span></div>
         </div>
       </div>|html}
       (escape_html s.hs_season_name) champion mvp
   ) |> String.concat "\n" in
-  layout ~title:"History | WKBL" ~content:(Printf.sprintf
+  layout ~title:"역대 기록 | WKBL" ~content:(Printf.sprintf
     {html|<div class="space-y-6">
-      <div><h2 class="text-2xl font-bold text-slate-900 dark:text-slate-200">WKBL History</h2>
-        <p class="text-slate-500 dark:text-slate-400 text-sm">Season champions and award winners since 1998.</p></div>
+      <div><h2 class="text-2xl font-bold text-slate-900 dark:text-slate-200">WKBL 역대 기록</h2>
+        <p class="text-slate-500 dark:text-slate-400 text-sm">1998년 이후 시즌 우승, MVP 등 주요 기록을 정리했습니다.</p></div>
       <div class="space-y-3 sm:hidden">%s</div>
       <div class="hidden sm:block bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 table-scroll-container shadow-lg">
         <table class="w-full text-sm table-fixed" aria-label="WKBL 시즌별 역대 기록">
@@ -65,7 +65,7 @@ let history_page (seasons: historical_season list) =
             <col style="width: 120px;"> <!-- Scoring -->
           </colgroup>
           <thead class="bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 text-xs uppercase">
-            <tr><th scope="col" class="px-3 py-2 text-left">Season</th><th scope="col" class="px-3 py-2 text-left">Champion</th><th scope="col" class="px-3 py-2 text-left">Runner-up</th><th scope="col" class="px-3 py-2 text-left" title="Most Valuable Player">MVP</th><th scope="col" class="px-3 py-2 text-left" title="Finals MVP">Finals MVP</th><th scope="col" class="px-3 py-2 text-left" title="Rookie of the Year">ROY</th><th scope="col" class="px-3 py-2 text-left" title="Scoring Leader">Scoring</th></tr>
+            <tr><th scope="col" class="px-3 py-2 text-left">시즌</th><th scope="col" class="px-3 py-2 text-left">우승</th><th scope="col" class="px-3 py-2 text-left">준우승</th><th scope="col" class="px-3 py-2 text-left" title="정규리그 MVP">MVP</th><th scope="col" class="px-3 py-2 text-left" title="파이널 MVP">Finals MVP</th><th scope="col" class="px-3 py-2 text-left" title="신인상">ROY</th><th scope="col" class="px-3 py-2 text-left" title="득점 1위">Scoring</th></tr>
           </thead>
           <tbody>%s</tbody>
         </table>
