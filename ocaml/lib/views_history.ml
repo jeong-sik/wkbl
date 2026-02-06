@@ -15,7 +15,7 @@ let multi_team_badges teams_str =
     let badges = teams |> List.map (fun t -> team_logo_tag ~class_name:"w-5 h-5" t) |> String.concat " " in
     Printf.sprintf {html|<div class="flex items-center gap-1 flex-wrap">%s</div>|html} badges
 
-let history_page (seasons: historical_season list) =
+let history_page ?(lang=I18n.Ko) (seasons: historical_season list) =
   let rows = seasons |> List.map (fun (s: historical_season) ->
     let champion = match s.hs_champion_team with Some t -> team_badge ~max_width:"max-w-[100px]" t | None -> "-" in
     let runner_up = match s.hs_runner_up with Some t -> team_badge ~max_width:"max-w-[100px]" t | None -> "-" in
@@ -48,7 +48,7 @@ let history_page (seasons: historical_season list) =
       </div>|html}
       (escape_html s.hs_season_name) champion mvp
   ) |> String.concat "\n" in
-  layout ~title:"역대 기록 | WKBL" ~content:(Printf.sprintf
+  layout ~lang ~title:"역대 기록 | WKBL" ~content:(Printf.sprintf
     {html|<div class="space-y-6">
       <div><h2 class="text-2xl font-bold text-slate-900 dark:text-slate-200">WKBL 역대 기록</h2>
         <p class="text-slate-500 dark:text-slate-400 text-sm">1998년 이후 시즌 우승, MVP 등 주요 기록을 정리했습니다.</p></div>
@@ -63,24 +63,24 @@ let history_page (seasons: historical_season list) =
             <col style="width: 140px;"> <!-- Finals MVP -->
             <col style="width: 120px;"> <!-- ROY -->
             <col style="width: 120px;"> <!-- Scoring -->
-          </colgroup>
-          <thead class="bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 text-xs uppercase">
-            <tr><th scope="col" class="px-3 py-2 text-left">시즌</th><th scope="col" class="px-3 py-2 text-left">우승</th><th scope="col" class="px-3 py-2 text-left">준우승</th><th scope="col" class="px-3 py-2 text-left" title="정규리그 MVP">MVP</th><th scope="col" class="px-3 py-2 text-left" title="파이널 MVP">Finals MVP</th><th scope="col" class="px-3 py-2 text-left" title="신인상">ROY</th><th scope="col" class="px-3 py-2 text-left" title="득점 1위">Scoring</th></tr>
-          </thead>
-          <tbody>%s</tbody>
-        </table>
+	          </colgroup>
+	          <thead class="bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 text-xs uppercase">
+	            <tr><th scope="col" class="px-3 py-2 text-left">시즌</th><th scope="col" class="px-3 py-2 text-left">우승</th><th scope="col" class="px-3 py-2 text-left">준우승</th><th scope="col" class="px-3 py-2 text-left" title="정규리그 MVP">MVP</th><th scope="col" class="px-3 py-2 text-left" title="파이널 MVP">파이널 MVP</th><th scope="col" class="px-3 py-2 text-left" title="신인상">신인상</th><th scope="col" class="px-3 py-2 text-left" title="득점 1위">득점왕</th></tr>
+	          </thead>
+	          <tbody>%s</tbody>
+	        </table>
       </div>
     </div>|html}
     mobile_cards rows) ()
 
 (** Legends page - Hall of fame and legendary players *)
-let legends_page (legends: legend_player list) =
+let legends_page ?(lang=I18n.Ko) (legends: legend_player list) =
   (* Mobile card view *)
   let cards = legends |> List.map (fun (l: legend_player) ->
     let teams = match l.lp_teams with Some t -> multi_team_badges t | None -> "-" in
     let years = match l.lp_career_years with Some y -> escape_html y | None -> "-" in
     let achievements = match l.lp_notable_achievements with Some a -> escape_html a | None -> "" in
-    let hof_badge = if l.lp_is_hall_of_fame then {html|<span class="bg-yellow-500 text-white text-[10px] px-2 py-0.5 rounded-full ml-2">HOF</span>|html} else "" in
+    let hof_badge = if l.lp_is_hall_of_fame then {html|<span class="bg-yellow-500 text-white text-[10px] px-2 py-0.5 rounded-full ml-2">명예의 전당</span>|html} else "" in
     Printf.sprintf
       {html|<div class="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-lg p-5 shadow-md hover:shadow-lg transition-shadow">
         <div class="flex items-center justify-between mb-3">
@@ -118,7 +118,7 @@ let legends_page (legends: legend_player list) =
   let rows = legends |> List.map (fun (l: legend_player) ->
     let teams = match l.lp_teams with Some t -> multi_team_badges t | None -> "-" in
     let years = match l.lp_career_years with Some y -> escape_html y | None -> "-" in
-    let hof_badge = if l.lp_is_hall_of_fame then {html|<span class="bg-yellow-500 text-white text-[10px] px-2 py-0.5 rounded-full ml-1">HOF</span>|html} else "" in
+    let hof_badge = if l.lp_is_hall_of_fame then {html|<span class="bg-yellow-500 text-white text-[10px] px-2 py-0.5 rounded-full ml-1">명예의 전당</span>|html} else "" in
     Printf.sprintf
       {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-50 dark:hover:bg-slate-800/30">
         <td class="px-3 py-2 font-bold whitespace-nowrap">%s%s</td>
@@ -135,7 +135,7 @@ let legends_page (legends: legend_player list) =
       l.lp_championships l.lp_mvp_count l.lp_all_star_count
       l.lp_career_points l.lp_career_rebounds l.lp_career_assists
   ) |> String.concat "\n" in
-  layout ~title:"Legends | WKBL" ~content:(Printf.sprintf
+  layout ~lang ~title:"레전드 | WKBL" ~content:(Printf.sprintf
     {html|<div class="space-y-6">
       <div><h2 class="text-2xl font-bold text-slate-900 dark:text-slate-200">WKBL 레전드</h2>
         <p class="text-slate-500 dark:text-slate-400 text-sm">명예의 전당 및 역대 최고 선수들</p></div>
@@ -175,7 +175,7 @@ let legends_page (legends: legend_player list) =
     cards rows) ()
 
 (** Coaches page - Coaching records *)
-let coaches_page (coaches: coach list) =
+let coaches_page ?(lang=I18n.Ko) (coaches: coach list) =
   (* Mobile card view *)
   let cards = coaches |> List.map (fun (c: coach) ->
     let team = match c.c_team with Some t -> escape_html t | None -> "-" in
@@ -238,7 +238,7 @@ let coaches_page (coaches: coach list) =
       </tr>|html}
       (escape_html c.c_coach_name) team tenure c.c_championships c.c_regular_season_wins c.c_playoff_wins player_info
   ) |> String.concat "\n" in
-  layout ~title:"Coaches | WKBL" ~content:(Printf.sprintf
+  layout ~lang ~title:"감독 | WKBL" ~content:(Printf.sprintf
     {html|<div class="space-y-6">
       <div><h2 class="text-2xl font-bold text-slate-900 dark:text-slate-200">WKBL 감독</h2>
         <p class="text-slate-500 dark:text-slate-400 text-sm">감독 기록 및 업적</p></div>
@@ -266,7 +266,7 @@ let coaches_page (coaches: coach list) =
     cards rows) ()
 
 (** Player career page - Year by year stats for a player *)
-let player_career_page ~player_name (entries: player_career_entry list) =
+let player_career_page ?(lang=I18n.Ko) ~player_name (entries: player_career_entry list) =
   let rows = entries |> List.map (fun (e: player_career_entry) ->
     let jersey = match e.pce_jersey_number with Some n -> string_of_int n | None -> "-" in
     let gp = match e.pce_games_played with Some g -> string_of_int g | None -> "-" in
@@ -289,10 +289,10 @@ let player_career_page ~player_name (entries: player_career_entry list) =
       </tr>|html}
       (escape_html e.pce_season_id) (escape_html e.pce_team) jersey gp ppg rpg apg allstar awards
   ) |> String.concat "\n" in
-  layout ~title:(Printf.sprintf "%s Career | WKBL" (escape_html player_name)) ~content:(Printf.sprintf
+  layout ~lang ~title:(Printf.sprintf "%s 시즌별 기록 | WKBL" (escape_html player_name)) ~content:(Printf.sprintf
     {html|<div class="space-y-6">
       <div><h2 class="text-2xl font-bold text-slate-900 dark:text-slate-200">%s</h2>
-        <p class="text-slate-500 dark:text-slate-400 text-sm">Career statistics by season.</p></div>
+        <p class="text-slate-500 dark:text-slate-400 text-sm">시즌별 기록입니다.</p></div>
       <div class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 table-scroll-container shadow-lg">
         <table class="min-w-full text-sm font-mono tabular-nums table-fixed" aria-label="선수 시즌별 기록">
           <colgroup>
@@ -305,15 +305,15 @@ let player_career_page ~player_name (entries: player_career_entry list) =
             <col style="width: 60px;">  <!-- APG -->
             <col style="width: 40px;">  <!-- AllStar -->
             <col style="width: auto;">  <!-- Awards -->
-          </colgroup>
-          <thead class="bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 text-xs uppercase">
-            <tr><th scope="col" class="px-3 py-2 text-left">Season</th><th scope="col" class="px-3 py-2 text-left">Team</th><th scope="col" class="px-3 py-2 text-center" title="Jersey Number">#</th><th scope="col" class="px-3 py-2 text-center" title="Games Played">GP</th><th scope="col" class="px-3 py-2 text-center" title="Points Per Game">PPG</th><th scope="col" class="px-3 py-2 text-center" title="Rebounds Per Game">RPG</th><th scope="col" class="px-3 py-2 text-center" title="Assists Per Game">APG</th><th scope="col" class="px-3 py-2 text-center" title="All-Star Selection">★</th><th scope="col" class="px-3 py-2 text-left">Awards</th></tr>
-          </thead>
-          <tbody>%s</tbody>
-        </table>
-      </div>
-      <div class="text-center"><a href="/legends" class="text-orange-500 hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 text-sm">← Back to Legends</a></div>
-    </div>|html}
+	          </colgroup>
+	          <thead class="bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 text-xs uppercase">
+	            <tr><th scope="col" class="px-3 py-2 text-left">시즌</th><th scope="col" class="px-3 py-2 text-left">팀</th><th scope="col" class="px-3 py-2 text-center" title="등번호">#</th><th scope="col" class="px-3 py-2 text-center" title="출전 경기">GP</th><th scope="col" class="px-3 py-2 text-center" title="경기당 득점">PPG</th><th scope="col" class="px-3 py-2 text-center" title="경기당 리바운드">RPG</th><th scope="col" class="px-3 py-2 text-center" title="경기당 어시스트">APG</th><th scope="col" class="px-3 py-2 text-center" title="올스타 선정">★</th><th scope="col" class="px-3 py-2 text-left">수상</th></tr>
+	          </thead>
+	          <tbody>%s</tbody>
+	        </table>
+	      </div>
+	      <div class="text-center"><a href="/legends" class="text-orange-500 hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 text-sm">← 레전드 목록</a></div>
+	    </div>|html}
     (escape_html player_name) rows) ()
 
 (** Error page *)

@@ -931,7 +931,7 @@ let test_extract_score_flow_dedup () =
 
 let test_game_flow_chart_empty () =
   let html = Wkbl.Views_tools.game_flow_chart ~home_team:"A" ~away_team:"B" [] in
-  Alcotest.(check bool) "empty placeholder" true (contains_substring html "No score flow data available")
+  Alcotest.(check bool) "empty placeholder" true (contains_substring html "흐름 데이터가 없습니다")
 
 let test_game_flow_chart_single_point () =
   let pt : Wkbl.Domain.score_flow_point = {
@@ -944,7 +944,7 @@ let test_game_flow_chart_single_point () =
   } in
   let html = Wkbl.Views_tools.game_flow_chart ~home_team:"A" ~away_team:"B" [pt] in
   Alcotest.(check bool) "renders svg" true (contains_substring html "<svg");
-  Alcotest.(check bool) "has header" true (contains_substring html "Game Flow")
+  Alcotest.(check bool) "has header" true (contains_substring html "경기 흐름")
 
 let score_flow_tests = [
   Alcotest.test_case "Period to number conversion" `Quick test_period_to_number;
@@ -1287,6 +1287,26 @@ let test_seasons_catalog_unique_codes () =
   let uniq = codes |> List.fold_left (fun acc c -> S.add c acc) S.empty |> S.cardinal in
   Alcotest.(check int) "unique season_code" (List.length codes) uniq
 
+let test_season_start_year_of_datalab_code () =
+  Alcotest.(check (option int))
+    "046 -> 2025"
+    (Some 2025)
+    (Wkbl.Scraper.season_start_year_of_datalab_code "046");
+  Alcotest.(check (option int))
+    "001 -> 1980"
+    (Some 1980)
+    (Wkbl.Scraper.season_start_year_of_datalab_code "001");
+  Alcotest.(check (option int))
+    "invalid -> None"
+    None
+    (Wkbl.Scraper.season_start_year_of_datalab_code "bad")
+
+let test_is_league_team_variants () =
+  Alcotest.(check bool) "BNK썸 -> true" true (Wkbl.Scraper.is_league_team "BNK썸");
+  Alcotest.(check bool) "부산 BNK 썸 -> true" true (Wkbl.Scraper.is_league_team "부산 BNK 썸");
+  (* All-Star teams should not be included in league schedule filters *)
+  Alcotest.(check bool) "팀 포니블 -> false" false (Wkbl.Scraper.is_league_team "팀 포니블")
+
 let test_game_params_of_href () =
   let href = "/game/result.asp?season_gu=046&gun=1&game_type=01&game_no=40&ym=202601&viewType=2" in
   let (game_type, game_no) = Wkbl.Scraper.game_params_of_href href in
@@ -1334,6 +1354,32 @@ let test_parse_schedule_html_extracts_game_meta () =
       Alcotest.(check (option string)) "game_id" (Some "046-01-40") e.sch_game_id;
       Alcotest.(check (option string)) "game_type" (Some "01") e.sch_game_type;
       Alcotest.(check (option int)) "game_no" (Some 40) e.sch_game_no
+  | _ -> Alcotest.fail "expected exactly one schedule entry"
+
+let test_parse_schedule_html_extracts_game_meta_from_datalab_link () =
+  let html = {|
+<table><tbody>
+  <tr id="20260204">
+    <td>2/4(<span class="language">수</span>)</td>
+    <td>
+      <div class="team_versus">
+        <div class="info_team away"><strong class="team_name">삼성생명</strong><em class="txt_score">74</em></div>
+        <span class="txt_vs">vs</span>
+        <div class="info_team home"><strong class="team_name">하나은행</strong><em class="txt_score">54</em></div>
+      </div>
+    </td>
+    <td>용인실내체육관</td>
+    <td>19:00</td>
+    <td><a href="http://datalab.wkbl.or.kr/?id=04601062" target="_blank">Data Lab</a></td>
+  </tr>
+</tbody></table>
+|} in
+  let entries = Wkbl.Scraper.parse_schedule_html ~season:"046" ~ym:"202602" html in
+  match entries with
+  | [e] ->
+      Alcotest.(check (option string)) "game_id" (Some "046-01-62") e.sch_game_id;
+      Alcotest.(check (option string)) "game_type" (Some "01") e.sch_game_type;
+      Alcotest.(check (option int)) "game_no" (Some 62) e.sch_game_no
   | _ -> Alcotest.fail "expected exactly one schedule entry"
 
 let test_parse_schedule_api_html_extracts_game_meta () =
@@ -1454,6 +1500,70 @@ let test_parse_boxscore_html_two_teams () =
       | _ -> Alcotest.fail "expected exactly one home player row")
   | _ -> Alcotest.fail "expected exactly two team tables"
 
+let test_parse_boxscore_html_low_minutes_player () =
+  (* Regression: short-stint players still need stable ids + points parsing. *)
+  let html = {|
+<div class="info_table01 type_record">
+  <table><tbody>
+    <tr>
+      <td><a href="/player/detail.asp?pno=096140">양혜은</a></td>
+      <td>C</td>
+      <td>01:53</td>
+      <td>1-1</td>
+      <td>0-0</td>
+      <td>0-0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>2</td>
+    </tr>
+  </tbody></table>
+</div>
+<div class="info_table01 type_record">
+  <table><tbody>
+    <tr>
+      <td><a href="/player/detail.asp?pno=095041">김정은</a></td>
+      <td>F</td>
+      <td>10:00</td>
+      <td>1-1</td>
+      <td>0-0</td>
+      <td>0-0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>2</td>
+    </tr>
+  </tbody></table>
+</div>
+|} in
+  match Wkbl.Scraper.parse_boxscore_html html with
+  | [away; home] ->
+      (match away with
+      | [p] ->
+          Alcotest.(check string) "away player_id" "096140" p.bs_player_id;
+          Alcotest.(check string) "away player_name" "양혜은" p.bs_player_name;
+          Alcotest.(check int) "away min_seconds" ((1 * 60) + 53) p.bs_min_seconds;
+          Alcotest.(check int) "away pts" 2 p.bs_pts
+      | _ -> Alcotest.fail "expected exactly one away player row");
+      (match home with
+      | [p] ->
+          Alcotest.(check string) "home player_id" "095041" p.bs_player_id;
+          Alcotest.(check string) "home player_name" "김정은" p.bs_player_name;
+          Alcotest.(check int) "home min_seconds" (10 * 60) p.bs_min_seconds;
+          Alcotest.(check int) "home pts" 2 p.bs_pts
+      | _ -> Alcotest.fail "expected exactly one home player row")
+  | _ -> Alcotest.fail "expected exactly two team tables"
+
 let test_schedule_sync_success_policy () =
   let open Wkbl.Scraper in
   Alcotest.(check bool)
@@ -1524,14 +1634,18 @@ let scraper_tests = [
   Alcotest.test_case "get_last_sync_time_str" `Quick test_get_last_sync_time_str_initial;
   Alcotest.test_case "seasons_catalog name_of_code" `Quick test_seasons_catalog_name_of_code;
   Alcotest.test_case "seasons_catalog unique codes" `Quick test_seasons_catalog_unique_codes;
+  Alcotest.test_case "season_start_year_of_datalab_code" `Quick test_season_start_year_of_datalab_code;
+  Alcotest.test_case "is_league_team variants" `Quick test_is_league_team_variants;
   Alcotest.test_case "schedule sync success policy" `Quick test_schedule_sync_success_policy;
   Alcotest.test_case "schedule sync suspicion policy" `Quick test_schedule_sync_suspicion_reason_policy;
   Alcotest.test_case "game_params_of_href" `Quick test_game_params_of_href;
   Alcotest.test_case "game_id_of_params" `Quick test_game_id_of_params;
   Alcotest.test_case "parse_schedule_html extracts game meta" `Quick test_parse_schedule_html_extracts_game_meta;
+  Alcotest.test_case "parse_schedule_html extracts meta from datalab link" `Quick test_parse_schedule_html_extracts_game_meta_from_datalab_link;
   Alcotest.test_case "parse_schedule_api_html extracts game meta" `Quick test_parse_schedule_api_html_extracts_game_meta;
   Alcotest.test_case "normalize_game_date formats" `Quick test_normalize_game_date_formats;
   Alcotest.test_case "parse_boxscore_html extracts two teams" `Quick test_parse_boxscore_html_two_teams;
+  Alcotest.test_case "parse_boxscore_html keeps low minutes player" `Quick test_parse_boxscore_html_low_minutes_player;
 ]
 
 (* ============================================= *)
@@ -1578,6 +1692,59 @@ let test_leader_card_disambiguation () =
 let disambiguation_tests = [
   Alcotest.test_case "player disambiguation line" `Quick test_player_disambiguation_line;
   Alcotest.test_case "leader card disambiguation" `Quick test_leader_card_disambiguation;
+]
+
+(* ============================================= *)
+(* I18n Tests                                    *)
+(* ============================================= *)
+
+let i18n_lang_testable =
+  Alcotest.testable
+    (fun fmt l ->
+      Fmt.string fmt (match l with
+        | Wkbl.I18n.Ko -> "Ko"
+        | Wkbl.I18n.En -> "En"))
+    (=)
+
+let test_i18n_lang_of_code () =
+  let open Wkbl.I18n in
+  Alcotest.(check (option i18n_lang_testable)) "ko" (Some Ko) (lang_of_code "ko");
+  Alcotest.(check (option i18n_lang_testable)) "KR" (Some Ko) (lang_of_code "KR");
+  Alcotest.(check (option i18n_lang_testable)) "en" (Some En) (lang_of_code "en");
+  Alcotest.(check (option i18n_lang_testable)) "unknown" None (lang_of_code "fr")
+
+let test_i18n_lang_of_cookie_header () =
+  let open Wkbl.I18n in
+  Alcotest.(check (option i18n_lang_testable))
+    "cookie en"
+    (Some En)
+    (lang_of_cookie_header "a=b; wkbl_lang=en; c=d");
+  Alcotest.(check (option i18n_lang_testable))
+    "cookie ko"
+    (Some Ko)
+    (lang_of_cookie_header "wkbl_lang=ko");
+  Alcotest.(check (option i18n_lang_testable))
+    "cookie invalid"
+    None
+    (lang_of_cookie_header "wkbl_lang=fr");
+  Alcotest.(check (option i18n_lang_testable))
+    "cookie missing"
+    None
+    (lang_of_cookie_header "a=b")
+
+let test_i18n_set_cookie_header () =
+  let open Wkbl.I18n in
+  let h = set_cookie_header En in
+  Alcotest.(check bool) "has wkbl_lang=en" true (contains_substring h "wkbl_lang=en");
+  Alcotest.(check bool) "has Path=/" true (contains_substring h "Path=/");
+  Alcotest.(check bool) "has Max-Age" true (contains_substring h "Max-Age=");
+  Alcotest.(check bool) "has SameSite" true (contains_substring h "SameSite=");
+  Alcotest.(check bool) "has HttpOnly" true (contains_substring h "HttpOnly")
+
+let i18n_tests = [
+  Alcotest.test_case "lang_of_code" `Quick test_i18n_lang_of_code;
+  Alcotest.test_case "lang_of_cookie_header" `Quick test_i18n_lang_of_cookie_header;
+  Alcotest.test_case "set_cookie_header" `Quick test_i18n_set_cookie_header;
 ]
 
 (* ============================================= *)
@@ -1741,7 +1908,7 @@ let test_ui_copy_no_dev_terms () =
       gi_score_quality = Wkbl.Domain.Derived;
     }
   in
-  let pbp_page_html = Wkbl.Views.pbp_page ~game ~periods:[] ~selected_period:"ALL" ~events:[] in
+  let pbp_page_html = Wkbl.Views.pbp_page ~game ~periods:[] ~selected_period:"ALL" ~events:[] () in
   Alcotest.(check bool) "pbp page title mentions Korean label" true (contains_substring pbp_page_html "문자중계");
   check_clean ~ctx:"pbp_page" pbp_page_html
 
@@ -1818,6 +1985,7 @@ let test_ops_copy_hidden_by_default () =
       ~trade_years:[]
       ~draft_picks:[]
       ~trade_events:[]
+      ()
   in
   check_clean ~ctx:"transactions_page" tx_html
 
@@ -1897,6 +2065,7 @@ let () =
     "Advanced Stats", advanced_stats_tests;
     "Scraper Functions", scraper_tests;
     "Disambiguation", disambiguation_tests;
+    "I18n", i18n_tests;
     "QA Utils", qa_util_tests;
     "Observability", observability_tests;
     "UI Copy", ui_copy_tests;
