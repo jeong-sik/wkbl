@@ -3576,19 +3576,19 @@ module Queries = struct
 	    GROUP BY p.player_id
 	  |}
   let player_h2h_games = (t2 (t2 string string) (t2 string string) ->* Types.h2h_game) {|
-    WITH scored_games AS (
-      SELECT
-        g.*,
-        COALESCE(
-          g.home_score,
-          (SELECT SUM(sx.pts) FROM game_stats sx WHERE sx.game_id = g.game_id AND sx.team_code = g.home_team_code)
-        ) AS home_score_calc,
-        COALESCE(
-          g.away_score,
-          (SELECT SUM(sx.pts) FROM game_stats sx WHERE sx.game_id = g.game_id AND sx.team_code = g.away_team_code)
-        ) AS away_score_calc
-      FROM games g
-    )
+	    WITH scored_games AS (
+	      SELECT
+	        g.*,
+	        COALESCE(
+	          NULLIF(g.home_score, 0),
+	          (SELECT SUM(sx.pts) FROM game_stats sx WHERE sx.game_id = g.game_id AND sx.team_code = g.home_team_code)
+	        ) AS home_score_calc,
+	        COALESCE(
+	          NULLIF(g.away_score, 0),
+	          (SELECT SUM(sx.pts) FROM game_stats sx WHERE sx.game_id = g.game_id AND sx.team_code = g.away_team_code)
+	        ) AS away_score_calc
+	      FROM games g
+	    )
     SELECT
       g.game_id,
       g.game_date,
@@ -3622,24 +3622,24 @@ module Queries = struct
 
   (* Team H2H: games between two specific teams *)
   let team_h2h_games = (t2 (t2 (t2 string string) (t2 string string)) (t2 string string) ->* Types.game_info) {|
-    WITH scored_games AS (
-      SELECT
-        g.*,
-        COALESCE(
-          g.home_score,
-          (SELECT SUM(sx.pts) FROM game_stats sx WHERE sx.game_id = g.game_id AND sx.team_code = g.home_team_code)
-        ) AS home_score_calc,
-        COALESCE(
-          g.away_score,
-          (SELECT SUM(sx.pts) FROM game_stats sx WHERE sx.game_id = g.game_id AND sx.team_code = g.away_team_code)
-        ) AS away_score_calc,
-        CASE
-          WHEN g.home_score IS NOT NULL AND g.away_score IS NOT NULL THEN 2
-          WHEN EXISTS (SELECT 1 FROM game_stats gs WHERE gs.game_id = g.game_id) THEN 1
-          ELSE 0
-        END AS score_quality
-      FROM games g
-    )
+	    WITH scored_games AS (
+	      SELECT
+	        g.*,
+	        COALESCE(
+	          NULLIF(g.home_score, 0),
+	          (SELECT SUM(sx.pts) FROM game_stats sx WHERE sx.game_id = g.game_id AND sx.team_code = g.home_team_code)
+	        ) AS home_score_calc,
+	        COALESCE(
+	          NULLIF(g.away_score, 0),
+	          (SELECT SUM(sx.pts) FROM game_stats sx WHERE sx.game_id = g.game_id AND sx.team_code = g.away_team_code)
+	        ) AS away_score_calc,
+	        CASE
+	          WHEN NULLIF(g.home_score, 0) IS NOT NULL AND NULLIF(g.away_score, 0) IS NOT NULL THEN 2
+	          WHEN EXISTS (SELECT 1 FROM game_stats gs WHERE gs.game_id = g.game_id) THEN 1
+	          ELSE 0
+	        END AS score_quality
+	      FROM games g
+	    )
     SELECT
       g.game_id,
       g.game_date,
