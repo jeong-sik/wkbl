@@ -8,14 +8,6 @@ type missing_boxscore_game = {
   away_team_code: string;
 }
 
-type missing_pbp_game = {
-  game_id: string;
-  season_code: string;
-  game_type: string;
-  game_no: int;
-  game_date: string; (* YYYY-MM-DD *)
-}
-
 module BoxscoreSync = struct
   open Caqti_request.Infix
   open Caqti_type
@@ -169,6 +161,14 @@ module PbpSync = struct
 
   let i = int
   let s = string
+
+  type missing_pbp_game = {
+    game_id: string;
+    season_code: string;
+    game_type: string;
+    game_no: int;
+    game_date: string; (* YYYY-MM-DD *)
+  }
 
   let missing_pbp_game_tuple_type = t2 s (t2 s (t2 s (t2 i s)))
 

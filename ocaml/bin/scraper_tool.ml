@@ -232,12 +232,12 @@ let run_sync_pbp ~sw ~env ~season_filter =
     match Db.get_incomplete_pbp_games () with
     | Ok xs ->
         xs
-        |> List.filter (fun g -> season = "ALL" || g.ig_season = season)
-        |> List.map (fun g -> g.ig_game_id)
+        |> List.filter (fun g -> season = "ALL" || g.Db.ig_season = season)
+        |> List.map (fun g -> g.Db.ig_game_id)
     | Error _ -> []
   in
 
-  let missing_game_ids = missing_games |> List.map (fun g -> g.game_id) in
+  let missing_game_ids = missing_games |> List.map (fun g -> g.Db_sync.PbpSync.game_id) in
 
   let uniq_game_ids (ids : string list) =
     let seen = Hashtbl.create 512 in
@@ -806,29 +806,29 @@ let run_sync_games ~sw ~env ~season_filter =
   let errors = ref 0 in
 
   games |> List.iter (fun (g : Scraper.game_record) ->
-    match parse_game_id g.game_id with
+    match parse_game_id g.Scraper.game_id with
     | None ->
         incr skipped;
         if !skipped <= 5 then
-          Printf.eprintf "  ✗ Skip (bad game_id): %s\n" g.game_id
+          Printf.eprintf "  ✗ Skip (bad game_id): %s\n" g.Scraper.game_id
     | Some (season_code, game_type, game_no) ->
-        let hc = Scraper.code_from_team_name g.home_team_name in
-        let ac = Scraper.code_from_team_name g.away_team_name in
+        let hc = Scraper.code_from_team_name g.Scraper.home_team_name in
+        let ac = Scraper.code_from_team_name g.Scraper.away_team_name in
         if String.starts_with ~prefix:"XX_" hc || String.starts_with ~prefix:"XX_" ac then (
           incr skipped;
           if !skipped <= 5 then
-            Printf.eprintf "  ✗ Unknown team codes: %s vs %s\n" g.home_team_name g.away_team_name
+            Printf.eprintf "  ✗ Unknown team codes: %s vs %s\n" g.Scraper.home_team_name g.Scraper.away_team_name
         ) else (
-            let game_date = Scraper.normalize_game_date g.game_date in
-            let home_score = if g.home_team_score > 0 then Some g.home_team_score else None in
-            let away_score = if g.away_team_score > 0 then Some g.away_team_score else None in
-            let stadium = if String.trim g.court_name = "" then None else Some g.court_name in
+            let game_date = Scraper.normalize_game_date g.Scraper.game_date in
+            let home_score = if g.Scraper.home_team_score > 0 then Some g.Scraper.home_team_score else None in
+            let away_score = if g.Scraper.away_team_score > 0 then Some g.Scraper.away_team_score else None in
+            let stadium = if String.trim g.Scraper.court_name = "" then None else Some g.Scraper.court_name in
             let season_code =
-              if String.length g.game_season = 3 then g.game_season else season_code
+              if String.length g.Scraper.game_season = 3 then g.Scraper.game_season else season_code
             in
             (match Db.with_db (fun db ->
               Db.Repo.upsert_game
-                ~game_id:g.game_id
+                ~game_id:g.Scraper.game_id
                 ~season_code
                 ~game_type
                 ~game_no
@@ -844,7 +844,7 @@ let run_sync_games ~sw ~env ~season_filter =
             | Error e ->
                 incr errors;
                 if !errors <= 5 then
-                  Printf.eprintf "  ✗ DB error (%s): %s\n" g.game_id (Db.show_db_error e))
+                  Printf.eprintf "  ✗ DB error (%s): %s\n" g.Scraper.game_id (Db.show_db_error e))
         )
   );
 
