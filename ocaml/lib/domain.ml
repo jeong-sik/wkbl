@@ -384,6 +384,33 @@ type player_team_stint = {
   pts_games_played: int;
 }
 
+(** Normalize team stints derived from per-game boxscores.
+
+    The official dataset occasionally contains an obvious one-off row that would
+    create a "A -> B -> A" timeline with B=1 game (often very low minutes).
+    For user-facing "team movement" UI, we collapse that sandwiched 1-game stint. *)
+let normalize_player_team_stints (stints : player_team_stint list) : player_team_stint list =
+  let rec pass ~changed acc = function
+    | a :: b :: c :: rest
+      when a.pts_team_name = c.pts_team_name
+        && b.pts_team_name <> a.pts_team_name
+        && b.pts_games_played = 1 ->
+        let merged =
+          { a with
+            pts_end_date = c.pts_end_date;
+            pts_games_played = a.pts_games_played + c.pts_games_played;
+          }
+        in
+        pass ~changed:true acc (merged :: rest)
+    | x :: xs -> pass ~changed (x :: acc) xs
+    | [] -> (List.rev acc, changed)
+  in
+  let rec fix xs =
+    let ys, changed = pass ~changed:false [] xs in
+    if changed then fix ys else ys
+  in
+  fix stints
+
 type player_draft = {
   pd_player_id: string;
   pd_draft_year: int option;

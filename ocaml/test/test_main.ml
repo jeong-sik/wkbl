@@ -2288,6 +2288,87 @@ let live_api_tests = [
 ]
 
 (* ============================================= *)
+(* Player Team Stint Normalization Tests         *)
+(* ============================================= *)
+
+let test_normalize_player_team_stints_sandwich_one_game () =
+  let stints : player_team_stint list =
+    [ { pts_team_name = "KB스타즈";
+        pts_start_date = "2016-12-17";
+        pts_end_date = "2025-11-22";
+        pts_games_played = 100;
+      };
+      { pts_team_name = "BNK 썸";
+        pts_start_date = "2025-11-28";
+        pts_end_date = "2025-11-28";
+        pts_games_played = 1;
+      };
+      { pts_team_name = "KB스타즈";
+        pts_start_date = "2025-12-15";
+        pts_end_date = "2026-02-07";
+        pts_games_played = 10;
+      };
+    ]
+  in
+  let normalized = normalize_player_team_stints stints in
+  Alcotest.(check int) "collapsed to 1 stint" 1 (List.length normalized);
+  let s = List.hd normalized in
+  Alcotest.(check string) "team" "KB스타즈" s.pts_team_name;
+  Alcotest.(check string) "start" "2016-12-17" s.pts_start_date;
+  Alcotest.(check string) "end" "2026-02-07" s.pts_end_date;
+  Alcotest.(check int) "gp excludes one-off" 110 s.pts_games_played
+
+let test_normalize_player_team_stints_no_merge_three_teams () =
+  let stints : player_team_stint list =
+    [ { pts_team_name = "A";
+        pts_start_date = "2025-01-01";
+        pts_end_date = "2025-01-10";
+        pts_games_played = 3;
+      };
+      { pts_team_name = "B";
+        pts_start_date = "2025-01-12";
+        pts_end_date = "2025-01-12";
+        pts_games_played = 1;
+      };
+      { pts_team_name = "C";
+        pts_start_date = "2025-01-14";
+        pts_end_date = "2025-01-20";
+        pts_games_played = 4;
+      };
+    ]
+  in
+  let normalized = normalize_player_team_stints stints in
+  Alcotest.(check int) "keeps 3 stints" 3 (List.length normalized)
+
+let test_normalize_player_team_stints_no_merge_when_middle_gt1 () =
+  let stints : player_team_stint list =
+    [ { pts_team_name = "A";
+        pts_start_date = "2025-01-01";
+        pts_end_date = "2025-01-10";
+        pts_games_played = 3;
+      };
+      { pts_team_name = "B";
+        pts_start_date = "2025-01-12";
+        pts_end_date = "2025-01-15";
+        pts_games_played = 2;
+      };
+      { pts_team_name = "A";
+        pts_start_date = "2025-01-17";
+        pts_end_date = "2025-01-20";
+        pts_games_played = 2;
+      };
+    ]
+  in
+  let normalized = normalize_player_team_stints stints in
+  Alcotest.(check int) "keeps 3 stints" 3 (List.length normalized)
+
+let team_stint_tests =
+  [ Alcotest.test_case "A-B(1)-A collapses" `Quick test_normalize_player_team_stints_sandwich_one_game;
+    Alcotest.test_case "A-B-C stays" `Quick test_normalize_player_team_stints_no_merge_three_teams;
+    Alcotest.test_case "A-B(2)-A stays" `Quick test_normalize_player_team_stints_no_merge_when_middle_gt1;
+  ]
+
+(* ============================================= *)
 (* Player List Collapse Tests                     *)
 (* ============================================= *)
 
@@ -2381,5 +2462,6 @@ let () =
     "Observability", observability_tests;
     "UI Copy", ui_copy_tests;
     "Live API", live_api_tests;
+    "Team Stints", team_stint_tests;
     "Player Collapse", player_collapse_tests;
   ]
