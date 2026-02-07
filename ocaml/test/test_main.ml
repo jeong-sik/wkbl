@@ -2433,6 +2433,57 @@ let player_collapse_tests = [
 ]
 
 (* ============================================= *)
+(* Boxscores View Tests                          *)
+(* ============================================= *)
+
+let test_boxscores_table_hides_unscored_games () =
+  let open Wkbl.Domain in
+  let g_scored : game_summary =
+    {
+      game_id = "046-01-50";
+      game_date = "2026-01-21";
+      home_team = "BNK썸";
+      away_team = "우리은행";
+      home_score = Some 63;
+      away_score = Some 65;
+      game_type = "01";
+    }
+  in
+  let g_unscored : game_summary =
+    {
+      game_id = "046-02-99";
+      game_date = "2026-02-01";
+      home_team = "BNK썸";
+      away_team = "우리은행";
+      home_score = None;
+      away_score = None;
+      game_type = "01";
+    }
+  in
+  let html = Wkbl.Views.boxscores_table [ g_unscored; g_scored ] in
+  Alcotest.(check bool) "scored game present" true (contains_substring html "046-01-50");
+  Alcotest.(check bool) "unscored game hidden" false (contains_substring html "046-02-99")
+
+let boxscores_view_tests = [
+  Alcotest.test_case "boxscores table hides unscored games" `Quick test_boxscores_table_hides_unscored_games;
+]
+
+(* ============================================= *)
+(* Form URL-Encoded Tests                        *)
+(* ============================================= *)
+
+let test_form_urlencoded_parse_basic () =
+  let open Wkbl.Form_urlencoded in
+  let fields = parse "game_id=046-01-50&player_id=095533&reason=%ED%85%8C%EC%8A%A4%ED%8A%B8+%EA%B0%80%EC%B9%98" in
+  Alcotest.(check (option string)) "game_id" (Some "046-01-50") (find fields "game_id");
+  Alcotest.(check (option string)) "player_id" (Some "095533") (find fields "player_id");
+  Alcotest.(check (option string)) "reason" (Some "테스트 가치") (find fields "reason")
+
+let form_urlencoded_tests = [
+  Alcotest.test_case "parse basic urlencoded body" `Quick test_form_urlencoded_parse_basic;
+]
+
+(* ============================================= *)
 (* Main Test Runner                              *)
 (* ============================================= *)
 
@@ -2464,4 +2515,6 @@ let () =
     "Live API", live_api_tests;
     "Team Stints", team_stint_tests;
     "Player Collapse", player_collapse_tests;
+    "Boxscores View", boxscores_view_tests;
+    "Form URL-Encoded", form_urlencoded_tests;
   ]

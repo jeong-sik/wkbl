@@ -38,6 +38,30 @@ let request_lang request =
   Option.bind (Kirin.header "Cookie" request) I18n.lang_of_cookie_header
   |> Option.value ~default:I18n.Ko
 
+(* Admin guard for QA override tools (exclude/restore).
+   This should not be publicly accessible without a token. *)
+let admin_cookie_name = "wkbl_admin"
+
+let admin_token_env : string option =
+  Sys.getenv_opt "WKBL_ADMIN_TOKEN"
+  |> Option.map String.trim
+  |> Option.filter (fun s -> s <> "")
+
+let admin_cookie_header (token : string) : string =
+  (* Short-lived, path-wide; Strict reduces CSRF risk for these admin-only POSTs. *)
+  Printf.sprintf
+    "%s=%s; Path=/; Max-Age=604800; SameSite=Strict; HttpOnly"
+    admin_cookie_name
+    token
+
+let is_admin request : bool =
+  match (admin_token_env, Kirin.header "Cookie" request) with
+  | Some expected, Some cookie_header ->
+      (match I18n.cookie_value cookie_header admin_cookie_name with
+      | Some got -> String.trim got = expected
+      | None -> false)
+  | _ -> false
+
 let referer_to_path (referer : string) : string option =
   let r = String.trim referer in
   if r = "" then None
@@ -540,25 +564,25 @@ Sitemap: https://wkbl.win/sitemap.xml
 		          | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e)))
 		    );
 
-    (* Boxscores List *)
-    Kirin.get "/boxscores" (fun request ->
-      let lang = request_lang request in
-      match Db.get_seasons () with
-      | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
-      | Ok seasons ->
-          let season = query_season_or_latest request seasons in
-          (match Db.get_games ~season () with
-          | Ok games -> Kirin.html (Views.boxscores_page ~lang ~season ~seasons games)
-          | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e)))
-    );
+	    (* Boxscores List *)
+	    Kirin.get "/boxscores" (fun request ->
+	      let lang = request_lang request in
+	      match Db.get_seasons () with
+	      | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
+	      | Ok seasons ->
+	          let season = query_season_or_latest request seasons in
+	          (match Db.get_scored_games ~season ~include_mismatch:true () with
+	          | Ok games -> Kirin.html (Views.boxscores_page ~lang ~season ~seasons games)
+	          | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e)))
+	    );
 
-    Kirin.get "/boxscores/table" (fun request ->
-      let lang = request_lang request in
-      let season = Kirin.query_opt "season" request |> Option.value ~default:"ALL" in
-      match Db.get_games ~season () with
-      | Ok games -> Kirin.html (Views.boxscores_table ~lang games)
-      | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
-    );
+	    Kirin.get "/boxscores/table" (fun request ->
+	      let lang = request_lang request in
+	      let season = Kirin.query_opt "season" request |> Option.value ~default:"ALL" in
+	      match Db.get_scored_games ~season ~include_mismatch:true () with
+	      | Ok games -> Kirin.html (Views.boxscores_table ~lang games)
+	      | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
+	    );
 
     (* Play-by-Play (PBP) Detail - MUST come before /boxscore/:id *)
     Kirin.get "/boxscore/:id/pbp" (fun request ->
@@ -1638,6 +1662,89 @@ Sitemap: https://wkbl.win/sitemap.xml
 	      match Db.get_schedule_missing_report () with
 	      | Ok report -> Kirin.html (Views_tools.qa_schedule_missing_page report ~lang ())
 	      | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
+	    );
+
+	    (* QA Admin Login: /qa/admin?token=...&next=/qa/anomalies *)
+	    Kirin.get "/qa/admin" (fun request ->
+	      match admin_token_env with
+	      | None -> Kirin.empty `Not_found
+	      | Some expected ->
+	          let token = Kirin.query_opt "token" request |> Option.value ~default:"" |> String.trim in
+	          if token <> expected then
+	            Kirin.empty `Not_found
+	          else
+	            let next =
+	              Kirin.query_opt "next" request
+	              |> Option.value ~default:"/qa/anomalies"
+	              |> String.trim
+	            in
+	            let next = if is_safe_redirect_path next then next else "/qa/anomalies" in
+	            Kirin.with_header "Set-Cookie" (admin_cookie_header expected)
+	            @@ Kirin.redirect next
+	    );
+
+	    (* QA Overrides: exclude/restore obviously wrong rows *)
+	    Kirin.get "/qa/anomalies" (fun request ->
+	      if not (is_admin request) then
+	        Kirin.empty `Not_found
+	      else
+	        let lang = request_lang request in
+	        match Db.get_seasons () with
+	        | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
+	        | Ok seasons ->
+	            let season = query_season_or_latest request seasons in
+	            (match Db.get_stat_anomaly_candidates ~season (), Db.get_stat_exclusions ~season () with
+	            | Ok candidates, Ok exclusions ->
+	                Kirin.html (Views_tools.qa_anomalies_page ~lang ~season ~seasons ~candidates ~exclusions ())
+	            | Error e, _ -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
+	            | _, Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e)))
+	    );
+
+	    Kirin.post "/qa/anomalies/exclude" (fun request ->
+	      if not (is_admin request) then
+	        Kirin.empty `Not_found
+	      else
+	        let lang = request_lang request in
+	        let fields = Form_urlencoded.parse (Kirin.Request.body request) in
+	        let season = Form_urlencoded.find fields "season" |> Option.value ~default:"ALL" |> String.trim in
+	        let game_id = Form_urlencoded.find fields "game_id" |> Option.value ~default:"" |> String.trim in
+	        let player_id = Form_urlencoded.find fields "player_id" |> Option.value ~default:"" |> String.trim in
+	        let reason = Form_urlencoded.find fields "reason" |> Option.value ~default:"" |> String.trim in
+	        if game_id = "" || player_id = "" then
+	          Kirin.html (Views.error_page ~lang "요청 값이 비어있습니다.")
+	        else
+	          (match Db.upsert_game_stats_exclusion ~game_id ~player_id ~reason () with
+	          | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
+	          | Ok () -> (
+	              match Db.refresh_matviews () with
+	              | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
+	              | Ok () ->
+	                  Db.clear_all_caches ();
+	                  Kirin.redirect (Printf.sprintf "/qa/anomalies?season=%s" (Uri.pct_encode season))
+	            ))
+	    );
+
+	    Kirin.post "/qa/anomalies/restore" (fun request ->
+	      if not (is_admin request) then
+	        Kirin.empty `Not_found
+	      else
+	        let lang = request_lang request in
+	        let fields = Form_urlencoded.parse (Kirin.Request.body request) in
+	        let season = Form_urlencoded.find fields "season" |> Option.value ~default:"ALL" |> String.trim in
+	        let game_id = Form_urlencoded.find fields "game_id" |> Option.value ~default:"" |> String.trim in
+	        let player_id = Form_urlencoded.find fields "player_id" |> Option.value ~default:"" |> String.trim in
+	        if game_id = "" || player_id = "" then
+	          Kirin.html (Views.error_page ~lang "요청 값이 비어있습니다.")
+	        else
+	          (match Db.delete_game_stats_exclusion ~game_id ~player_id () with
+	          | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
+	          | Ok () -> (
+	              match Db.refresh_matviews () with
+	              | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
+	              | Ok () ->
+	                  Db.clear_all_caches ();
+	                  Kirin.redirect (Printf.sprintf "/qa/anomalies?season=%s" (Uri.pct_encode season))
+	            ))
 	    );
     (* PBP Data Quality API - verifies T2=HOME pattern
        Usage: /qa/pbp              - normal check (200 always)
