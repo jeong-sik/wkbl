@@ -154,3 +154,107 @@ let update_game_scores_if_missing ~game_id ~away_score ~home_score =
 
 let get_game_teams ~game_id =
   Db.with_db (fun db -> BoxscoreSync.get_game_teams ~game_id db)
+
+module PbpSync = struct
+  open Caqti_request.Infix
+  open Caqti_type
+
+  let i = int
+  let s = string
+
+  type missing_pbp_game = {
+    game_id: string;
+    season_code: string;
+    game_type: string;
+    game_no: int;
+    game_date: string; (* YYYY-MM-DD *)
+  }
+
+  let missing_pbp_game_tuple_type = t2 s (t2 s (t2 s (t2 i s)))
+
+  let games_missing_pbp_query =
+    (t2 s s ->* missing_pbp_game_tuple_type)
+    {|SELECT
+        g.game_id,
+        g.season_code,
+        g.game_type,
+        g.game_no,
+        COALESCE(g.game_date::text, '')
+      FROM games g
+      LEFT JOIN (
+        SELECT DISTINCT game_id FROM play_by_play_events
+      ) p ON p.game_id = g.game_id
+      WHERE
+        p.game_id IS NULL
+        AND g.game_date IS NOT NULL
+        AND g.home_score IS NOT NULL
+        AND g.away_score IS NOT NULL
+        AND g.home_score > 0
+        AND g.away_score > 0
+        AND ($1 = 'ALL' OR g.season_code = $2)
+      ORDER BY g.game_date DESC
+      LIMIT 200|}
+
+  let delete_pbp_by_game_query =
+    (s ->. unit)
+    {|DELETE FROM play_by_play_events WHERE game_id = ?|}
+
+  let pbp_row_type =
+    t2 s
+      (t2 s
+         (t2 i
+            (t2 i
+               (t2 s (t2 (option i) (t2 (option i) (t2 s (option s))))))))
+
+  let upsert_pbp_event_query =
+    (pbp_row_type ->. unit)
+    {|INSERT INTO play_by_play_events
+        (game_id, period_code, event_index, team_side, description, team1_score, team2_score, clock, player_id)
+      VALUES
+        ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      ON CONFLICT (game_id, period_code, event_index) DO UPDATE SET
+        team_side = EXCLUDED.team_side,
+        description = EXCLUDED.description,
+        team1_score = EXCLUDED.team1_score,
+        team2_score = EXCLUDED.team2_score,
+        clock = EXCLUDED.clock,
+        player_id = EXCLUDED.player_id|}
+
+  let missing_pbp_game_of_tuple (game_id, (season_code, (game_type, (game_no, game_date)))) =
+    { game_id; season_code; game_type; game_no; game_date }
+
+  let get_games_missing_pbp ~season (module Db_conn : Caqti_eio.CONNECTION) =
+    Db_conn.collect_list games_missing_pbp_query (season, season)
+    |> Result.map (List.map missing_pbp_game_of_tuple)
+
+  let delete_pbp_by_game ~game_id (module Db_conn : Caqti_eio.CONNECTION) =
+    Db_conn.exec delete_pbp_by_game_query game_id
+
+  let upsert_pbp_event ~(game_id : string) (e : Domain.pbp_event) ~(player_id : string option)
+      (module Db_conn : Caqti_eio.CONNECTION) =
+    Db_conn.exec upsert_pbp_event_query
+      ( game_id,
+        ( e.pe_period_code,
+          ( e.pe_event_index,
+            ( e.pe_team_side,
+              ( e.pe_description,
+                (e.pe_team1_score, (e.pe_team2_score, (e.pe_clock, player_id))) ) ) ) ) )
+
+  let replace_pbp_events ~(game_id : string) (rows : (Domain.pbp_event * string option) list)
+      (module Db_conn : Caqti_eio.CONNECTION) =
+    let (let*) = Result.bind in
+    let* () = delete_pbp_by_game ~game_id (module Db_conn) in
+    let rec loop n = function
+      | [] -> Ok n
+      | (e, pid) :: rest ->
+          let* () = upsert_pbp_event ~game_id e ~player_id:pid (module Db_conn) in
+          loop (n + 1) rest
+    in
+    loop 0 rows
+end
+
+let get_games_missing_pbp ?(season="ALL") () =
+  Db.with_db (fun db -> PbpSync.get_games_missing_pbp ~season db)
+
+let replace_pbp_events ~game_id rows =
+  Db.with_db (fun db -> PbpSync.replace_pbp_events ~game_id rows db)
