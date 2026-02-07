@@ -170,26 +170,54 @@ let prediction_card ~(home: string) ~(away: string) (output: Domain.prediction_o
   a_c1 away (res.prob_b *. 100.0)
   winner
 
-(** Convert SVG to PNG using ImageMagick (sync, blocking) *)
+(** Convert SVG to PNG using ImageMagick.
+
+    This uses argv-based process spawning (no shell). Still blocking. *)
 let svg_to_png svg_content =
   let temp_svg = Filename.temp_file "card_" ".svg" in
   let temp_png = Filename.temp_file "card_" ".png" in
-  let oc = open_out temp_svg in
-  output_string oc svg_content;
-  close_out oc;
-  let cmd = Printf.sprintf "magick -background none '%s' -density 150 '%s' 2>/dev/null"
-    temp_svg temp_png in
-  let result = Sys.command cmd in
-  Sys.remove temp_svg;
-  if result = 0 then begin
-    let ic = open_in_bin temp_png in
-    let len = in_channel_length ic in
-    let data = Bytes.create len in
-    really_input ic data 0 len;
-    close_in ic;
-    Sys.remove temp_png;
-    Some (Bytes.to_string data)
-  end else begin
-    (try Sys.remove temp_png with _ -> ());
-    None
-  end
+
+  let write_file path content =
+    let oc = open_out path in
+    Fun.protect ~finally:(fun () -> close_out_noerr oc) (fun () -> output_string oc content)
+  in
+  let read_file path =
+    let ic = open_in_bin path in
+    Fun.protect
+      ~finally:(fun () -> close_in_noerr ic)
+      (fun () ->
+        let len = in_channel_length ic in
+        let data = Bytes.create len in
+        really_input ic data 0 len;
+        Bytes.to_string data)
+  in
+  let run_magick () =
+    let dev_null =
+      try Unix.openfile "/dev/null" [ Unix.O_WRONLY ] 0 with
+      | _ -> Unix.stdout
+    in
+    Fun.protect
+      ~finally:(fun () -> if dev_null <> Unix.stdout then Unix.close dev_null)
+      (fun () ->
+        let argv =
+          [| "magick"; "-background"; "none"; temp_svg; "-density"; "150"; temp_png |]
+        in
+        try
+          let pid = Unix.create_process "magick" argv Unix.stdin dev_null dev_null in
+          match snd (Unix.waitpid [] pid) with
+          | Unix.WEXITED 0 -> true
+          | _ -> false
+        with
+        | Unix.Unix_error (Unix.ENOENT, _, _) -> false)
+  in
+
+  Fun.protect
+    ~finally:(fun () ->
+      (try Sys.remove temp_svg with _ -> ());
+      (try Sys.remove temp_png with _ -> ()))
+    (fun () ->
+      try
+        write_file temp_svg svg_content;
+        if run_magick () then Some (read_file temp_png) else None
+      with
+      | _ -> None)
