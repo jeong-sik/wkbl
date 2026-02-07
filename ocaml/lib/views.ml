@@ -25,7 +25,7 @@ let live_scores_widget (games: Domain.live_game list) =
    in
    let is_pre_game =
     (not g.lg_is_live)
-    && (let q = String.trim g.lg_quarter in q = "경기전" || q = "경기 전")
+    && (let q = String.trim g.lg_quarter in q = "경기전" || q = "경기 전" || q = "예정")
    in
    let score_center =
     if is_pre_game then
