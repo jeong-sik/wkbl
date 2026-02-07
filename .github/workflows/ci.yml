@@ -1,0 +1,60 @@
+name: OCaml Build & Test
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  ocaml:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup OCaml
+        uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: 5.4.0
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libev-dev \
+            libssl-dev \
+            libpq-dev \
+            libgmp-dev \
+            libffi-dev \
+            libsqlite3-dev \
+            liburing-dev \
+            pkg-config \
+            perl
+
+      - name: Cache opam dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.opam
+          key: ${{ runner.os }}-opam-${{ hashFiles('ocaml/dune-project', 'ocaml/*.opam') }}
+          restore-keys: |
+            ${{ runner.os }}-opam-
+
+      - name: Install dependencies
+        run: |
+          cd ocaml
+          opam pin add -n -y grpc-direct https://github.com/jeong-sik/grpc-direct.git
+          opam pin add -n -y grpc-direct-core https://github.com/jeong-sik/grpc-direct.git
+          opam pin add -n -y ocaml-webrtc https://github.com/jeong-sik/ocaml-webrtc.git
+          opam pin add -n -y kirin https://github.com/jeong-sik/kirin.git
+          opam install . --deps-only --yes
+
+      - name: Build (release)
+        run: |
+          cd ocaml
+          opam exec -- dune build --profile=release bin/main.exe bin/scraper_tool.exe
+
+      - name: Test
+        run: |
+          cd ocaml
+          opam exec -- dune test
+
