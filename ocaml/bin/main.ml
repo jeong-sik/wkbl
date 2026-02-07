@@ -35,8 +35,7 @@ let is_safe_redirect_path (s : string) =
   && not (String.contains t '\r')
 
 let request_lang request =
-  Kirin.header "Cookie" request
-  |> Option.bind I18n.lang_of_cookie_header
+  Option.bind (Kirin.header "Cookie" request) I18n.lang_of_cookie_header
   |> Option.value ~default:I18n.Ko
 
 let referer_to_path (referer : string) : string option =
@@ -68,7 +67,7 @@ let redirect_back_or_home request =
   if next_q <> "" && is_safe_redirect_path next_q then
     next_q
   else
-    match Kirin.header "Referer" request |> Option.bind referer_to_path with
+    match Option.bind (Kirin.header "Referer" request) referer_to_path with
     | Some p when is_safe_redirect_path p -> p
     | _ -> "/"
 
