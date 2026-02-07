@@ -42,6 +42,7 @@ Usage:
   scraper_tool sync games              Sync DataLab game results to database
   scraper_tool sync games --season=X   Sync specific season game results
   scraper_tool sync boxscore           Sync missing boxscores to database
+  scraper_tool sync pbp [--season=X]   Sync play-by-play (live text) to database
   scraper_tool sync history [--purge]            Sync ALL historical games to database (1998-2026)
   scraper_tool sync history --season=X [--purge] Sync specific season to database
   scraper_tool history [--csv]         Fetch ALL historical games (1998-2026, 43 seasons!)
@@ -190,6 +191,185 @@ let run_sync_boxscore ~sw ~env ~season_filter =
 
       Printf.printf "\n=== Boxscore Sync Complete ===\n"
   )
+
+let run_sync_pbp ~sw ~env ~season_filter =
+  let db_url =
+    match get_db_url () with
+    | Some url -> url
+    | None ->
+        Printf.eprintf "Error: DATABASE_URL not set\n";
+        exit 1
+  in
+
+  (match Db.init_pool ~sw ~stdenv:(env :> Caqti_eio.stdenv) db_url with
+  | Ok () -> ()
+  | Error e ->
+      Printf.eprintf "DB Error: %s\n" (Db.show_db_error e);
+      exit 1);
+
+  let season =
+    Option.value ~default:(Scraper.current_season_code_auto ()) season_filter
+  in
+
+  let take n xs =
+    let rec loop acc n = function
+      | [] -> List.rev acc
+      | _ when n <= 0 -> List.rev acc
+      | x :: rest -> loop (x :: acc) (n - 1) rest
+    in
+    loop [] n xs
+  in
+
+  let missing_games =
+    match Db_sync.get_games_missing_pbp ~season () with
+    | Ok xs -> xs
+    | Error e ->
+        Printf.eprintf "Failed to fetch missing PBP games: %s\n" (Db.show_db_error e);
+        []
+  in
+
+  let incomplete_game_ids =
+    match Db.get_incomplete_pbp_games () with
+    | Ok xs ->
+        xs
+        |> List.filter (fun g -> season = "ALL" || g.ig_season = season)
+        |> List.map (fun g -> g.ig_game_id)
+    | Error _ -> []
+  in
+
+  let missing_game_ids = missing_games |> List.map (fun g -> g.game_id) in
+
+  let uniq_game_ids (ids : string list) =
+    let seen = Hashtbl.create 512 in
+    ids
+    |> List.filter (fun id ->
+        if Hashtbl.mem seen id then false
+        else (
+          Hashtbl.add seen id ();
+          true))
+  in
+
+  let max_games =
+    match season_filter with
+    | None -> 80
+    | Some _ -> 200
+  in
+
+  let game_ids =
+    uniq_game_ids (missing_game_ids @ incomplete_game_ids) |> take max_games
+  in
+
+  let total = List.length game_ids in
+  Printf.printf
+    "Found %d games missing PBP + %d incomplete PBP. Starting sync (%d total, season=%s)...\n%!"
+    (List.length missing_game_ids)
+    (List.length incomplete_game_ids)
+    total
+    season;
+
+  let parse_game_id game_id =
+    match String.split_on_char '-' (String.trim game_id) with
+    | [season_gu; game_type; game_no_s] -> (
+        match int_of_string_opt (String.trim game_no_s) with
+        | Some game_no -> Some (season_gu, game_type, game_no)
+        | None -> None)
+    | _ -> None
+  in
+
+  let pick_player_id ~(roster : (string * string) list) (desc : string) =
+    let desc = String.trim desc in
+    if desc = "" then None
+    else
+      let starts_with_name name =
+        let name = String.trim name in
+        if name = "" then false
+        else
+          let ln = String.length name in
+          let ld = String.length desc in
+          if ld < ln then false
+          else
+            String.sub desc 0 ln = name
+            && (ld = ln || desc.[ln] = ' ')
+      in
+      let candidates =
+        roster
+        |> List.filter (fun (name, _id) -> starts_with_name name)
+        |> List.sort (fun (a, _) (b, _) -> compare (String.length b) (String.length a))
+      in
+      match candidates with
+      | [] -> None
+      | (name1, id1) :: rest ->
+          let len1 = String.length (String.trim name1) in
+          let same_len =
+            rest
+            |> List.filter (fun (n, _) -> String.length (String.trim n) = len1)
+          in
+          (* If two different IDs match with the same longest name length, do not guess. *)
+          if List.exists (fun (_n, id) -> id <> id1) same_len then None else Some id1
+  in
+
+  let get_rosters ~game_id =
+    match Db.get_boxscore ~game_id () with
+    | Ok bs ->
+        let away =
+          bs.boxscore_away_players
+          |> List.map (fun (p : Domain.boxscore_player_stat) ->
+              (String.trim p.bs_player_name, p.bs_player_id))
+        in
+        let home =
+          bs.boxscore_home_players
+          |> List.map (fun (p : Domain.boxscore_player_stat) ->
+              (String.trim p.bs_player_name, p.bs_player_id))
+        in
+        Some (away, home)
+    | Error _ -> None
+  in
+
+  let clock = Eio.Stdenv.clock env in
+  let ok_count = ref 0 in
+  let skip_count = ref 0 in
+  let err_count = ref 0 in
+  game_ids
+  |> List.iteri (fun i game_id ->
+      Printf.printf "[%d/%d] Syncing PBP for game: %s\n%!" (i + 1) total game_id;
+      match parse_game_id game_id with
+      | None ->
+          incr err_count;
+          Printf.eprintf "  ✗ Cannot parse game_id: %s\n%!" game_id
+      | Some (season_gu, game_type, game_no) ->
+          let events =
+            Scraper.fetch_game_pbp_events ~sw ~env ~season_gu ~game_type ~game_no ()
+          in
+          if events = [] then (
+            incr skip_count;
+            Printf.printf "  - No PBP available, skipping.\n%!"
+          ) else (
+            let rosters_opt = get_rosters ~game_id in
+            let rows =
+              events
+              |> List.map (fun (e : Domain.pbp_event) ->
+                  let player_id =
+                    match (e.pe_team_side, rosters_opt) with
+                    | 1, Some (away, _home) ->
+                        pick_player_id ~roster:away e.pe_description
+                    | 2, Some (_away, home) ->
+                        pick_player_id ~roster:home e.pe_description
+                    | _ -> None
+                  in
+                  (e, player_id))
+            in
+            match Db_sync.replace_pbp_events ~game_id rows with
+            | Ok n ->
+                incr ok_count;
+                Printf.printf "  ✓ Upserted %d events\n%!" n
+            | Error e ->
+                incr err_count;
+                Printf.eprintf "  ✗ DB error: %s\n%!" (Db.show_db_error e)
+          );
+          Eio.Time.sleep clock 0.2);
+  Printf.printf
+    "\n=== PBP Sync Complete ===\nOK: %d, Skipped(no PBP): %d, Errors: %d\n%!"
+    !ok_count !skip_count !err_count
 
 let run_draft ~sw ~env ~season_filter ~csv_output =
   let entries = match season_filter with
@@ -903,11 +1083,14 @@ let () =
   | "sync" :: "boxscore" :: _ ->
       run_with_rng @@ fun ~sw ~env ->
       run_sync_boxscore ~sw ~env ~season_filter
+  | "sync" :: "pbp" :: _ ->
+      run_with_rng @@ fun ~sw ~env ->
+      run_sync_pbp ~sw ~env ~season_filter
   | "sync" :: "history" :: _ ->
       run_with_rng @@ fun ~sw ~env ->
       run_sync_history ~sw ~env ~season_filter ~purge
   | "sync" :: _ ->
-      Printf.eprintf "Unknown sync subcommand. Use 'schedule', 'games', 'boxscore', or 'history'\n%s" usage;
+      Printf.eprintf "Unknown sync subcommand. Use 'schedule', 'games', 'boxscore', 'pbp', or 'history'\n%s" usage;
       exit 1
   | "history" :: _ ->
       run_with_rng @@ fun ~sw ~env ->

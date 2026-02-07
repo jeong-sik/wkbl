@@ -1745,6 +1745,34 @@ let test_schedule_sync_suspicion_reason_policy () =
        ~dates:["2026-02-01"; "2026-02-02"]
        ~completed_dates:["2026-02-01"])
 
+let test_parse_live_pbp_xml_basic () =
+  let xml =
+    {|<?xml version="1.0" encoding="utf-8" ?><playHistory>|}
+    ^ {|<playhistory>Q1|2|게임시작|||10:00</playhistory>|}
+    ^ {|<playhistory>Q1|2|세키 나나미 2점슛성공|0|2|07:45</playhistory>|}
+    ^ {|</playHistory>|}
+  in
+  let events = Wkbl.Scraper.parse_live_pbp_xml ~seq0:0 xml in
+  Alcotest.(check int) "event count" 2 (List.length events);
+  let e0 = List.nth events 0 in
+  Alcotest.(check string) "e0 period" "Q1" e0.pe_period_code;
+  Alcotest.(check int) "e0 index" 0 e0.pe_event_index;
+  Alcotest.(check int) "e0 team_side" 2 e0.pe_team_side;
+  Alcotest.(check string) "e0 desc" "게임시작" e0.pe_description;
+  Alcotest.(check (option int)) "e0 t1 score none" None e0.pe_team1_score;
+  Alcotest.(check (option int)) "e0 t2 score none" None e0.pe_team2_score;
+  Alcotest.(check string) "e0 clock" "10:00" e0.pe_clock;
+
+  let e1 = List.nth events 1 in
+  Alcotest.(check int) "e1 index" 1 e1.pe_event_index;
+  Alcotest.(check string) "e1 desc keeps spaced name" "세키 나나미 2점슛성공" e1.pe_description;
+  Alcotest.(check (option int)) "e1 away score (team1)" (Some 0) e1.pe_team1_score;
+  Alcotest.(check (option int)) "e1 home score (team2)" (Some 2) e1.pe_team2_score;
+
+  let events2 = Wkbl.Scraper.parse_live_pbp_xml ~seq0:50 xml in
+  let e1b = List.nth events2 1 in
+  Alcotest.(check int) "seq0 offset applied" 51 e1b.pe_event_index
+
 let scraper_tests = [
   Alcotest.test_case "code_from_team_name known" `Quick test_code_from_team_name_known;
   Alcotest.test_case "code_from_team_name unknown" `Quick test_code_from_team_name_unknown;
@@ -1768,6 +1796,7 @@ let scraper_tests = [
   Alcotest.test_case "normalize_game_date formats" `Quick test_normalize_game_date_formats;
   Alcotest.test_case "parse_boxscore_html extracts two teams" `Quick test_parse_boxscore_html_two_teams;
   Alcotest.test_case "parse_boxscore_html keeps low minutes player" `Quick test_parse_boxscore_html_low_minutes_player;
+  Alcotest.test_case "parse_live_pbp_xml basic" `Quick test_parse_live_pbp_xml_basic;
 ]
 
 (* ============================================= *)
@@ -2235,6 +2264,34 @@ let ui_copy_tests = [
 ]
 
 (* ============================================= *)
+(* External Link / Live UX Tests                 *)
+(* ============================================= *)
+
+let test_wkbl_official_game_result_url_builds_valid_url () =
+  let url =
+    Wkbl.Views_common.wkbl_official_game_result_url
+      ~game_id:"046-01-2"
+      ~game_date:"2025-11-17"
+  in
+  Alcotest.(check (option string))
+    "official URL"
+    (Some
+       "https://www.wkbl.or.kr/game/result.asp?season_gu=046&game_type=01&game_no=2&ym=202511&viewType=1")
+    url
+
+let test_live_page_treats_0_0_as_scheduled () =
+  let html = Wkbl.Views.live_page () in
+  Alcotest.(check bool)
+    "0-0 scheduled guard present"
+    true
+    (contains_substring html "game.home_score === 0 && game.away_score === 0")
+
+let external_link_tests = [
+  Alcotest.test_case "wkbl official url builds valid url" `Quick test_wkbl_official_game_result_url_builds_valid_url;
+  Alcotest.test_case "live page treats 0-0 as scheduled" `Quick test_live_page_treats_0_0_as_scheduled;
+]
+
+(* ============================================= *)
 (* Live API Tests                                *)
 (* ============================================= *)
 
@@ -2521,6 +2578,7 @@ let () =
     "QA Utils", qa_util_tests;
     "Observability", observability_tests;
     "UI Copy", ui_copy_tests;
+    "External Links", external_link_tests;
     "Live API", live_api_tests;
     "Team Stints", team_stint_tests;
     "Player Collapse", player_collapse_tests;

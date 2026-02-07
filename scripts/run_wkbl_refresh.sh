@@ -56,7 +56,9 @@ run_refresh() {
        && log "Syncing game results (DataLab)..." \
        && dune exec bin/scraper_tool.exe sync games \
        && log "Syncing boxscores..." \
-       && dune exec bin/scraper_tool.exe sync boxscore; then
+       && dune exec bin/scraper_tool.exe sync boxscore \
+       && log "Syncing play-by-play..." \
+       && dune exec bin/scraper_tool.exe sync pbp; then
         local end_time duration
         end_time=$(date +%s)
         duration=$((end_time - start_time))
