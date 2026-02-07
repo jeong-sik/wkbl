@@ -2180,6 +2180,8 @@ let qa_anomalies_page
   let label_restore = tr { ko = "복구"; en = "Restore" } in
   let label_reason = tr { ko = "사유"; en = "Reason" } in
   let label_when = tr { ko = "시각"; en = "When" } in
+  let label_game_id = tr { ko = "경기 ID"; en = "Game ID" } in
+  let label_player_id = tr { ko = "선수 ID"; en = "Player ID" } in
   let ph_game_id = tr { ko = "게임 ID (예: 046-01-50)"; en = "Game ID (e.g., 046-01-50)" } in
   let ph_player_id = tr { ko = "선수 ID (예: 095533)"; en = "Player ID (e.g., 095533)" } in
   let ph_reason = tr { ko = "사유 (선택)"; en = "Reason (optional)" } in
@@ -2312,11 +2314,11 @@ let qa_anomalies_page
     <form action="/qa/anomalies/exclude" method="post" class="mt-4 grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
       <input type="hidden" name="season" value="%s">
       <label class="block">
-        <span class="text-[11px] text-slate-500 dark:text-slate-400 font-bold">game_id</span>
+        <span class="text-[11px] text-slate-500 dark:text-slate-400 font-bold">%s</span>
         <input name="game_id" placeholder="%s" class="mt-1 w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm font-mono focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/40">
       </label>
       <label class="block">
-        <span class="text-[11px] text-slate-500 dark:text-slate-400 font-bold">player_id</span>
+        <span class="text-[11px] text-slate-500 dark:text-slate-400 font-bold">%s</span>
         <input name="player_id" placeholder="%s" class="mt-1 w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm font-mono focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/40">
       </label>
       <label class="block md:col-span-1">
@@ -2381,7 +2383,9 @@ let qa_anomalies_page
       season_options
       (escape_html label_manual)
       (escape_html season)
+      (escape_html label_game_id)
       (escape_html ph_game_id)
+      (escape_html label_player_id)
       (escape_html ph_player_id)
       (escape_html label_reason)
       (escape_html ph_reason)
