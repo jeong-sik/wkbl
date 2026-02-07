@@ -1,6 +1,7 @@
 (** AI-powered analysis and explanations for WKBL predictions *)
 
 open Domain
+open I18n
 
 (** Simple in-memory cache for AI explanations *)
 let explanation_cache : (string, string) Hashtbl.t = Hashtbl.create 32
@@ -334,7 +335,7 @@ let analyze_flow (quarters: quarter_score list) =
       flow_text ^ best_text
 
 (** Generate game summary prompt for LLM *)
-let build_game_summary_prompt ?(quarters=[]) (bs: game_boxscore) =
+let build_game_summary_prompt ?(quarters=[]) ?(lang=Ko) (bs: game_boxscore) =
   let gi = bs.boxscore_game in
   let margin = gi.gi_home_score - gi.gi_away_score in
   let winner =
@@ -361,13 +362,21 @@ let build_game_summary_prompt ?(quarters=[]) (bs: game_boxscore) =
 
   (* Quarter flow section *)
   let quarter_section = if quarters = [] then "" else
-    Printf.sprintf "\n\n## 쿼터별 점수\n%s\n\n## 경기 흐름\n%s"
-      (format_quarter_flow quarters gi.gi_home_team_name gi.gi_away_team_name)
-      (analyze_flow quarters)
+    match lang with
+    | Ko ->
+        Printf.sprintf "\n\n## 쿼터별 점수\n%s\n\n## 경기 흐름\n%s"
+          (format_quarter_flow quarters gi.gi_home_team_name gi.gi_away_team_name)
+          (analyze_flow quarters)
+    | En ->
+        Printf.sprintf "\n\n## Quarter Scores\n%s\n\n## Game Flow\n%s"
+          (format_quarter_flow quarters gi.gi_home_team_name gi.gi_away_team_name)
+          (analyze_flow quarters)
   in
 
-  Printf.sprintf
-{|당신은 한국 여자프로농구(WKBL) 전문 기자입니다. 다음 경기 결과를 바탕으로 3문장 이내의 간결한 경기 요약을 작성하세요.
+  match lang with
+  | Ko ->
+      Printf.sprintf
+        {|당신은 한국 여자프로농구(WKBL) 전문 기자입니다. 다음 경기 결과를 바탕으로 3문장 이내의 간결한 경기 요약을 작성하세요.
 
 ## 경기 정보
 - 날짜: %s
@@ -383,59 +392,118 @@ let build_game_summary_prompt ?(quarters=[]) (bs: game_boxscore) =
 - 둘째 문장: MVP 후보의 활약
 - 셋째 문장: 경기 흐름/특징 (예: 접전, 대승, 역전, 3쿼터 폭발 등)
 - 팀명은 정식 명칭 사용
+- 과도한 확신 표현 자제
 - 3문장 이내로 작성|}
-    gi.gi_game_date
-    gi.gi_home_team_name gi.gi_home_score
-    gi.gi_away_team_name gi.gi_away_score
-    winner (abs margin)
-    mvp_text quarter_section
+        gi.gi_game_date
+        gi.gi_home_team_name gi.gi_home_score
+        gi.gi_away_team_name gi.gi_away_score
+        winner (abs margin)
+        mvp_text quarter_section
+  | En ->
+      Printf.sprintf
+        {|You are a WKBL basketball reporter. Based on the game result below, write a concise recap in at most 3 sentences.
+
+## Game Info
+- Date: %s
+- Home: %s (%d)
+- Away: %s (%d)
+- Winner: %s (margin: %d)
+
+## Key Player
+%s%s
+
+## Request
+- Sentence 1: result and margin
+- Sentence 2: top performer impact
+- Sentence 3: flow / turning point (optional)
+- Use official team names
+- Avoid overconfident language
+- Max 3 sentences|}
+        gi.gi_game_date
+        gi.gi_home_team_name gi.gi_home_score
+        gi.gi_away_team_name gi.gi_away_score
+        winner (abs margin)
+        mvp_text quarter_section
 
 (** Fallback game summary when AI is unavailable *)
-let fallback_game_summary (bs: game_boxscore) =
+let fallback_game_summary ?(lang=Ko) (bs: game_boxscore) =
   let gi = bs.boxscore_game in
-  let margin = abs (gi.gi_home_score - gi.gi_away_score) in
-  let winner, loser =
-    if gi.gi_home_score > gi.gi_away_score then
-      (gi.gi_home_team_name, gi.gi_away_team_name)
-    else
-      (gi.gi_away_team_name, gi.gi_home_team_name)
+  let score_home = gi.gi_home_score in
+  let score_away = gi.gi_away_score in
+  let has_player_stats =
+    bs.boxscore_home_players <> [] || bs.boxscore_away_players <> []
   in
+  let has_result = score_home > 0 && score_away > 0 && score_home <> score_away in
+  let margin = abs (score_home - score_away) in
+
+  (* If we do not have a meaningful result yet, be explicit instead of guessing. *)
+  if (not has_result) && (not has_player_stats) then
+    (match lang with
+    | Ko -> "경기 전이거나 기록이 아직 없습니다. 경기 후에 업데이트됩니다."
+    | En -> "This game hasn't started yet or stats aren't available. It will update after the game.")
+  else if not has_result then
+    (match lang with
+    | Ko -> "기록이 아직 완전하지 않아 요약을 보류합니다. 잠시 후 다시 확인해 주세요."
+    | En -> "The result isn't fully available yet, so the summary is withheld for now.")
+  else
+    let winner, loser =
+      if score_home > score_away then
+        (gi.gi_home_team_name, gi.gi_away_team_name)
+      else
+        (gi.gi_away_team_name, gi.gi_home_team_name)
+    in
 
   (* Find MVP candidate *)
   let all_players = bs.boxscore_home_players @ bs.boxscore_away_players in
   let mvp = find_top_performer all_players in
 
   let result_text =
-    if margin >= 20 then
-      Printf.sprintf "%s%s %s%s 상대로 %d점 차 대승을 거뒀습니다."
-        winner (particle_ga winner) loser (particle_reul loser) margin
-    else if margin >= 10 then
-      Printf.sprintf "%s%s %s%s %d점 차로 제압했습니다."
-        winner (particle_ga winner) loser (particle_reul loser) margin
-    else if margin <= 5 then
-      Printf.sprintf "%s%s %s%s 상대로 %d점 차 접전 끝에 신승을 거뒀습니다."
-        winner (particle_ga winner) loser (particle_reul loser) margin
-    else
-      Printf.sprintf "%s%s %s%s %d점 차로 이겼습니다."
-        winner (particle_ga winner) loser (particle_reul loser) margin
+    match lang with
+    | Ko ->
+        if margin >= 20 then
+          Printf.sprintf "%s%s %s%s 상대로 %d점 차 대승을 거뒀습니다."
+            winner (particle_ga winner) loser (particle_reul loser) margin
+        else if margin >= 10 then
+          Printf.sprintf "%s%s %s%s %d점 차로 제압했습니다."
+            winner (particle_ga winner) loser (particle_reul loser) margin
+        else if margin <= 5 then
+          Printf.sprintf "%s%s %s%s 상대로 %d점 차 접전 끝에 승리했습니다."
+            winner (particle_ga winner) loser (particle_reul loser) margin
+        else
+          Printf.sprintf "%s%s %s%s %d점 차로 이겼습니다."
+            winner (particle_ga winner) loser (particle_reul loser) margin
+    | En ->
+        if margin >= 20 then
+          Printf.sprintf "%s beat %s by %d points." winner loser margin
+        else if margin >= 10 then
+          Printf.sprintf "%s defeated %s by %d points." winner loser margin
+        else if margin <= 5 then
+          Printf.sprintf "%s edged %s by %d points." winner loser margin
+        else
+          Printf.sprintf "%s won by %d points over %s." winner margin loser
   in
 
   let mvp_text = match mvp with
     | Some p ->
-        let double_double =
-          (if p.bs_pts >= 10 then 1 else 0) +
-          (if p.bs_reb >= 10 then 1 else 0) +
-          (if p.bs_ast >= 10 then 1 else 0)
-        in
-        if double_double >= 2 then
-          Printf.sprintf "%s%s %dPTS-%dREB-%dAST 더블더블로 팀 승리를 이끌었습니다."
-            p.bs_player_name (particle_ga p.bs_player_name) p.bs_pts p.bs_reb p.bs_ast
-        else if p.bs_pts >= 20 then
-          Printf.sprintf "%s%s %d득점 맹활약으로 팀 공격을 주도했습니다."
-            p.bs_player_name (particle_ga p.bs_player_name) p.bs_pts
-        else
-          Printf.sprintf "%s%s %dPTS, %dREB, %dAST를 기록하며 활약했습니다."
-            p.bs_player_name (particle_ga p.bs_player_name) p.bs_pts p.bs_reb p.bs_ast
+        (match lang with
+        | Ko ->
+            let double_double =
+              (if p.bs_pts >= 10 then 1 else 0)
+              + (if p.bs_reb >= 10 then 1 else 0)
+              + (if p.bs_ast >= 10 then 1 else 0)
+            in
+            if double_double >= 2 then
+              Printf.sprintf "%s%s %d점-%d리바운드-%d어시스트 더블더블로 승리에 힘을 보탰습니다."
+                p.bs_player_name (particle_ga p.bs_player_name) p.bs_pts p.bs_reb p.bs_ast
+            else if p.bs_pts >= 20 then
+              Printf.sprintf "%s%s %d점으로 득점을 이끌었습니다."
+                p.bs_player_name (particle_ga p.bs_player_name) p.bs_pts
+            else
+              Printf.sprintf "%s%s %d점, %d리바운드, %d어시스트로 활약했습니다."
+                p.bs_player_name (particle_ga p.bs_player_name) p.bs_pts p.bs_reb p.bs_ast
+        | En ->
+            Printf.sprintf "Top performer: %s with %d points, %d rebounds, and %d assists."
+              p.bs_player_name p.bs_pts p.bs_reb p.bs_ast)
     | None -> ""
   in
 
@@ -443,8 +511,8 @@ let fallback_game_summary (bs: game_boxscore) =
   else result_text
 
 (** Generate AI game summary *)
-let generate_game_summary (bs: game_boxscore) =
-  let key = bs.boxscore_game.gi_game_id in
+let generate_game_summary ?(lang=Ko) (bs: game_boxscore) =
+  let key = Printf.sprintf "%s:%s" bs.boxscore_game.gi_game_id (lang_to_code lang) in
 
   (* Check cache first *)
   match Hashtbl.find_opt game_summary_cache key with
@@ -452,16 +520,29 @@ let generate_game_summary (bs: game_boxscore) =
   | None ->
       let summary =
         (* Fetch quarter scores for game flow analysis *)
-        let quarters = match Db.get_quarter_scores key with
+        let quarters = match Db.get_quarter_scores bs.boxscore_game.gi_game_id with
           | Ok qs -> qs
           | Error _ -> []
         in
-        let prompt = build_game_summary_prompt ~quarters bs in
-        match call_llm_http ~prompt with
-        | Ok explanation ->
-            Hashtbl.replace game_summary_cache key explanation;
-            explanation
-        | Error _ -> fallback_game_summary bs
+        (* If the score is not meaningful yet (ex: 0-0 scheduled games), do not call the LLM. *)
+        let gi = bs.boxscore_game in
+        let has_player_stats =
+          bs.boxscore_home_players <> [] || bs.boxscore_away_players <> []
+        in
+        let has_result =
+          gi.gi_home_score > 0
+          && gi.gi_away_score > 0
+          && gi.gi_home_score <> gi.gi_away_score
+        in
+        if (not has_result) && (not has_player_stats) then
+          fallback_game_summary ~lang bs
+        else
+          let prompt = build_game_summary_prompt ~quarters ~lang bs in
+          match call_llm_http ~prompt with
+          | Ok explanation ->
+              Hashtbl.replace game_summary_cache key explanation;
+              explanation
+          | Error _ -> fallback_game_summary ~lang bs
       in
       Hashtbl.replace game_summary_cache key summary;
       summary
