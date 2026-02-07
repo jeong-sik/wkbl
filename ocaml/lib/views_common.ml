@@ -665,11 +665,39 @@ let eff_badge ?(show_label=false) eff =
   let label = if show_label then "EFF " else "" in
   Printf.sprintf {html|<span class="px-2 py-0.5 rounded border text-[10px] font-mono font-bold %s">%s%.1f</span>|html} color_cls label eff
 
-let score_quality_badge ?(compact=false) q =
+let score_quality_badge ?(lang=I18n.Ko) ?(compact=false) q =
+  let tr = I18n.t lang in
+  let label_verified = tr { ko = "일치"; en = "Verified" } in
+  let label_derived = tr { ko = "추정"; en = "Estimated" } in
+  let label_mismatch = tr { ko = "불일치"; en = "Mismatch" } in
   match q with
-  | Verified -> (if compact then "<span class=\"text-sky-500\" title=\"일치\">✓</span>" else "<span class=\"px-2 py-0.5 rounded bg-sky-500/10 text-sky-600 border border-sky-500/30 text-[10px] font-mono\">일치</span>")
-  | Derived -> (if compact then "<span class=\"text-amber-500\" title=\"추정\">Σ</span>" else "<span class=\"px-2 py-0.5 rounded bg-amber-500/10 text-amber-600 border border-amber-500/30 text-[10px] font-mono\">추정</span>")
-  | Mismatch -> (if compact then "<span class=\"text-rose-500\" title=\"불일치\">!</span>" else "<span class=\"px-2 py-0.5 rounded bg-rose-500/10 text-rose-600 border border-rose-500/30 text-[10px] font-mono\">불일치</span>")
+  | Verified ->
+      if compact then
+        Printf.sprintf
+          "<span class=\"text-sky-500\" title=\"%s\">✓</span>"
+          (escape_html label_verified)
+      else
+        Printf.sprintf
+          "<span class=\"px-2 py-0.5 rounded bg-sky-500/10 text-sky-600 border border-sky-500/30 text-[10px] font-mono\">%s</span>"
+          (escape_html label_verified)
+  | Derived ->
+      if compact then
+        Printf.sprintf
+          "<span class=\"text-amber-500\" title=\"%s\">Σ</span>"
+          (escape_html label_derived)
+      else
+        Printf.sprintf
+          "<span class=\"px-2 py-0.5 rounded bg-amber-500/10 text-amber-600 border border-amber-500/30 text-[10px] font-mono\">%s</span>"
+          (escape_html label_derived)
+  | Mismatch ->
+      if compact then
+        Printf.sprintf
+          "<span class=\"text-rose-500\" title=\"%s\">!</span>"
+          (escape_html label_mismatch)
+      else
+        Printf.sprintf
+          "<span class=\"px-2 py-0.5 rounded bg-rose-500/10 text-rose-600 border border-rose-500/30 text-[10px] font-mono\">%s</span>"
+          (escape_html label_mismatch)
 
 let team_scope_to_string = function PerGame -> "per_game" | Totals -> "totals"
 let wkbl_official_game_result_url id = Some ("https://www.wkbl.or.kr/game/result.asp?game_id=" ^ id)
