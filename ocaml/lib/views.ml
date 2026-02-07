@@ -656,11 +656,11 @@ onkeydown="if(event.key==='Enter'||event.key===' ') { event.preventDefault(); wi
 	      <div class="space-y-6">
 	        <div class="flex items-center justify-between">
 		          <h2 class="text-2xl font-black text-slate-900 dark:text-white tracking-tight">%s</h2>
-		          <form hx-get="/games" hx-target="#main-content" hx-push-url="true" class="flex items-center gap-2">
-		            <select name="season" onchange="this.form.submit()" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/40 transition-colors">
-		              %s
-		            </select>
-		          </form>
+			          <form action="/games" method="get" class="flex items-center gap-2">
+			            <select name="season" onchange="this.form.submit()" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/40 transition-colors">
+			              %s
+			            </select>
+			          </form>
 		        </div>
 		        %s
 		        %s
