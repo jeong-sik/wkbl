@@ -4,6 +4,33 @@
 open Domain
 open Views_common
 
+let pretty_timestamp (s : string) : string =
+  (* Make ISO-ish timestamps easier to read in UI.
+     Examples:
+     - 2026-02-07T08:17:50Z -> 2026-02-07 08:17
+     - 2026-02-07 08:17:50 -> 2026-02-07 08:17 *)
+  let s = String.trim s in
+  if s = "" then s
+  else
+    let s =
+      if String.contains s 'T' then
+        String.map (fun c -> if c = 'T' then ' ' else c) s
+      else
+        s
+    in
+    let s =
+      match String.index_opt s '.' with
+      | None -> s
+      | Some i -> String.sub s 0 i
+    in
+    let s =
+      if String.ends_with ~suffix:"Z" s then
+        String.sub s 0 (String.length s - 1)
+      else
+        s
+    in
+    if String.length s >= 16 then String.sub s 0 16 else s
+
 let qa_dashboard_page ?(lang=I18n.Ko) (report: Db.qa_db_report) ?(markdown=None) () =
   let int_chip v =
     Printf.sprintf {html|<div class="text-2xl font-black text-slate-900 dark:text-slate-200 font-mono tabular-nums">%d</div>|html} v
@@ -217,7 +244,7 @@ let qa_dashboard_page ?(lang=I18n.Ko) (report: Db.qa_db_report) ?(markdown=None)
   in
   layout ~lang ~title:"데이터 점검 | WKBL"
     ~content:(Printf.sprintf
-      {html|<div class="space-y-6 animate-fade-in"><div class="flex flex-col gap-2"><h2 class="text-2xl font-black text-slate-900 dark:text-slate-200">데이터 점검</h2><div class="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">기록 신뢰도를 위해 <span class="font-mono text-slate-900 dark:text-slate-200">스코어 불일치</span>, <span class="font-mono text-slate-900 dark:text-slate-200">팀 수 이상</span>, <span class="font-mono text-slate-900 dark:text-slate-200">중복 기록</span>, <span class="font-mono text-slate-900 dark:text-slate-200">중복 선수 고유번호</span>, <span class="font-mono text-slate-900 dark:text-slate-200">이름+생년월일 중복</span>을 점검합니다. (생성: <span class="font-mono">%s</span>)</div></div>%s<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">%s%s%s%s%s%s%s%s</div><div class="grid grid-cols-1 lg:grid-cols-4 gap-4">%s%s%s%s</div><div class="grid grid-cols-1 gap-4">%s%s<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-lg"><div class="flex items-center justify-between gap-3"><h3 class="text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-xs">스코어 불일치</h3><span class="text-[11px] text-slate-500 dark:text-slate-400 font-mono">건수 %d</span></div><div class="mt-3 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">최종 스코어와 선수 득점 합계를 비교합니다.</div><div class="mt-4 overflow-x-auto"><table class="min-w-[860px] w-full text-sm font-mono table-fixed" aria-label="스코어 불일치 목록">
+      {html|<div class="space-y-6 animate-fade-in"><div class="flex flex-col gap-2"><h2 class="text-2xl font-black text-slate-900 dark:text-slate-200">데이터 점검</h2><div class="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">경기 점수/선수 기록이 서로 맞는지, 빠진 부분이 없는지 확인합니다. <span class="text-slate-400">(마지막 확인: <span class="font-mono">%s</span>)</span></div></div>%s<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">%s%s%s%s%s%s%s%s</div><div class="grid grid-cols-1 lg:grid-cols-4 gap-4">%s%s%s%s</div><div class="grid grid-cols-1 gap-4">%s%s<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-lg"><div class="flex items-center justify-between gap-3"><h3 class="text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-xs">스코어 불일치</h3><span class="text-[11px] text-slate-500 dark:text-slate-400 font-mono">건수 %d</span></div><div class="mt-3 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">최종 스코어와 선수 득점 합계를 비교합니다.</div><div class="mt-4 overflow-x-auto"><table class="min-w-[860px] w-full text-sm font-mono table-fixed" aria-label="스코어 불일치 목록">
           <colgroup>
             <col style="width: 90px;"> <!-- Date -->
             <col style="width: 120px;"> <!-- Game -->
@@ -253,7 +280,7 @@ let qa_dashboard_page ?(lang=I18n.Ko) (report: Db.qa_db_report) ?(markdown=None)
             <col style="width: auto;">  <!-- player_id -->
           </colgroup>
           <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px]"><tr><th scope="col" class="px-3 py-2 text-left">이름</th><th scope="col" class="px-3 py-2 text-left">생년월일</th><th scope="col" class="px-3 py-2 text-right" title="고유번호 수">고유번호 수</th><th scope="col" class="px-3 py-2 text-left">고유번호</th></tr></thead><tbody>%s</tbody></table></div></div></div>%s</div>|html}
-      (escape_html report.qdr_generated_at)
+      (escape_html (pretty_timestamp report.qdr_generated_at))
       sources_block
       (kpi_card ~label:"경기" ~value_html:(int_chip report.qdr_games_total) ~hint_html:"전체 경기 수(정규/PO, 시범 제외)")
       (kpi_card ~label:"기록 수집 경기" ~value_html:(int_chip report.qdr_games_with_stats) ~hint_html:"선수 기록(박스스코어)이 수집된 경기")
@@ -262,7 +289,7 @@ let qa_dashboard_page ?(lang=I18n.Ko) (report: Db.qa_db_report) ?(markdown=None)
       (kpi_card ~label:"문자중계 +/- 비율" ~value_html:(pct_chip report.qdr_plus_minus_coverage_pct) ~hint_html:(Printf.sprintf "문자중계 +/-가 있는 경기: %d" report.qdr_plus_minus_games))
       (kpi_card ~label:"스케줄-경기 누락" ~value_html:(int_chip report.qdr_schedule_missing_game_count) ~hint_html:(Printf.sprintf "종료 일정 중 경기 매칭 누락: %.1f%%" report.qdr_schedule_missing_game_pct))
       (kpi_card ~label:"선수 기록 누락" ~value_html:(int_chip report.qdr_schedule_missing_stats_count) ~hint_html:(Printf.sprintf "종료 일정 중 선수 기록 없음: %.1f%%" report.qdr_schedule_missing_stats_pct))
-      (kpi_card ~label:"생성 시각" ~value_html:(Printf.sprintf {html|<div class="text-sm font-mono text-slate-900 dark:text-slate-200 break-all">%s</div>|html} (escape_html report.qdr_generated_at)) ~hint_html:"UTC 기준")
+      (kpi_card ~label:"마지막 확인" ~value_html:(Printf.sprintf {html|<div class="text-sm font-mono text-slate-900 dark:text-slate-200">%s</div>|html} (escape_html (pretty_timestamp report.qdr_generated_at))) ~hint_html:"자동으로 갱신됩니다.")
       (kpi_card ~label:"스코어 불일치" ~value_html:(int_chip report.qdr_score_mismatch_count) ~hint_html:"최종 스코어와 득점 합계가 다름")
       (kpi_card ~label:"팀 수 이상" ~value_html:(int_chip report.qdr_team_count_anomaly_count) ~hint_html:"한 경기에서 팀이 2개가 아닌 케이스")
       (kpi_card ~label:"중복 선수 기록" ~value_html:(int_chip report.qdr_duplicate_player_row_count) ~hint_html:"한 경기에서 같은 선수가 여러 줄로 잡힘")
@@ -300,10 +327,10 @@ let qa_schedule_missing_page ?(lang=I18n.Ko) (report: Db.qa_schedule_missing_rep
     | "games_UNKNOWN_team_code" -> "팀 정보 누락"
     | "team_code_mismatch" -> "팀 정보 불일치(같은 날짜)"
     | "schedule_alpha_code" -> "일정 팀 코드 형식 이상"
-    | "schedule_allstar_AS" -> "올스타(AS) placeholder"
+    | "schedule_allstar_AS" -> "올스타(AS) 임시 표기"
     | "no_game_on_date" -> "해당 날짜 경기 없음"
     | "home_away_swapped" -> "홈/원정 뒤바뀜"
-    | other -> other
+    | other -> other |> String.map (fun c -> if c = '_' then ' ' else c)
   in
   let reason_hint reason =
     match reason with
@@ -400,7 +427,7 @@ let qa_schedule_missing_page ?(lang=I18n.Ko) (report: Db.qa_schedule_missing_rep
     <h2 class="text-2xl font-black text-slate-900 dark:text-slate-200">일정 누락(수집된 시즌)</h2>
     <div class="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">
       종료된 일정 중에서 수집된 경기와 매칭되지 않는 항목입니다.
-      <span class="ml-2">생성: <span class="font-mono">%s</span></span>
+	      <span class="ml-2">마지막 확인: <span class="font-mono">%s</span></span>
     </div>
     <div class="text-slate-500 dark:text-slate-400 text-xs leading-relaxed">
       참고: 경기가 아예 없는 시즌(미수집 시즌)은 별도로 집계합니다.
@@ -436,7 +463,7 @@ let qa_schedule_missing_page ?(lang=I18n.Ko) (report: Db.qa_schedule_missing_rep
 
   <div class="space-y-4">%s</div>
 </div>|html}
-      (escape_html report.qsmr_generated_at)
+	      (escape_html (pretty_timestamp report.qsmr_generated_at))
       (kpi_card ~label:"누락(수집된 시즌)" ~value_html:(int_chip s.qsms_missing_ingested) ~hint_html:"경기가 수집된 시즌에서만 계산")
       (kpi_card ~label:"누락(미수집 시즌)" ~value_html:(int_chip s.qsms_missing_uningested) ~hint_html:"경기가 없는 시즌(미수집)에서 일정 누락")
       (kpi_card ~label:"누락(전체)" ~value_html:(int_chip s.qsms_missing_total) ~hint_html:"수집된 시즌 + 미수집 시즌")

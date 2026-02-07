@@ -2600,10 +2600,13 @@ let fetch_live_games ~sw ~env () =
           | Some h, Some a, Some s ->
               let home_team = leaf_text h |> Option.value ~default:"" |> String.trim in
               let away_team = leaf_text a |> Option.value ~default:"" |> String.trim in
-              let score_text = leaf_text s |> Option.value ~default:"0:0" in
-              let status = 
-                (match status_node with Some n -> leaf_text n | None -> None) 
-                |> Option.value ~default:"" |> String.trim 
+              let score_text =
+                leaf_text s |> Option.value ~default:"" |> String.trim
+              in
+              let raw_status =
+                (match status_node with Some n -> leaf_text n | None -> None)
+                |> Option.value ~default:""
+                |> String.trim
               in
               
               let home_score, away_score =
@@ -2612,6 +2615,13 @@ let fetch_live_games ~sw ~env () =
                     (try (int_of_string (String.trim h), int_of_string (String.trim a)) 
                      with _ -> (0, 0))
                 | _ -> (0, 0)
+              in
+
+              (* Sometimes WKBL main page renders an empty status + "0:0" score for pregame.
+                 Normalize this to "경기전" so UI doesn't show a fake 0-0 score. *)
+              let status =
+                if raw_status = "" && home_score = 0 && away_score = 0 then "경기전"
+                else raw_status
               in
               
               if home_team <> "" && away_team <> "" then
