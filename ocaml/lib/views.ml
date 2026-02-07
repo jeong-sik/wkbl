@@ -11,6 +11,11 @@ let live_scores_widget (games: Domain.live_game list) =
   empty_state ~icon:BasketballIcon "오늘 경기가 없습니다" "경기 일정이 있는 날 다시 확인해주세요."
  else
   let game_cards = games |> List.map (fun (g: Domain.live_game) ->
+   let time_html =
+    let t = String.trim g.lg_time_remaining in
+    if t = "" then ""
+    else Printf.sprintf {html|<span class="text-xs font-mono text-slate-500">%s</span>|html} (escape_html t)
+   in
    let status_badge =
     if g.lg_is_live then
      {html|<span class="live-badge"><span class="live-dot"></span>LIVE</span>|html}
@@ -34,7 +39,7 @@ let live_scores_widget (games: Domain.live_game list) =
      <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-4 shadow-sm">
       <div class="flex items-center justify-between mb-2">
        %s
-       <span class="text-xs font-mono text-slate-500">%s</span>
+       %s
       </div>
       <div class="flex items-center justify-between">
        <div class="flex items-center gap-2">
@@ -50,7 +55,7 @@ let live_scores_widget (games: Domain.live_game list) =
      </div>
     |html}
     status_badge
-    (escape_html g.lg_time_remaining)
+    time_html
     (team_logo_tag ~class_name:"w-6 h-6" g.lg_home_team)
     (escape_html g.lg_home_team)
     score_center
@@ -2861,10 +2866,11 @@ let live_page ?(lang=I18n.Ko) () =
  let title = tr { ko = "실시간 점수 | WKBL"; en = "Live Scores | WKBL" } in
  let h1 = tr { ko = "실시간 점수"; en = "Live Scores" } in
  let desc = tr { ko = "실시간 경기 점수"; en = "Live game scores" } in
- let connecting = tr { ko = "연결 중..."; en = "Connecting..." } in
- let connected = tr { ko = "연결됨"; en = "Connected" } in
- let disconnected = tr { ko = "연결 끊김"; en = "Disconnected" } in
+ let connecting = tr { ko = "업데이트 중..."; en = "Updating..." } in
+ let connected = tr { ko = "업데이트 됨"; en = "Updated" } in
+ let disconnected = tr { ko = "업데이트 지연"; en = "Update delayed" } in
  let status_scheduled = tr { ko = "예정"; en = "Scheduled" } in
+ let status_live = tr { ko = "진행중"; en = "Live" } in
  let status_final = tr { ko = "종료"; en = "Final" } in
  let empty_today = tr { ko = "오늘 예정된 경기가 없습니다."; en = "No games scheduled today." } in
  let view_all_games = tr { ko = "전체 경기 보기"; en = "View all games" } in
@@ -2876,7 +2882,7 @@ let live_page ?(lang=I18n.Ko) () =
 	   <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
 	    <div>
 	     <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-200">%s</h1>
-     <p class="text-slate-600 dark:text-slate-400">%s</p>
+   <p class="text-slate-600 dark:text-slate-400">%s</p>
     </div>
     <div id="connection-status" class="flex items-center gap-2">
      <span class="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></span>
@@ -2894,9 +2900,9 @@ let live_page ?(lang=I18n.Ko) () =
     </div>
    </div>
 
-		   <div class="text-xs text-slate-500 dark:text-slate-400 text-center">
-		    %s
-		   </div>
+   <div class="text-xs text-slate-500 dark:text-slate-400 text-center">
+    %s
+   </div>
   </div>
 
   <script>
@@ -2904,42 +2910,56 @@ let live_page ?(lang=I18n.Ko) () =
    const gamesContainer = document.getElementById('live-games');
    const statusEl = document.getElementById('connection-status');
 
-	   function updateStatus(connected) {
-		    statusEl.innerHTML = connected
-		     ? '<span class="w-2 h-2 bg-green-500 rounded-full"></span><span class="text-sm text-slate-600 dark:text-slate-400">%s</span>'
-		     : '<span class="w-2 h-2 bg-red-500 rounded-full"></span><span class="text-sm text-slate-600 dark:text-slate-400">%s</span>';
-	   }
+   function updateStatus(ok) {
+    statusEl.innerHTML = ok
+     ? '<span class="w-2 h-2 bg-green-500 rounded-full"></span><span class="text-sm text-slate-600 dark:text-slate-400">%s</span>'
+     : '<span class="w-2 h-2 bg-red-500 rounded-full"></span><span class="text-sm text-slate-600 dark:text-slate-400">%s</span>';
+   }
 
    function renderGame(game) {
-    const isScheduled = game.status === 'scheduled';
+    const q = (game.quarter || '').trim();
+    const isLive = game.is_live === true;
+    const isScheduled = !isLive && (q === '경기전' || q === '경기 전' || q === '예정' || game.home_score == null || game.away_score == null);
+    const isFinal = !isLive && !isScheduled;
+
+    const badgeText = isLive ? (q || '%s') : (isScheduled ? '%s' : '%s');
+    const badgeClass = isLive
+     ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300'
+     : (isFinal
+        ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300'
+        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400');
+
+    const timeText = (game.time || '').trim();
+    const subText = isLive
+     ? (timeText ? `${q} · ${timeText}` : q)
+     : '';
+
     const scoreHtml = isScheduled
-     ? '<div class="text-2xl font-bold text-slate-400 dark:text-slate-500">vs</div>'
-     : `<div class="flex items-center justify-center gap-4 text-3xl font-bold">
+     ? '<div class="text-2xl font-black text-slate-500 dark:text-slate-400">VS</div>'
+     : `<div class="flex items-center justify-center gap-4 text-3xl font-black">
         <span class="${game.home_score > game.away_score ? 'text-orange-500' : 'text-slate-900 dark:text-slate-200'}">${game.home_score}</span>
-        <span class="text-slate-400">-</span>
+        <span class="text-slate-400 font-light">-</span>
         <span class="${game.away_score > game.home_score ? 'text-orange-500' : 'text-slate-900 dark:text-slate-200'}">${game.away_score}</span>
        </div>`;
 
 	    return `
 	     <a href="/boxscore/${game.game_id}" class="block bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-6 hover:border-orange-400 transition-colors">
 	      <div class="flex justify-between items-center mb-4">
-	       <span class="text-lg font-semibold text-slate-900 dark:text-slate-200">${game.home}</span>
-		       <span class="text-xs px-2 py-1 rounded ${isScheduled ? 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400' : 'bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400'}">
-		        ${isScheduled ? '%s' : '%s'}
-	       </span>
-	       <span class="text-lg font-semibold text-slate-900 dark:text-slate-200">${game.away}</span>
+	       <span class="text-lg font-semibold text-slate-900 dark:text-slate-200">${game.home_team}</span>
+	       <span class="text-xs px-2 py-1 rounded ${badgeClass}">${badgeText}</span>
+	       <span class="text-lg font-semibold text-slate-900 dark:text-slate-200">${game.away_team}</span>
       </div>
       ${scoreHtml}
+      ${subText ? `<div class="mt-3 text-xs text-slate-500 dark:text-slate-400 text-center">${subText}</div>` : ''}
      </a>
     `;
    }
 
    function renderGames(data) {
-	    if (data.games.length === 0) {
+	    if (!data || !data.games || data.games.length === 0) {
 	     gamesContainer.innerHTML = `
 	      <div class="col-span-2 bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-12 text-center">
-	       <span class="text-4xl mb-4 block">🏀</span>
-		       <p class="text-slate-600 dark:text-slate-400">%s (${data.date})</p>
+		       <p class="text-slate-600 dark:text-slate-400">%s (${data && data.today ? data.today : ''})</p>
 		       <a href="/games" class="text-orange-500 hover:underline mt-2 inline-block">%s →</a>
 	      </div>
 	     `;
@@ -2948,27 +2968,20 @@ let live_page ?(lang=I18n.Ko) () =
     }
    }
 
-   // Connect to SSE
-   const evtSource = new EventSource('/api/live/scores');
+   async function fetchStatus() {
+    try {
+     const res = await fetch('/api/live/status', { cache: 'no-store' });
+     if (!res.ok) throw new Error('bad status');
+     const data = await res.json();
+     updateStatus(true);
+     renderGames(data);
+    } catch (_) {
+     updateStatus(false);
+    }
+   }
 
-   evtSource.addEventListener('scores', function(e) {
-    updateStatus(true);
-    const data = JSON.parse(e.data);
-    renderGames(data);
-   });
-
-   evtSource.addEventListener('error', function(e) {
-    console.error('SSE Error:', e);
-    updateStatus(false);
-   });
-
-   evtSource.onerror = function() {
-    updateStatus(false);
-    // Reconnect after 5 seconds
-    setTimeout(function() {
-     location.reload();
-    }, 5000);
-   };
+   fetchStatus();
+   setInterval(fetchStatus, 20000);
 	  })();
 	  </script>
 	 |html}
@@ -2978,6 +2991,7 @@ let live_page ?(lang=I18n.Ko) () =
    (escape_html auto_updates)
    (escape_js_string connected)
    (escape_js_string disconnected)
+   (escape_js_string status_live)
    (escape_js_string status_scheduled)
    (escape_js_string status_final)
    (escape_js_string empty_today)

@@ -26,7 +26,7 @@
     { type: 'page', name: '승부예측', alias: 'Predict', path: '/predict', icon: '🔮' },
     { type: 'page', name: '선수비교', alias: 'Compare Players', path: '/compare', icon: '⚖️' },
     { type: 'page', name: '드래프트/트레이드', alias: 'Draft Trade Transactions', path: '/transactions', icon: '📜' },
-    { type: 'page', name: 'QA 대시보드', alias: 'QA Dashboard', path: '/qa', icon: '✅' }
+    { type: 'page', name: '데이터 점검', alias: 'Data Check', path: '/qa', icon: '✅' }
   ];
 
   function init() {
