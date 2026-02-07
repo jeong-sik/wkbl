@@ -43,9 +43,11 @@ let request_lang request =
 let admin_cookie_name = "wkbl_admin"
 
 let admin_token_env : string option =
-  Sys.getenv_opt "WKBL_ADMIN_TOKEN"
-  |> Option.map String.trim
-  |> Option.filter (fun s -> s <> "")
+  match Sys.getenv_opt "WKBL_ADMIN_TOKEN" with
+  | None -> None
+  | Some s ->
+      let s = String.trim s in
+      if s = "" then None else Some s
 
 let admin_cookie_header (token : string) : string =
   (* Short-lived, path-wide; Strict reduces CSRF risk for these admin-only POSTs. *)
