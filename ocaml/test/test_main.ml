@@ -1399,6 +1399,25 @@ let test_is_league_team_variants () =
   (* All-Star teams should not be included in league schedule filters *)
   Alcotest.(check bool) "팀 포니블 -> false" false (Wkbl.Scraper.is_league_team "팀 포니블")
 
+let test_schedule_status_from_scores () =
+  let open Wkbl.Scraper in
+  Alcotest.(check string)
+    "0-0 placeholder -> scheduled"
+    "scheduled"
+    (schedule_status_from_scores (Some 0) (Some 0));
+  Alcotest.(check string)
+    "both None -> scheduled"
+    "scheduled"
+    (schedule_status_from_scores None None);
+  Alcotest.(check string)
+    "both positive -> completed"
+    "completed"
+    (schedule_status_from_scores (Some 71) (Some 78));
+  Alcotest.(check string)
+    "partial -> in_progress"
+    "in_progress"
+    (schedule_status_from_scores (Some 71) None)
+
 let test_game_params_of_href () =
   let href = "/game/result.asp?season_gu=046&gun=1&game_type=01&game_no=40&ym=202601&viewType=2" in
   let (game_type, game_no) = Wkbl.Scraper.game_params_of_href href in
@@ -1728,6 +1747,7 @@ let scraper_tests = [
   Alcotest.test_case "seasons_catalog unique codes" `Quick test_seasons_catalog_unique_codes;
   Alcotest.test_case "season_start_year_of_datalab_code" `Quick test_season_start_year_of_datalab_code;
   Alcotest.test_case "is_league_team variants" `Quick test_is_league_team_variants;
+  Alcotest.test_case "schedule_status_from_scores" `Quick test_schedule_status_from_scores;
   Alcotest.test_case "schedule sync success policy" `Quick test_schedule_sync_success_policy;
   Alcotest.test_case "schedule sync suspicion policy" `Quick test_schedule_sync_suspicion_reason_policy;
   Alcotest.test_case "game_params_of_href" `Quick test_game_params_of_href;

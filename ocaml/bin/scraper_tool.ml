@@ -513,6 +513,12 @@ let run_sync_schedule ~sw ~env ~purge =
       let status = Scraper.schedule_status_from_scores e.sch_home_score e.sch_away_score in
       let game_date = Scraper.normalize_schedule_date ~season_code:e.sch_season e.sch_date in
       let venue = if String.trim e.sch_venue = "" then None else Some e.sch_venue in
+      (* Some schedule pages use 0-0 placeholders. Avoid writing fake scores to [games]. *)
+      let home_score, away_score =
+        match (e.sch_home_score, e.sch_away_score) with
+        | Some 0, Some 0 -> (None, None)
+        | hs, as_ -> (hs, as_)
+      in
       let result_schedule =
         Db.with_db (fun db ->
           Db.Repo.upsert_schedule_entry
@@ -539,8 +545,8 @@ let run_sync_schedule ~sw ~env ~purge =
                 ~game_date:(Some game_date)
                 ~home_team_code:hc
                 ~away_team_code:ac
-                ~home_score:e.sch_home_score
-                ~away_score:e.sch_away_score
+                ~home_score
+                ~away_score
                 ~stadium:venue
                 ~attendance:None
                 db
@@ -748,6 +754,12 @@ let run_sync_history ~sw ~env ~season_filter ~purge =
         let status = Scraper.schedule_status_from_scores e.sch_home_score e.sch_away_score in
         let game_date = Scraper.normalize_schedule_date ~season_code e.sch_date in
         let venue = if String.trim e.sch_venue = "" then None else Some e.sch_venue in
+        (* Some schedule pages use 0-0 placeholders. Avoid writing fake scores to [games]. *)
+        let home_score, away_score =
+          match (e.sch_home_score, e.sch_away_score) with
+          | Some 0, Some 0 -> (None, None)
+          | hs, as_ -> (hs, as_)
+        in
         let result_schedule =
           Db.with_db (fun db ->
             Db.Repo.upsert_schedule_entry
@@ -774,8 +786,8 @@ let run_sync_history ~sw ~env ~season_filter ~purge =
                   ~game_date:(Some game_date)
                   ~home_team_code:hc
                   ~away_team_code:ac
-                  ~home_score:e.sch_home_score
-                  ~away_score:e.sch_away_score
+                  ~home_score
+                  ~away_score
                   ~stadium:venue
                   ~attendance:None
                   db
