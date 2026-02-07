@@ -2637,30 +2637,20 @@ let parse_live_pbp_xml ~seq0 xml : Domain.pbp_event list =
           })
   |> List.filter_map (fun x -> x)
 
-(** Fetch all events for a single period. Uses seq0 pagination semantics:
-    - seq0=0 returns the full history (or the first page)
-    - seq0=N returns only new events after N (or the next page)
+(** Fetch all events for a single period.
 
-    We loop until the server returns no new <playhistory> nodes. *)
+    WKBL's `seq0` parameter is meant for live polling (fetch events after a known index).
+    For scraping, `seq0=0` returns the full history for the period, so we do a single request.
+    This avoids the risk of hanging if upstream behavior changes. *)
 let fetch_live_pbp_period ~sw ~env ~season_gu ~game_type ~game_no ~period_code :
     Domain.pbp_event list =
-  let clock = Eio.Stdenv.clock env in
-  let rec loop seq chunks_rev =
-    let url =
-      Printf.sprintf
-        "%s/live11/path_live_sms.asp?season_gu0=%s&game_type0=%s&game_no0=%d&quarter_gu0=%s&seq0=%d"
-        base_url season_gu game_type game_no period_code seq
-    in
-    let xml = fetch_url ~sw ~env url in
-    let events = parse_live_pbp_xml ~seq0:seq xml in
-    if events = [] then List.concat (List.rev chunks_rev)
-    else (
-      (* Small delay to be polite to the upstream server when paging. *)
-      Eio.Time.sleep clock 0.05;
-      loop (seq + List.length events) (events :: chunks_rev)
-    )
+  let url =
+    Printf.sprintf
+      "%s/live11/path_live_sms.asp?season_gu0=%s&game_type0=%s&game_no0=%d&quarter_gu0=%s&seq0=0"
+      base_url season_gu game_type game_no period_code
   in
-  loop 0 []
+  let xml = fetch_url ~sw ~env url in
+  parse_live_pbp_xml ~seq0:0 xml
 
 (** Fetch PBP events for a game (Q1..Q4 + optional OT X1..X4).
     If Q1 is empty, we treat the game as having no PBP and return []. *)
