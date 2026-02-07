@@ -137,6 +137,31 @@ type qa_schedule_missing_report = {
   qsmr_samples: qa_schedule_missing_sample list;
 }
 
+type qa_stat_anomaly = {
+  qsa_game_id: string;
+  qsa_game_date: string;
+  qsa_team_name: string;
+  qsa_player_id: string;
+  qsa_player_name: string;
+  qsa_min_seconds: int;
+  qsa_pts: int;
+  qsa_primary_team_name: string;
+  qsa_primary_gp: int;
+  qsa_primary_min_seconds: int;
+}
+
+type qa_stat_exclusion = {
+  qse_game_id: string;
+  qse_game_date: string;
+  qse_team_name: string;
+  qse_player_id: string;
+  qse_player_name: string;
+  qse_min_seconds: int;
+  qse_pts: int;
+  qse_reason: string;
+  qse_created_at: string;
+}
+
 type leader_base = {
   lb_player_id: string;
   lb_player_name: string;
@@ -531,6 +556,60 @@ module Types = struct
             (t string
               (t string
                 (t int (option string)))))))
+
+  let qa_stat_anomaly =
+    let encode _ = Error "Encode not supported: read-only type" in
+    let decode (game_id, (game_date, (team_name, (player_id, (player_name, (min_seconds, (pts, (primary_team_name, (primary_gp, primary_min_seconds))))))))) =
+      Ok {
+        qsa_game_id = game_id;
+        qsa_game_date = game_date;
+        qsa_team_name = team_name;
+        qsa_player_id = player_id;
+        qsa_player_name = player_name;
+        qsa_min_seconds = min_seconds;
+        qsa_pts = pts;
+        qsa_primary_team_name = primary_team_name;
+        qsa_primary_gp = primary_gp;
+        qsa_primary_min_seconds = primary_min_seconds;
+      }
+    in
+    let t = t2 in
+    custom ~encode ~decode
+      (t string
+         (t string
+            (t string
+               (t string
+                  (t string
+                     (t int
+                        (t int
+                           (t string
+                              (t int int)))))))))
+
+  let qa_stat_exclusion =
+    let encode _ = Error "Encode not supported: read-only type" in
+    let decode (game_id, (game_date, (team_name, (player_id, (player_name, (min_seconds, (pts, (reason, created_at)))))))) =
+      Ok {
+        qse_game_id = game_id;
+        qse_game_date = game_date;
+        qse_team_name = team_name;
+        qse_player_id = player_id;
+        qse_player_name = player_name;
+        qse_min_seconds = min_seconds;
+        qse_pts = pts;
+        qse_reason = reason;
+        qse_created_at = created_at;
+      }
+    in
+    let t = t2 in
+    custom ~encode ~decode
+      (t string
+         (t string
+            (t string
+               (t string
+                  (t string
+                     (t int
+                        (t int
+                           (t string string))))))))
   let boxscore_player_stat =
     let encode _ = Error "Encode not supported: read-only type" in
     let decode (player_id, (player_name, (position, (team_code, (team_name, (min_seconds, (pts, (plus_minus, (reb, (ast, (stl, (blk, (tov, (fg2_m, (fg2_a, (fg3_m, (fg3_a, (ft_m, ft_a)))))))))))))))))) =
@@ -1327,6 +1406,125 @@ module Queries = struct
         AND e.player_id = gs.player_id
     )
   |}
+
+  let upsert_game_stats_exclusion = (t2 string (t2 string string) ->. unit) {|
+    INSERT INTO game_stats_exclusions (game_id, player_id, reason)
+    VALUES (?, ?, ?)
+    ON CONFLICT (game_id, player_id) DO UPDATE
+      SET reason = EXCLUDED.reason
+  |}
+
+  let delete_game_stats_exclusion = (t2 string string ->. unit) {|
+    DELETE FROM game_stats_exclusions
+    WHERE game_id = ?
+      AND player_id = ?
+  |}
+
+  let qa_stat_exclusions = (t2 string string ->* Types.qa_stat_exclusion) {|
+    SELECT
+      e.game_id,
+      COALESCE(g.game_date::text, 'Unknown') AS game_date,
+      COALESCE(t.team_name_kr, '') AS team_name,
+      e.player_id,
+      COALESCE(p.player_name, '') AS player_name,
+      COALESCE(gs.min_seconds, 0)::int AS min_seconds,
+      COALESCE(gs.pts, 0)::int AS pts,
+      COALESCE(e.reason, '') AS reason,
+      COALESCE(e.created_at::text, '') AS created_at
+    FROM game_stats_exclusions e
+    JOIN games g ON g.game_id = e.game_id
+    LEFT JOIN game_stats gs
+      ON gs.game_id = e.game_id
+     AND gs.player_id = e.player_id
+    LEFT JOIN teams t ON t.team_code = gs.team_code
+    LEFT JOIN players p ON p.player_id = e.player_id
+    WHERE (? = 'ALL' OR g.season_code = ?)
+    ORDER BY e.created_at DESC, e.game_id DESC, e.player_id ASC
+    LIMIT 500
+  |}
+
+  let qa_stat_anomaly_candidates = (t2 string string ->* Types.qa_stat_anomaly) {|
+    WITH player_team AS (
+      SELECT
+        g.season_code,
+        s.player_id,
+        s.team_code,
+        COUNT(*)::int AS gp,
+        SUM(COALESCE(s.min_seconds, 0))::int AS min_seconds
+      FROM game_stats_clean s
+      JOIN games g ON g.game_id = s.game_id
+      WHERE (? = 'ALL' OR g.season_code = ?)
+        AND g.game_type != '10'
+      GROUP BY g.season_code, s.player_id, s.team_code
+    ),
+    primary_team AS (
+      SELECT DISTINCT ON (season_code, player_id)
+        season_code,
+        player_id,
+        team_code AS primary_team_code,
+        gp AS primary_gp,
+        min_seconds AS primary_min_seconds
+      FROM player_team
+      ORDER BY season_code, player_id, min_seconds DESC, gp DESC, team_code
+    ),
+    suspects AS (
+      SELECT
+        pt.season_code,
+        pt.player_id,
+        pt.team_code,
+        pt.gp,
+        pt.min_seconds,
+        prim.primary_team_code,
+        prim.primary_gp,
+        prim.primary_min_seconds
+      FROM player_team pt
+      JOIN primary_team prim
+        ON prim.season_code = pt.season_code
+       AND prim.player_id = pt.player_id
+      WHERE pt.team_code <> prim.primary_team_code
+        AND pt.gp = 1
+        AND pt.min_seconds <= 120
+        AND prim.primary_gp >= 10
+    ),
+    suspect_rows AS (
+      SELECT
+        gs.game_id,
+        COALESCE(g.game_date::text, 'Unknown') AS game_date,
+        t.team_name_kr AS team_name,
+        gs.player_id,
+        p.player_name,
+        COALESCE(gs.min_seconds, 0)::int AS min_seconds,
+        COALESCE(gs.pts, 0)::int AS pts,
+        tprim.team_name_kr AS primary_team_name,
+        s.primary_gp,
+        s.primary_min_seconds
+      FROM suspects s
+      JOIN game_stats_clean gs
+        ON gs.player_id = s.player_id
+       AND gs.team_code = s.team_code
+      JOIN games g
+        ON g.game_id = gs.game_id
+       AND g.season_code = s.season_code
+      JOIN players p ON p.player_id = gs.player_id
+      JOIN teams t ON t.team_code = gs.team_code
+      JOIN teams tprim ON tprim.team_code = s.primary_team_code
+    )
+    SELECT
+      game_id,
+      game_date,
+      team_name,
+      player_id,
+      player_name,
+      min_seconds,
+      pts,
+      primary_team_name,
+      primary_gp,
+      primary_min_seconds
+    FROM suspect_rows
+    ORDER BY game_date DESC, min_seconds ASC, game_id DESC
+    LIMIT 200
+  |}
+
   (* Drop old MATERIALIZED VIEW to allow schema change *)
   let drop_leaders_base_cache = (unit ->. unit) {|
     DROP MATERIALIZED VIEW IF EXISTS leaders_base_cache CASCADE
@@ -2521,7 +2719,10 @@ module Queries = struct
         COUNT(*)::int AS games_on_date,
         BOOL_OR(home_team_code = 'UNKNOWN' OR away_team_code = 'UNKNOWN') AS has_unknown,
         STRING_AGG(
-          g.game_id || '(' || COALESCE(g.home_team_code, 'NULL') || '-' || COALESCE(g.away_team_code, 'NULL') || ')',
+          g.game_id || CASE
+            WHEN g.home_team_code IS NULL OR g.away_team_code IS NULL THEN ''
+            ELSE '(' || g.home_team_code || '-' || g.away_team_code || ')'
+          END,
           ', ' ORDER BY g.game_id
         ) AS games_info
       FROM games g
@@ -4758,6 +4959,21 @@ end
   let upsert_season ~season_code ~season_name (module Db : Caqti_eio.CONNECTION) =
     Db.exec Queries.upsert_season (season_code, season_name)
 
+  (** Data-quality overrides: exclude/restore a (game_id, player_id) stat row *)
+  let upsert_game_stats_exclusion ~game_id ~player_id ~reason (module Db : Caqti_eio.CONNECTION) =
+    Db.exec Queries.upsert_game_stats_exclusion (game_id, (player_id, reason))
+
+  let delete_game_stats_exclusion ~game_id ~player_id (module Db : Caqti_eio.CONNECTION) =
+    Db.exec Queries.delete_game_stats_exclusion (game_id, player_id)
+
+  let qa_stat_exclusions ~season (module Db : Caqti_eio.CONNECTION) =
+    let s = if String.trim season = "" then "ALL" else season in
+    Db.collect_list Queries.qa_stat_exclusions (s, s)
+
+  let qa_stat_anomaly_candidates ~season (module Db : Caqti_eio.CONNECTION) =
+    let s = if String.trim season = "" then "ALL" else season in
+    Db.collect_list Queries.qa_stat_anomaly_candidates (s, s)
+
   (** Upsert a single game row *)
   let upsert_game_entry
       ~game_id
@@ -5412,6 +5628,14 @@ let filter_player_bases ~search ~sort (items: player_base list) =
 
 let ensure_schema () = with_db (fun db -> Repo.ensure_schema db)
 let refresh_matviews () = with_db (fun db -> Repo.refresh_matviews db)
+let upsert_game_stats_exclusion ~game_id ~player_id ~reason () =
+  with_db (fun db -> Repo.upsert_game_stats_exclusion ~game_id ~player_id ~reason db)
+let delete_game_stats_exclusion ~game_id ~player_id () =
+  with_db (fun db -> Repo.delete_game_stats_exclusion ~game_id ~player_id db)
+let get_stat_exclusions ~season () =
+  with_db (fun db -> Repo.qa_stat_exclusions ~season db)
+let get_stat_anomaly_candidates ~season () =
+  with_db (fun db -> Repo.qa_stat_anomaly_candidates ~season db)
 let get_all_teams () =
   cached teams_cache "all" (fun () -> with_db (fun db -> Repo.get_teams db))
 let get_seasons () =
@@ -6322,3 +6546,42 @@ let get_schedule_progress ~season_code () =
   | Ok None, Ok (Some s) -> Ok (Some (0, s))
   | Ok (Some c), Ok None -> Ok (Some (c, c))
   | _ -> Ok None
+
+(** Clear in-memory query caches.
+
+    Useful after admin overrides (exclude/restore) when we want the UI to
+    reflect DB changes immediately rather than waiting for TTL expiry. *)
+let clear_all_caches () =
+  let clear_cache (type a) (c : a Cache.t) = Hashtbl.clear c.store in
+  clear_cache seasons_cache;
+  clear_cache teams_cache;
+  clear_cache data_freshness_cache;
+  clear_cache standings_cache;
+  clear_cache games_cache;
+  clear_cache scored_games_cache;
+  clear_cache team_stats_cache;
+  clear_cache players_cache;
+  clear_cache players_base_cache;
+  clear_cache players_by_team_cache;
+  clear_cache player_info_cache;
+  clear_cache team_detail_cache;
+  clear_cache player_profile_cache;
+  clear_cache player_season_stats_cache;
+  clear_cache player_game_logs_cache;
+  clear_cache boxscore_cache;
+  clear_cache leaders_base_cache;
+  clear_cache leaders_cache;
+  clear_cache awards_cache;
+  clear_cache draft_years_cache;
+  clear_cache draft_picks_cache;
+  clear_cache trade_years_cache;
+  clear_cache trade_events_cache;
+  clear_cache qa_report_cache;
+  clear_cache qa_schedule_missing_report_cache;
+  clear_cache history_cache;
+  clear_cache legends_cache;
+  clear_cache coaches_cache;
+  clear_cache player_career_cache;
+  clear_cache schedule_cache;
+  clear_cache mvp_race_cache;
+  clear_cache lineup_cache

@@ -675,6 +675,7 @@ let qa_schedule_missing_page ?(lang=I18n.Ko) (report: Db.qa_schedule_missing_rep
     |> List.map (fun (reason, rows) -> (reason, List.rev rows))
     |> List.sort (fun (a, _) (b, _) -> String.compare a b)
   in
+  let label_samples = tr { ko = "표본"; en = "Samples" } in
   let sample_blocks =
     samples_by_reason
     |> List.map (fun (reason, rows) ->
@@ -699,7 +700,7 @@ let qa_schedule_missing_page ?(lang=I18n.Ko) (report: Db.qa_schedule_missing_rep
         |> String.concat "\n"
       in
       Printf.sprintf
-        {html|<details class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-lg"><summary class="cursor-pointer select-none text-slate-700 dark:text-slate-300 font-bold">%s <span class="ml-2 text-[11px] text-slate-500 dark:text-slate-400 font-mono">sample=%d</span></summary>
+        {html|<details class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-lg"><summary class="cursor-pointer select-none text-slate-700 dark:text-slate-300 font-bold">%s <span class="ml-2 text-[11px] text-slate-500 dark:text-slate-400 font-mono">%s %d</span></summary>
   <div class="mt-3 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">%s</div>
   <div class="mt-4 overflow-x-auto">
 	    <table class="min-w-[980px] w-full text-sm font-mono table-fixed" aria-label="일정 누락 샘플">
@@ -724,6 +725,7 @@ let qa_schedule_missing_page ?(lang=I18n.Ko) (report: Db.qa_schedule_missing_rep
   </div>
 </details>|html}
         (escape_html (reason_label reason))
+        (escape_html label_samples)
         (List.length rows)
         (escape_html (reason_hint reason))
         sample_rows)
@@ -2142,3 +2144,261 @@ let on_off_impact_page
         </div>
       </div>|html}
       filter_form summary_cards content) ()
+
+(* ============================================= *)
+(* QA: Data Overrides (Exclude / Restore)        *)
+(* ============================================= *)
+
+let format_mmss (seconds : int) : string =
+  let s = if seconds < 0 then 0 else seconds in
+  let mm = s / 60 in
+  let ss = s mod 60 in
+  Printf.sprintf "%d:%02d" mm ss
+
+let qa_anomalies_page
+    ?(lang=I18n.Ko)
+    ~(season:string)
+    ~(seasons: season_info list)
+    ~(candidates: Db.qa_stat_anomaly list)
+    ~(exclusions: Db.qa_stat_exclusion list)
+    ()
+  =
+  let tr = I18n.t lang in
+  let page_title = tr { ko = "기록 제외/복구 | WKBL"; en = "Exclude/Restore Stats | WKBL" } in
+  let heading = tr { ko = "기록 제외/복구"; en = "Exclude / Restore" } in
+  let desc =
+    tr
+      { ko = "공식 기록의 명백한 오류로 보이는 행을 제외하거나, 되돌릴 수 있습니다."
+      ; en = "Exclude obviously-wrong rows from public aggregates, or restore them."
+      }
+  in
+  let label_all_seasons = tr { ko = "전체 시즌"; en = "All seasons" } in
+  let label_candidates = tr { ko = "추천 후보"; en = "Suggested" } in
+  let label_excluded = tr { ko = "제외된 기록"; en = "Excluded" } in
+  let label_manual = tr { ko = "직접 제외"; en = "Manual exclude" } in
+  let label_exclude = tr { ko = "제외"; en = "Exclude" } in
+  let label_restore = tr { ko = "복구"; en = "Restore" } in
+  let label_reason = tr { ko = "사유"; en = "Reason" } in
+  let label_when = tr { ko = "시각"; en = "When" } in
+  let label_game_id = tr { ko = "경기 ID"; en = "Game ID" } in
+  let label_player_id = tr { ko = "선수 ID"; en = "Player ID" } in
+  let ph_game_id = tr { ko = "게임 ID (예: 046-01-50)"; en = "Game ID (e.g., 046-01-50)" } in
+  let ph_player_id = tr { ko = "선수 ID (예: 095533)"; en = "Player ID (e.g., 095533)" } in
+  let ph_reason = tr { ko = "사유 (선택)"; en = "Reason (optional)" } in
+
+  let season_options =
+    let base =
+      seasons
+      |> List.map (fun (s: season_info) ->
+        Printf.sprintf
+          {|<option value="%s" %s>%s</option>|}
+          (escape_html s.code)
+          (if s.code = season then "selected" else "")
+          (escape_html s.name)
+      )
+      |> String.concat ""
+    in
+    Printf.sprintf
+      {html|<option value="ALL" %s>%s</option>%s|html}
+      (if season = "ALL" then "selected" else "")
+      (escape_html label_all_seasons)
+      base
+  in
+
+  let candidates_rows =
+    candidates
+    |> List.map (fun (r: Db.qa_stat_anomaly) ->
+      let reason =
+        tr
+          { ko = "한 경기만 기록(짧은 출전)이라 오기록 가능성이 있어 보입니다."
+          ; en = "One-game, very-low-minutes row looks suspicious."
+          }
+      in
+      Printf.sprintf
+        {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors">
+  <td class="px-3 py-2 text-xs font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap">%s</td>
+  <td class="px-3 py-2 text-xs font-mono text-slate-900 dark:text-slate-200 whitespace-nowrap"><a href="/boxscore/%s" class="hover:underline">%s</a></td>
+  <td class="px-3 py-2 text-xs text-slate-900 dark:text-slate-200 whitespace-nowrap"><a href="/team/%s" class="hover:underline">%s</a></td>
+  <td class="px-3 py-2 text-xs text-slate-900 dark:text-slate-200 whitespace-nowrap"><a href="/player/%s" class="hover:underline">%s</a><span class="ml-2 text-[10px] font-mono text-slate-400">#%s</span></td>
+  <td class="px-3 py-2 text-xs font-mono text-right tabular-nums">%s</td>
+  <td class="px-3 py-2 text-xs font-mono text-right tabular-nums">%d</td>
+  <td class="px-3 py-2 text-xs text-slate-700 dark:text-slate-300 whitespace-nowrap">%s <span class="ml-2 text-[10px] font-mono text-slate-400">(GP %d)</span></td>
+  <td class="px-3 py-2 text-right">
+    <form action="/qa/anomalies/exclude" method="post" class="inline-flex items-center gap-2">
+      <input type="hidden" name="season" value="%s">
+      <input type="hidden" name="game_id" value="%s">
+      <input type="hidden" name="player_id" value="%s">
+      <input type="hidden" name="reason" value="%s">
+      <button type="submit" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white">%s</button>
+    </form>
+  </td>
+</tr>|html}
+        (escape_html r.qsa_game_date)
+        (escape_html r.qsa_game_id)
+        (escape_html r.qsa_game_id)
+        (Uri.pct_encode r.qsa_team_name)
+        (escape_html r.qsa_team_name)
+        (escape_html r.qsa_player_id)
+        (escape_html r.qsa_player_name)
+        (escape_html r.qsa_player_id)
+        (escape_html (format_mmss r.qsa_min_seconds))
+        r.qsa_pts
+        (escape_html r.qsa_primary_team_name)
+        r.qsa_primary_gp
+        (escape_html season)
+        (escape_html r.qsa_game_id)
+        (escape_html r.qsa_player_id)
+        (escape_html reason)
+        (escape_html label_exclude))
+    |> String.concat "\n"
+  in
+
+  let exclusions_rows =
+    exclusions
+    |> List.map (fun (r: Db.qa_stat_exclusion) ->
+      Printf.sprintf
+        {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors">
+  <td class="px-3 py-2 text-xs font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap">%s</td>
+  <td class="px-3 py-2 text-xs font-mono text-slate-900 dark:text-slate-200 whitespace-nowrap"><a href="/boxscore/%s" class="hover:underline">%s</a></td>
+  <td class="px-3 py-2 text-xs text-slate-900 dark:text-slate-200 whitespace-nowrap"><a href="/team/%s" class="hover:underline">%s</a></td>
+  <td class="px-3 py-2 text-xs text-slate-900 dark:text-slate-200 whitespace-nowrap"><a href="/player/%s" class="hover:underline">%s</a><span class="ml-2 text-[10px] font-mono text-slate-400">#%s</span></td>
+  <td class="px-3 py-2 text-xs font-mono text-right tabular-nums">%s</td>
+  <td class="px-3 py-2 text-xs font-mono text-right tabular-nums">%d</td>
+  <td class="px-3 py-2 text-xs text-slate-700 dark:text-slate-300">%s</td>
+  <td class="px-3 py-2 text-xs font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap">%s</td>
+  <td class="px-3 py-2 text-right">
+    <form action="/qa/anomalies/restore" method="post" class="inline-flex items-center gap-2">
+      <input type="hidden" name="season" value="%s">
+      <input type="hidden" name="game_id" value="%s">
+      <input type="hidden" name="player_id" value="%s">
+      <button type="submit" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-700 hover:bg-slate-800 text-white">%s</button>
+    </form>
+  </td>
+</tr>|html}
+        (escape_html r.qse_game_date)
+        (escape_html r.qse_game_id)
+        (escape_html r.qse_game_id)
+        (Uri.pct_encode r.qse_team_name)
+        (escape_html r.qse_team_name)
+        (escape_html r.qse_player_id)
+        (escape_html r.qse_player_name)
+        (escape_html r.qse_player_id)
+        (escape_html (format_mmss r.qse_min_seconds))
+        r.qse_pts
+        (escape_html r.qse_reason)
+        (escape_html (pretty_timestamp r.qse_created_at))
+        (escape_html season)
+        (escape_html r.qse_game_id)
+        (escape_html r.qse_player_id)
+        (escape_html label_restore))
+    |> String.concat "\n"
+  in
+
+  layout ~lang ~title:page_title
+    ~content:(Printf.sprintf
+      {html|<div class="space-y-6 animate-fade-in">
+  <div class="flex items-start justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-black text-slate-900 dark:text-slate-200">%s</h1>
+      <div class="mt-1 text-sm text-slate-600 dark:text-slate-400">%s</div>
+    </div>
+    <form action="/qa/anomalies" method="get" class="flex items-center gap-2">
+      <select name="season" onchange="this.form.submit()" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/40 transition-colors">
+        %s
+      </select>
+    </form>
+  </div>
+
+  <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-lg">
+    <h2 class="text-lg font-black text-slate-900 dark:text-slate-200">%s</h2>
+    <form action="/qa/anomalies/exclude" method="post" class="mt-4 grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+      <input type="hidden" name="season" value="%s">
+      <label class="block">
+        <span class="text-[11px] text-slate-500 dark:text-slate-400 font-bold">%s</span>
+        <input name="game_id" placeholder="%s" class="mt-1 w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm font-mono focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/40">
+      </label>
+      <label class="block">
+        <span class="text-[11px] text-slate-500 dark:text-slate-400 font-bold">%s</span>
+        <input name="player_id" placeholder="%s" class="mt-1 w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm font-mono focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/40">
+      </label>
+      <label class="block md:col-span-1">
+        <span class="text-[11px] text-slate-500 dark:text-slate-400 font-bold">%s</span>
+        <input name="reason" placeholder="%s" class="mt-1 w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/40">
+      </label>
+      <button type="submit" class="h-10 px-4 rounded-lg text-sm font-black bg-rose-600 hover:bg-rose-700 text-white">%s</button>
+    </form>
+  </div>
+
+  <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-lg">
+    <div class="flex items-center justify-between">
+      <h2 class="text-lg font-black text-slate-900 dark:text-slate-200">%s</h2>
+      <span class="text-xs font-mono text-slate-400">%d</span>
+    </div>
+    <div class="mt-4 overflow-x-auto">
+      <table class="min-w-[1100px] w-full text-sm table-fixed" aria-label="추천 후보">
+        <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px]">
+          <tr>
+            <th scope="col" class="px-3 py-2 text-left">%s</th>
+            <th scope="col" class="px-3 py-2 text-left">ID</th>
+            <th scope="col" class="px-3 py-2 text-left">팀</th>
+            <th scope="col" class="px-3 py-2 text-left">선수</th>
+            <th scope="col" class="px-3 py-2 text-right">MIN</th>
+            <th scope="col" class="px-3 py-2 text-right">PTS</th>
+            <th scope="col" class="px-3 py-2 text-left">주 소속</th>
+            <th scope="col" class="px-3 py-2 text-right">%s</th>
+          </tr>
+        </thead>
+        <tbody>%s</tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-lg">
+    <div class="flex items-center justify-between">
+      <h2 class="text-lg font-black text-slate-900 dark:text-slate-200">%s</h2>
+      <span class="text-xs font-mono text-slate-400">%d</span>
+    </div>
+    <div class="mt-4 overflow-x-auto">
+      <table class="min-w-[1200px] w-full text-sm table-fixed" aria-label="제외된 기록">
+        <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px]">
+          <tr>
+            <th scope="col" class="px-3 py-2 text-left">%s</th>
+            <th scope="col" class="px-3 py-2 text-left">ID</th>
+            <th scope="col" class="px-3 py-2 text-left">팀</th>
+            <th scope="col" class="px-3 py-2 text-left">선수</th>
+            <th scope="col" class="px-3 py-2 text-right">MIN</th>
+            <th scope="col" class="px-3 py-2 text-right">PTS</th>
+            <th scope="col" class="px-3 py-2 text-left">%s</th>
+            <th scope="col" class="px-3 py-2 text-left">%s</th>
+            <th scope="col" class="px-3 py-2 text-right"> </th>
+          </tr>
+        </thead>
+        <tbody>%s</tbody>
+      </table>
+    </div>
+  </div>
+</div>|html}
+      (escape_html heading)
+      (escape_html desc)
+      season_options
+      (escape_html label_manual)
+      (escape_html season)
+      (escape_html label_game_id)
+      (escape_html ph_game_id)
+      (escape_html label_player_id)
+      (escape_html ph_player_id)
+      (escape_html label_reason)
+      (escape_html ph_reason)
+      (escape_html label_exclude)
+      (escape_html label_candidates)
+      (List.length candidates)
+      (escape_html (tr { ko = "날짜"; en = "Date" }))
+      (escape_html (tr { ko = "동작"; en = "Action" }))
+      candidates_rows
+      (escape_html label_excluded)
+      (List.length exclusions)
+      (escape_html (tr { ko = "날짜"; en = "Date" }))
+      (escape_html label_reason)
+      (escape_html label_when)
+      exclusions_rows)
+    ()
