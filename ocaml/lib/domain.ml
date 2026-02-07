@@ -278,7 +278,8 @@ let extract_score_flow (events: pbp_event list) : score_flow_point list =
     events
     |> List.filter_map (fun e ->
         match (e.pe_team1_score, e.pe_team2_score) with
-        | (Some home, Some away) ->
+        (* NOTE: In our PBP model, team1_score is AWAY and team2_score is HOME. *)
+        | (Some away, Some home) ->
             let elapsed = calculate_elapsed_seconds ~period_code:e.pe_period_code ~clock:e.pe_clock in
             Some {
               sfp_clock = e.pe_clock;

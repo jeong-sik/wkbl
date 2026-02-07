@@ -856,8 +856,9 @@ let make_pbp_event ~period_code ~clock ~home_score ~away_score =
     pe_event_index = 0;
     pe_team_side = 1;
     pe_description = "Test event";
-    pe_team1_score = home_score;
-    pe_team2_score = away_score;
+    (* team1_score = away, team2_score = home *)
+    pe_team1_score = away_score;
+    pe_team2_score = home_score;
     pe_clock = clock }
 
 let test_period_to_number () =
@@ -931,7 +932,7 @@ let test_extract_score_flow_dedup () =
 
 let test_game_flow_chart_empty () =
   let html = Wkbl.Views_tools.game_flow_chart ~home_team:"A" ~away_team:"B" [] in
-  Alcotest.(check bool) "empty placeholder" true (contains_substring html "흐름 데이터가 없습니다")
+  Alcotest.(check bool) "empty placeholder" true (contains_substring html "득점흐름을 만들 기록이 없어요")
 
 let test_game_flow_chart_single_point () =
   let pt : Wkbl.Domain.score_flow_point = {
@@ -2094,7 +2095,15 @@ let test_ui_copy_no_dev_terms () =
   in
   let pbp_page_html = Wkbl.Views.pbp_page ~game ~periods:[] ~selected_period:"ALL" ~events:[] () in
   Alcotest.(check bool) "pbp page title mentions Korean label" true (contains_substring pbp_page_html "문자중계");
-  check_clean ~ctx:"pbp_page" pbp_page_html
+  check_clean ~ctx:"pbp_page" pbp_page_html;
+
+  (* If a period tab exists but the selected period has no rows, avoid showing an empty list. *)
+  let pbp_empty_period_html =
+    Wkbl.Views.pbp_page ~game ~periods:["Q1"] ~selected_period:"Q1" ~events:[] ()
+  in
+  Alcotest.(check bool) "pbp empty period message" true
+    (contains_substring pbp_empty_period_html "이 쿼터에는 기록이 없어요");
+  check_clean ~ctx:"pbp_page_empty_period" pbp_empty_period_html
 
 let test_ops_copy_hidden_by_default () =
   let banned = [ "dune exec"; "scraper_tool"; "WKBL_SYNC_DRAFT_TRADE"; "scripts/wkbl_draft_trade_sync.py" ] in
