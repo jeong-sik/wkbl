@@ -476,22 +476,47 @@ let games_table ?(lang=I18n.Ko) (games : game_summary list) =
   let mobile_cards =
     games
     |> List.mapi (fun _i (g : game_summary) ->
-      let score_a = match g.home_score with Some s -> string_of_int s | None -> "-" in
-      let score_b = match g.away_score with Some s -> string_of_int s | None -> "-" in
-      let status_class = if g.home_score = None then "text-slate-600 dark:text-slate-400" else "text-slate-900 dark:text-slate-200" in
-	      let action_html =
-	       if g.home_score = None then
-	        Printf.sprintf
-	          {html|<span class="text-[10px] text-slate-600 dark:text-slate-400">%s</span>|html}
-	          (escape_html label_scheduled)
-	       else
-	        Printf.sprintf
-	         {html|<a href="/boxscore/%s" class="text-[10px] bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-2 py-1 rounded text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white dark:text-slate-200 transition">%s</a>|html}
-	         (escape_html g.game_id)
-	         (escape_html label_boxscore)
-		      in
-	      Printf.sprintf
-	       {html|<div role="link" tabindex="0" aria-label="박스스코어 보기" class="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-orange-300 dark:hover:border-orange-700 rounded-lg p-3 shadow-sm hover:shadow-md space-y-2 transition-colors transition-shadow transition-transform duration-200 cursor-pointer group active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/40" onclick="window.location='/boxscore/%s'" onkeydown="if(event.key==='Enter'||event.key===' ') { event.preventDefault(); window.location='/boxscore/%s'; }">
+      let has_score =
+        match g.home_score, g.away_score with
+        | Some a, Some b -> a > 0 && b > 0
+        | _ -> false
+      in
+      let score_a = match g.home_score with Some s when has_score -> string_of_int s | _ -> "-" in
+      let score_b = match g.away_score with Some s when has_score -> string_of_int s | _ -> "-" in
+      let status_class = if has_score then "text-slate-900 dark:text-slate-200" else "text-slate-600 dark:text-slate-400" in
+      let action_html =
+       if not has_score then
+        Printf.sprintf
+          {html|<span class="text-[10px] text-slate-600 dark:text-slate-400">%s</span>|html}
+          (escape_html label_scheduled)
+       else
+        Printf.sprintf
+         {html|<a href="/boxscore/%s" class="text-[10px] bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-2 py-1 rounded text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white dark:text-slate-200 transition">%s</a>|html}
+         (escape_html g.game_id)
+         (escape_html label_boxscore)
+      in
+      let card_class =
+        if has_score then
+          "bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-orange-300 dark:hover:border-orange-700 rounded-lg p-3 shadow-sm hover:shadow-md space-y-2 transition-colors transition-shadow transition-transform duration-200 cursor-pointer group active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/40"
+        else
+          "bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-lg p-3 shadow-sm space-y-2 transition-colors duration-200 group"
+      in
+      let card_attrs =
+        if has_score then
+          let aria = tr { ko = "박스스코어 보기"; en = "View boxscore" } in
+          Printf.sprintf
+            {|
+role="link" tabindex="0" aria-label="%s"
+onclick="window.location='/boxscore/%s'"
+onkeydown="if(event.key==='Enter'||event.key===' ') { event.preventDefault(); window.location='/boxscore/%s'; }"|} (* keep as a raw attribute fragment *)
+            (escape_html aria)
+            (escape_html g.game_id)
+            (escape_html g.game_id)
+        else
+          Printf.sprintf {|role="group" aria-label="%s"|} (escape_html label_scheduled)
+      in
+      Printf.sprintf
+       {html|<div %s class="%s">
 	   <div class="flex items-center justify-between text-[11px] text-slate-600 dark:text-slate-400 font-mono">
 	    <span>%s</span>
 	    %s
@@ -501,11 +526,11 @@ let games_table ?(lang=I18n.Ko) (games : game_summary list) =
      <div class="flex items-center gap-2 text-sm font-medium">%s<a href="/team/%s" class="group-hover:text-orange-600 dark:text-orange-400 dark:group-hover:text-orange-300 transition-colors truncate">%s</a></div>
      <div class="flex items-center gap-2 text-sm font-medium">%s<a href="/team/%s" class="group-hover:text-orange-600 dark:text-orange-400 dark:group-hover:text-orange-300 transition-colors truncate">%s</a></div>
     </div>
-    <div class="text-right font-mono text-sm %s whitespace-nowrap group-hover:scale-110 transition-transform">%s - %s</div>
-   </div>
-	  </div>|html}
-	       (escape_html g.game_id)
-	       (escape_html g.game_id)
+	    <div class="text-right font-mono text-sm %s whitespace-nowrap group-hover:scale-110 transition-transform">%s - %s</div>
+	   </div>
+		  </div>|html}
+         card_attrs
+         card_class
 	       (escape_html g.game_date)
 	       action_html
 	       (team_logo_tag ~class_name:"w-4 h-4" g.home_team)
@@ -523,14 +548,29 @@ let games_table ?(lang=I18n.Ko) (games : game_summary list) =
   let rows_data =
     games
 	    |> List.mapi (fun _i (g : game_summary) ->
-	        let score_a = match g.home_score with Some s -> string_of_int s | None -> "-" in
-	        let score_b = match g.away_score with Some s -> string_of_int s | None -> "-" in
+	        let has_score =
+	          match g.home_score, g.away_score with
+	          | Some a, Some b -> a > 0 && b > 0
+	          | _ -> false
+	        in
+	        let score_a = match g.home_score with Some s when has_score -> string_of_int s | _ -> "-" in
+	        let score_b = match g.away_score with Some s when has_score -> string_of_int s | _ -> "-" in
 	        
 	        let home_cell = Printf.sprintf {html|<span class="inline-flex items-center justify-end gap-2 whitespace-nowrap">%s<a href="/team/%s" class="team-name group-hover:text-orange-600 dark:text-orange-400 dark:group-hover:text-orange-300 transition-colors" style="white-space: nowrap;">%s</a></span>|html} (team_logo_tag ~class_name:"w-4 h-4" g.home_team) (Uri.pct_encode g.home_team) (escape_html g.home_team) in
-	        let score_cell = Printf.sprintf {html|<span class="font-bold text-orange-600 dark:text-orange-400 font-mono group-hover:scale-110 transition-transform whitespace-nowrap w-28">%s - %s</span>|html} score_a score_b in
+	        let score_cell =
+	          if has_score then
+	            Printf.sprintf
+	              {html|<span class="font-bold text-orange-600 dark:text-orange-400 font-mono group-hover:scale-110 transition-transform whitespace-nowrap w-28">%s - %s</span>|html}
+	              score_a
+	              score_b
+	          else
+	            Printf.sprintf
+	              {html|<span class="text-xs text-slate-500 dark:text-slate-400 font-mono whitespace-nowrap">%s</span>|html}
+	              (escape_html label_scheduled)
+	        in
 	        let away_cell = Printf.sprintf {html|<span class="inline-flex items-center gap-2 whitespace-nowrap"><a href="/team/%s" class="team-name group-hover:text-orange-600 dark:text-orange-400 dark:group-hover:text-orange-300 transition-colors" style="white-space: nowrap;">%s</a>%s</span>|html} (Uri.pct_encode g.away_team) (escape_html g.away_team) (team_logo_tag ~class_name:"w-4 h-4" g.away_team) in
 			        let action_cell =
-			          if g.home_score = None then
+			          if not has_score then
 			            Printf.sprintf
 			              {html|<span class="text-xs text-slate-400 font-mono">%s</span>|html}
 			              (escape_html label_scheduled)
@@ -907,15 +947,21 @@ let quarter_flow_section ~home_name ~away_name (quarters: quarter_score list) =
 	  </div>|html}
 	  table
 
-let boxscore_pbp_link_html game_id =
+let boxscore_pbp_link_html ?(lang=I18n.Ko) game_id =
+  let tr = I18n.t lang in
+  let label = tr { ko = "문자중계"; en = "Play-by-play" } in
   Printf.sprintf
-    {html|<a href="/boxscore/%s/pbp" class="px-2 py-1 rounded-full bg-slate-100 dark:bg-slate-800/70 border border-slate-300 dark:border-slate-700 text-[10px] font-mono tracking-wider text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white dark:text-slate-200 hover:border-slate-500 transition">문자중계</a>|html}
+    {html|<a href="/boxscore/%s/pbp" class="px-2 py-1 rounded-full bg-slate-100 dark:bg-slate-800/70 border border-slate-300 dark:border-slate-700 text-[10px] font-mono tracking-wider text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white dark:text-slate-200 hover:border-slate-500 transition">%s</a>|html}
     (escape_html game_id)
+    (escape_html label)
 
-let boxscore_flow_link_html game_id =
+let boxscore_flow_link_html ?(lang=I18n.Ko) game_id =
+  let tr = I18n.t lang in
+  let label = tr { ko = "득점흐름"; en = "Scoring flow" } in
   Printf.sprintf
-    {html|<a href="/boxscore/%s/flow" class="px-2 py-1 rounded-full bg-slate-100 dark:bg-slate-800/70 border border-slate-300 dark:border-slate-700 text-[10px] font-mono tracking-wider text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white dark:text-slate-200 hover:border-slate-500 transition">득점흐름</a>|html}
+    {html|<a href="/boxscore/%s/flow" class="px-2 py-1 rounded-full bg-slate-100 dark:bg-slate-800/70 border border-slate-300 dark:border-slate-700 text-[10px] font-mono tracking-wider text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white dark:text-slate-200 hover:border-slate-500 transition">%s</a>|html}
     (escape_html game_id)
+    (escape_html label)
 
 let boxscore_data_notes_html ~official_link =
   Printf.sprintf
@@ -938,7 +984,25 @@ let boxscore_data_notes_html ~official_link =
    official_link
 
 let boxscore_page ?(lang=I18n.Ko) (bs: game_boxscore) =
+ let tr = I18n.t lang in
+ let label_home = tr { ko = "홈"; en = "Home" } in
+ let label_away = tr { ko = "원정"; en = "Away" } in
+ let label_scheduled = tr { ko = "예정"; en = "Scheduled" } in
+ let label_diff = tr { ko = "점수차"; en = "Diff" } in
+ let label_points_unit = tr { ko = "점"; en = "" } in
+ let label_summary = tr { ko = "요약"; en = "Summary" } in
+ let label_stats_missing =
+  tr {
+    ko = "선수 기록이 아직 없습니다. 잠시 후 다시 확인해 주세요.";
+    en = "Player stats aren't available yet. Please check back later.";
+  }
+ in
  let gi = bs.boxscore_game in
+ let has_player_stats =
+  bs.boxscore_home_players <> [] || bs.boxscore_away_players <> []
+ in
+ let has_scores = gi.gi_home_score > 0 && gi.gi_away_score > 0 in
+ let is_scheduled = (not has_scores) && (not has_player_stats) in
  let margin = gi.gi_home_score - gi.gi_away_score in
  let margin_str =
   if margin > 0 then Printf.sprintf "+%.0d" margin else if margin < 0 then Printf.sprintf "%+.0d" margin else "0"
@@ -949,12 +1013,19 @@ let boxscore_page ?(lang=I18n.Ko) (bs: game_boxscore) =
   else "text-slate-600 dark:text-slate-400"
  in
  let margin_badge =
-  Printf.sprintf
-   {html|<span class="px-2 py-1 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-[10px] font-mono tracking-wider %s">점수차 %s점</span>|html}
-   margin_class
-   (escape_html margin_str)
+  if is_scheduled then
+    Printf.sprintf
+      {html|<span class="px-2 py-1 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-[10px] font-mono tracking-wider text-slate-600 dark:text-slate-400">%s</span>|html}
+      (escape_html label_scheduled)
+  else
+    Printf.sprintf
+      {html|<span class="px-2 py-1 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-[10px] font-mono tracking-wider %s">%s %s%s</span>|html}
+      margin_class
+      (escape_html label_diff)
+      (escape_html margin_str)
+      (escape_html label_points_unit)
  in
- let quality_badge = score_quality_badge gi.gi_score_quality in
+ let quality_badge = if is_scheduled then "" else score_quality_badge ~lang gi.gi_score_quality in
  let official_link =
   match wkbl_official_game_result_url gi.gi_game_id with
   | None -> ""
@@ -963,42 +1034,61 @@ let boxscore_page ?(lang=I18n.Ko) (bs: game_boxscore) =
      {html|<a href="%s" target="_blank" rel="noreferrer" class="text-orange-600 dark:text-orange-400 hover:text-orange-700 underline-offset-2 hover:underline">WKBL 원본</a>|html}
      (escape_html url)
 	 in
-	 let pbp_link = boxscore_pbp_link_html gi.gi_game_id in
-	 let flow_link = boxscore_flow_link_html gi.gi_game_id in
-	 let data_notes = boxscore_data_notes_html ~official_link in
-	 let home_table = boxscore_player_table gi.gi_home_team_name bs.boxscore_home_players in
-	 let away_table = boxscore_player_table gi.gi_away_team_name bs.boxscore_away_players in
+		 let pbp_link = if is_scheduled then "" else boxscore_pbp_link_html ~lang gi.gi_game_id in
+		 let flow_link = if is_scheduled then "" else boxscore_flow_link_html ~lang gi.gi_game_id in
+		 let data_notes = if is_scheduled then "" else boxscore_data_notes_html ~official_link in
+		 let home_table =
+		  if bs.boxscore_home_players = [] then ""
+		  else boxscore_player_table gi.gi_home_team_name bs.boxscore_home_players
+		 in
+		 let away_table =
+		  if bs.boxscore_away_players = [] then ""
+		  else boxscore_player_table gi.gi_away_team_name bs.boxscore_away_players
+		 in
  (* Quarter flow from PBP data *)
  let quarters = match Db.get_quarter_scores gi.gi_game_id with
   | Ok qs -> qs
   | Error _ -> []
  in
  let quarter_section = quarter_flow_section ~home_name:gi.gi_home_team_name ~away_name:gi.gi_away_team_name quarters in
- (* AI Game Summary *)
- let ai_summary = Ai.generate_game_summary bs in
- let ai_summary_section =
-  Printf.sprintf
-   {html|<div class="max-w-2xl mx-auto bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/30 dark:to-purple-950/30 border border-indigo-200 dark:border-indigo-800/50 rounded-lg p-4">
-    <div class="flex items-center gap-2 mb-2">
-     <span class="text-lg">📰</span>
-     <span class="text-xs font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider">AI 경기 요약</span>
-    </div>
-    <p class="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">%s</p>
-   </div>|html}
-   (escape_html ai_summary)
- in
- layout ~lang ~title:(Printf.sprintf "박스스코어: %s vs %s" gi.gi_home_team_name gi.gi_away_team_name)
-  ~content:(Printf.sprintf
-	   {html|<div class="space-y-8 animate-fade-in"><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-2xl"><div class="flex flex-col items-center gap-6"><div class="text-slate-600 dark:text-slate-400 font-mono text-sm uppercase tracking-widest">%s</div><div class="flex items-center justify-between w-full max-w-2xl gap-2 sm:gap-6"><div class="flex flex-col items-center gap-2 sm:gap-3 flex-shrink-0"><div class="text-sm sm:text-2xl font-black text-slate-900 dark:text-slate-200 flex items-center gap-1 sm:gap-3">%s<a href="/team/%s" class="hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 transition-colors whitespace-nowrap">%s</a></div><div class="text-[10px] sm:text-sm text-slate-600 dark:text-slate-400">홈</div></div><div class="flex items-center gap-2 sm:gap-8"><div class="text-3xl sm:text-5xl font-black text-slate-900 dark:text-slate-200">%d</div><div class="flex flex-col items-center gap-1 sm:gap-2"><div class="text-base sm:text-2xl text-slate-700 dark:text-slate-300 font-light">vs</div><div class="flex flex-wrap items-center justify-center gap-1 sm:gap-2">%s%s%s%s</div></div><div class="text-3xl sm:text-5xl font-black text-slate-900 dark:text-slate-200">%d</div></div><div class="flex flex-col items-center gap-2 sm:gap-3 flex-shrink-0"><div class="text-sm sm:text-2xl font-black text-slate-900 dark:text-slate-200 flex items-center gap-1 sm:gap-3"><a href="/team/%s" class="hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 transition-colors whitespace-nowrap">%s</a>%s</div><div class="text-[10px] sm:text-sm text-slate-600 dark:text-slate-400">원정</div></div></div></div></div>%s%s%s<div class="grid grid-cols-1 gap-8">%s%s</div><div class="flex justify-center"><a href="/games" class="text-slate-600 dark:text-slate-400 hover:text-orange-500 transition text-sm">← 경기 목록</a></div></div>|html}
+	 (* Game summary (guarded to avoid making up results) *)
+	 let ai_summary = Ai.generate_game_summary ~lang bs in
+	 let stats_notice =
+	  if has_scores && not has_player_stats then
+	    Printf.sprintf
+	      {html|<div class="max-w-2xl mx-auto bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 rounded-lg p-4 text-sm text-slate-700 dark:text-slate-300">%s</div>|html}
+	      (escape_html label_stats_missing)
+	  else ""
+	 in
+	 let ai_summary_section =
+	  Printf.sprintf
+	   {html|<div class="max-w-2xl mx-auto bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/30 dark:to-purple-950/30 border border-indigo-200 dark:border-indigo-800/50 rounded-lg p-4">
+	    <div class="flex items-center gap-2 mb-2">
+	     <span class="text-lg">📰</span>
+	     <span class="text-xs font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider">%s</span>
+	    </div>
+	    <p class="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">%s</p>
+	   </div>%s|html}
+	   (escape_html label_summary)
+	   (escape_html ai_summary)
+	   stats_notice
+	 in
+	 let home_score_display = if has_scores then string_of_int gi.gi_home_score else "-" in
+	 let away_score_display = if has_scores then string_of_int gi.gi_away_score else "-" in
+	 layout ~lang ~title:(Printf.sprintf "박스스코어: %s vs %s" gi.gi_home_team_name gi.gi_away_team_name)
+	  ~content:(Printf.sprintf
+	   {html|<div class="space-y-8 animate-fade-in"><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-2xl"><div class="flex flex-col items-center gap-6"><div class="text-slate-600 dark:text-slate-400 font-mono text-sm uppercase tracking-widest">%s</div><div class="flex items-center justify-between w-full max-w-2xl gap-2 sm:gap-6"><div class="flex flex-col items-center gap-2 sm:gap-3 flex-shrink-0"><div class="text-sm sm:text-2xl font-black text-slate-900 dark:text-slate-200 flex items-center gap-1 sm:gap-3">%s<a href="/team/%s" class="hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 transition-colors whitespace-nowrap">%s</a></div><div class="text-[10px] sm:text-sm text-slate-600 dark:text-slate-400">%s</div></div><div class="flex items-center gap-2 sm:gap-8"><div class="text-3xl sm:text-5xl font-black text-slate-900 dark:text-slate-200">%s</div><div class="flex flex-col items-center gap-1 sm:gap-2"><div class="text-base sm:text-2xl text-slate-700 dark:text-slate-300 font-light">vs</div><div class="flex flex-wrap items-center justify-center gap-1 sm:gap-2">%s%s%s%s</div></div><div class="text-3xl sm:text-5xl font-black text-slate-900 dark:text-slate-200">%s</div></div><div class="flex flex-col items-center gap-2 sm:gap-3 flex-shrink-0"><div class="text-sm sm:text-2xl font-black text-slate-900 dark:text-slate-200 flex items-center gap-1 sm:gap-3"><a href="/team/%s" class="hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 transition-colors whitespace-nowrap">%s</a>%s</div><div class="text-[10px] sm:text-sm text-slate-600 dark:text-slate-400">%s</div></div></div></div></div>%s%s%s<div class="grid grid-cols-1 gap-8">%s%s</div><div class="flex justify-center"><a href="/games" class="text-slate-600 dark:text-slate-400 hover:text-orange-500 transition text-sm">← 경기 목록</a></div></div>|html}
    (escape_html gi.gi_game_date)
    (team_logo_tag ~class_name:"w-10 h-10 sm:w-16 sm:h-16" gi.gi_home_team_name) (Uri.pct_encode gi.gi_home_team_name) (escape_html gi.gi_home_team_name)
-   gi.gi_home_score
+   (escape_html label_home)
+   (escape_html home_score_display)
    margin_badge
    quality_badge
    pbp_link
    flow_link
-   gi.gi_away_score
+   (escape_html away_score_display)
    (Uri.pct_encode gi.gi_away_team_name) (escape_html gi.gi_away_team_name) (team_logo_tag ~class_name:"w-10 h-10 sm:w-16 sm:h-16" gi.gi_away_team_name)
+   (escape_html label_away)
    ai_summary_section
    quarter_section
    data_notes
