@@ -352,7 +352,7 @@ Sitemap: https://wkbl.win/sitemap.xml
                       tm.Unix.tm_mday
                   in
                   let live_season = latest_season_code seasons in
-                  match Db.get_games ~season:live_season () with
+                  match Db.get_games ~season:live_season ~page_size:400 () with
                   | Error _ -> []
                   | Ok games ->
                       games
@@ -362,7 +362,7 @@ Sitemap: https://wkbl.win/sitemap.xml
                           let quarter =
                             match g.home_score, g.away_score with
                             | None, None -> "경기전"
-                            | Some _, Some _ -> "종료"
+                            | Some _, Some _ -> "경기종료"
                             | _ -> "경기전"
                           in
                           {
@@ -1722,7 +1722,7 @@ Sitemap: https://wkbl.win/sitemap.xml
           | Error _ -> []
           | Ok seasons ->
               let live_season = latest_season_code seasons in
-              (match Db.get_games ~season:live_season () with
+              (match Db.get_games ~season:live_season ~page_size:400 () with
               | Error _ -> []
               | Ok gs ->
                   gs
@@ -1732,7 +1732,7 @@ Sitemap: https://wkbl.win/sitemap.xml
                       let quarter =
                         match g.home_score, g.away_score with
                         | None, None -> "경기전"
-                        | Some _, Some _ -> "종료"
+                        | Some _, Some _ -> "경기종료"
                         | _ -> "경기전"
                       in
                       {
@@ -1772,7 +1772,7 @@ Sitemap: https://wkbl.win/sitemap.xml
           | Error _ -> []
           | Ok seasons ->
               let live_season = latest_season_code seasons in
-              (match Db.get_games ~season:live_season () with
+              (match Db.get_games ~season:live_season ~page_size:400 () with
               | Error _ -> []
               | Ok gs ->
                   gs
@@ -1782,7 +1782,7 @@ Sitemap: https://wkbl.win/sitemap.xml
                       let quarter =
                         match g.home_score, g.away_score with
                         | None, None -> "경기전"
-                        | Some _, Some _ -> "종료"
+                        | Some _, Some _ -> "경기종료"
                         | _ -> "경기전"
                       in
                       {
