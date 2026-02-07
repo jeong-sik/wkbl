@@ -1379,6 +1379,14 @@ let test_seasons_catalog_unique_codes () =
   let uniq = codes |> List.fold_left (fun acc c -> S.add c acc) S.empty |> S.cardinal in
   Alcotest.(check int) "unique season_code" (List.length codes) uniq
 
+let test_seasons_catalog_regular_season_code_of_year_month () =
+  Alcotest.(check string) "Feb 2026 -> 046" "046"
+    (Wkbl.Seasons_catalog.regular_season_code_of_year_month ~year:2026 ~month:2);
+  Alcotest.(check string) "Sep 2026 -> 046" "046"
+    (Wkbl.Seasons_catalog.regular_season_code_of_year_month ~year:2026 ~month:9);
+  Alcotest.(check string) "Oct 2026 -> 047" "047"
+    (Wkbl.Seasons_catalog.regular_season_code_of_year_month ~year:2026 ~month:10)
+
 let test_season_start_year_of_datalab_code () =
   Alcotest.(check (option int))
     "046 -> 2025"
@@ -1745,6 +1753,7 @@ let scraper_tests = [
   Alcotest.test_case "get_last_sync_time_str" `Quick test_get_last_sync_time_str_initial;
   Alcotest.test_case "seasons_catalog name_of_code" `Quick test_seasons_catalog_name_of_code;
   Alcotest.test_case "seasons_catalog unique codes" `Quick test_seasons_catalog_unique_codes;
+  Alcotest.test_case "seasons_catalog regular season code (YM)" `Quick test_seasons_catalog_regular_season_code_of_year_month;
   Alcotest.test_case "season_start_year_of_datalab_code" `Quick test_season_start_year_of_datalab_code;
   Alcotest.test_case "is_league_team variants" `Quick test_is_league_team_variants;
   Alcotest.test_case "schedule_status_from_scores" `Quick test_schedule_status_from_scores;
@@ -2255,9 +2264,27 @@ let test_live_status_json_hides_pregame_scores_when_quarter_missing () =
   Alcotest.(check bool) "away_score is null" true (contains_substring json {|"away_score":null|});
   Alcotest.(check bool) "no pregame 0 score" false (contains_substring json {|"home_score":0|})
 
+let test_live_widget_shows_vs_when_quarter_missing () =
+  let g : Wkbl.Domain.live_game =
+    { lg_game_id = "046-01-67";
+      lg_home_team = "A";
+      lg_away_team = "B";
+      lg_home_score = 0;
+      lg_away_score = 0;
+      lg_quarter = "";
+      lg_time_remaining = "";
+      lg_is_live = false;
+    }
+  in
+  let html = Wkbl.Views.live_scores_widget [ g ] in
+  Alcotest.(check bool) "shows VS" true (contains_substring html ">VS<");
+  Alcotest.(check bool) "badge shows scheduled" true (contains_substring html ">예정<");
+  Alcotest.(check bool) "no 0 : 0" false (contains_substring html "0 : 0")
+
 let live_api_tests = [
   Alcotest.test_case "pregame scores hidden + JSON escaped" `Quick test_live_status_json_hides_pregame_scores;
   Alcotest.test_case "pregame scores hidden when quarter missing" `Quick test_live_status_json_hides_pregame_scores_when_quarter_missing;
+  Alcotest.test_case "live widget shows VS when quarter missing" `Quick test_live_widget_shows_vs_when_quarter_missing;
 ]
 
 (* ============================================= *)
