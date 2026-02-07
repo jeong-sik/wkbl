@@ -962,6 +962,98 @@ let views_tools_tests = [
 ]
 
 (* ============================================= *)
+(* AI Game Summary Tests                         *)
+(* ============================================= *)
+
+let make_game_info ~game_id ~date ~home_code ~home_name ~away_code ~away_name ~home_score ~away_score =
+  {
+    gi_game_id = game_id;
+    gi_game_date = date;
+    gi_home_team_code = home_code;
+    gi_home_team_name = home_name;
+    gi_away_team_code = away_code;
+    gi_away_team_name = away_name;
+    gi_home_score = home_score;
+    gi_away_score = away_score;
+    gi_score_quality = Derived;
+  }
+
+let dummy_player_stat ~player_id ~player_name ~team_code ~team_name ~pts ~reb ~ast : boxscore_player_stat =
+  {
+    bs_player_id = player_id;
+    bs_player_name = player_name;
+    bs_position = None;
+    bs_team_code = team_code;
+    bs_team_name = team_name;
+    bs_minutes = 30.0;
+    bs_pts = pts;
+    bs_plus_minus = None;
+    bs_reb = reb;
+    bs_ast = ast;
+    bs_stl = 0;
+    bs_blk = 0;
+    bs_tov = 0;
+    bs_fg_made = 0;
+    bs_fg_att = 0;
+    bs_fg_pct = 0.0;
+    bs_fg3_made = 0;
+    bs_fg3_att = 0;
+    bs_fg3_pct = 0.0;
+    bs_ft_made = 0;
+    bs_ft_att = 0;
+    bs_ft_pct = 0.0;
+  }
+
+let test_ai_game_summary_scheduled_ko () =
+  let gi =
+    make_game_info
+      ~game_id:"046-01-65"
+      ~date:"2026-02-07"
+      ~home_code:"SS" ~home_name:"삼성생명"
+      ~away_code:"SH" ~away_name:"신한은행"
+      ~home_score:0 ~away_score:0
+  in
+  let bs : game_boxscore = { boxscore_game = gi; boxscore_home_players = []; boxscore_away_players = [] } in
+  let s = Wkbl.Ai.generate_game_summary ~lang:Wkbl.I18n.Ko bs in
+  Alcotest.(check bool) "scheduled ko mentions not started" true (contains_substring s "경기 전");
+  Alcotest.(check bool) "scheduled ko must not claim win" false (contains_substring s "신승");
+  Alcotest.(check bool) "scheduled ko must not claim win (generic)" false (contains_substring s "이겼")
+
+let test_ai_game_summary_scheduled_en () =
+  let gi =
+    make_game_info
+      ~game_id:"046-01-65"
+      ~date:"2026-02-07"
+      ~home_code:"SS" ~home_name:"Samsung Life"
+      ~away_code:"SH" ~away_name:"Shinhan Bank"
+      ~home_score:0 ~away_score:0
+  in
+  let bs : game_boxscore = { boxscore_game = gi; boxscore_home_players = []; boxscore_away_players = [] } in
+  let s = Wkbl.Ai.generate_game_summary ~lang:Wkbl.I18n.En bs in
+  Alcotest.(check bool) "scheduled en mentions not started" true (contains_substring s "hasn't started")
+
+let test_ai_game_summary_completed_ko () =
+  let gi =
+    make_game_info
+      ~game_id:"046-01-01"
+      ~date:"2026-01-01"
+      ~home_code:"SS" ~home_name:"삼성생명"
+      ~away_code:"SH" ~away_name:"신한은행"
+      ~home_score:70 ~away_score:60
+  in
+  let p = dummy_player_stat ~player_id:"p1" ~player_name:"홍길동" ~team_code:"SS" ~team_name:"삼성생명" ~pts:22 ~reb:10 ~ast:5 in
+  let bs : game_boxscore = { boxscore_game = gi; boxscore_home_players = [p]; boxscore_away_players = [] } in
+  let s = Wkbl.Ai.generate_game_summary ~lang:Wkbl.I18n.Ko bs in
+  Alcotest.(check bool) "completed ko contains winner" true (contains_substring s "삼성생명");
+  Alcotest.(check bool) "completed ko must not be scheduled copy" false (contains_substring s "경기 전")
+
+let ai_game_summary_tests = [
+  Alcotest.test_case "scheduled summary (ko) is safe" `Quick test_ai_game_summary_scheduled_ko;
+  Alcotest.test_case "scheduled summary (en) is safe" `Quick test_ai_game_summary_scheduled_en;
+  Alcotest.test_case "completed summary (ko) mentions winner" `Quick test_ai_game_summary_completed_ko;
+]
+
+(* ============================================= *)
 (* Lineup Chemistry Tests                        *)
 (* ============================================= *)
 
@@ -2060,6 +2152,7 @@ let () =
     "Clutch Time", clutch_tests;
     "Score Flow", score_flow_tests;
     "Views Tools", views_tools_tests;
+    "AI Summary", ai_game_summary_tests;
     "Lineup Chemistry", lineup_chemistry_tests;
     "On/Off Impact", on_off_impact_tests;
     "Advanced Stats", advanced_stats_tests;

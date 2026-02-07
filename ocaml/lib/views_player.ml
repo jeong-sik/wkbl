@@ -394,7 +394,7 @@ let player_profile_page ?(lang=I18n.Ko) ?(leaderboards=None) ?(show_ops=false) (
           | _ ->
               {html|<span class="inline-flex items-center justify-center px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700/60 text-[10px] font-mono text-slate-500 dark:text-slate-500 min-w-[52px]">-</span>|html}
         in
-        let quality_badge = score_quality_badge ~compact:true g.score_quality in
+        let quality_badge = score_quality_badge ~lang ~compact:true g.score_quality in
         let opponent_label = if g.is_home then "vs " ^ g.opponent else "@ " ^ g.opponent in
         let opponent_href = "/team/" ^ Uri.pct_encode g.opponent in
         Printf.sprintf
@@ -1125,7 +1125,7 @@ let player_game_logs_page ?(lang=I18n.Ko) (profile: player_profile) ~(season: st
             | _ ->
                 {html|<span class="inline-flex items-center px-2 py-0.5 rounded border border-slate-300 dark:border-slate-700/60 text-[10px] font-mono text-slate-600 dark:text-slate-400">-</span>|html}
           in
-          let quality_badge = score_quality_badge ~compact:true g.score_quality in
+          let quality_badge = score_quality_badge ~lang ~compact:true g.score_quality in
           let opponent_label = if g.is_home then "vs " ^ g.opponent else "@ " ^ g.opponent in
           Printf.sprintf
             {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors"><td class="px-3 py-2 text-slate-600 dark:text-slate-400 text-sm font-mono whitespace-nowrap w-[90px] sm:w-[110px]"><a href="/boxscore/%s" class="hover:text-orange-600 dark:text-orange-400 transition-colors">%s</a></td><td class="px-3 py-2 text-slate-900 dark:text-slate-200"><div class="flex items-center justify-between gap-3"><span class="player-name truncate">%s</span><div class="flex items-center gap-2 shrink-0">%s%s</div></div></td><td class="px-3 py-2 text-right font-mono text-slate-600 dark:text-slate-400 w-[60px] sm:w-[72px] hidden sm:table-cell">%.1f</td><td class="px-3 py-2 text-right font-bold %s w-[60px] sm:w-[72px]">%d</td><td class="px-3 py-2 text-right font-mono w-[60px] sm:w-[72px] %s">%s</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[60px] sm:w-[72px]">%d</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[60px] sm:w-[72px] hidden sm:table-cell">%d</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[60px] sm:w-[72px] hidden sm:table-cell">%d</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[60px] sm:w-[72px] hidden sm:table-cell">%d</td></tr>|html}
