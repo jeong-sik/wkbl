@@ -2288,6 +2288,70 @@ let live_api_tests = [
 ]
 
 (* ============================================= *)
+(* Player List Collapse Tests                     *)
+(* ============================================= *)
+
+let test_collapse_player_bases_ignores_zero_minute_team () =
+  let open Wkbl.Db in
+  let pb_kb : player_base =
+    { pb_player_id = "095533";
+      pb_player_name = "박지수";
+      pb_team_name = "KB스타즈";
+      pb_gp = 16;
+      pb_min_seconds = 20000;
+      pb_pts = 254;
+      pb_reb = 157;
+      pb_ast = 37;
+      pb_stl = 9;
+      pb_blk = 26;
+      pb_tov = 31;
+      pb_avg_pts = 15.875;
+      pb_margin = 8.2;
+      pb_avg_reb = 9.8125;
+      pb_avg_ast = 2.3125;
+      pb_avg_stl = 0.5625;
+      pb_avg_blk = 1.625;
+      pb_avg_tov = 1.9375;
+      pb_eff = 15.4;
+      pb_margin_seconds = 20000;
+    }
+  in
+  let pb_ghost : player_base =
+    { pb_player_id = "095533";
+      pb_player_name = "박지수";
+      pb_team_name = "BNK 썸";
+      pb_gp = 1;
+      pb_min_seconds = 0;
+      pb_pts = 0;
+      pb_reb = 0;
+      pb_ast = 0;
+      pb_stl = 0;
+      pb_blk = 0;
+      pb_tov = 1;
+      pb_avg_pts = 0.0;
+      pb_margin = 9.0;
+      pb_avg_reb = 0.0;
+      pb_avg_ast = 0.0;
+      pb_avg_stl = 0.0;
+      pb_avg_blk = 0.0;
+      pb_avg_tov = 1.0;
+      pb_eff = -1.0;
+      pb_margin_seconds = 0;
+    }
+  in
+  let collapsed = collapse_player_bases [ pb_kb; pb_ghost ] in
+  Alcotest.(check int) "count" 1 (List.length collapsed);
+  let c = List.hd collapsed in
+  Alcotest.(check string) "team" "KB스타즈" c.pb_team_name;
+  Alcotest.(check int) "gp" 16 c.pb_gp;
+  Alcotest.(check int) "pts" 254 c.pb_pts;
+  Alcotest.(check (Alcotest.float 0.0001)) "avg_pts" 15.875 c.pb_avg_pts
+
+let player_collapse_tests = [
+  Alcotest.test_case "collapse ignores 0-minute team rows" `Quick test_collapse_player_bases_ignores_zero_minute_team;
+]
+
+(* ============================================= *)
 (* Main Test Runner                              *)
 (* ============================================= *)
 
@@ -2317,4 +2381,5 @@ let () =
     "Observability", observability_tests;
     "UI Copy", ui_copy_tests;
     "Live API", live_api_tests;
+    "Player Collapse", player_collapse_tests;
   ]

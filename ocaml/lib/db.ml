@@ -5199,6 +5199,134 @@ let player_base_to_aggregate (b: player_base) =
     efficiency = b.pb_eff;
   }
 
+(* Some seasons can contain multiple (player_id, team) aggregates for the same player_id:
+   - mid-season team changes
+   - data quality issues (e.g., a 0-minute row attached to the wrong team)
+   For list pages, we collapse to one row per player_id to avoid duplicate names. *)
+type player_base_collapse_acc = {
+  player_id: string;
+  player_name: string;
+  best_team_name: string;
+  best_team_min_seconds: int;
+  best_team_gp: int;
+  gp: int;
+  min_seconds: int;
+  pts: int;
+  reb: int;
+  ast: int;
+  stl: int;
+  blk: int;
+  tov: int;
+  eff_gp: int;
+  eff_sum: float;
+  margin_seconds: int;
+  margin_weighted_sum: float; (* margin * margin_seconds *)
+}
+
+let collapse_player_bases (items : player_base list) : player_base list =
+  let add (tbl : (string, player_base_collapse_acc) Hashtbl.t) (b : player_base) =
+    let key = b.pb_player_id in
+    let gp_contrib = if b.pb_min_seconds > 0 then b.pb_gp else 0 in
+    let eff_sum_contrib = b.pb_eff *. float_of_int gp_contrib in
+    let margin_sum_contrib = b.pb_margin *. float_of_int b.pb_margin_seconds in
+    match Hashtbl.find_opt tbl key with
+    | None ->
+        Hashtbl.add tbl key {
+          player_id = b.pb_player_id;
+          player_name = b.pb_player_name;
+          best_team_name = b.pb_team_name;
+          best_team_min_seconds = b.pb_min_seconds;
+          best_team_gp = gp_contrib;
+          gp = gp_contrib;
+          min_seconds = b.pb_min_seconds;
+          pts = b.pb_pts;
+          reb = b.pb_reb;
+          ast = b.pb_ast;
+          stl = b.pb_stl;
+          blk = b.pb_blk;
+          tov = b.pb_tov;
+          eff_gp = gp_contrib;
+          eff_sum = eff_sum_contrib;
+          margin_seconds = b.pb_margin_seconds;
+          margin_weighted_sum = margin_sum_contrib;
+        }
+    | Some a ->
+        let best_team_name, best_team_min_seconds, best_team_gp =
+          if b.pb_min_seconds > a.best_team_min_seconds then
+            (b.pb_team_name, b.pb_min_seconds, gp_contrib)
+          else if b.pb_min_seconds = a.best_team_min_seconds && gp_contrib > a.best_team_gp then
+            (b.pb_team_name, b.pb_min_seconds, gp_contrib)
+          else
+            (a.best_team_name, a.best_team_min_seconds, a.best_team_gp)
+        in
+        Hashtbl.replace tbl key {
+          a with
+          player_name = if a.player_name <> "" then a.player_name else b.pb_player_name;
+          best_team_name;
+          best_team_min_seconds;
+          best_team_gp;
+          gp = a.gp + gp_contrib;
+          min_seconds = a.min_seconds + b.pb_min_seconds;
+          pts = a.pts + b.pb_pts;
+          reb = a.reb + b.pb_reb;
+          ast = a.ast + b.pb_ast;
+          stl = a.stl + b.pb_stl;
+          blk = a.blk + b.pb_blk;
+          tov = a.tov + b.pb_tov;
+          eff_gp = a.eff_gp + gp_contrib;
+          eff_sum = a.eff_sum +. eff_sum_contrib;
+          margin_seconds = a.margin_seconds + b.pb_margin_seconds;
+          margin_weighted_sum = a.margin_weighted_sum +. margin_sum_contrib;
+        }
+  in
+  let tbl = Hashtbl.create (max 16 (List.length items)) in
+  items |> List.iter (add tbl);
+  tbl
+  |> Hashtbl.to_seq_values
+  |> List.of_seq
+  |> List.map (fun a ->
+      let gp = a.gp in
+      let avg_of_total total =
+        if gp > 0 then (float_of_int total) /. float_of_int gp else 0.0
+      in
+      let avg_pts = avg_of_total a.pts in
+      let avg_reb = avg_of_total a.reb in
+      let avg_ast = avg_of_total a.ast in
+      let avg_stl = avg_of_total a.stl in
+      let avg_blk = avg_of_total a.blk in
+      let avg_tov = avg_of_total a.tov in
+      let eff =
+        if a.eff_gp > 0 then a.eff_sum /. float_of_int a.eff_gp else 0.0
+      in
+      let margin =
+        if a.margin_seconds > 0 then
+          a.margin_weighted_sum /. float_of_int a.margin_seconds
+        else
+          0.0
+      in
+      {
+        pb_player_id = a.player_id;
+        pb_player_name = a.player_name;
+        pb_team_name = a.best_team_name;
+        pb_gp = gp;
+        pb_min_seconds = a.min_seconds;
+        pb_pts = a.pts;
+        pb_reb = a.reb;
+        pb_ast = a.ast;
+        pb_stl = a.stl;
+        pb_blk = a.blk;
+        pb_tov = a.tov;
+        pb_avg_pts = avg_pts;
+        pb_margin = margin;
+        pb_avg_reb = avg_reb;
+        pb_avg_ast = avg_ast;
+        pb_avg_stl = avg_stl;
+        pb_avg_blk = avg_blk;
+        pb_avg_tov = avg_tov;
+        pb_eff = eff;
+        pb_margin_seconds = a.margin_seconds;
+      })
+
 let sort_player_bases sort (items: player_base list) =
   let compare_name a b = String.compare a.pb_player_name b.pb_player_name in
   match sort with
@@ -5284,7 +5412,8 @@ let get_players ?(season="ALL") ?(limit=50) ?(search="") ?(sort=ByEfficiency) ?(
   in
   cached players_cache key (fun () ->
     let (let*) = Result.bind in
-    let* base = get_players_base ~season ~include_mismatch () in
+    let* base_raw = get_players_base ~season ~include_mismatch () in
+    let base = collapse_player_bases base_raw in
     let filtered = filter_player_bases ~search ~sort base in
     let limited = take limit filtered in
     let result = List.map player_base_to_aggregate limited in
