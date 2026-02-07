@@ -49,18 +49,21 @@ let admin_token_env : string option =
       let s = String.trim s in
       if s = "" then None else Some s
 
-let admin_cookie_header (token : string) : string =
+let admin_cookie_header ?(secure=false) (token : string) : string =
   (* Short-lived, path-wide; Strict reduces CSRF risk for these admin-only POSTs. *)
+  let value = Uri.pct_encode token in
+  let secure_attr = if secure then "; Secure" else "" in
   Printf.sprintf
-    "%s=%s; Path=/; Max-Age=604800; SameSite=Strict; HttpOnly"
+    "%s=%s; Path=/; Max-Age=604800; SameSite=Strict; HttpOnly%s"
     admin_cookie_name
-    token
+    value
+    secure_attr
 
 let is_admin request : bool =
   match (admin_token_env, Kirin.header "Cookie" request) with
   | Some expected, Some cookie_header ->
       (match I18n.cookie_value cookie_header admin_cookie_name with
-      | Some got -> String.trim got = expected
+      | Some got -> Uri.pct_decode (String.trim got) = expected
       | None -> false)
   | _ -> false
 
@@ -1681,7 +1684,12 @@ Sitemap: https://wkbl.win/sitemap.xml
 	              |> String.trim
 	            in
 	            let next = if is_safe_redirect_path next then next else "/qa/anomalies" in
-	            Kirin.with_header "Set-Cookie" (admin_cookie_header expected)
+	            let secure =
+	              match Kirin.header "X-Forwarded-Proto" request with
+	              | Some p -> String.lowercase_ascii (String.trim p) = "https"
+	              | None -> false
+	            in
+	            Kirin.with_header "Set-Cookie" (admin_cookie_header ~secure expected)
 	            @@ Kirin.redirect next
 	    );
 
