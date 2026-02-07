@@ -10,23 +10,25 @@ let live_scores_widget (games: Domain.live_game list) =
  if List.length games = 0 then
   empty_state ~icon:BasketballIcon "오늘 경기가 없습니다" "경기 일정이 있는 날 다시 확인해주세요."
  else
-  let game_cards = games |> List.map (fun (g: Domain.live_game) ->
-   let time_html =
-    let t = String.trim g.lg_time_remaining in
-    if t = "" then ""
-    else Printf.sprintf {html|<span class="text-xs font-mono text-slate-500">%s</span>|html} (escape_html t)
-   in
-   let status_badge =
-    if g.lg_is_live then
-     {html|<span class="live-badge"><span class="live-dot"></span>진행중</span>|html}
-    else
-     Printf.sprintf {html|<span class="px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-[10px]">%s</span>|html}
-      (escape_html g.lg_quarter)
-   in
-   let is_pre_game =
-    (not g.lg_is_live)
-    && (let q = String.trim g.lg_quarter in q = "경기전" || q = "경기 전" || q = "예정")
-   in
+	  let game_cards = games |> List.map (fun (g: Domain.live_game) ->
+	   let q = String.trim g.lg_quarter in
+	   let time_html =
+	    let t = String.trim g.lg_time_remaining in
+	    if t = "" then ""
+	    else Printf.sprintf {html|<span class="text-xs font-mono text-slate-500">%s</span>|html} (escape_html t)
+	   in
+	   let status_badge =
+	    if g.lg_is_live then
+	     {html|<span class="live-badge"><span class="live-dot"></span>진행중</span>|html}
+	    else
+	     Printf.sprintf {html|<span class="px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-[10px]">%s</span>|html}
+	      (escape_html (if q = "" then "예정" else q))
+	   in
+	   let is_pre_game =
+	    (not g.lg_is_live)
+	    && (q = "경기전" || q = "경기 전" || q = "예정"
+	        || (q = "" && g.lg_home_score = 0 && g.lg_away_score = 0))
+	   in
    let score_center =
     if is_pre_game then
      {html|<span class="text-xl font-black text-slate-500 dark:text-slate-400">VS</span>|html}

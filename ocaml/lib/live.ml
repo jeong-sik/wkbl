@@ -4,7 +4,8 @@ open Domain
 
 (** Get today's date string in YYYY-MM-DD format *)
 let today_str () =
-  let today = Unix.localtime (Unix.time ()) in
+  (* KST is UTC+9 and has no DST. Use gmtime+offset so results are stable across host TZ. *)
+  let today = Unix.gmtime (Unix.time () +. (9. *. 3600.)) in
   Printf.sprintf "%04d-%02d-%02d"
     (today.Unix.tm_year + 1900)
     (today.Unix.tm_mon + 1)
