@@ -736,6 +736,13 @@ let boxscores_table ?(lang=I18n.Ko) (games : game_summary list) =
   let label_away = tr { ko = "원정"; en = "Away" } in
   let label_diff = tr { ko = "점수차"; en = "Diff" } in
   let label_view = tr { ko = "보기"; en = "Boxscore" } in
+  let scored_games =
+    games
+    |> List.filter (fun (g : game_summary) ->
+      match (g.home_score, g.away_score) with
+      | Some a, Some b -> a > 0 && b > 0
+      | _ -> false)
+  in
   let cols = [
     col label_date ~w:(px 120);
     col label_home;
@@ -747,29 +754,27 @@ let boxscores_table ?(lang=I18n.Ko) (games : game_summary list) =
   ] in
 
   let mobile_cards =
-    games
+    scored_games
     |> List.mapi (fun _i (g : game_summary) ->
-      let score_a = match g.home_score with Some s -> s | None -> 0 in
-      let score_b = match g.away_score with Some s -> s | None -> 0 in
+      let score_a = Option.value ~default:0 g.home_score in
+      let score_b = Option.value ~default:0 g.away_score in
       let margin = score_a - score_b in
       let margin_str = if margin > 0 then Printf.sprintf "+%.0d" margin else if margin < 0 then Printf.sprintf "%+.0d" margin else "0" in
       let margin_color = if margin > 0 then "text-sky-600 dark:text-sky-400" else if margin < 0 then "text-rose-600 dark:text-rose-400" else "text-slate-600 dark:text-slate-400" in
-      if g.home_score = None then ""
-      else
-       Printf.sprintf
+      Printf.sprintf
         {html|<div class="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-lg p-3 shadow-sm space-y-2">
-	   <div class="flex items-center justify-between text-[11px] text-slate-600 dark:text-slate-400 font-mono">
-	    <span>%s</span>
-	    <span class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700/60 text-[10px] font-mono %s whitespace-nowrap">%s %s</span>
+		   <div class="flex items-center justify-between text-[11px] text-slate-600 dark:text-slate-400 font-mono">
+		    <span>%s</span>
+		    <span class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700/60 text-[10px] font-mono %s whitespace-nowrap">%s %s</span>
 	   </div>
    <div class="flex items-center justify-between gap-3">
     <div class="flex flex-col gap-1 min-w-0 w-full">
      <div class="flex items-center gap-2 text-sm font-medium w-full">%s<a href="/team/%s" class="hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 transition-colors truncate">%s</a><span class="ml-auto font-mono text-slate-900 dark:text-slate-200">%d</span></div>
      <div class="flex items-center gap-2 text-sm font-medium w-full">%s<a href="/team/%s" class="hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 transition-colors truncate">%s</a><span class="ml-auto font-mono text-slate-900 dark:text-slate-200">%d</span></div>
     </div>
-		    <a href="/boxscore/%s" class="text-[10px] bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-2 py-1 rounded text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition">%s</a>
-	   </div>
-	  </div>|html}
+			    <a href="/boxscore/%s" class="text-[10px] bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-2 py-1 rounded text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition">%s</a>
+		   </div>
+		  </div>|html}
 	        (escape_html g.game_date)
 	        margin_color
 	        (escape_html label_diff)
@@ -781,18 +786,18 @@ let boxscores_table ?(lang=I18n.Ko) (games : game_summary list) =
 	        (team_logo_tag ~class_name:"w-4 h-4" g.away_team)
 	        (Uri.pct_encode g.away_team)
 	        (escape_html g.away_team)
-	        score_b
-	        (escape_html g.game_id)
-	        (escape_html label_view))
+		        score_b
+		        (escape_html g.game_id)
+		        (escape_html label_view))
     |> String.concat "\n"
   in
 
   let rows_data =
-    games
+    scored_games
     |> List.mapi (fun _i (g : game_summary) ->
-      let score_a = match g.home_score with Some s -> s | None -> 0 in
-      let score_b = match g.away_score with Some s -> s | None -> 0 in
-      let margin = match g.home_score, g.away_score with Some a, Some b -> a - b | _ -> 0 in
+      let score_a = Option.value ~default:0 g.home_score in
+      let score_b = Option.value ~default:0 g.away_score in
+      let margin = score_a - score_b in
       let margin_str = if margin > 0 then Printf.sprintf "+%.0d" margin else if margin < 0 then Printf.sprintf "%+.0d" margin else "0" in
       let margin_color = if margin > 0 then "text-sky-600 dark:text-sky-400 font-bold" else if margin < 0 then "text-rose-600 dark:text-rose-400 font-bold" else "text-slate-600 dark:text-slate-400 font-bold" in
       
