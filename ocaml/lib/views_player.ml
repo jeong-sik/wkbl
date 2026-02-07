@@ -899,7 +899,7 @@ let player_profile_page ?(lang=I18n.Ko) ?(leaderboards=None) ?(show_ops=false) (
   in
 		  let missing_data_html =
 		    if profile.season_breakdown = [] && profile.recent_games = [] && profile.all_star_games = [] && profile.draft = None && profile.official_trade_events = [] then
-		      {html|<div class="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800/50 p-4 sm:p-6 flex items-center justify-center text-slate-600 dark:text-slate-400 text-sm gap-2"><span class="text-xl">🚧</span><div><div class="font-bold">데이터 수집 중</div><div>추가 정보는 순차적으로 업데이트됩니다.</div></div></div>|html}
+		      {html|<div class="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800/50 p-4 sm:p-6 flex items-center justify-center text-slate-600 dark:text-slate-400 text-sm"><div class="text-center"><div class="font-bold">기록이 아직 없습니다</div><div>공식 기록이 올라오면 자동으로 업데이트됩니다.</div></div></div>|html}
 		    else
 		      ""
 		  in
