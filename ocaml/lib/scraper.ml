@@ -2307,7 +2307,8 @@ let normalize_game_date date_str =
 (** Get schedule status from scores *)
 let schedule_status_from_scores home_score away_score =
   match home_score, away_score with
-  | Some _, Some _ -> "completed"
+  | Some h, Some a when h > 0 && a > 0 -> "completed"
+  | Some 0, Some 0 -> "scheduled"
   | None, None -> "scheduled"
   | _ -> "in_progress"
 

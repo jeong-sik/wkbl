@@ -18,6 +18,17 @@ let live_scores_widget (games: Domain.live_game list) =
      Printf.sprintf {html|<span class="px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-[10px]">%s</span>|html}
       (escape_html g.lg_quarter)
    in
+   let is_pre_game =
+    (not g.lg_is_live)
+    && (let q = String.trim g.lg_quarter in q = "경기전" || q = "경기 전")
+   in
+   let score_center =
+    if is_pre_game then
+     {html|<span class="text-xl font-black text-slate-500 dark:text-slate-400">VS</span>|html}
+    else
+     Printf.sprintf {html|<span class="text-xl font-black font-mono text-slate-900 dark:text-white">%d : %d</span>|html}
+      g.lg_home_score g.lg_away_score
+   in
    Printf.sprintf
     {html|
      <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-4 shadow-sm">
@@ -30,7 +41,7 @@ let live_scores_widget (games: Domain.live_game list) =
         %s
         <span class="font-bold text-slate-900 dark:text-white">%s</span>
        </div>
-       <span class="text-xl font-black font-mono text-slate-900 dark:text-white">%d : %d</span>
+       %s
        <div class="flex items-center gap-2">
         <span class="font-bold text-slate-900 dark:text-white text-right">%s</span>
         %s
@@ -42,8 +53,7 @@ let live_scores_widget (games: Domain.live_game list) =
     (escape_html g.lg_time_remaining)
     (team_logo_tag ~class_name:"w-6 h-6" g.lg_home_team)
     (escape_html g.lg_home_team)
-    g.lg_home_score
-    g.lg_away_score
+    score_center
     (escape_html g.lg_away_team)
     (team_logo_tag ~class_name:"w-6 h-6" g.lg_away_team)
   ) |> String.concat "\n"
