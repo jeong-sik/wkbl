@@ -518,12 +518,12 @@ let qa_dashboard_page ?(lang=I18n.Ko) (report: Db.qa_db_report) ?(markdown=None)
   in
   let duplicate_player_identity_block =
     let h = tr { ko = "동일인 추정(이름+생년월일)"; en = "Possible same person (name + birth date)" } in
-    let d =
-      tr
-        { ko = "동일 이름+생년월일로 선수 고유번호가 여러 개인 경우입니다. (자동으로 합치지 않습니다.)"
-        ; en = "Multiple player IDs share the same name and birth date. (Not merged automatically.)"
-        }
-    in
+	    let d =
+	      tr
+	        { ko = "이름과 생년월일이 같은데 고유번호가 여러 개인 경우입니다. 대부분의 화면에서는 한 사람으로 묶어서 보여줍니다."
+	        ; en = "Multiple player IDs share the same name and birth date. Most pages group them as one person."
+	        }
+	    in
     let th_name = tr { ko = "이름"; en = "Name" } in
     let th_birth = tr { ko = "생년월일"; en = "Birth date" } in
     let th_ids = tr { ko = "고유번호"; en = "IDs" } in

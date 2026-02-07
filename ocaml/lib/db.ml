@@ -1302,6 +1302,31 @@ module Queries = struct
       ON g.player_name = p.player_name
      AND g.birth_date = p.birth_date
   |}
+
+  (* Data quality overrides.
+     WKBL official data sometimes contains obvious wrong rows (e.g., a star player listed under the wrong team for 0:38).
+     We keep the raw row in game_stats, but exclude it from user-facing aggregates via a clean view. *)
+  let ensure_game_stats_exclusions_table = (unit ->. unit) {|
+    CREATE TABLE IF NOT EXISTS game_stats_exclusions (
+      game_id TEXT NOT NULL REFERENCES games(game_id) ON DELETE CASCADE,
+      player_id TEXT NOT NULL REFERENCES players(player_id) ON DELETE CASCADE,
+      reason TEXT NOT NULL DEFAULT '',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (game_id, player_id)
+    )
+  |}
+
+  let ensure_game_stats_clean_view = (unit ->. unit) {|
+    CREATE OR REPLACE VIEW game_stats_clean AS
+    SELECT gs.*
+    FROM game_stats gs
+    WHERE NOT EXISTS (
+      SELECT 1
+      FROM game_stats_exclusions e
+      WHERE e.game_id = gs.game_id
+        AND e.player_id = gs.player_id
+    )
+  |}
   (* Drop old MATERIALIZED VIEW to allow schema change *)
   let drop_leaders_base_cache = (unit ->. unit) {|
     DROP MATERIALIZED VIEW IF EXISTS leaders_base_cache CASCADE
@@ -1311,7 +1336,7 @@ module Queries = struct
     WITH player_team_games AS (
       -- Count games per player per team to find primary team
       SELECT pi.canonical_player_id AS player_id, s.team_code, COUNT(*) as game_count
-      FROM game_stats s
+      FROM game_stats_clean s
       JOIN player_identities pi ON pi.player_id = s.player_id
       JOIN games g ON g.game_id = s.game_id
       WHERE g.game_type != '10'
@@ -1343,7 +1368,7 @@ module Queries = struct
       COALESCE(SUM(s.fg_3p_a), 0)::int AS fg3_a,
       COALESCE(SUM(s.ft_m), 0)::int AS ft_m,
       COALESCE(SUM(s.ft_a), 0)::int AS ft_a
-    FROM game_stats s
+    FROM game_stats_clean s
     JOIN player_identities pi ON pi.player_id = s.player_id
     JOIN games g ON g.game_id = s.game_id
     JOIN players p ON p.player_id = pi.canonical_player_id
@@ -1372,7 +1397,7 @@ module Queries = struct
     CREATE MATERIALIZED VIEW IF NOT EXISTS score_mismatch_games AS
     WITH sums AS (
       SELECT game_id, team_code, SUM(pts) AS pts_sum
-      FROM game_stats
+      FROM game_stats_clean
       GROUP BY game_id, team_code
     ),
     joined AS (
@@ -1408,7 +1433,7 @@ module Queries = struct
       CREATE MATERIALIZED VIEW IF NOT EXISTS games_calc_v3 AS
       WITH sums AS (
         SELECT game_id, team_code, SUM(pts) AS pts_sum
-        FROM game_stats
+        FROM game_stats_clean
         GROUP BY game_id, team_code
       )
       SELECT
@@ -1598,7 +1623,7 @@ module Queries = struct
       COALESCE(AVG(s.blk), 0),
       COALESCE(AVG(s.tov), 0),
       COALESCE(AVG(s.game_score), 0)
-	    FROM game_stats s
+	    FROM game_stats_clean s
 	    JOIN games_calc_v3 g ON g.game_id = s.game_id
 	    JOIN player_identities pi ON pi.player_id = s.player_id
 	    JOIN players p ON p.player_id = pi.canonical_player_id
@@ -1668,7 +1693,7 @@ module Queries = struct
         ),
         0
       ) as margin_seconds
-	    FROM game_stats s
+	    FROM game_stats_clean s
 	    JOIN games_calc_v3 g ON g.game_id = s.game_id
 	    JOIN player_identities pi ON pi.player_id = s.player_id
 	    JOIN players p ON p.player_id = pi.canonical_player_id
@@ -1694,7 +1719,7 @@ module Queries = struct
       COALESCE(
         (
           SELECT t2.team_name_kr
-          FROM game_stats s2
+          FROM game_stats_clean s2
           JOIN player_identities pi2 ON pi2.player_id = s2.player_id
           JOIN games g2 ON g2.game_id = s2.game_id
           JOIN teams t2 ON t2.team_code = s2.team_code
@@ -1747,7 +1772,7 @@ module Queries = struct
       COALESCE(AVG(s.blk), 0),
       COALESCE(AVG(s.tov), 0),
       COALESCE(AVG(s.game_score), 0)
-    FROM game_stats s
+    FROM game_stats_clean s
     JOIN games_calc_v3 g ON g.game_id = s.game_id
     JOIN player_identities pi ON pi.player_id = s.player_id
     JOIN players p ON p.player_id = pi.canonical_player_id
@@ -1763,7 +1788,7 @@ module Queries = struct
       COALESCE(
         (
           SELECT t2.team_name_kr
-          FROM game_stats s2
+          FROM game_stats_clean s2
           JOIN player_identities pi2 ON pi2.player_id = s2.player_id
           JOIN games g2 ON g2.game_id = s2.game_id
           JOIN teams t2 ON t2.team_code = s2.team_code
@@ -1817,7 +1842,7 @@ module Queries = struct
       COALESCE(AVG(s.blk), 0),
       COALESCE(AVG(s.tov), 0),
       COALESCE(AVG(s.game_score), 0)
-    FROM game_stats s
+    FROM game_stats_clean s
     JOIN games_calc_v3 g ON g.game_id = s.game_id
     JOIN player_identities pi ON pi.player_id = s.player_id
     JOIN players p ON p.player_id = pi.canonical_player_id
@@ -1866,7 +1891,7 @@ module Queries = struct
         THEN SUM(s.ft_m)::float / SUM(s.ft_a)
         ELSE 0
       END AS ft_pct
-    FROM game_stats s
+    FROM game_stats_clean s
     JOIN games_calc_v3 g ON g.game_id = s.game_id
     JOIN player_identities pi ON pi.player_id = s.player_id
     JOIN players p ON p.player_id = pi.canonical_player_id
@@ -1896,7 +1921,7 @@ module Queries = struct
       COALESCE(SUM(s.blk), 0),
 	      COALESCE(SUM(s.tov), 0),
 	      COALESCE(SUM(s.pts), 0)
-	    FROM game_stats s
+	    FROM game_stats_clean s
 	    JOIN games_calc_v3 g ON g.game_id = s.game_id
 	    JOIN teams t ON t.team_code = s.team_code
 	    WHERE g.game_type != '10'
@@ -2037,7 +2062,7 @@ module Queries = struct
      t ->* string)
     {|
       SELECT s.player_id
-      FROM game_stats s
+      FROM game_stats_clean s
       JOIN games g ON g.game_id = s.game_id
       JOIN teams t ON t.team_code = s.team_code
       WHERE t.team_name_kr = ?
@@ -2052,7 +2077,7 @@ module Queries = struct
     (t2 string string ->* string)
     {|
       SELECT s.player_id
-      FROM game_stats s
+      FROM game_stats_clean s
       JOIN teams t ON t.team_code = s.team_code
       WHERE t.team_name_kr = ?
         AND s.game_id = ?
@@ -2069,7 +2094,7 @@ module Queries = struct
 
   let qa_games_with_stats = (unit ->? int) {|
     SELECT COUNT(DISTINCT s.game_id)
-    FROM game_stats s
+    FROM game_stats_clean s
     JOIN games g ON g.game_id = s.game_id
     WHERE g.game_type != '10'
   |}
@@ -2145,7 +2170,7 @@ module Queries = struct
     ),
     stats AS (
       SELECT game_id, COUNT(*) AS stat_rows
-      FROM game_stats
+      FROM game_stats_clean
       GROUP BY game_id
     )
     SELECT COUNT(*)
@@ -2172,7 +2197,7 @@ module Queries = struct
     ),
     stats AS (
       SELECT game_id, COUNT(*) AS stat_rows
-      FROM game_stats
+      FROM game_stats_clean
       GROUP BY game_id
     )
     SELECT
@@ -2240,7 +2265,7 @@ module Queries = struct
   let qa_score_mismatch_count = (unit ->? int) {|
     WITH sums AS (
       SELECT game_id, team_code, SUM(pts) AS pts_sum
-      FROM game_stats
+      FROM game_stats_clean
       GROUP BY game_id, team_code
     ),
     joined AS (
@@ -2266,7 +2291,7 @@ module Queries = struct
   let qa_score_mismatch_sample = (unit ->* Types.qa_score_mismatch) {|
     WITH sums AS (
       SELECT game_id, team_code, SUM(pts) AS pts_sum
-      FROM game_stats
+      FROM game_stats_clean
       GROUP BY game_id, team_code
     )
     SELECT
@@ -2297,7 +2322,7 @@ module Queries = struct
     SELECT COUNT(*)
     FROM (
       SELECT s.game_id
-      FROM game_stats s
+      FROM game_stats_clean s
       JOIN games g ON g.game_id = s.game_id
       WHERE g.game_type != '10'
       GROUP BY s.game_id
@@ -2309,7 +2334,7 @@ module Queries = struct
     SELECT
       s.game_id,
       COUNT(DISTINCT s.team_code) AS team_count
-    FROM game_stats s
+    FROM game_stats_clean s
     JOIN games g ON g.game_id = s.game_id
     WHERE g.game_type != '10'
     GROUP BY s.game_id
@@ -2322,7 +2347,7 @@ module Queries = struct
     SELECT COUNT(*)
     FROM (
       SELECT s.game_id, s.team_code, s.player_id
-      FROM game_stats s
+      FROM game_stats_clean s
       JOIN games g ON g.game_id = s.game_id
       WHERE g.game_type != '10'
       GROUP BY s.game_id, s.team_code, s.player_id
@@ -2338,7 +2363,7 @@ module Queries = struct
 	      s.player_id,
 	      TRIM(REPLACE(REPLACE(p.player_name, chr(92), ''), '"', '')) AS player_name,
 	      COUNT(*) AS row_count
-	    FROM game_stats s
+	    FROM game_stats_clean s
 	    JOIN games g ON g.game_id = s.game_id
 	    JOIN teams t ON t.team_code = s.team_code
 	    JOIN players p ON p.player_id = s.player_id
@@ -2597,7 +2622,7 @@ module Queries = struct
   let game_info_by_id = (string ->? Types.game_info) {|
     WITH sums AS (
       SELECT game_id, team_code, SUM(pts) AS pts_sum
-      FROM game_stats
+      FROM game_stats_clean
       GROUP BY game_id, team_code
     ),
 	    scored_games AS (
@@ -2645,7 +2670,7 @@ module Queries = struct
   let boxscore_stats_by_game_id = (string ->* Types.boxscore_player_stat) {|
     WITH player_total_minutes AS (
       SELECT player_id, SUM(min_seconds) AS total_min_seconds
-      FROM game_stats
+      FROM game_stats_clean
       GROUP BY player_id
     ),
     ranked AS (
@@ -2694,7 +2719,7 @@ module Queries = struct
               s.min_seconds DESC,
               p.player_id DESC
 	        ) AS rn
-	      FROM game_stats s
+	      FROM game_stats_clean s
 	      JOIN players p ON s.player_id = p.player_id
 	      JOIN teams t ON s.team_code = t.team_code
 	      LEFT JOIN player_plus_minus pm ON pm.game_id = s.game_id AND pm.player_id = s.player_id
@@ -2772,7 +2797,7 @@ module Queries = struct
       COALESCE(AVG(s.blk), 0),
       COALESCE(AVG(s.tov), 0),
       COALESCE(AVG(s.game_score), 0)
-    FROM game_stats s
+    FROM game_stats_clean s
     JOIN games_calc_v3 g ON g.game_id = s.game_id
     JOIN players p ON s.player_id = p.player_id
     JOIN teams t ON s.team_code = t.team_code
@@ -2828,7 +2853,7 @@ module Queries = struct
       COALESCE(AVG(s.blk), 0),
       COALESCE(AVG(s.tov), 0),
       COALESCE(AVG(s.game_score), 0)
-	    FROM game_stats s
+	    FROM game_stats_clean s
 	    JOIN games_calc_v3 g ON g.game_id = s.game_id
 	    JOIN player_identities pi ON pi.player_id = s.player_id
 	    JOIN players p ON p.player_id = pi.canonical_player_id
@@ -2860,7 +2885,7 @@ module Queries = struct
 	      COALESCE(SUM(s.fg_3p_a), 0),
 	      COALESCE(SUM(s.ft_m), 0),
 	      COALESCE(SUM(s.ft_a), 0)
-	    FROM game_stats s
+	    FROM game_stats_clean s
 	    JOIN player_identities pi ON pi.player_id = s.player_id
 	    JOIN players p ON p.player_id = pi.canonical_player_id
 	    JOIN teams t ON s.team_code = t.team_code
@@ -2916,40 +2941,40 @@ module Queries = struct
     GROUP BY player_id, player_name, team_name_kr
   |}
 
-  let leaders_pts = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, AVG(s.pts) FROM game_stats s JOIN player_identities pi ON pi.player_id = s.player_id JOIN players p ON p.player_id = pi.canonical_player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING COUNT(*) >= 5 ORDER BY AVG(s.pts) DESC LIMIT 5 |}
-  let leaders_pts_per36 = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, (SUM(s.pts) * 1.0 / SUM(s.min_seconds)) * 36 * 60 FROM game_stats s JOIN player_identities pi ON pi.player_id = s.player_id JOIN players p ON p.player_id = pi.canonical_player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING SUM(s.min_seconds) >= 6000 ORDER BY (SUM(s.pts) / SUM(s.min_seconds)) DESC LIMIT 5 |}
-  let leaders_reb = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, AVG(s.reb_tot) FROM game_stats s JOIN player_identities pi ON pi.player_id = s.player_id JOIN players p ON p.player_id = pi.canonical_player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING COUNT(*) >= 5 ORDER BY AVG(s.reb_tot) DESC LIMIT 5 |}
-  let leaders_reb_per36 = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, (SUM(s.reb_tot) * 1.0 / SUM(s.min_seconds)) * 36 * 60 FROM game_stats s JOIN player_identities pi ON pi.player_id = s.player_id JOIN players p ON p.player_id = pi.canonical_player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING SUM(s.min_seconds) >= 6000 ORDER BY (SUM(s.reb_tot) / SUM(s.min_seconds)) DESC LIMIT 5 |}
-  let leaders_ast = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, AVG(s.ast) FROM game_stats s JOIN player_identities pi ON pi.player_id = s.player_id JOIN players p ON p.player_id = pi.canonical_player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING COUNT(*) >= 5 ORDER BY AVG(s.ast) DESC LIMIT 5 |}
-  let leaders_ast_per36 = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, (SUM(s.ast) * 1.0 / SUM(s.min_seconds)) * 36 * 60 FROM game_stats s JOIN player_identities pi ON pi.player_id = s.player_id JOIN players p ON p.player_id = pi.canonical_player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING SUM(s.min_seconds) >= 6000 ORDER BY (SUM(s.ast) / SUM(s.min_seconds)) DESC LIMIT 5 |}
-  let leaders_stl = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, AVG(s.stl) FROM game_stats s JOIN player_identities pi ON pi.player_id = s.player_id JOIN players p ON p.player_id = pi.canonical_player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING COUNT(*) >= 5 ORDER BY AVG(s.stl) DESC LIMIT 5 |}
-  let leaders_stl_per36 = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, (SUM(s.stl) * 1.0 / SUM(s.min_seconds)) * 36 * 60 FROM game_stats s JOIN player_identities pi ON pi.player_id = s.player_id JOIN players p ON p.player_id = pi.canonical_player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING SUM(s.min_seconds) >= 6000 ORDER BY (SUM(s.stl) / SUM(s.min_seconds)) DESC LIMIT 5 |}
-  let leaders_blk = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, AVG(s.blk) FROM game_stats s JOIN player_identities pi ON pi.player_id = s.player_id JOIN players p ON p.player_id = pi.canonical_player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING COUNT(*) >= 5 ORDER BY AVG(s.blk) DESC LIMIT 5 |}
-  let leaders_blk_per36 = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, (SUM(s.blk) * 1.0 / SUM(s.min_seconds)) * 36 * 60 FROM game_stats s JOIN player_identities pi ON pi.player_id = s.player_id JOIN players p ON p.player_id = pi.canonical_player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING SUM(s.min_seconds) >= 6000 ORDER BY (SUM(s.blk) / SUM(s.min_seconds)) DESC LIMIT 5 |}
+  let leaders_pts = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, AVG(s.pts) FROM game_stats_clean s JOIN player_identities pi ON pi.player_id = s.player_id JOIN players p ON p.player_id = pi.canonical_player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING COUNT(*) >= 5 ORDER BY AVG(s.pts) DESC LIMIT 5 |}
+  let leaders_pts_per36 = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, (SUM(s.pts) * 1.0 / SUM(s.min_seconds)) * 36 * 60 FROM game_stats_clean s JOIN player_identities pi ON pi.player_id = s.player_id JOIN players p ON p.player_id = pi.canonical_player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING SUM(s.min_seconds) >= 6000 ORDER BY (SUM(s.pts) / SUM(s.min_seconds)) DESC LIMIT 5 |}
+  let leaders_reb = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, AVG(s.reb_tot) FROM game_stats_clean s JOIN player_identities pi ON pi.player_id = s.player_id JOIN players p ON p.player_id = pi.canonical_player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING COUNT(*) >= 5 ORDER BY AVG(s.reb_tot) DESC LIMIT 5 |}
+  let leaders_reb_per36 = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, (SUM(s.reb_tot) * 1.0 / SUM(s.min_seconds)) * 36 * 60 FROM game_stats_clean s JOIN player_identities pi ON pi.player_id = s.player_id JOIN players p ON p.player_id = pi.canonical_player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING SUM(s.min_seconds) >= 6000 ORDER BY (SUM(s.reb_tot) / SUM(s.min_seconds)) DESC LIMIT 5 |}
+  let leaders_ast = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, AVG(s.ast) FROM game_stats_clean s JOIN player_identities pi ON pi.player_id = s.player_id JOIN players p ON p.player_id = pi.canonical_player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING COUNT(*) >= 5 ORDER BY AVG(s.ast) DESC LIMIT 5 |}
+  let leaders_ast_per36 = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, (SUM(s.ast) * 1.0 / SUM(s.min_seconds)) * 36 * 60 FROM game_stats_clean s JOIN player_identities pi ON pi.player_id = s.player_id JOIN players p ON p.player_id = pi.canonical_player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING SUM(s.min_seconds) >= 6000 ORDER BY (SUM(s.ast) / SUM(s.min_seconds)) DESC LIMIT 5 |}
+  let leaders_stl = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, AVG(s.stl) FROM game_stats_clean s JOIN player_identities pi ON pi.player_id = s.player_id JOIN players p ON p.player_id = pi.canonical_player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING COUNT(*) >= 5 ORDER BY AVG(s.stl) DESC LIMIT 5 |}
+  let leaders_stl_per36 = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, (SUM(s.stl) * 1.0 / SUM(s.min_seconds)) * 36 * 60 FROM game_stats_clean s JOIN player_identities pi ON pi.player_id = s.player_id JOIN players p ON p.player_id = pi.canonical_player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING SUM(s.min_seconds) >= 6000 ORDER BY (SUM(s.stl) / SUM(s.min_seconds)) DESC LIMIT 5 |}
+  let leaders_blk = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, AVG(s.blk) FROM game_stats_clean s JOIN player_identities pi ON pi.player_id = s.player_id JOIN players p ON p.player_id = pi.canonical_player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING COUNT(*) >= 5 ORDER BY AVG(s.blk) DESC LIMIT 5 |}
+  let leaders_blk_per36 = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, (SUM(s.blk) * 1.0 / SUM(s.min_seconds)) * 36 * 60 FROM game_stats_clean s JOIN player_identities pi ON pi.player_id = s.player_id JOIN players p ON p.player_id = pi.canonical_player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING SUM(s.min_seconds) >= 6000 ORDER BY (SUM(s.blk) / SUM(s.min_seconds)) DESC LIMIT 5 |}
 
   (* Leaders - extended (basketball-reference style) *)
-  let leaders_gp = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, COUNT(*) FROM game_stats s JOIN player_identities pi ON pi.player_id = s.player_id JOIN players p ON p.player_id = pi.canonical_player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr ORDER BY COUNT(*) DESC LIMIT 5 |}
-  let leaders_min = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, AVG(s.min_seconds) / 60.0 FROM game_stats s JOIN player_identities pi ON pi.player_id = s.player_id JOIN players p ON p.player_id = pi.canonical_player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING COUNT(*) >= 5 ORDER BY AVG(s.min_seconds) DESC LIMIT 5 |}
-  let leaders_min_totals = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, SUM(s.min_seconds) / 60.0 FROM game_stats s JOIN player_identities pi ON pi.player_id = s.player_id JOIN players p ON p.player_id = pi.canonical_player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr ORDER BY SUM(s.min_seconds) DESC LIMIT 5 |}
+  let leaders_gp = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, COUNT(*) FROM game_stats_clean s JOIN player_identities pi ON pi.player_id = s.player_id JOIN players p ON p.player_id = pi.canonical_player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr ORDER BY COUNT(*) DESC LIMIT 5 |}
+  let leaders_min = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, AVG(s.min_seconds) / 60.0 FROM game_stats_clean s JOIN player_identities pi ON pi.player_id = s.player_id JOIN players p ON p.player_id = pi.canonical_player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING COUNT(*) >= 5 ORDER BY AVG(s.min_seconds) DESC LIMIT 5 |}
+  let leaders_min_totals = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, SUM(s.min_seconds) / 60.0 FROM game_stats_clean s JOIN player_identities pi ON pi.player_id = s.player_id JOIN players p ON p.player_id = pi.canonical_player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr ORDER BY SUM(s.min_seconds) DESC LIMIT 5 |}
 
-  let leaders_pts_totals = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, SUM(s.pts) FROM game_stats s JOIN player_identities pi ON pi.player_id = s.player_id JOIN players p ON p.player_id = pi.canonical_player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING COUNT(*) >= 5 ORDER BY SUM(s.pts) DESC LIMIT 5 |}
-  let leaders_reb_totals = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, SUM(s.reb_tot) FROM game_stats s JOIN player_identities pi ON pi.player_id = s.player_id JOIN players p ON p.player_id = pi.canonical_player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING COUNT(*) >= 5 ORDER BY SUM(s.reb_tot) DESC LIMIT 5 |}
-  let leaders_ast_totals = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, SUM(s.ast) FROM game_stats s JOIN player_identities pi ON pi.player_id = s.player_id JOIN players p ON p.player_id = pi.canonical_player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING COUNT(*) >= 5 ORDER BY SUM(s.ast) DESC LIMIT 5 |}
-  let leaders_stl_totals = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, SUM(s.stl) FROM game_stats s JOIN player_identities pi ON pi.player_id = s.player_id JOIN players p ON p.player_id = pi.canonical_player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING COUNT(*) >= 5 ORDER BY SUM(s.stl) DESC LIMIT 5 |}
-  let leaders_blk_totals = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, SUM(s.blk) FROM game_stats s JOIN player_identities pi ON pi.player_id = s.player_id JOIN players p ON p.player_id = pi.canonical_player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING COUNT(*) >= 5 ORDER BY SUM(s.blk) DESC LIMIT 5 |}
+  let leaders_pts_totals = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, SUM(s.pts) FROM game_stats_clean s JOIN player_identities pi ON pi.player_id = s.player_id JOIN players p ON p.player_id = pi.canonical_player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING COUNT(*) >= 5 ORDER BY SUM(s.pts) DESC LIMIT 5 |}
+  let leaders_reb_totals = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, SUM(s.reb_tot) FROM game_stats_clean s JOIN player_identities pi ON pi.player_id = s.player_id JOIN players p ON p.player_id = pi.canonical_player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING COUNT(*) >= 5 ORDER BY SUM(s.reb_tot) DESC LIMIT 5 |}
+  let leaders_ast_totals = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, SUM(s.ast) FROM game_stats_clean s JOIN player_identities pi ON pi.player_id = s.player_id JOIN players p ON p.player_id = pi.canonical_player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING COUNT(*) >= 5 ORDER BY SUM(s.ast) DESC LIMIT 5 |}
+  let leaders_stl_totals = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, SUM(s.stl) FROM game_stats_clean s JOIN player_identities pi ON pi.player_id = s.player_id JOIN players p ON p.player_id = pi.canonical_player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING COUNT(*) >= 5 ORDER BY SUM(s.stl) DESC LIMIT 5 |}
+  let leaders_blk_totals = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, SUM(s.blk) FROM game_stats_clean s JOIN player_identities pi ON pi.player_id = s.player_id JOIN players p ON p.player_id = pi.canonical_player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING COUNT(*) >= 5 ORDER BY SUM(s.blk) DESC LIMIT 5 |}
 
-  let leaders_tov = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, AVG(s.tov) FROM game_stats s JOIN player_identities pi ON pi.player_id = s.player_id JOIN players p ON p.player_id = pi.canonical_player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING COUNT(*) >= 5 ORDER BY AVG(s.tov) DESC LIMIT 5 |}
-  let leaders_tov_per36 = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, (SUM(s.tov) * 1.0 / SUM(s.min_seconds)) * 36 * 60 FROM game_stats s JOIN player_identities pi ON pi.player_id = s.player_id JOIN players p ON p.player_id = pi.canonical_player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING SUM(s.min_seconds) >= 6000 ORDER BY (SUM(s.tov) / SUM(s.min_seconds)) DESC LIMIT 5 |}
-  let leaders_tov_totals = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, SUM(s.tov) FROM game_stats s JOIN player_identities pi ON pi.player_id = s.player_id JOIN players p ON p.player_id = pi.canonical_player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING COUNT(*) >= 5 ORDER BY SUM(s.tov) DESC LIMIT 5 |}
+  let leaders_tov = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, AVG(s.tov) FROM game_stats_clean s JOIN player_identities pi ON pi.player_id = s.player_id JOIN players p ON p.player_id = pi.canonical_player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING COUNT(*) >= 5 ORDER BY AVG(s.tov) DESC LIMIT 5 |}
+  let leaders_tov_per36 = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, (SUM(s.tov) * 1.0 / SUM(s.min_seconds)) * 36 * 60 FROM game_stats_clean s JOIN player_identities pi ON pi.player_id = s.player_id JOIN players p ON p.player_id = pi.canonical_player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING SUM(s.min_seconds) >= 6000 ORDER BY (SUM(s.tov) / SUM(s.min_seconds)) DESC LIMIT 5 |}
+  let leaders_tov_totals = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, SUM(s.tov) FROM game_stats_clean s JOIN player_identities pi ON pi.player_id = s.player_id JOIN players p ON p.player_id = pi.canonical_player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING COUNT(*) >= 5 ORDER BY SUM(s.tov) DESC LIMIT 5 |}
 
-  let leaders_eff = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, AVG(s.game_score) FROM game_stats s JOIN player_identities pi ON pi.player_id = s.player_id JOIN players p ON p.player_id = pi.canonical_player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING COUNT(*) >= 5 ORDER BY AVG(s.game_score) DESC LIMIT 5 |}
-  let leaders_eff_per36 = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, (SUM(s.game_score) * 2160.0 / SUM(s.min_seconds)) FROM game_stats s JOIN player_identities pi ON pi.player_id = s.player_id JOIN players p ON p.player_id = pi.canonical_player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING SUM(s.min_seconds) >= 6000 ORDER BY (SUM(s.game_score) / SUM(s.min_seconds)) DESC LIMIT 5 |}
+  let leaders_eff = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, AVG(s.game_score) FROM game_stats_clean s JOIN player_identities pi ON pi.player_id = s.player_id JOIN players p ON p.player_id = pi.canonical_player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING COUNT(*) >= 5 ORDER BY AVG(s.game_score) DESC LIMIT 5 |}
+  let leaders_eff_per36 = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, (SUM(s.game_score) * 2160.0 / SUM(s.min_seconds)) FROM game_stats_clean s JOIN player_identities pi ON pi.player_id = s.player_id JOIN players p ON p.player_id = pi.canonical_player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING SUM(s.min_seconds) >= 6000 ORDER BY (SUM(s.game_score) / SUM(s.min_seconds)) DESC LIMIT 5 |}
 
-  let leaders_fg_pct = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, (SUM(s.fg_2p_m + s.fg_3p_m) * 1.0) / NULLIF(SUM(s.fg_2p_a + s.fg_3p_a), 0) FROM game_stats s JOIN player_identities pi ON pi.player_id = s.player_id JOIN players p ON p.player_id = pi.canonical_player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING SUM(s.fg_2p_a + s.fg_3p_a) >= 50 ORDER BY ((SUM(s.fg_2p_m + s.fg_3p_m) * 1.0) / NULLIF(SUM(s.fg_2p_a + s.fg_3p_a), 0)) DESC LIMIT 5 |}
-  let leaders_fg3_pct = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, (SUM(s.fg_3p_m) * 1.0) / NULLIF(SUM(s.fg_3p_a), 0) FROM game_stats s JOIN player_identities pi ON pi.player_id = s.player_id JOIN players p ON p.player_id = pi.canonical_player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING SUM(s.fg_3p_a) >= 20 ORDER BY ((SUM(s.fg_3p_m) * 1.0) / NULLIF(SUM(s.fg_3p_a), 0)) DESC LIMIT 5 |}
-  let leaders_ft_pct = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, (SUM(s.ft_m) * 1.0) / NULLIF(SUM(s.ft_a), 0) FROM game_stats s JOIN player_identities pi ON pi.player_id = s.player_id JOIN players p ON p.player_id = pi.canonical_player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING SUM(s.ft_a) >= 20 ORDER BY ((SUM(s.ft_m) * 1.0) / NULLIF(SUM(s.ft_a), 0)) DESC LIMIT 5 |}
-  let leaders_ts_pct = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, (SUM(s.pts) * 1.0) / NULLIF(2.0 * (SUM(s.fg_2p_a + s.fg_3p_a) + 0.44 * SUM(s.ft_a)), 0) FROM game_stats s JOIN player_identities pi ON pi.player_id = s.player_id JOIN players p ON p.player_id = pi.canonical_player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING (SUM(s.fg_2p_a + s.fg_3p_a) + SUM(s.ft_a)) >= 50 ORDER BY ((SUM(s.pts) * 1.0) / NULLIF(2.0 * (SUM(s.fg_2p_a + s.fg_3p_a) + 0.44 * SUM(s.ft_a)), 0)) DESC LIMIT 5 |}
-  let leaders_efg_pct = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, ((SUM(s.fg_2p_m + s.fg_3p_m) + 0.5 * SUM(s.fg_3p_m)) * 1.0) / NULLIF(SUM(s.fg_2p_a + s.fg_3p_a), 0) FROM game_stats s JOIN player_identities pi ON pi.player_id = s.player_id JOIN players p ON p.player_id = pi.canonical_player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING SUM(s.fg_2p_a + s.fg_3p_a) >= 50 ORDER BY (((SUM(s.fg_2p_m + s.fg_3p_m) + 0.5 * SUM(s.fg_3p_m)) * 1.0) / NULLIF(SUM(s.fg_2p_a + s.fg_3p_a), 0)) DESC LIMIT 5 |}
+  let leaders_fg_pct = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, (SUM(s.fg_2p_m + s.fg_3p_m) * 1.0) / NULLIF(SUM(s.fg_2p_a + s.fg_3p_a), 0) FROM game_stats_clean s JOIN player_identities pi ON pi.player_id = s.player_id JOIN players p ON p.player_id = pi.canonical_player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING SUM(s.fg_2p_a + s.fg_3p_a) >= 50 ORDER BY ((SUM(s.fg_2p_m + s.fg_3p_m) * 1.0) / NULLIF(SUM(s.fg_2p_a + s.fg_3p_a), 0)) DESC LIMIT 5 |}
+  let leaders_fg3_pct = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, (SUM(s.fg_3p_m) * 1.0) / NULLIF(SUM(s.fg_3p_a), 0) FROM game_stats_clean s JOIN player_identities pi ON pi.player_id = s.player_id JOIN players p ON p.player_id = pi.canonical_player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING SUM(s.fg_3p_a) >= 20 ORDER BY ((SUM(s.fg_3p_m) * 1.0) / NULLIF(SUM(s.fg_3p_a), 0)) DESC LIMIT 5 |}
+  let leaders_ft_pct = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, (SUM(s.ft_m) * 1.0) / NULLIF(SUM(s.ft_a), 0) FROM game_stats_clean s JOIN player_identities pi ON pi.player_id = s.player_id JOIN players p ON p.player_id = pi.canonical_player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING SUM(s.ft_a) >= 20 ORDER BY ((SUM(s.ft_m) * 1.0) / NULLIF(SUM(s.ft_a), 0)) DESC LIMIT 5 |}
+  let leaders_ts_pct = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, (SUM(s.pts) * 1.0) / NULLIF(2.0 * (SUM(s.fg_2p_a + s.fg_3p_a) + 0.44 * SUM(s.ft_a)), 0) FROM game_stats_clean s JOIN player_identities pi ON pi.player_id = s.player_id JOIN players p ON p.player_id = pi.canonical_player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING (SUM(s.fg_2p_a + s.fg_3p_a) + SUM(s.ft_a)) >= 50 ORDER BY ((SUM(s.pts) * 1.0) / NULLIF(2.0 * (SUM(s.fg_2p_a + s.fg_3p_a) + 0.44 * SUM(s.ft_a)), 0)) DESC LIMIT 5 |}
+  let leaders_efg_pct = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, ((SUM(s.fg_2p_m + s.fg_3p_m) + 0.5 * SUM(s.fg_3p_m)) * 1.0) / NULLIF(SUM(s.fg_2p_a + s.fg_3p_a), 0) FROM game_stats_clean s JOIN player_identities pi ON pi.player_id = s.player_id JOIN players p ON p.player_id = pi.canonical_player_id JOIN teams t ON s.team_code = t.team_code JOIN games g ON g.game_id = s.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING SUM(s.fg_2p_a + s.fg_3p_a) >= 50 ORDER BY (((SUM(s.fg_2p_m + s.fg_3p_m) + 0.5 * SUM(s.fg_3p_m)) * 1.0) / NULLIF(SUM(s.fg_2p_a + s.fg_3p_a), 0)) DESC LIMIT 5 |}
   let leaders_usg_pct = (t2 string string ->* Types.leader_entry) {| SELECT p.player_id, p.player_name, t.team_name_kr, AVG(u.usg_pct) FROM player_usg_stats u JOIN player_identities pi ON pi.player_id = u.player_id JOIN players p ON p.player_id = pi.canonical_player_id JOIN teams t ON u.team_code = t.team_code JOIN games g ON g.game_id = u.game_id WHERE (? = 'ALL' OR g.season_code = ?) AND g.game_type != '10' AND u.usg_pct IS NOT NULL GROUP BY p.player_id, p.player_name, t.team_name_kr HAVING COUNT(*) >= 5 AND SUM(u.min_seconds) >= 6000 ORDER BY AVG(u.usg_pct) DESC LIMIT 5 |}
 
   (** Position-filtered leader queries
@@ -2957,7 +2982,7 @@ module Queries = struct
   *)
 	  let leaders_pts_by_position = (t2 (t2 string string) string ->* Types.leader_entry) {|
 	    SELECT p.player_id, p.player_name, t.team_name_kr, AVG(s.pts)
-	    FROM game_stats s
+	    FROM game_stats_clean s
 	    JOIN player_identities pi ON pi.player_id = s.player_id
 	    JOIN players p ON p.player_id = pi.canonical_player_id
 	    JOIN teams t ON s.team_code = t.team_code
@@ -2972,7 +2997,7 @@ module Queries = struct
   |}
 	  let leaders_reb_by_position = (t2 (t2 string string) string ->* Types.leader_entry) {|
 	    SELECT p.player_id, p.player_name, t.team_name_kr, AVG(s.reb_tot)
-	    FROM game_stats s
+	    FROM game_stats_clean s
 	    JOIN player_identities pi ON pi.player_id = s.player_id
 	    JOIN players p ON p.player_id = pi.canonical_player_id
 	    JOIN teams t ON s.team_code = t.team_code
@@ -2987,7 +3012,7 @@ module Queries = struct
   |}
 	  let leaders_ast_by_position = (t2 (t2 string string) string ->* Types.leader_entry) {|
 	    SELECT p.player_id, p.player_name, t.team_name_kr, AVG(s.ast)
-	    FROM game_stats s
+	    FROM game_stats_clean s
 	    JOIN player_identities pi ON pi.player_id = s.player_id
 	    JOIN players p ON p.player_id = pi.canonical_player_id
 	    JOIN teams t ON s.team_code = t.team_code
@@ -3002,7 +3027,7 @@ module Queries = struct
   |}
 	  let leaders_eff_by_position = (t2 (t2 string string) string ->* Types.leader_entry) {|
 	    SELECT p.player_id, p.player_name, t.team_name_kr, AVG(s.game_score)
-	    FROM game_stats s
+	    FROM game_stats_clean s
 	    JOIN player_identities pi ON pi.player_id = s.player_id
 	    JOIN players p ON p.player_id = pi.canonical_player_id
 	    JOIN teams t ON s.team_code = t.team_code
@@ -3023,7 +3048,7 @@ module Queries = struct
 	      p.player_name,
 	      t.team_name_kr,
 	      AVG(s.game_score)
-	    FROM game_stats s
+	    FROM game_stats_clean s
 	    JOIN player_identities pi ON pi.player_id = s.player_id
 	    JOIN players p ON p.player_id = pi.canonical_player_id
 	    JOIN teams t ON s.team_code = t.team_code
@@ -3044,7 +3069,7 @@ module Queries = struct
 	        AVG(s.game_score) AS eff_cur,
 	        COUNT(*) AS gp_cur,
 	        MAX(t.team_name_kr) AS team_name
-	      FROM game_stats s
+	      FROM game_stats_clean s
 	      JOIN player_identities pi ON pi.player_id = s.player_id
 	      JOIN games g ON g.game_id = s.game_id
 	      JOIN teams t ON t.team_code = s.team_code
@@ -3058,7 +3083,7 @@ module Queries = struct
 	        pi.canonical_player_id AS player_id,
 	        AVG(s.game_score) AS eff_prev,
 	        COUNT(*) AS gp_prev
-	      FROM game_stats s
+	      FROM game_stats_clean s
 	      JOIN player_identities pi ON pi.player_id = s.player_id
 	      JOIN games g ON g.game_id = s.game_id
 	      WHERE g.season_code = ?
@@ -3260,7 +3285,7 @@ module Queries = struct
 	      ) as margin,
 	      0.0 as ts_pct,
 	      0.0 as efg_pct
-	    FROM game_stats s
+	    FROM game_stats_clean s
 	    JOIN player_identities pi ON pi.player_id = s.player_id
 	    JOIN games_calc_v3 g ON s.game_id = g.game_id
 	    JOIN seasons se ON g.season_code = se.season_code
@@ -3322,7 +3347,7 @@ module Queries = struct
 		      ) as margin,
 	      0.0 as ts_pct,
 	      0.0 as efg_pct
-	    FROM game_stats s
+	    FROM game_stats_clean s
 	    JOIN player_identities pi ON pi.player_id = s.player_id
 	    JOIN games_calc_v3 g ON s.game_id = g.game_id
 	    JOIN seasons se ON g.season_code = se.season_code
@@ -3384,7 +3409,7 @@ module Queries = struct
 		      ) as margin,
 	      0.0 as ts_pct,
 	      0.0 as efg_pct
-	    FROM game_stats s
+	    FROM game_stats_clean s
 	    JOIN player_identities pi ON pi.player_id = s.player_id
 	    JOIN games_calc_v3 g ON s.game_id = g.game_id
 	    JOIN seasons se ON g.season_code = se.season_code
@@ -3407,7 +3432,7 @@ module Queries = struct
 	    ),
 	    sums AS (
 	      SELECT game_id, team_code, SUM(pts) AS pts_sum
-	      FROM game_stats
+	      FROM game_stats_clean
 	      GROUP BY game_id, team_code
 	    )
 		    SELECT
@@ -3441,7 +3466,7 @@ module Queries = struct
 	      s.blk,
 	      s.tov,
 	      pm.plus_minus
-	    FROM game_stats s
+	    FROM game_stats_clean s
 	    JOIN player_identities pi ON pi.player_id = s.player_id
 	    JOIN games g ON g.game_id = s.game_id
 	    JOIN teams t1 ON t1.team_code = g.home_team_code
@@ -3466,7 +3491,7 @@ module Queries = struct
 	    ),
 	    sums AS (
 	      SELECT game_id, team_code, SUM(pts) AS pts_sum
-	      FROM game_stats
+	      FROM game_stats_clean
 	      GROUP BY game_id, team_code
 	    )
 		    SELECT
@@ -3500,7 +3525,7 @@ module Queries = struct
 	      s.blk,
 	      s.tov,
 	      pm.plus_minus
-	    FROM game_stats s
+	    FROM game_stats_clean s
 	    JOIN player_identities pi ON pi.player_id = s.player_id
 	    JOIN games g ON g.game_id = s.game_id
 	    JOIN teams t1 ON t1.team_code = g.home_team_code
@@ -3518,7 +3543,7 @@ module Queries = struct
 	  let batch_player_game_logs = (t2 string (t2 string string) ->* Types.player_game_stat_with_id) {|
 		    WITH sums AS (
 		      SELECT game_id, team_code, SUM(pts) AS pts_sum
-		      FROM game_stats
+		      FROM game_stats_clean
 		      GROUP BY game_id, team_code
 	    )
 	    SELECT
@@ -3553,7 +3578,7 @@ module Queries = struct
 		      s.blk,
 	      s.tov,
 	      pm.plus_minus
-	    FROM game_stats s
+	    FROM game_stats_clean s
 	    JOIN player_identities pi ON pi.player_id = s.player_id
 	    JOIN games g ON g.game_id = s.game_id
 	    JOIN teams t1 ON t1.team_code = g.home_team_code
@@ -3579,7 +3604,7 @@ module Queries = struct
 	    ),
 	    sums AS (
 	      SELECT game_id, team_code, SUM(pts) AS pts_sum
-	      FROM game_stats
+	      FROM game_stats_clean
 	      GROUP BY game_id, team_code
 	    )
 		    SELECT
@@ -3613,7 +3638,7 @@ module Queries = struct
 	      s.blk,
 	      s.tov,
 	      pm.plus_minus
-	    FROM game_stats s
+	    FROM game_stats_clean s
 	    JOIN player_identities pi ON pi.player_id = s.player_id
 	    JOIN games g ON g.game_id = s.game_id
 	    JOIN teams t1 ON t1.team_code = g.home_team_code
@@ -3638,7 +3663,7 @@ module Queries = struct
 	    SELECT
 	      g.game_date,
 	      t.team_name_kr
-	    FROM game_stats s
+	    FROM game_stats_clean s
 	    JOIN player_identities pi ON pi.player_id = s.player_id
 	    JOIN games g ON g.game_id = s.game_id
 	    JOIN teams t ON t.team_code = s.team_code
@@ -3674,7 +3699,7 @@ module Queries = struct
 	      s.blk,
 	      s.tov,
 	      NULL as plus_minus
-	    FROM game_stats s
+	    FROM game_stats_clean s
 	    JOIN player_identities pi ON pi.player_id = s.player_id
 	    JOIN games g ON g.game_id = s.game_id
 	    JOIN teams t1 ON t1.team_code = g.home_team_code
@@ -3710,7 +3735,7 @@ module Queries = struct
 	      s.blk,
 	      s.tov,
 	      NULL as plus_minus
-	    FROM game_stats s
+	    FROM game_stats_clean s
 	    JOIN player_identities pi ON pi.player_id = s.player_id
 	    JOIN games g ON g.game_id = s.game_id
 	    JOIN teams t1 ON t1.team_code = g.home_team_code
@@ -3746,7 +3771,7 @@ module Queries = struct
 	      s.blk,
 	      s.tov,
 	      NULL as plus_minus
-	    FROM game_stats s
+	    FROM game_stats_clean s
 	    JOIN player_identities pi ON pi.player_id = s.player_id
 	    JOIN games g ON g.game_id = s.game_id
 	    JOIN teams t1 ON t1.team_code = g.home_team_code
@@ -3782,7 +3807,7 @@ module Queries = struct
 	      s.blk,
 	      s.tov,
 	      NULL as plus_minus
-	    FROM game_stats s
+	    FROM game_stats_clean s
 	    JOIN player_identities pi ON pi.player_id = s.player_id
 	    JOIN games g ON g.game_id = s.game_id
 	    JOIN teams t1 ON t1.team_code = g.home_team_code
@@ -3818,7 +3843,7 @@ module Queries = struct
 	      s.blk,
 	      s.tov,
 	      NULL as plus_minus
-	    FROM game_stats s
+	    FROM game_stats_clean s
 	    JOIN player_identities pi ON pi.player_id = s.player_id
 	    JOIN games g ON g.game_id = s.game_id
 	    JOIN teams t1 ON t1.team_code = g.home_team_code
@@ -3925,7 +3950,7 @@ module Queries = struct
 	      COALESCE(AVG(s.blk), 0),
 	      COALESCE(AVG(s.tov), 0),
 	      COALESCE(AVG(s.game_score), 0)
-	    FROM game_stats s
+	    FROM game_stats_clean s
 	    JOIN players p ON s.player_id = p.player_id
 	    JOIN teams t ON s.team_code = t.team_code
 	    JOIN games_calc_v3 g ON g.game_id = s.game_id
@@ -3958,11 +3983,11 @@ module Queries = struct
 	        g.*,
 	        COALESCE(
 	          NULLIF(g.home_score, 0),
-	          (SELECT SUM(sx.pts) FROM game_stats sx WHERE sx.game_id = g.game_id AND sx.team_code = g.home_team_code)
+	          (SELECT SUM(sx.pts) FROM game_stats_clean sx WHERE sx.game_id = g.game_id AND sx.team_code = g.home_team_code)
 	        ) AS home_score_calc,
 	        COALESCE(
 	          NULLIF(g.away_score, 0),
-	          (SELECT SUM(sx.pts) FROM game_stats sx WHERE sx.game_id = g.game_id AND sx.team_code = g.away_team_code)
+	          (SELECT SUM(sx.pts) FROM game_stats_clean sx WHERE sx.game_id = g.game_id AND sx.team_code = g.away_team_code)
 	        ) AS away_score_calc
 	      FROM games g
 	    )
@@ -3984,8 +4009,8 @@ module Queries = struct
       CASE WHEN g.home_score_calc > g.away_score_calc THEN t1.team_name_kr ELSE t2.team_name_kr END as winner,
       COALESCE(ABS(g.home_score_calc - g.away_score_calc), 0) as diff
 	    FROM scored_games g
-	    JOIN game_stats s1 ON g.game_id = s1.game_id
-	    JOIN game_stats s2 ON g.game_id = s2.game_id
+	    JOIN game_stats_clean s1 ON g.game_id = s1.game_id
+	    JOIN game_stats_clean s2 ON g.game_id = s2.game_id
 	    JOIN player_identities pi1 ON pi1.player_id = s1.player_id
 	    JOIN player_identities pi2 ON pi2.player_id = s2.player_id
 	    JOIN teams t1 ON s1.team_code = t1.team_code
@@ -4006,15 +4031,15 @@ module Queries = struct
 	        g.*,
 	        COALESCE(
 	          NULLIF(g.home_score, 0),
-	          (SELECT SUM(sx.pts) FROM game_stats sx WHERE sx.game_id = g.game_id AND sx.team_code = g.home_team_code)
+	          (SELECT SUM(sx.pts) FROM game_stats_clean sx WHERE sx.game_id = g.game_id AND sx.team_code = g.home_team_code)
 	        ) AS home_score_calc,
 	        COALESCE(
 	          NULLIF(g.away_score, 0),
-	          (SELECT SUM(sx.pts) FROM game_stats sx WHERE sx.game_id = g.game_id AND sx.team_code = g.away_team_code)
+	          (SELECT SUM(sx.pts) FROM game_stats_clean sx WHERE sx.game_id = g.game_id AND sx.team_code = g.away_team_code)
 	        ) AS away_score_calc,
 	        CASE
 	          WHEN NULLIF(g.home_score, 0) IS NOT NULL AND NULLIF(g.away_score, 0) IS NOT NULL THEN 2
-	          WHEN EXISTS (SELECT 1 FROM game_stats gs WHERE gs.game_id = g.game_id) THEN 1
+	          WHEN EXISTS (SELECT 1 FROM game_stats_clean gs WHERE gs.game_id = g.game_id) THEN 1
 	          ELSE 0
 	        END AS score_quality
 	      FROM games g
@@ -4196,7 +4221,7 @@ module Queries = struct
           / NULLIF(COUNT(DISTINCT gs.game_id), 0),
           1
         ) AS efficiency
-      FROM game_stats gs
+      FROM game_stats_clean gs
       JOIN players p ON gs.player_id = p.player_id
       JOIN teams t ON gs.team_code = t.team_code
       JOIN games g ON gs.game_id = g.game_id
@@ -4322,7 +4347,7 @@ module Queries = struct
 	      SELECT DISTINCT ON (pi2.canonical_player_id)
 	        pi2.canonical_player_id AS player_id,
 	        gs.team_code
-	      FROM game_stats gs
+	      FROM game_stats_clean gs
 	      JOIN player_identities pi2 ON pi2.player_id = gs.player_id
 	      JOIN games g2 ON gs.game_id = g2.game_id
 	      WHERE ($1 = 'ALL' OR g2.season_code = $1)
@@ -4345,7 +4370,7 @@ module Queries = struct
       COALESCE(SUM(s.min_seconds), 0) as total_min_seconds,
       COALESCE(SUM(pm.plus_minus), 0) as total_plus_minus,
       COUNT(pm.plus_minus) as games_with_pm
-    FROM game_stats s
+    FROM game_stats_clean s
     JOIN players p ON s.player_id = p.player_id
     JOIN teams t ON s.team_code = t.team_code
     JOIN games g ON g.game_id = s.game_id
@@ -4373,7 +4398,7 @@ module Queries = struct
       COALESCE(SUM(s.min_seconds), 0) as total_min_seconds,
       COALESCE(SUM(pm.plus_minus), 0) as total_plus_minus,
       COUNT(pm.plus_minus) as games_with_pm
-    FROM game_stats s
+    FROM game_stats_clean s
     JOIN players p ON s.player_id = p.player_id
     JOIN teams t ON s.team_code = t.team_code
     JOIN games g ON g.game_id = s.game_id
@@ -4431,7 +4456,7 @@ module Queries = struct
         g.season_code,
         g.game_date,
         g.game_id
-      FROM game_stats gs
+      FROM game_stats_clean gs
       JOIN player_identities pi ON pi.player_id = gs.player_id
       JOIN games g ON gs.game_id = g.game_id
       WHERE pi.canonical_player_id = (SELECT canonical_player_id FROM canon)
@@ -4573,15 +4598,18 @@ end
 
 (** Database operations *)
   module Repo = struct
-    let ensure_schema (module Db : Caqti_eio.CONNECTION) =
-      let (let*) = Result.bind in
-      let* () = Db.exec Queries.ensure_legend_players_table () in
-      let* () = Db.exec Queries.seed_legend_players () in
-      let* () = Db.exec Queries.seed_historical_teams () in
-      
-      (* Use games_calc_v3 instead of dropping old view synchronously *)
-      (* let* () = Db.exec Queries.drop_games_calc_view () in *)
-      let* () = Db.exec Queries.ensure_games_calc_matview () in
+	    let ensure_schema (module Db : Caqti_eio.CONNECTION) =
+	      let (let*) = Result.bind in
+	      let* () = Db.exec Queries.ensure_legend_players_table () in
+	      let* () = Db.exec Queries.seed_legend_players () in
+	      let* () = Db.exec Queries.seed_historical_teams () in
+	      (* Data-quality overrides must exist before any derived views/materialized views. *)
+	      let* () = Db.exec Queries.ensure_game_stats_exclusions_table () in
+	      let* () = Db.exec Queries.ensure_game_stats_clean_view () in
+	      
+	      (* Use games_calc_v3 instead of dropping old view synchronously *)
+	      (* let* () = Db.exec Queries.drop_games_calc_view () in *)
+	      let* () = Db.exec Queries.ensure_games_calc_matview () in
       let* () = Db.exec Queries.ensure_games_calc_index () in
       let* () = Db.exec Queries.ensure_games_calc_season_index () in
 
@@ -4614,12 +4642,12 @@ end
       let* () = Db.exec Queries.ensure_schedule_index_date () in
       let* () = Db.exec Queries.ensure_schedule_index_status () in
       let* () = Db.exec Queries.ensure_schedule_index_season () in
-      (* Canonicalize duplicate player identities (same name + birth_date). *)
-      let* () = Db.exec Queries.ensure_player_identities_view () in
-      (* Leaders base cache MATERIALIZED VIEW - drop first to update schema *)
-      let* () = Db.exec Queries.drop_leaders_base_cache () in
-      let* () = Db.exec Queries.ensure_leaders_base_cache_view () in
-      let* () = Db.exec Queries.ensure_leaders_base_cache_unique () in
+	      (* Canonicalize duplicate player identities (same name + birth_date). *)
+	      let* () = Db.exec Queries.ensure_player_identities_view () in
+	      (* Leaders base cache MATERIALIZED VIEW - drop first to update schema *)
+	      let* () = Db.exec Queries.drop_leaders_base_cache () in
+	      let* () = Db.exec Queries.ensure_leaders_base_cache_view () in
+	      let* () = Db.exec Queries.ensure_leaders_base_cache_unique () in
       let* () = Db.exec Queries.ensure_leaders_base_cache_index_season () in
       let* () = Db.exec Queries.refresh_leaders_base_cache () in
       (* Migration: Drop old regular VIEWs before creating MATERIALIZED VIEWs *)
@@ -4995,8 +5023,11 @@ end
 			            in
 			            let career_highs = match items with | [] -> None | _ -> Some items in
 			            let averages = match averages_res with Some a -> a | None -> dummy_avg in
-			            let team_stints = team_stints_of_games team_games in
-			            Ok ((Some { player = p; averages; recent_games = recent; all_star_games = all_star; draft = draft_res; official_trade_events = trade_events_res; external_links = external_links_res; team_stints; season_breakdown = seasons; career_highs }))
+				            let team_stints =
+				              team_stints_of_games team_games
+				              |> normalize_player_team_stints
+				            in
+				            Ok ((Some { player = p; averages; recent_games = recent; all_star_games = all_star; draft = draft_res; official_trade_events = trade_events_res; external_links = external_links_res; team_stints; season_breakdown = seasons; career_highs }))
 
   let get_player_season_stats ~player_id ~scope (module Db : Caqti_eio.CONNECTION) = let q = match scope with | "totals" -> Queries.player_seasons_totals | "per_36" -> Queries.player_seasons_per36 | _ -> Queries.player_seasons_per_game in Db.collect_list q player_id
   let get_player_game_logs ~player_id ~season ~include_mismatch (module Db : Caqti_eio.CONNECTION) =
@@ -5963,7 +5994,7 @@ let get_lineup_data ~season ~team_name () =
           s.min_seconds,
           s.pts,
           NULL::integer AS plus_minus
-        FROM game_stats s
+        FROM game_stats_clean s
         JOIN games g ON g.game_id = s.game_id
         JOIN players p ON p.player_id = s.player_id
         JOIN teams t ON t.team_code = s.team_code
