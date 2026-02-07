@@ -341,34 +341,28 @@ Sitemap: https://wkbl.win/sitemap.xml
               (* Home "today games" should not look empty on cold start.
                  Prefer live poller data, but fall back to today's schedule from DB. *)
               let live_games =
-                let current = Live.get_current_games () in
-                if current <> [] then current
-                else
-                  let today =
-                    let tm = Unix.localtime (Unix.time ()) in
-                    Printf.sprintf "%04d-%02d-%02d"
-                      (tm.Unix.tm_year + 1900)
-                      (tm.Unix.tm_mon + 1)
-                      tm.Unix.tm_mday
-                  in
-                  let live_season = latest_season_code seasons in
-                  match Db.get_games ~season:live_season ~page_size:400 () with
-                  | Error _ -> []
-                  | Ok games ->
-                      games
-                      |> List.filter (fun (g: Domain.game_summary) ->
-                          String.length g.game_date >= 10 && String.sub g.game_date 0 10 = today)
-                      |> List.map (fun (g: Domain.game_summary) ->
-                          let quarter =
-                            match g.home_score, g.away_score with
-                            | None, None -> "경기전"
-                            | Some _, Some _ -> "경기종료"
-                            | _ -> "경기전"
-                          in
-                          {
-                            Domain.lg_game_id = g.game_id;
-                            lg_home_team = g.home_team;
-                            lg_away_team = g.away_team;
+	                let current = Live.get_current_games () in
+	                if current <> [] then current
+	                else
+	                  let today = Live.today_str () in
+	                  let live_season = latest_season_code seasons in
+	                  match Db.get_games ~season:live_season ~page_size:400 () with
+	                  | Error _ -> []
+	                  | Ok games ->
+	                      games
+	                      |> List.filter (fun (g: Domain.game_summary) ->
+	                          String.length g.game_date >= 10 && String.sub g.game_date 0 10 = today)
+	                      |> List.map (fun (g: Domain.game_summary) ->
+	                          let has_score =
+	                            match g.home_score, g.away_score with
+	                            | Some a, Some b -> not (a = 0 && b = 0)
+	                            | _ -> false
+	                          in
+	                          let quarter = if has_score then "경기종료" else "경기전" in
+	                          {
+	                            Domain.lg_game_id = g.game_id;
+	                            lg_home_team = g.home_team;
+	                            lg_away_team = g.away_team;
                             lg_home_score = Option.value ~default:0 g.home_score;
                             lg_away_score = Option.value ~default:0 g.away_score;
                             lg_quarter = quarter;
@@ -1710,36 +1704,30 @@ Sitemap: https://wkbl.win/sitemap.xml
       let current = Live.get_current_games () in
       let games =
         if current <> [] then current
-        else
-          (* Fallback to today's schedule so the UI doesn't look empty if live polling fails. *)
-          let today =
-            let tm = Unix.localtime (Unix.time ()) in
-            Printf.sprintf "%04d-%02d-%02d"
-              (tm.Unix.tm_year + 1900)
-              (tm.Unix.tm_mon + 1)
-              tm.Unix.tm_mday
-          in
-          match Db.get_seasons () with
-          | Error _ -> []
-          | Ok seasons ->
-              let live_season = latest_season_code seasons in
-              (match Db.get_games ~season:live_season ~page_size:400 () with
+	        else
+	          (* Fallback to today's schedule so the UI doesn't look empty if live polling fails. *)
+	          let today = Live.today_str () in
+	          match Db.get_seasons () with
+	          | Error _ -> []
+	          | Ok seasons ->
+	              let live_season = latest_season_code seasons in
+	              (match Db.get_games ~season:live_season ~page_size:400 () with
               | Error _ -> []
               | Ok gs ->
                   gs
-                  |> List.filter (fun (g: Domain.game_summary) ->
-                      String.length g.game_date >= 10 && String.sub g.game_date 0 10 = today)
-                  |> List.map (fun (g: Domain.game_summary) ->
-                      let quarter =
-                        match g.home_score, g.away_score with
-                        | None, None -> "경기전"
-                        | Some _, Some _ -> "경기종료"
-                        | _ -> "경기전"
-                      in
-                      {
-                        Domain.lg_game_id = g.game_id;
-                        lg_home_team = g.home_team;
-                        lg_away_team = g.away_team;
+	                  |> List.filter (fun (g: Domain.game_summary) ->
+	                      String.length g.game_date >= 10 && String.sub g.game_date 0 10 = today)
+	                  |> List.map (fun (g: Domain.game_summary) ->
+	                      let has_score =
+	                        match g.home_score, g.away_score with
+	                        | Some a, Some b -> not (a = 0 && b = 0)
+	                        | _ -> false
+	                      in
+	                      let quarter = if has_score then "경기종료" else "경기전" in
+	                      {
+	                        Domain.lg_game_id = g.game_id;
+	                        lg_home_team = g.home_team;
+	                        lg_away_team = g.away_team;
                         lg_home_score = Option.value ~default:0 g.home_score;
                         lg_away_score = Option.value ~default:0 g.away_score;
                         lg_quarter = quarter;
@@ -1759,37 +1747,31 @@ Sitemap: https://wkbl.win/sitemap.xml
     (* Live Scores Widget: HTMX partial *)
     Kirin.get "/api/live/widget" (fun _ ->
       let current = Live.get_current_games () in
-      let games =
-        if current <> [] then current
-        else
-          let today =
-            let tm = Unix.localtime (Unix.time ()) in
-            Printf.sprintf "%04d-%02d-%02d"
-              (tm.Unix.tm_year + 1900)
-              (tm.Unix.tm_mon + 1)
-              tm.Unix.tm_mday
-          in
-          match Db.get_seasons () with
-          | Error _ -> []
-          | Ok seasons ->
-              let live_season = latest_season_code seasons in
-              (match Db.get_games ~season:live_season ~page_size:400 () with
+	      let games =
+	        if current <> [] then current
+	        else
+	          let today = Live.today_str () in
+	          match Db.get_seasons () with
+	          | Error _ -> []
+	          | Ok seasons ->
+	              let live_season = latest_season_code seasons in
+	              (match Db.get_games ~season:live_season ~page_size:400 () with
               | Error _ -> []
               | Ok gs ->
                   gs
-                  |> List.filter (fun (g: Domain.game_summary) ->
-                      String.length g.game_date >= 10 && String.sub g.game_date 0 10 = today)
-                  |> List.map (fun (g: Domain.game_summary) ->
-                      let quarter =
-                        match g.home_score, g.away_score with
-                        | None, None -> "경기전"
-                        | Some _, Some _ -> "경기종료"
-                        | _ -> "경기전"
-                      in
-                      {
-                        Domain.lg_game_id = g.game_id;
-                        lg_home_team = g.home_team;
-                        lg_away_team = g.away_team;
+	                  |> List.filter (fun (g: Domain.game_summary) ->
+	                      String.length g.game_date >= 10 && String.sub g.game_date 0 10 = today)
+	                  |> List.map (fun (g: Domain.game_summary) ->
+	                      let has_score =
+	                        match g.home_score, g.away_score with
+	                        | Some a, Some b -> not (a = 0 && b = 0)
+	                        | _ -> false
+	                      in
+	                      let quarter = if has_score then "경기종료" else "경기전" in
+	                      {
+	                        Domain.lg_game_id = g.game_id;
+	                        lg_home_team = g.home_team;
+	                        lg_away_team = g.away_team;
                         lg_home_score = Option.value ~default:0 g.home_score;
                         lg_away_score = Option.value ~default:0 g.away_score;
                         lg_quarter = quarter;
@@ -1848,19 +1830,25 @@ Sitemap: https://wkbl.win/sitemap.xml
       | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
     );
 
-    (* AI Prediction API: Get match prediction with explanation *)
-    Kirin.get "/api/predict" (fun request ->
-      let home = Kirin.query_opt "home" request |> Option.value ~default:"" in
-      let away = Kirin.query_opt "away" request |> Option.value ~default:"" in
-      let season = Kirin.query_opt "season" request |> Option.value ~default:"046" in
-      if home = "" || away = "" then
-        Kirin.with_status `Bad_request
-        @@ Kirin.json_string {|{"error":"home and away parameters required"}|}
-      else
-        match Db.get_team_stats ~season (), Db.get_standings ~season (), Db.get_games ~season () with
-        | Ok teams, Ok standings, Ok games ->
-            let find_stats name = List.find_opt (fun (t: Domain.team_stats) -> t.team = name) teams in
-            let find_standing name = List.find_opt (fun (s: Domain.team_standing) -> s.team_name = name) standings in
+	    (* AI Prediction API: Get match prediction with explanation *)
+	    Kirin.get "/api/predict" (fun request ->
+	      let home = Kirin.query_opt "home" request |> Option.value ~default:"" in
+	      let away = Kirin.query_opt "away" request |> Option.value ~default:"" in
+	      if home = "" || away = "" then
+	        Kirin.with_status `Bad_request
+	        @@ Kirin.json_string {|{"error":"home and away parameters required"}|}
+	      else
+	        let season =
+	          match Db.get_seasons () with
+	          | Ok seasons -> query_season_or_latest request seasons
+	          | Error _ ->
+	              query_nonempty request "season"
+	              |> Option.value ~default:(Seasons_catalog.current_regular_season_code ())
+	        in
+	        match Db.get_team_stats ~season (), Db.get_standings ~season (), Db.get_games ~season () with
+	        | Ok teams, Ok standings, Ok games ->
+	            let find_stats name = List.find_opt (fun (t: Domain.team_stats) -> t.team = name) teams in
+	            let find_standing name = List.find_opt (fun (s: Domain.team_standing) -> s.team_name = name) standings in
             (match find_stats home, find_stats away, find_standing home, find_standing away with
             | Some home_stats, Some away_stats, Some home_st, Some away_st ->
                 let output = Prediction.predict_match_nerd
@@ -1894,15 +1882,21 @@ Sitemap: https://wkbl.win/sitemap.xml
             Kirin.server_error ~body:(Db.show_db_error e) ()
     );
 
-    (* AI Prediction OG Image *)
-    Kirin.get "/api/og/predict" (fun request ->
-      let home = Kirin.query_opt "home" request |> Option.value ~default:"" in
-      let away = Kirin.query_opt "away" request |> Option.value ~default:"" in
-      let season = Kirin.query_opt "season" request |> Option.value ~default:"046" in
-      match Db.get_team_stats ~season (), Db.get_standings ~season (), Db.get_games ~season () with
-      | Ok teams, Ok standings, Ok games ->
-          let find_stats name = List.find_opt (fun (t: Domain.team_stats) -> t.team = name) teams in
-          let find_standing name = List.find_opt (fun (s: Domain.team_standing) -> s.team_name = name) standings in
+	    (* AI Prediction OG Image *)
+	    Kirin.get "/api/og/predict" (fun request ->
+	      let home = Kirin.query_opt "home" request |> Option.value ~default:"" in
+	      let away = Kirin.query_opt "away" request |> Option.value ~default:"" in
+	      let season =
+	        match Db.get_seasons () with
+	        | Ok seasons -> query_season_or_latest request seasons
+	        | Error _ ->
+	            query_nonempty request "season"
+	            |> Option.value ~default:(Seasons_catalog.current_regular_season_code ())
+	      in
+	      match Db.get_team_stats ~season (), Db.get_standings ~season (), Db.get_games ~season () with
+	      | Ok teams, Ok standings, Ok games ->
+	          let find_stats name = List.find_opt (fun (t: Domain.team_stats) -> t.team = name) teams in
+	          let find_standing name = List.find_opt (fun (s: Domain.team_standing) -> s.team_name = name) standings in
           (match find_stats home, find_stats away, find_standing home, find_standing away with
           | Some home_stats, Some away_stats, Some home_st, Some away_st ->
               let output = Prediction.predict_match_nerd
@@ -1922,36 +1916,41 @@ Sitemap: https://wkbl.win/sitemap.xml
       | _ -> Kirin.server_error ~body:"Failed to generate image" ()
     );
 
-    (* SSE: Live scores endpoint *)
-    Kirin.get "/api/live/scores" (fun _request ->
-      (* Get today's date in YYYY-MM-DD format *)
-      let today =
-        let tm = Unix.localtime (Unix.time ()) in
-        Printf.sprintf "%04d-%02d-%02d"
-          (tm.Unix.tm_year + 1900)
-          (tm.Unix.tm_mon + 1)
-          tm.Unix.tm_mday
-      in
-      (* Get games for current season *)
-      match Db.get_games ~season:"046" () with
-      | Ok games ->
-          (* Filter today's games *)
-          let today_games = List.filter (fun (g: Domain.game_summary) ->
-            String.sub g.game_date 0 10 = today
-          ) games in
-          (* Convert to JSON *)
-          let game_to_json (g: Domain.game_summary) = `Assoc [
-            ("game_id", `String g.game_id);
-            ("home", `String g.home_team);
-            ("away", `String g.away_team);
-            ("home_score", match g.home_score with Some s -> `Int s | None -> `Null);
-            ("away_score", match g.away_score with Some s -> `Int s | None -> `Null);
-            ("status", `String (if g.home_score = None then "scheduled" else "final"));
-          ] in
-          let json_obj = `Assoc [
-            ("timestamp", `String (string_of_float (Unix.time ())));
-            ("date", `String today);
-            ("games", `List (List.map game_to_json today_games));
+	    (* SSE: Live scores endpoint *)
+	    Kirin.get "/api/live/scores" (fun _request ->
+	      let today = Live.today_str () in
+	      let season =
+	        match Db.get_seasons () with
+	        | Ok seasons -> latest_season_code seasons
+	        | Error _ -> Seasons_catalog.current_regular_season_code ()
+	      in
+	      (* Use a larger page size so "today" isn't dropped due to future games. *)
+	      match Db.get_games ~season ~page_size:400 () with
+	      | Ok games ->
+	          (* Filter today's games *)
+	          let today_games = List.filter (fun (g: Domain.game_summary) ->
+	            String.length g.game_date >= 10 && String.sub g.game_date 0 10 = today
+	          ) games in
+	          (* Convert to JSON *)
+	          let game_to_json (g: Domain.game_summary) =
+	            let home_score_json, away_score_json, status =
+	              match g.home_score, g.away_score with
+	              | Some a, Some b when not (a = 0 && b = 0) -> (`Int a, `Int b, "final")
+	              | _ -> (`Null, `Null, "scheduled")
+	            in
+	            `Assoc [
+	              ("game_id", `String g.game_id);
+	              ("home", `String g.home_team);
+	              ("away", `String g.away_team);
+	              ("home_score", home_score_json);
+	              ("away_score", away_score_json);
+	              ("status", `String status);
+	            ]
+	          in
+	          let json_obj = `Assoc [
+	            ("timestamp", `String (string_of_float (Unix.time ())));
+	            ("date", `String today);
+	            ("games", `List (List.map game_to_json today_games));
           ] in
           (* Return as SSE event *)
           let event = Kirin.Sse.event "scores" (Yojson.Basic.to_string json_obj) in

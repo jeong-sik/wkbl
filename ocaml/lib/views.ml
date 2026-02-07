@@ -7,35 +7,45 @@ open Views_common
 
 (** Live scores widget for homepage *)
 let live_scores_widget (games: Domain.live_game list) =
- if List.length games = 0 then
-  empty_state ~icon:BasketballIcon "오늘 경기가 없습니다" "경기 일정이 있는 날 다시 확인해주세요."
- else
-  let game_cards = games |> List.map (fun (g: Domain.live_game) ->
-   let time_html =
-    let t = String.trim g.lg_time_remaining in
-    if t = "" then ""
-    else Printf.sprintf {html|<span class="text-xs font-mono text-slate-500">%s</span>|html} (escape_html t)
-   in
-   let status_badge =
-    if g.lg_is_live then
-     {html|<span class="live-badge"><span class="live-dot"></span>진행중</span>|html}
-    else
-     Printf.sprintf {html|<span class="px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-[10px]">%s</span>|html}
-      (escape_html g.lg_quarter)
-   in
-   let is_pre_game =
-    (not g.lg_is_live)
-    && (let q = String.trim g.lg_quarter in q = "경기전" || q = "경기 전" || q = "예정")
-   in
-   let score_center =
-    if is_pre_game then
-     {html|<span class="text-xl font-black text-slate-500 dark:text-slate-400">VS</span>|html}
-    else
-     Printf.sprintf {html|<span class="text-xl font-black font-mono text-slate-900 dark:text-white">%d : %d</span>|html}
-      g.lg_home_score g.lg_away_score
-   in
-   Printf.sprintf
-    {html|
+  if List.length games = 0 then
+    empty_state ~icon:BasketballIcon "오늘 경기가 없습니다" "경기 일정이 있는 날 다시 확인해주세요."
+  else
+    let game_cards =
+      games
+      |> List.map (fun (g : Domain.live_game) ->
+          let q = String.trim g.lg_quarter in
+          let time_html =
+            let t = String.trim g.lg_time_remaining in
+            if t = "" then ""
+            else
+              Printf.sprintf
+                {html|<span class="text-xs font-mono text-slate-500">%s</span>|html}
+                (escape_html t)
+          in
+          let status_badge =
+            if g.lg_is_live then
+              {html|<span class="live-badge"><span class="live-dot"></span>진행중</span>|html}
+            else
+              Printf.sprintf
+                {html|<span class="px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-[10px]">%s</span>|html}
+                (escape_html (if q = "" then "예정" else q))
+          in
+          let is_pre_game =
+            (not g.lg_is_live)
+            && (q = "경기전" || q = "경기 전" || q = "예정"
+                || (q = "" && g.lg_home_score = 0 && g.lg_away_score = 0))
+          in
+          let score_center =
+            if is_pre_game then
+              {html|<span class="text-xl font-black text-slate-500 dark:text-slate-400">VS</span>|html}
+            else
+              Printf.sprintf
+                {html|<span class="text-xl font-black font-mono text-slate-900 dark:text-white">%d : %d</span>|html}
+                g.lg_home_score
+                g.lg_away_score
+          in
+          Printf.sprintf
+            {html|
      <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-4 shadow-sm">
       <div class="flex items-center justify-between mb-2">
        %s
@@ -54,16 +64,18 @@ let live_scores_widget (games: Domain.live_game list) =
       </div>
      </div>
     |html}
-    status_badge
-    time_html
-    (team_logo_tag ~class_name:"w-6 h-6" g.lg_home_team)
-    (escape_html g.lg_home_team)
-    score_center
-    (escape_html g.lg_away_team)
-    (team_logo_tag ~class_name:"w-6 h-6" g.lg_away_team)
-  ) |> String.concat "\n"
-  in
-  Printf.sprintf {html|<div class="grid grid-cols-1 md:grid-cols-2 gap-4">%s</div>|html} game_cards
+            status_badge
+            time_html
+            (team_logo_tag ~class_name:"w-6 h-6" g.lg_home_team)
+            (escape_html g.lg_home_team)
+            score_center
+            (escape_html g.lg_away_team)
+            (team_logo_tag ~class_name:"w-6 h-6" g.lg_away_team))
+      |> String.concat "\n"
+    in
+    Printf.sprintf
+      {html|<div class="grid grid-cols-1 md:grid-cols-2 gap-4">%s</div>|html}
+      game_cards
 
 (** HTMX endpoint for live scores widget *)
 let live_scores_htmx () =
