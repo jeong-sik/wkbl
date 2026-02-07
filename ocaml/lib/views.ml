@@ -18,7 +18,7 @@ let live_scores_widget (games: Domain.live_game list) =
    in
    let status_badge =
     if g.lg_is_live then
-     {html|<span class="live-badge"><span class="live-dot"></span>LIVE</span>|html}
+     {html|<span class="live-badge"><span class="live-dot"></span>진행중</span>|html}
     else
      Printf.sprintf {html|<span class="px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-[10px]">%s</span>|html}
       (escape_html g.lg_quarter)
@@ -174,7 +174,7 @@ let players_table ?(lang=I18n.Ko) ?(player_info_map=None) (players: player_aggre
   
   render_fixed_table ~id:"players-table-inner" ~min_width:"min-w-[1100px]" ~cols rows_data
 
-let home_page ?(lang=I18n.Ko) ?(player_info_map=None) ~season ~seasons ~data_as_of players =
+let home_page ?(lang=I18n.Ko) ?(player_info_map=None) ?(live_games=Live.get_current_games ()) ~season ~seasons ~data_as_of players =
  let season_options =
   seasons
   |> List.map (fun (s: season_info) ->
@@ -183,7 +183,6 @@ let home_page ?(lang=I18n.Ko) ?(player_info_map=None) ~season ~seasons ~data_as_
   |> String.concat "\n"
  in
    let table = players_table ~lang ~player_info_map players in
- let live_games = Live.get_current_games () in
  let live_widget = live_scores_widget live_games in
  layout ~lang ~title:"WKBL 통계" ~canonical_path:"/"
   ~description:"WKBL 여자농구 효율성 순위, 팀 순위, 선수 통계를 한눈에 확인하세요."
