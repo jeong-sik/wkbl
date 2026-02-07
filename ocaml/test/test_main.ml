@@ -1955,7 +1955,9 @@ let test_qa_dashboard_english_mode () =
   let html = Wkbl.Views_tools.qa_dashboard_page ~lang:Wkbl.I18n.En report () in
   Alcotest.(check bool) "en heading" true (contains_substring html "Data Check");
   Alcotest.(check bool) "en last checked" true (contains_substring html "Last checked");
-  Alcotest.(check bool) "en schedule coverage heading" true (contains_substring html "Schedule coverage")
+  Alcotest.(check bool) "en schedule coverage heading" true (contains_substring html "Schedule coverage");
+  Alcotest.(check bool) "en sources summary" true (contains_substring html "Sources / How it is checked");
+  Alcotest.(check bool) "en score mismatch block" true (contains_substring html "Score mismatch")
 
 let test_qa_schedule_missing_english_mode () =
   let report : Wkbl.Db.qa_schedule_missing_report =
