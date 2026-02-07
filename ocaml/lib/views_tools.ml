@@ -1451,7 +1451,7 @@ let h2h_advanced_section ~p1_name ~p2_name (games: Domain.h2h_game list) =
 let game_flow_chart ~home_team ~away_team (flow_points: Domain.score_flow_point list) =
   match flow_points with
   | [] ->
-      {html|<div class="text-center text-slate-500 dark:text-slate-400 py-8">흐름 데이터가 없습니다</div>|html}
+      {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 text-center text-slate-600 dark:text-slate-400 text-sm">득점흐름을 만들 기록이 없어요</div>|html}
   | first_pt :: rest ->
     (* Chart dimensions *)
     let width = 800 in
@@ -1637,102 +1637,142 @@ let game_flow_chart ~home_team ~away_team (flow_points: Domain.score_flow_point 
 
 (** Game flow page with chart and summary statistics *)
 let game_flow_page ?(lang=I18n.Ko) ~(game: Domain.game_info) (flow_points: Domain.score_flow_point list) =
+  let title = Printf.sprintf "경기 흐름: %s 대 %s" game.gi_home_team_name game.gi_away_team_name in
   let chart = game_flow_chart ~home_team:game.gi_home_team_name ~away_team:game.gi_away_team_name flow_points in
 
-  (* Calculate lead changes and biggest leads *)
-  let (lead_changes, biggest_home_lead, biggest_away_lead) =
-    let rec count_changes prev_leader changes home_max away_max = function
-      | [] -> (changes, home_max, away_max)
-      | p :: rest ->
-          let current_leader =
-            if p.Domain.sfp_diff > 0 then 1
-            else if p.Domain.sfp_diff < 0 then -1
-            else prev_leader
-          in
-          let new_changes = if current_leader <> prev_leader && prev_leader <> 0 then changes + 1 else changes in
-          let new_home_max = max home_max p.Domain.sfp_diff in
-          let new_away_max = max away_max (-p.Domain.sfp_diff) in
-          count_changes current_leader new_changes new_home_max new_away_max rest
-    in
-    count_changes 0 0 0 0 flow_points
-  in
+  match flow_points with
+  | [] ->
+      layout
+        ~lang
+        ~title
+        ~content:(Printf.sprintf
+          {html|<div class="space-y-6 animate-fade-in">
+            <div class="text-center">
+              <h1 class="text-2xl font-black text-slate-900 dark:text-slate-200">%s 대 %s</h1>
+              <div class="text-slate-500 dark:text-slate-400 text-sm mt-1">%s</div>
+              <div class="text-3xl font-black text-slate-900 dark:text-slate-200 mt-2">%d - %d</div>
+            </div>
+            %s
+            <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 text-slate-600 dark:text-slate-400 text-sm">
+              문자중계가 없는 경기라 득점흐름을 만들 수 없어요.
+            </div>
+            <div class="flex justify-center gap-4">
+              <a href="/boxscore/%s" class="px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-200 hover:border-slate-500 transition">← 박스스코어</a>
+              <a href="/boxscore/%s/pbp" class="px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-200 hover:border-slate-500 transition">문자중계 →</a>
+            </div>
+          </div>|html}
+          (escape_html game.gi_home_team_name)
+          (escape_html game.gi_away_team_name)
+          (escape_html game.gi_game_date)
+          game.gi_home_score
+          game.gi_away_score
+          chart
+          (escape_html game.gi_game_id)
+          (escape_html game.gi_game_id))
+        ()
+  | _ ->
+      (* Calculate lead changes and biggest leads *)
+      let (lead_changes, biggest_home_lead, biggest_away_lead) =
+        let rec count_changes prev_leader changes home_max away_max = function
+          | [] -> (changes, home_max, away_max)
+          | p :: rest ->
+              let current_leader =
+                if p.Domain.sfp_diff > 0 then 1
+                else if p.Domain.sfp_diff < 0 then -1
+                else prev_leader
+              in
+              let new_changes =
+                if current_leader <> prev_leader && prev_leader <> 0 then changes + 1 else changes
+              in
+              let new_home_max = max home_max p.Domain.sfp_diff in
+              let new_away_max = max away_max (-p.Domain.sfp_diff) in
+              count_changes current_leader new_changes new_home_max new_away_max rest
+        in
+        count_changes 0 0 0 0 flow_points
+      in
 
-  (* Calculate time with lead *)
-  let (home_lead_time, away_lead_time, _tied_time) =
-    let rec calc_times _prev_time h_time a_time t_time = function
-      | [] -> (h_time, a_time, t_time)
-      | [_] -> (h_time, a_time, t_time)
-      | p1 :: (p2 :: _ as rest) ->
-          let duration = p2.Domain.sfp_elapsed_seconds - p1.Domain.sfp_elapsed_seconds in
-          let (h, a, t) =
-            if p1.Domain.sfp_diff > 0 then (h_time + duration, a_time, t_time)
-            else if p1.Domain.sfp_diff < 0 then (h_time, a_time + duration, t_time)
-            else (h_time, a_time, t_time + duration)
-          in
-          calc_times p2.Domain.sfp_elapsed_seconds h a t rest
-    in
-    match flow_points with
-    | [] -> (0, 0, 0)
-    | _ -> calc_times 0 0 0 0 flow_points
-  in
+      (* Calculate time with lead *)
+      let (home_lead_time, away_lead_time, _tied_time) =
+        let rec calc_times _prev_time h_time a_time t_time = function
+          | [] -> (h_time, a_time, t_time)
+          | [_] -> (h_time, a_time, t_time)
+          | p1 :: (p2 :: _ as rest) ->
+              let duration = p2.Domain.sfp_elapsed_seconds - p1.Domain.sfp_elapsed_seconds in
+              let (h, a, t) =
+                if p1.Domain.sfp_diff > 0 then (h_time + duration, a_time, t_time)
+                else if p1.Domain.sfp_diff < 0 then (h_time, a_time + duration, t_time)
+                else (h_time, a_time, t_time + duration)
+              in
+              calc_times p2.Domain.sfp_elapsed_seconds h a t rest
+        in
+        calc_times 0 0 0 0 flow_points
+      in
 
-  let format_time secs =
-    let mins = secs / 60 in
-    let secs_rem = secs mod 60 in
-    Printf.sprintf "%d:%02d" mins secs_rem
-  in
+      let format_time secs =
+        let mins = secs / 60 in
+        let secs_rem = secs mod 60 in
+        Printf.sprintf "%d:%02d" mins secs_rem
+      in
 
-  let stats_section =
-    Printf.sprintf
-      {html|<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
-        <div class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-4 text-center">
-          <div class="text-2xl font-black text-slate-900 dark:text-slate-200 font-mono">%d</div>
-          <div class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider mt-1">리드 교체</div>
-        </div>
-        <div class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-4 text-center">
-          <div class="text-2xl font-black text-sky-600 dark:text-sky-400 font-mono">+%d</div>
-          <div class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider mt-1">%s 최대 리드</div>
-        </div>
-        <div class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-4 text-center">
-          <div class="text-2xl font-black text-orange-600 dark:text-orange-400 font-mono">+%d</div>
-          <div class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider mt-1">%s 최대 리드</div>
-        </div>
-        <div class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-4 text-center">
-          <div class="text-lg font-bold text-slate-900 dark:text-slate-200 font-mono">
-            <span class="text-sky-600 dark:text-sky-400">%s</span> /
-            <span class="text-orange-600 dark:text-orange-400">%s</span>
-          </div>
-          <div class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider mt-1">리드 시간</div>
-        </div>
-      </div>|html}
-      lead_changes
-      biggest_home_lead (escape_html game.gi_home_team_name)
-      biggest_away_lead (escape_html game.gi_away_team_name)
-      (format_time home_lead_time) (format_time away_lead_time)
-  in
+      let stats_section =
+        Printf.sprintf
+          {html|<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+            <div class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-4 text-center">
+              <div class="text-2xl font-black text-slate-900 dark:text-slate-200 font-mono">%d</div>
+              <div class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider mt-1">리드 교체</div>
+            </div>
+            <div class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-4 text-center">
+              <div class="text-2xl font-black text-sky-600 dark:text-sky-400 font-mono">+%d</div>
+              <div class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider mt-1">%s 최대 리드</div>
+            </div>
+            <div class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-4 text-center">
+              <div class="text-2xl font-black text-orange-600 dark:text-orange-400 font-mono">+%d</div>
+              <div class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider mt-1">%s 최대 리드</div>
+            </div>
+            <div class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-4 text-center">
+              <div class="text-lg font-bold text-slate-900 dark:text-slate-200 font-mono">
+                <span class="text-sky-600 dark:text-sky-400">%s</span> /
+                <span class="text-orange-600 dark:text-orange-400">%s</span>
+              </div>
+              <div class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider mt-1">리드 시간</div>
+            </div>
+          </div>|html}
+          lead_changes
+          biggest_home_lead
+          (escape_html game.gi_home_team_name)
+          biggest_away_lead
+          (escape_html game.gi_away_team_name)
+          (format_time home_lead_time)
+          (format_time away_lead_time)
+      in
 
-  layout ~lang ~title:(Printf.sprintf "경기 흐름: %s 대 %s" game.gi_home_team_name game.gi_away_team_name)
-		    ~content:(Printf.sprintf
-		      {html|<div class="space-y-6 animate-fade-in">
-	        <div class="text-center">
-	          <h1 class="text-2xl font-black text-slate-900 dark:text-slate-200">%s 대 %s</h1>
-	          <div class="text-slate-500 dark:text-slate-400 text-sm mt-1">%s</div>
-	          <div class="text-3xl font-black text-slate-900 dark:text-slate-200 mt-2">%d - %d</div>
-	        </div>
-	        %s
-	        %s
-	        <div class="flex justify-center gap-4">
-	          <a href="/boxscore/%s" class="px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-200 hover:border-slate-500 transition">← 박스스코어</a>
-	          <a href="/boxscore/%s/pbp" class="px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-200 hover:border-slate-500 transition">문자중계 →</a>
-	        </div>
-	      </div>|html}
-      (escape_html game.gi_home_team_name) (escape_html game.gi_away_team_name)
-      (escape_html game.gi_game_date)
-      game.gi_home_score game.gi_away_score
-      chart
-      stats_section
-      (escape_html game.gi_game_id)
-      (escape_html game.gi_game_id)) ()
+      layout
+        ~lang
+        ~title
+        ~content:(Printf.sprintf
+          {html|<div class="space-y-6 animate-fade-in">
+            <div class="text-center">
+              <h1 class="text-2xl font-black text-slate-900 dark:text-slate-200">%s 대 %s</h1>
+              <div class="text-slate-500 dark:text-slate-400 text-sm mt-1">%s</div>
+              <div class="text-3xl font-black text-slate-900 dark:text-slate-200 mt-2">%d - %d</div>
+            </div>
+            %s
+            %s
+            <div class="flex justify-center gap-4">
+              <a href="/boxscore/%s" class="px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-200 hover:border-slate-500 transition">← 박스스코어</a>
+              <a href="/boxscore/%s/pbp" class="px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-200 hover:border-slate-500 transition">문자중계 →</a>
+            </div>
+          </div>|html}
+          (escape_html game.gi_home_team_name)
+          (escape_html game.gi_away_team_name)
+          (escape_html game.gi_game_date)
+          game.gi_home_score
+          game.gi_away_score
+          chart
+          stats_section
+          (escape_html game.gi_game_id)
+          (escape_html game.gi_game_id))
+        ()
 
 (* ===== Lineup Chemistry Views ===== *)
 

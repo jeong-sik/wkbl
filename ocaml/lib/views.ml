@@ -396,16 +396,22 @@ let teams_table ?(lang=I18n.Ko) ~season ~scope (stats: Domain.team_stats list) =
 
   (* 2. Transform Data to Raw Strings (Data-Oriented) *)
   let rows_data =
-    stats
-    |> List.mapi (fun idx s ->
-        let rank = Printf.sprintf {html|<span class="font-bold text-slate-500 dark:text-slate-400">%d</span>|html} (idx + 1) in
-        let logo = team_logo_tag ~class_name:"w-5 h-5 shrink-0" s.team in
-        let team_cell = Printf.sprintf {html|<div class="flex items-center gap-2">%s<a href="%s" class="hover:text-orange-600 dark:text-orange-400 transition-colors truncate">%s</a></div>|html} logo (team_link s) (escape_html s.team) in
-        let margin_str =
-          let v = s.margin in
-          let s_str = if v > 0.0 then Printf.sprintf "+%.1f" v else format_float v in
-          Printf.sprintf {html|<span class="%s">%s</span>|html} (margin_color v) s_str
-        in
+	    stats
+	    |> List.mapi (fun idx s ->
+	        let rank = Printf.sprintf {html|<span class="font-bold text-slate-500 dark:text-slate-400">%d</span>|html} (idx + 1) in
+	        let logo = team_logo_tag ~class_name:"w-5 h-5 shrink-0" s.team in
+	        let team_cell =
+	          Printf.sprintf
+	            {html|<a href="%s" class="team-link flex items-center gap-2 min-w-0 hover:text-orange-600 dark:text-orange-400 transition-colors">%s<span class="truncate">%s</span></a>|html}
+	            (escape_html (team_link s))
+	            logo
+	            (escape_html s.team)
+	        in
+	        let margin_str =
+	          let v = s.margin in
+	          let s_str = if v > 0.0 then Printf.sprintf "+%.1f" v else format_float v in
+	          Printf.sprintf {html|<span class="%s">%s</span>|html} (margin_color v) s_str
+	        in
 
         [
           rank;
@@ -471,14 +477,20 @@ let standings_table ?(lang=I18n.Ko) ~season (standings : team_standing list) =
       let team_href =
        if season = "ALL" then
         Printf.sprintf "/team/%s" (Uri.pct_encode s.team_name)
-       else
-        Printf.sprintf "/team/%s?season=%s" (Uri.pct_encode s.team_name) (Uri.pct_encode season)
-      in
-      let team_cell = Printf.sprintf {html|<span class="inline-flex items-center gap-2" style="white-space: nowrap;">%s<a href="%s" class="team-name hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 transition-colors" style="white-space: nowrap; word-break: keep-all;">%s</a></span>|html} (team_logo_tag ~class_name:"w-5 h-5" s.team_name) (escape_html team_href) (escape_html s.team_name) in
-      let pct_bar_width = int_of_float (s.win_pct *. 100.0) in
-      let pct_cell = Printf.sprintf {html|<div class="flex flex-col items-end gap-1 leading-tight">
-        <span class="text-orange-600 dark:text-orange-400 font-bold font-mono">%s</span>
-        <div class="w-16 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+	       else
+	        Printf.sprintf "/team/%s?season=%s" (Uri.pct_encode s.team_name) (Uri.pct_encode season)
+	      in
+	      let team_cell =
+	        Printf.sprintf
+	          {html|<a href="%s" class="team-link team-name inline-flex items-center gap-2 hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 transition-colors" style="white-space: nowrap; word-break: keep-all;">%s<span>%s</span></a>|html}
+	          (escape_html team_href)
+	          (team_logo_tag ~class_name:"w-5 h-5 shrink-0" s.team_name)
+	          (escape_html s.team_name)
+	      in
+	      let pct_bar_width = int_of_float (s.win_pct *. 100.0) in
+	      let pct_cell = Printf.sprintf {html|<div class="flex flex-col items-end gap-1 leading-tight">
+	        <span class="text-orange-600 dark:text-orange-400 font-bold font-mono">%s</span>
+	        <div class="w-16 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
           <div class="h-full bg-gradient-to-r from-orange-400 to-orange-600 rounded-full transition-all" style="width: %d%%"></div>
         </div>
       </div>|html} win_pct_fmt pct_bar_width in
@@ -602,28 +614,28 @@ onkeydown="if(event.key==='Enter'||event.key===' ') { event.preventDefault(); wi
 	    <span>%s</span>
 	    %s
 	   </div>
-   <div class="flex items-center justify-between gap-3">
-    <div class="flex flex-col gap-1 min-w-0">
-	     <div class="flex items-center gap-2 text-sm font-medium">%s<a href="/team/%s" class="group-hover:text-orange-600 dark:text-orange-400 dark:group-hover:text-orange-300 transition-colors truncate">%s</a></div>
-	     <div class="flex items-center gap-2 text-sm font-medium">%s<a href="/team/%s" class="group-hover:text-orange-600 dark:text-orange-400 dark:group-hover:text-orange-300 transition-colors truncate">%s</a></div>
-	    </div>
-		    <div class="text-right font-mono text-sm %s whitespace-nowrap group-hover:scale-110 transition-transform">%s</div>
-		   </div>
-			  </div>|html}
+	     <div class="flex items-center justify-between gap-3">
+	    <div class="flex flex-col gap-1 min-w-0">
+		     <a href="/team/%s" class="team-link flex items-center gap-2 text-sm font-medium group-hover:text-orange-600 dark:text-orange-400 dark:group-hover:text-orange-300 transition-colors truncate">%s<span class="truncate">%s</span></a>
+		     <a href="/team/%s" class="team-link flex items-center gap-2 text-sm font-medium group-hover:text-orange-600 dark:text-orange-400 dark:group-hover:text-orange-300 transition-colors truncate">%s<span class="truncate">%s</span></a>
+		    </div>
+			    <div class="text-right font-mono text-sm %s whitespace-nowrap group-hover:scale-110 transition-transform">%s</div>
+			   </div>
+				  </div>|html}
          card_attrs
          card_class
 		       (escape_html g.game_date)
 		       action_html
-	       (team_logo_tag ~class_name:"w-4 h-4" g.home_team)
-       (Uri.pct_encode g.home_team)
-       (escape_html g.home_team)
-       (team_logo_tag ~class_name:"w-4 h-4" g.away_team)
-       (Uri.pct_encode g.away_team)
-       (escape_html g.away_team)
-       status_class
-       score_html)
-    |> String.concat "\n"
-  in
+	       (Uri.pct_encode g.home_team)
+		       (team_logo_tag ~class_name:"w-4 h-4" g.home_team)
+	       (escape_html g.home_team)
+	       (Uri.pct_encode g.away_team)
+	       (team_logo_tag ~class_name:"w-4 h-4" g.away_team)
+	       (escape_html g.away_team)
+	       status_class
+	       score_html)
+	    |> String.concat "\n"
+	  in
 
   let rows_data =
     games
@@ -636,11 +648,17 @@ onkeydown="if(event.key==='Enter'||event.key===' ') { event.preventDefault(); wi
 	        let score_a = match g.home_score with Some s when has_score -> string_of_int s | _ -> "-" in
 	        let score_b = match g.away_score with Some s when has_score -> string_of_int s | _ -> "-" in
 	        
-	        let home_cell = Printf.sprintf {html|<span class="inline-flex items-center justify-end gap-2 whitespace-nowrap">%s<a href="/team/%s" class="team-name group-hover:text-orange-600 dark:text-orange-400 dark:group-hover:text-orange-300 transition-colors" style="white-space: nowrap;">%s</a></span>|html} (team_logo_tag ~class_name:"w-4 h-4" g.home_team) (Uri.pct_encode g.home_team) (escape_html g.home_team) in
-	        let score_cell =
-	          if has_score then
-	            Printf.sprintf
-	              {html|<span class="font-bold text-orange-600 dark:text-orange-400 font-mono group-hover:scale-110 transition-transform whitespace-nowrap w-28">%s - %s</span>|html}
+		        let home_cell =
+		          Printf.sprintf
+		            {html|<a href="/team/%s" class="team-link team-name inline-flex items-center justify-end gap-2 whitespace-nowrap group-hover:text-orange-600 dark:text-orange-400 dark:group-hover:text-orange-300 transition-colors" style="white-space: nowrap;">%s<span>%s</span></a>|html}
+		            (Uri.pct_encode g.home_team)
+		            (team_logo_tag ~class_name:"w-4 h-4 shrink-0" g.home_team)
+		            (escape_html g.home_team)
+		        in
+		        let score_cell =
+		          if has_score then
+		            Printf.sprintf
+		              {html|<span class="font-bold text-orange-600 dark:text-orange-400 font-mono group-hover:scale-110 transition-transform whitespace-nowrap w-28">%s - %s</span>|html}
 	              score_a
 	              score_b
 	          else
@@ -648,11 +666,17 @@ onkeydown="if(event.key==='Enter'||event.key===' ') { event.preventDefault(); wi
 	              {html|<span class="text-xs text-slate-500 dark:text-slate-400 font-mono whitespace-nowrap">%s</span>|html}
 	              (escape_html label_scheduled)
 	        in
-	        let away_cell = Printf.sprintf {html|<span class="inline-flex items-center gap-2 whitespace-nowrap"><a href="/team/%s" class="team-name group-hover:text-orange-600 dark:text-orange-400 dark:group-hover:text-orange-300 transition-colors" style="white-space: nowrap;">%s</a>%s</span>|html} (Uri.pct_encode g.away_team) (escape_html g.away_team) (team_logo_tag ~class_name:"w-4 h-4" g.away_team) in
-			        let action_cell =
-			          if not has_score then
-			            Printf.sprintf
-			              {html|<span class="text-xs text-slate-400 font-mono">%s</span>|html}
+		        let away_cell =
+		          Printf.sprintf
+		            {html|<a href="/team/%s" class="team-link team-name inline-flex items-center gap-2 whitespace-nowrap group-hover:text-orange-600 dark:text-orange-400 dark:group-hover:text-orange-300 transition-colors" style="white-space: nowrap;"><span>%s</span>%s</a>|html}
+		            (Uri.pct_encode g.away_team)
+		            (escape_html g.away_team)
+		            (team_logo_tag ~class_name:"w-4 h-4 shrink-0" g.away_team)
+		        in
+				        let action_cell =
+				          if not has_score then
+				            Printf.sprintf
+				              {html|<span class="text-xs text-slate-400 font-mono">%s</span>|html}
 			              (escape_html label_scheduled)
 			          else
 			            Printf.sprintf
@@ -1283,23 +1307,33 @@ let pbp_page ?(lang=I18n.Ko) ~(game: game_info) ~(periods: string list) ~(select
      (escape_html e.pe_description))
   |> String.concat "\n"
  in
- let body =
-  match periods with
+	 let body =
+	  match periods with
 	  | [] ->
 	    Printf.sprintf
-	     {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 text-slate-600 dark:text-slate-400 text-sm">
-	      <div class="font-bold text-slate-900 dark:text-slate-200 mb-2">문자중계 데이터가 없습니다</div>
-	      <div class="leading-relaxed">
-	       WKBL 문자중계가 제공되지 않았거나 아직 수집되지 않은 경기입니다.
-	       개인 <span class="font-mono text-slate-900 dark:text-slate-200">+/-</span> 계산도 문자중계 기반이라 이 경기에는 표시되지 않을 수 있습니다.
-	      </div>
-	     </div>|html}
-  | _ ->
-    Printf.sprintf
-     {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xl">%s<ul class="divide-y divide-slate-800/60">%s</ul></div>|html}
-     tabs
-     rows
- in
+	      {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 text-slate-600 dark:text-slate-400 text-sm">
+	        <div class="font-bold text-slate-900 dark:text-slate-200 mb-2">문자중계가 없어요</div>
+	        <div class="leading-relaxed">
+	          WKBL에서 문자중계를 제공하지 않았거나, 아직 준비되지 않은 경기입니다.
+	          개인 <span class="font-mono text-slate-900 dark:text-slate-200">+/-</span> 계산도 문자중계 기반이라 이 경기에는 표시되지 않을 수 있습니다.
+	        </div>
+	      </div>|html}
+	  | _ ->
+	    if events = [] then
+	      Printf.sprintf
+	        {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xl">%s
+	          <div class="p-6 text-slate-600 dark:text-slate-400 text-sm">
+	            <div class="font-bold text-slate-900 dark:text-slate-200 mb-2">이 쿼터에는 기록이 없어요</div>
+	            <div class="leading-relaxed">다른 쿼터를 눌러보거나, WKBL 원본 링크가 있으면 확인해 주세요.</div>
+	          </div>
+	        </div>|html}
+	        tabs
+	    else
+	      Printf.sprintf
+	        {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xl">%s<ul class="divide-y divide-slate-800/60">%s</ul></div>|html}
+	        tabs
+	        rows
+	 in
  layout
   ~title:(Printf.sprintf "문자중계: %s vs %s" game.gi_home_team_name game.gi_away_team_name)
   ~content:(Printf.sprintf
