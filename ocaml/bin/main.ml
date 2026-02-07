@@ -369,16 +369,17 @@ Sitemap: https://wkbl.win/sitemap.xml
                             lg_time_remaining = "";
                             lg_is_live = false;
                           })
-              in
-              let data_as_of =
-                match Db.get_latest_game_date () with
-                | Ok (Some d) -> d
-                | Ok None -> "없음"
-                | Error _ -> "-"
-              in
-              Kirin.html (Views.home_page ~lang ~player_info_map ~live_games ~season ~seasons ~data_as_of p)
-          | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
-    );
+	              in
+	              let tr = I18n.t lang in
+	              let data_as_of =
+	                match Db.get_latest_game_date () with
+	                | Ok (Some d) -> d
+	                | Ok None -> tr { ko = "기록 없음"; en = "No record" }
+	                | Error _ -> tr { ko = "확인 불가"; en = "Unavailable" }
+	              in
+	              Kirin.html (Views.home_page ~lang ~player_info_map ~live_games ~season ~seasons ~data_as_of p)
+	          | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
+	    );
 
     (* Home Page Table HTMX *)
     Kirin.get "/home/table" (fun request ->
@@ -1742,15 +1743,16 @@ Sitemap: https://wkbl.win/sitemap.xml
     (* Live Scores API: SSE *)
     Kirin.get "/api/live/sse" (fun request ->
       Live.sse_handler request
-    );
+	    );
 
-    (* Live Scores Widget: HTMX partial *)
-    Kirin.get "/api/live/widget" (fun _ ->
-      let current = Live.get_current_games () in
-	      let games =
-	        if current <> [] then current
-	        else
-	          let today = Live.today_str () in
+	    (* Live Scores Widget: HTMX partial *)
+	    Kirin.get "/api/live/widget" (fun request ->
+	      let lang = request_lang request in
+	      let current = Live.get_current_games () in
+		      let games =
+		        if current <> [] then current
+		        else
+		          let today = Live.today_str () in
 	          match Db.get_seasons () with
 	          | Error _ -> []
 	          | Ok seasons ->
@@ -1778,10 +1780,10 @@ Sitemap: https://wkbl.win/sitemap.xml
                         lg_time_remaining = "";
                         lg_is_live = false;
                       }))
-      in
-      Kirin.with_header "Cache-Control" "no-cache"
-      @@ Kirin.html (Views.live_scores_widget games)
-    );
+	      in
+	      Kirin.with_header "Cache-Control" "no-cache"
+	      @@ Kirin.html (Views.live_scores_widget ~lang games)
+	    );
 
     (* Push Notification: Subscribe (MVP - just log) *)
     Kirin.post "/api/push/subscribe" (fun request ->
