@@ -2578,6 +2578,110 @@ let sync_current_season_schedule ~sw ~env () =
     Printf.eprintf "[Sync] Fatal error: %s\n%!" (Printexc.to_string exn);
     (0, 0, 1)
 
+(** =========================== LIVE PLAY-BY-PLAY (PBP) ========================== *)
+
+(** Parse WKBL live PBP XML from /live11/path_live_sms.asp.
+
+    Each <playhistory> node contains a pipe-delimited line:
+      PERIOD|TEAM_SIDE|DESCRIPTION|TEAM1_SCORE|TEAM2_SCORE|CLOCK
+
+    Notes:
+    - TEAM_SIDE: 1=AWAY, 2=HOME (matches our UI conventions).
+    - team1_score/team2_score may be empty strings (NULL in DB).
+    - Some player names contain spaces (e.g., foreign players); we do NOT split by spaces here.
+*)
+let parse_live_pbp_xml ~seq0 xml : Domain.pbp_event list =
+  let open Soup in
+  let soup = parse xml in
+  let lines =
+    soup $$ "playhistory"
+    |> to_list
+    |> List.filter_map (fun n -> leaf_text n |> Option.map String.trim)
+    |> List.filter (fun s -> s <> "")
+  in
+  let parse_score_opt s =
+    let t = String.trim s in
+    if t = "" then None else int_of_string_opt t
+  in
+  lines
+  |> List.mapi (fun i line ->
+      let parts = String.split_on_char '|' line |> Array.of_list in
+      let n = Array.length parts in
+      if n < 6 then None
+      else
+        let period_code = String.trim parts.(0) in
+        let team_side =
+          parts.(1) |> String.trim |> int_of_string_opt |> Option.value ~default:0
+        in
+        let clock = String.trim parts.(n - 1) in
+        let team2_score = parse_score_opt parts.(n - 2) in
+        let team1_score = parse_score_opt parts.(n - 3) in
+        let desc_parts_len = n - 5 in
+        let description =
+          if desc_parts_len <= 0 then ""
+          else
+            Array.sub parts 2 desc_parts_len
+            |> Array.to_list
+            |> String.concat "|"
+            |> String.trim
+        in
+        Some
+          {
+            Domain.pe_period_code = period_code;
+            pe_event_index = seq0 + i;
+            pe_team_side = team_side;
+            pe_description = description;
+            pe_team1_score = team1_score;
+            pe_team2_score = team2_score;
+            pe_clock = clock;
+          })
+  |> List.filter_map (fun x -> x)
+
+(** Fetch all events for a single period.
+
+    WKBL's `seq0` parameter is meant for live polling (fetch events after a known index).
+    For scraping, `seq0=0` returns the full history for the period, so we do a single request.
+    This avoids the risk of hanging if upstream behavior changes. *)
+let fetch_live_pbp_period ~sw ~env ~season_gu ~game_type ~game_no ~period_code :
+    Domain.pbp_event list =
+  let url =
+    Printf.sprintf
+      "%s/live11/path_live_sms.asp?season_gu0=%s&game_type0=%s&game_no0=%d&quarter_gu0=%s&seq0=0"
+      base_url season_gu game_type game_no period_code
+  in
+  let xml = fetch_url ~sw ~env url in
+  parse_live_pbp_xml ~seq0:0 xml
+
+(** Fetch PBP events for a game (Q1..Q4 + optional OT X1..X4).
+    If Q1 is empty, we treat the game as having no PBP and return []. *)
+let fetch_game_pbp_events ~sw ~env ~season_gu ~game_type ~game_no () :
+    Domain.pbp_event list =
+  let clock = Eio.Stdenv.clock env in
+  let fetch_one period =
+    let evs =
+      fetch_live_pbp_period ~sw ~env ~season_gu ~game_type ~game_no ~period_code:period
+    in
+    Eio.Time.sleep clock 0.05;
+    evs
+  in
+  let q1 = fetch_one "Q1" in
+  if q1 = [] then []
+  else (
+    let quarter_codes = [ "Q2"; "Q3"; "Q4" ] in
+    let quarter_chunks = q1 :: List.map fetch_one quarter_codes in
+    let ot_chunks =
+      let rec loop i acc_rev =
+        if i > 4 then List.rev acc_rev
+        else
+          let p = Printf.sprintf "X%d" i in
+          let evs = fetch_one p in
+          if evs = [] then List.rev acc_rev else loop (i + 1) (evs :: acc_rev)
+      in
+      loop 1 []
+    in
+    List.concat (quarter_chunks @ ot_chunks)
+  )
+
 (** Fetch live games from WKBL main page *)
 let fetch_live_games ~sw ~env () =
   let url = "https://www.wkbl.or.kr/main/main.asp" in

@@ -703,7 +703,37 @@ let score_quality_badge ?(lang=I18n.Ko) ?(compact=false) q =
           (escape_html label_mismatch)
 
 let team_scope_to_string = function PerGame -> "per_game" | Totals -> "totals"
-let wkbl_official_game_result_url id = Some ("https://www.wkbl.or.kr/game/result.asp?game_id=" ^ id)
+
+(** Link to the official WKBL game result page.
+
+    The legacy `?game_id=046-01-2` format is rejected by WKBL ("허용되지 않는 입력값").
+    The working format requires (season_gu, game_type, game_no, ym).
+*)
+let wkbl_official_game_result_url ~(game_id : string) ~(game_date : string) =
+  let parse_game_id id =
+    match String.split_on_char '-' (String.trim id) with
+    | [season_gu; game_type; game_no_s] -> (
+        match int_of_string_opt (String.trim game_no_s) with
+        | Some game_no -> Some (String.trim season_gu, String.trim game_type, game_no)
+        | None -> None)
+    | _ -> None
+  in
+  let ym_of_date d =
+    (* Expecting YYYY-MM-DD (from DB date::text). *)
+    let d = String.trim d in
+    if String.length d >= 7 && d.[4] = '-' then
+      let yyyy = String.sub d 0 4 in
+      let mm = String.sub d 5 2 in
+      Some (yyyy ^ mm)
+    else None
+  in
+  match (parse_game_id game_id, ym_of_date game_date) with
+  | Some (season_gu, game_type, game_no), Some ym ->
+      Some
+        (Printf.sprintf
+           "https://www.wkbl.or.kr/game/result.asp?season_gu=%s&game_type=%s&game_no=%d&ym=%s&viewType=1"
+           (Uri.pct_encode season_gu) (Uri.pct_encode game_type) game_no (Uri.pct_encode ym))
+  | _ -> None
 
 (** Responsive table wrapper - enables horizontal scroll on mobile *)
 let responsive_table_wrapper ?(class_extra="") content =

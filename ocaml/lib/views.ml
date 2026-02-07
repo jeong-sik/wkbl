@@ -1136,7 +1136,7 @@ let boxscore_page ?(lang=I18n.Ko) (bs: game_boxscore) =
  in
  let quality_badge = if is_scheduled then "" else score_quality_badge ~lang gi.gi_score_quality in
  let official_link =
-  match wkbl_official_game_result_url gi.gi_game_id with
+  match wkbl_official_game_result_url ~game_id:gi.gi_game_id ~game_date:gi.gi_game_date with
   | None -> ""
   | Some url ->
     Printf.sprintf
@@ -1218,7 +1218,7 @@ let pbp_period_label =
 let pbp_page ?(lang=I18n.Ko) ~(game: game_info) ~(periods: string list) ~(selected_period: string) ~(events: pbp_event list) () =
  let tr = I18n.t lang in
  let official_link =
-  match wkbl_official_game_result_url game.gi_game_id with
+  match wkbl_official_game_result_url ~game_id:game.gi_game_id ~game_date:game.gi_game_date with
   | None -> ""
   | Some url ->
     Printf.sprintf
@@ -3023,7 +3023,7 @@ let live_page ?(lang=I18n.Ko) () =
    function renderGame(game) {
     const q = (game.quarter || '').trim();
     const isLive = game.is_live === true;
-    const isScheduled = !isLive && (q === '경기전' || q === '경기 전' || q === '예정' || game.home_score == null || game.away_score == null);
+    const isScheduled = !isLive && (q === '경기전' || q === '경기 전' || q === '예정' || (game.home_score === 0 && game.away_score === 0) || game.home_score == null || game.away_score == null);
     const isFinal = !isLive && !isScheduled;
 
     const badgeText = isLive ? (q || '%s') : (isScheduled ? '%s' : '%s');

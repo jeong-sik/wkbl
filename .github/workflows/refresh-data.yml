@@ -80,3 +80,15 @@ jobs:
           else
             opam exec -- dune exec bin/scraper_tool.exe -- sync boxscore
           fi
+
+      - name: Sync play-by-play (live text)
+        env:
+          WKBL_DATABASE_URL: ${{ secrets.WKBL_DATABASE_URL }}
+          SEASON: ${{ inputs.season }}
+        run: |
+          cd ocaml
+          if [ -n "${SEASON}" ]; then
+            opam exec -- dune exec bin/scraper_tool.exe -- sync pbp --season="${SEASON}"
+          else
+            opam exec -- dune exec bin/scraper_tool.exe -- sync pbp
+          fi
