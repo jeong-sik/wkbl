@@ -338,13 +338,51 @@ Sitemap: https://wkbl.win/sitemap.xml
           match Db.get_players ~season ~search ~limit:20 () with
           | Ok p ->
               let player_info_map = get_player_info_map () in
+              (* Home "today games" should not look empty on cold start.
+                 Prefer live poller data, but fall back to today's schedule from DB. *)
+              let live_games =
+                let current = Live.get_current_games () in
+                if current <> [] then current
+                else
+                  let today =
+                    let tm = Unix.localtime (Unix.time ()) in
+                    Printf.sprintf "%04d-%02d-%02d"
+                      (tm.Unix.tm_year + 1900)
+                      (tm.Unix.tm_mon + 1)
+                      tm.Unix.tm_mday
+                  in
+                  let live_season = latest_season_code seasons in
+                  match Db.get_games ~season:live_season ~page_size:400 () with
+                  | Error _ -> []
+                  | Ok games ->
+                      games
+                      |> List.filter (fun (g: Domain.game_summary) ->
+                          String.length g.game_date >= 10 && String.sub g.game_date 0 10 = today)
+                      |> List.map (fun (g: Domain.game_summary) ->
+                          let quarter =
+                            match g.home_score, g.away_score with
+                            | None, None -> "경기전"
+                            | Some _, Some _ -> "경기종료"
+                            | _ -> "경기전"
+                          in
+                          {
+                            Domain.lg_game_id = g.game_id;
+                            lg_home_team = g.home_team;
+                            lg_away_team = g.away_team;
+                            lg_home_score = Option.value ~default:0 g.home_score;
+                            lg_away_score = Option.value ~default:0 g.away_score;
+                            lg_quarter = quarter;
+                            lg_time_remaining = "";
+                            lg_is_live = false;
+                          })
+              in
               let data_as_of =
                 match Db.get_latest_game_date () with
                 | Ok (Some d) -> d
                 | Ok None -> "없음"
                 | Error _ -> "-"
               in
-              Kirin.html (Views.home_page ~lang ~player_info_map ~season ~seasons ~data_as_of p)
+              Kirin.html (Views.home_page ~lang ~player_info_map ~live_games ~season ~seasons ~data_as_of p)
           | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
     );
 
@@ -1669,8 +1707,48 @@ Sitemap: https://wkbl.win/sitemap.xml
 
     (* Live Scores API: JSON *)
     Kirin.get "/api/live/status" (fun _ ->
+      let current = Live.get_current_games () in
+      let games =
+        if current <> [] then current
+        else
+          (* Fallback to today's schedule so the UI doesn't look empty if live polling fails. *)
+          let today =
+            let tm = Unix.localtime (Unix.time ()) in
+            Printf.sprintf "%04d-%02d-%02d"
+              (tm.Unix.tm_year + 1900)
+              (tm.Unix.tm_mon + 1)
+              tm.Unix.tm_mday
+          in
+          match Db.get_seasons () with
+          | Error _ -> []
+          | Ok seasons ->
+              let live_season = latest_season_code seasons in
+              (match Db.get_games ~season:live_season ~page_size:400 () with
+              | Error _ -> []
+              | Ok gs ->
+                  gs
+                  |> List.filter (fun (g: Domain.game_summary) ->
+                      String.length g.game_date >= 10 && String.sub g.game_date 0 10 = today)
+                  |> List.map (fun (g: Domain.game_summary) ->
+                      let quarter =
+                        match g.home_score, g.away_score with
+                        | None, None -> "경기전"
+                        | Some _, Some _ -> "경기종료"
+                        | _ -> "경기전"
+                      in
+                      {
+                        Domain.lg_game_id = g.game_id;
+                        lg_home_team = g.home_team;
+                        lg_away_team = g.away_team;
+                        lg_home_score = Option.value ~default:0 g.home_score;
+                        lg_away_score = Option.value ~default:0 g.away_score;
+                        lg_quarter = quarter;
+                        lg_time_remaining = "";
+                        lg_is_live = false;
+                      }))
+      in
       Kirin.with_header "Cache-Control" "no-cache"
-      @@ Kirin.json_string (Live.get_status_json ())
+      @@ Kirin.json_string (Live.status_json_of_games games)
     );
 
     (* Live Scores API: SSE *)
@@ -1680,8 +1758,47 @@ Sitemap: https://wkbl.win/sitemap.xml
 
     (* Live Scores Widget: HTMX partial *)
     Kirin.get "/api/live/widget" (fun _ ->
+      let current = Live.get_current_games () in
+      let games =
+        if current <> [] then current
+        else
+          let today =
+            let tm = Unix.localtime (Unix.time ()) in
+            Printf.sprintf "%04d-%02d-%02d"
+              (tm.Unix.tm_year + 1900)
+              (tm.Unix.tm_mon + 1)
+              tm.Unix.tm_mday
+          in
+          match Db.get_seasons () with
+          | Error _ -> []
+          | Ok seasons ->
+              let live_season = latest_season_code seasons in
+              (match Db.get_games ~season:live_season ~page_size:400 () with
+              | Error _ -> []
+              | Ok gs ->
+                  gs
+                  |> List.filter (fun (g: Domain.game_summary) ->
+                      String.length g.game_date >= 10 && String.sub g.game_date 0 10 = today)
+                  |> List.map (fun (g: Domain.game_summary) ->
+                      let quarter =
+                        match g.home_score, g.away_score with
+                        | None, None -> "경기전"
+                        | Some _, Some _ -> "경기종료"
+                        | _ -> "경기전"
+                      in
+                      {
+                        Domain.lg_game_id = g.game_id;
+                        lg_home_team = g.home_team;
+                        lg_away_team = g.away_team;
+                        lg_home_score = Option.value ~default:0 g.home_score;
+                        lg_away_score = Option.value ~default:0 g.away_score;
+                        lg_quarter = quarter;
+                        lg_time_remaining = "";
+                        lg_is_live = false;
+                      }))
+      in
       Kirin.with_header "Cache-Control" "no-cache"
-      @@ Kirin.html (Views.live_scores_htmx ())
+      @@ Kirin.html (Views.live_scores_widget games)
     );
 
     (* Push Notification: Subscribe (MVP - just log) *)

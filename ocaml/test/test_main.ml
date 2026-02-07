@@ -2154,6 +2154,32 @@ let ui_copy_tests = [
 ]
 
 (* ============================================= *)
+(* Live API Tests                                *)
+(* ============================================= *)
+
+let test_live_status_json_hides_pregame_scores () =
+  let g : Wkbl.Domain.live_game =
+    { lg_game_id = "046-01-65";
+      lg_home_team = "A\"B";
+      lg_away_team = "C";
+      lg_home_score = 0;
+      lg_away_score = 0;
+      lg_quarter = "경기전";
+      lg_time_remaining = "";
+      lg_is_live = false;
+    }
+  in
+  let json = Wkbl.Live.status_json_of_games [ g ] in
+  Alcotest.(check bool) "home_score is null" true (contains_substring json {|"home_score":null|});
+  Alcotest.(check bool) "away_score is null" true (contains_substring json {|"away_score":null|});
+  Alcotest.(check bool) "home team quotes escaped" true (contains_substring json {|"home_team":"A\"B"|});
+  Alcotest.(check bool) "no pregame 0 score" false (contains_substring json {|"home_score":0|})
+
+let live_api_tests = [
+  Alcotest.test_case "pregame scores hidden + JSON escaped" `Quick test_live_status_json_hides_pregame_scores;
+]
+
+(* ============================================= *)
 (* Main Test Runner                              *)
 (* ============================================= *)
 
@@ -2182,4 +2208,5 @@ let () =
     "QA Utils", qa_util_tests;
     "Observability", observability_tests;
     "UI Copy", ui_copy_tests;
+    "Live API", live_api_tests;
   ]
