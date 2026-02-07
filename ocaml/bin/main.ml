@@ -375,6 +375,7 @@ Sitemap: https://wkbl.win/sitemap.xml
                             lg_time_remaining = "";
                             lg_is_live = false;
                           })
+              in
               let data_as_of =
                 match Db.get_latest_game_date () with
                 | Ok (Some d) -> d
