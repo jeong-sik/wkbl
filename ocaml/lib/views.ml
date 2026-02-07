@@ -6,14 +6,41 @@ open Domain
 open Views_common
 
 (** Live scores widget for homepage *)
-let live_scores_widget (games: Domain.live_game list) =
+let live_scores_widget ?(lang=I18n.Ko) (games: Domain.live_game list) =
+  let tr = I18n.t lang in
+  let label_no_games_title = tr { ko = "오늘 경기가 없습니다"; en = "No games today" } in
+  let label_no_games_sub = tr { ko = "경기 일정이 있는 날 다시 확인해주세요."; en = "Check back on game days." } in
+  let label_live = tr { ko = "진행중"; en = "LIVE" } in
+  let label_scheduled = tr { ko = "예정"; en = "Scheduled" } in
+  let label_final = tr { ko = "경기종료"; en = "Final" } in
   if List.length games = 0 then
-    empty_state ~icon:BasketballIcon "오늘 경기가 없습니다" "경기 일정이 있는 날 다시 확인해주세요."
+    empty_state ~icon:BasketballIcon label_no_games_title label_no_games_sub
   else
     let game_cards =
       games
       |> List.map (fun (g : Domain.live_game) ->
           let q = String.trim g.lg_quarter in
+          let is_pre_game =
+            (not g.lg_is_live)
+            && (q = "경기전" || q = "경기 전" || q = "예정"
+                || (q = "" && g.lg_home_score = 0 && g.lg_away_score = 0))
+          in
+          let show_badge_text =
+            if g.lg_is_live then
+              label_live
+            else if is_pre_game then
+              label_scheduled
+            else if q = "" then
+              label_scheduled
+            else
+              match lang with
+              | I18n.En -> (
+                  match q with
+                  | "경기전" | "경기 전" | "예정" -> label_scheduled
+                  | "경기종료" -> label_final
+                  | _ -> q)
+              | _ -> q
+          in
           let time_html =
             let t = String.trim g.lg_time_remaining in
             if t = "" then ""
@@ -24,16 +51,13 @@ let live_scores_widget (games: Domain.live_game list) =
           in
           let status_badge =
             if g.lg_is_live then
-              {html|<span class="live-badge"><span class="live-dot"></span>진행중</span>|html}
+              Printf.sprintf
+                {html|<span class="live-badge"><span class="live-dot"></span>%s</span>|html}
+                (escape_html label_live)
             else
               Printf.sprintf
                 {html|<span class="px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-[10px]">%s</span>|html}
-                (escape_html (if q = "" then "예정" else q))
-          in
-          let is_pre_game =
-            (not g.lg_is_live)
-            && (q = "경기전" || q = "경기 전" || q = "예정"
-                || (q = "" && g.lg_home_score = 0 && g.lg_away_score = 0))
+                (escape_html show_badge_text)
           in
           let score_center =
             if is_pre_game then
@@ -187,6 +211,22 @@ let players_table ?(lang=I18n.Ko) ?(player_info_map=None) (players: player_aggre
   render_fixed_table ~id:"players-table-inner" ~min_width:"min-w-[1100px]" ~cols rows_data
 
 let home_page ?(lang=I18n.Ko) ?(player_info_map=None) ?(live_games=Live.get_current_games ()) ~season ~seasons ~data_as_of players =
+ let tr = I18n.t lang in
+ let label_today_games = tr { ko = "오늘의 경기"; en = "Today's Games" } in
+ let label_all_games = tr { ko = "전체 일정 →"; en = "All games →" } in
+ let label_latest_game_date = tr { ko = "최근 경기일"; en = "Latest game date" } in
+ let label_updating_sr = tr { ko = "업데이트 중"; en = "Updating" } in
+ let label_eff_top_players = tr { ko = "EFF 상위 선수"; en = "Top EFF Players" } in
+ let label_season_select = tr { ko = "시즌 선택"; en = "Season" } in
+ let label_player_search_ph = tr { ko = "선수 검색..."; en = "Search players..." } in
+ let label_player_search_aria = tr { ko = "선수 검색"; en = "Search players" } in
+ let page_description =
+   tr
+     {
+       ko = "WKBL 여자농구 효율성 순위, 팀 순위, 선수 통계를 한눈에 확인하세요.";
+       en = "See WKBL efficiency rankings, team standings, and player stats at a glance.";
+     }
+ in
  let season_options =
   seasons
   |> List.map (fun (s: season_info) ->
@@ -195,30 +235,41 @@ let home_page ?(lang=I18n.Ko) ?(player_info_map=None) ?(live_games=Live.get_curr
   |> String.concat "\n"
  in
    let table = players_table ~lang ~player_info_map players in
- let live_widget = live_scores_widget live_games in
- layout ~lang ~title:"WKBL 통계" ~canonical_path:"/"
-  ~description:"WKBL 여자농구 효율성 순위, 팀 순위, 선수 통계를 한눈에 확인하세요."
+ let live_widget = live_scores_widget ~lang live_games in
+ layout ~lang ~title:(tr { ko = "WKBL 통계"; en = "WKBL Stats" }) ~canonical_path:"/"
+  ~description:page_description
   ~content:(Printf.sprintf
-	   {html|<div class="space-y-6">
-	    <!-- Live Scores Widget -->
-	    <div class="bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-950/30 dark:to-amber-950/30 border border-orange-200 dark:border-orange-800/50 rounded-lg p-4">
-     <div class="flex items-center justify-between mb-3">
-      <div class="flex items-center gap-2">
-       <span class="text-lg">🏀</span>
-       <span class="text-xs font-bold text-orange-700 dark:text-orange-300 uppercase tracking-wider">오늘의 경기</span>
-      </div>
-      <div class="flex items-center gap-3">
-       <span class="text-xs text-slate-400 dark:text-slate-500" title="최근 경기일">📅 %s</span>
-       <a href="/games" class="text-xs text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300">전체 일정 →</a>
-      </div>
-     </div>
-     <div id="live-scores" hx-get="/api/live/widget" hx-trigger="every 30s" hx-swap="innerHTML" hx-indicator="#live-loading">
-       <span id="live-loading" class="htmx-indicator"><span class="w-4 h-4 border-2 border-slate-300 border-t-orange-500 rounded-full animate-spin inline-block" aria-hidden="true"></span><span class="sr-only">업데이트 중</span></span>
-       %s
-     </div>
-    </div>
-	    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"><h2 class="text-xl font-bold text-slate-900 dark:text-slate-200">EFF 상위 선수</h2><form class="flex gap-2 items-center" hx-get="/home/table" hx-target="#players-table-inner tbody" hx-trigger="change" hx-indicator="#table-loading"><select name="season" aria-label="시즌 선택" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-1.5 text-sm focus:border-orange-500 focus:outline-none">%s</select><input type="text" placeholder="선수 검색..." aria-label="선수 검색" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-1.5 text-sm focus:border-orange-500 focus:outline-none" hx-get="/home/table" hx-trigger="keyup changed delay:300ms" hx-target="#players-table-inner tbody" hx-indicator="#table-loading" name="search"><span id="table-loading" class="htmx-indicator"><span class="w-4 h-4 border-2 border-slate-300 border-t-orange-500 rounded-full animate-spin inline-block"></span></span></form></div><div id="players-table" class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 scroll-shadow overflow-y-hidden" data-skeleton="table" data-skeleton-count="10" data-skeleton-cols="8">%s</div></div>|html}
-	   (escape_html data_as_of) live_widget season_options table) ()
+		   {html|<div class="space-y-6">
+		    <!-- Live Scores Widget -->
+		    <div class="bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-950/30 dark:to-amber-950/30 border border-orange-200 dark:border-orange-800/50 rounded-lg p-4">
+	     <div class="flex items-center justify-between mb-3">
+	      <div class="flex items-center gap-2">
+	       <span class="text-lg">🏀</span>
+	       <span class="text-xs font-bold text-orange-700 dark:text-orange-300 uppercase tracking-wider">%s</span>
+	      </div>
+	      <div class="flex items-center gap-3">
+	       <span class="text-xs text-slate-400 dark:text-slate-500">📅 %s: %s</span>
+	       <a href="/games" class="text-xs text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300">%s</a>
+	      </div>
+	     </div>
+	     <div id="live-scores" hx-get="/api/live/widget" hx-trigger="every 30s" hx-swap="innerHTML" hx-indicator="#live-loading">
+	       <span id="live-loading" class="htmx-indicator"><span class="w-4 h-4 border-2 border-slate-300 border-t-orange-500 rounded-full animate-spin inline-block" aria-hidden="true"></span><span class="sr-only">%s</span></span>
+	       %s
+	     </div>
+	    </div>
+		    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"><h2 class="text-xl font-bold text-slate-900 dark:text-slate-200">%s</h2><form class="flex gap-2 items-center" hx-get="/home/table" hx-target="#players-table-inner tbody" hx-trigger="change" hx-indicator="#table-loading"><select name="season" aria-label="%s" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-1.5 text-sm focus:border-orange-500 focus:outline-none">%s</select><input type="text" placeholder="%s" aria-label="%s" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-1.5 text-sm focus:border-orange-500 focus:outline-none" hx-get="/home/table" hx-trigger="keyup changed delay:300ms" hx-target="#players-table-inner tbody" hx-indicator="#table-loading" name="search"><span id="table-loading" class="htmx-indicator"><span class="w-4 h-4 border-2 border-slate-300 border-t-orange-500 rounded-full animate-spin inline-block"></span></span></form></div><div id="players-table" class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 scroll-shadow overflow-y-hidden" data-skeleton="table" data-skeleton-count="10" data-skeleton-cols="8">%s</div></div>|html}
+		   (escape_html label_today_games)
+		   (escape_html label_latest_game_date)
+		   (escape_html data_as_of)
+		   (escape_html label_all_games)
+		   (escape_html label_updating_sr)
+		   live_widget
+		   (escape_html label_eff_top_players)
+		   (escape_html label_season_select)
+		   season_options
+		   (escape_html label_player_search_ph)
+		   (escape_html label_player_search_aria)
+		   table) ()
 
 let players_page ?(lang=I18n.Ko) ?(player_info_map=None) ~season ~seasons ~search ~sort ~include_mismatch players =
  let season_options =
