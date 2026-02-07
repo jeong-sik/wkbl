@@ -353,12 +353,12 @@ Sitemap: https://wkbl.win/sitemap.xml
 	                      |> List.filter (fun (g: Domain.game_summary) ->
 	                          String.length g.game_date >= 10 && String.sub g.game_date 0 10 = today)
 	                      |> List.map (fun (g: Domain.game_summary) ->
-	                          let is_final =
+	                          let has_score =
 	                            match g.home_score, g.away_score with
-	                            | Some a, Some b -> a > 0 && b > 0
+	                            | Some a, Some b -> not (a = 0 && b = 0)
 	                            | _ -> false
 	                          in
-	                          let quarter = if is_final then "경기종료" else "경기전" in
+	                          let quarter = if has_score then "경기종료" else "경기전" in
 	                          {
 	                            Domain.lg_game_id = g.game_id;
 	                            lg_home_team = g.home_team;
@@ -1718,12 +1718,12 @@ Sitemap: https://wkbl.win/sitemap.xml
 	                  |> List.filter (fun (g: Domain.game_summary) ->
 	                      String.length g.game_date >= 10 && String.sub g.game_date 0 10 = today)
 	                  |> List.map (fun (g: Domain.game_summary) ->
-	                      let is_final =
+	                      let has_score =
 	                        match g.home_score, g.away_score with
-	                        | Some a, Some b -> a > 0 && b > 0
+	                        | Some a, Some b -> not (a = 0 && b = 0)
 	                        | _ -> false
 	                      in
-	                      let quarter = if is_final then "경기종료" else "경기전" in
+	                      let quarter = if has_score then "경기종료" else "경기전" in
 	                      {
 	                        Domain.lg_game_id = g.game_id;
 	                        lg_home_team = g.home_team;
@@ -1762,12 +1762,12 @@ Sitemap: https://wkbl.win/sitemap.xml
 	                  |> List.filter (fun (g: Domain.game_summary) ->
 	                      String.length g.game_date >= 10 && String.sub g.game_date 0 10 = today)
 	                  |> List.map (fun (g: Domain.game_summary) ->
-	                      let is_final =
+	                      let has_score =
 	                        match g.home_score, g.away_score with
-	                        | Some a, Some b -> a > 0 && b > 0
+	                        | Some a, Some b -> not (a = 0 && b = 0)
 	                        | _ -> false
 	                      in
-	                      let quarter = if is_final then "경기종료" else "경기전" in
+	                      let quarter = if has_score then "경기종료" else "경기전" in
 	                      {
 	                        Domain.lg_game_id = g.game_id;
 	                        lg_home_team = g.home_team;
@@ -1935,7 +1935,7 @@ Sitemap: https://wkbl.win/sitemap.xml
 	          let game_to_json (g: Domain.game_summary) =
 	            let home_score_json, away_score_json, status =
 	              match g.home_score, g.away_score with
-	              | Some a, Some b when a > 0 && b > 0 -> (`Int a, `Int b, "final")
+	              | Some a, Some b when not (a = 0 && b = 0) -> (`Int a, `Int b, "final")
 	              | _ -> (`Null, `Null, "scheduled")
 	            in
 	            `Assoc [
