@@ -68,3 +68,21 @@ let is_regular_season_name name =
 
 let regular : (string * string) list =
   all |> List.filter (fun (_code, name) -> is_regular_season_name name)
+
+(* Regular seasons run Oct-Mar. WKBL season codes follow (season_start_year - 1979). *)
+let regular_season_start_year_of_year_month ~year ~month =
+  if month >= 10 then year else year - 1
+
+let regular_season_code_of_start_year start_year =
+  let n = start_year - 1979 in
+  Printf.sprintf "%03d" n
+
+let regular_season_code_of_year_month ~year ~month =
+  regular_season_code_of_start_year (regular_season_start_year_of_year_month ~year ~month)
+
+let current_regular_season_code () =
+  (* KST is UTC+9 and has no DST. Use gmtime+offset so results are stable across host TZ. *)
+  let tm = Unix.gmtime (Unix.time () +. (9. *. 3600.)) in
+  let year = tm.Unix.tm_year + 1900 in
+  let month = tm.Unix.tm_mon + 1 in
+  regular_season_code_of_year_month ~year ~month
