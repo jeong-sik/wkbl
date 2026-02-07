@@ -23,10 +23,16 @@ let get_current_games () =
 
 (** Convert live_game to JSON *)
 let live_game_to_json (lg: live_game) =
+  let q = String.trim lg.lg_quarter in
+  let is_pre_game =
+    (not lg.lg_is_live) && (q = "경기전" || q = "경기 전" || q = "예정")
+  in
+  let home_score_json = if is_pre_game then "null" else string_of_int lg.lg_home_score in
+  let away_score_json = if is_pre_game then "null" else string_of_int lg.lg_away_score in
   Printf.sprintf
-    {|{"game_id":"%s","home_team":"%s","away_team":"%s","home_score":%d,"away_score":%d,"quarter":"%s","time":"%s","is_live":%b}|}
+    {|{"game_id":"%s","home_team":"%s","away_team":"%s","home_score":%s,"away_score":%s,"quarter":"%s","time":"%s","is_live":%b}|}
     lg.lg_game_id lg.lg_home_team lg.lg_away_team
-    lg.lg_home_score lg.lg_away_score lg.lg_quarter lg.lg_time_remaining lg.lg_is_live
+    home_score_json away_score_json lg.lg_quarter lg.lg_time_remaining lg.lg_is_live
 
 (** Convert list of live games to JSON array *)
 let live_games_to_json (games: live_game list) =
