@@ -251,7 +251,7 @@ let qa_dashboard_page ?(lang=I18n.Ko) (report: Db.qa_db_report) ?(markdown=None)
   in
   let sources_block =
     let label_summary =
-      tr { ko = "출처 / 확인 방식"; en = "Sources / How it's checked" }
+      tr { ko = "출처 / 확인 방식"; en = "Sources / How it is checked" }
     in
   let label_sources = tr { ko = "출처 (공식)"; en = "Sources" } in
   let label_checks = tr { ko = "확인 방식"; en = "How it's checked" } in
