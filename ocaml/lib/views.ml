@@ -497,6 +497,10 @@ let games_table ?(lang=I18n.Ko) (games : game_summary list) =
       in
       let score_a = match g.home_score with Some s when has_score -> string_of_int s | _ -> "-" in
       let score_b = match g.away_score with Some s when has_score -> string_of_int s | _ -> "-" in
+      let score_html =
+        if has_score then Printf.sprintf "%s - %s" score_a score_b
+        else escape_html label_scheduled
+      in
       let status_class = if has_score then "text-slate-900 dark:text-slate-200" else "text-slate-600 dark:text-slate-400" in
       let action_html =
        if not has_score then
@@ -537,16 +541,16 @@ onkeydown="if(event.key==='Enter'||event.key===' ') { event.preventDefault(); wi
 	   </div>
    <div class="flex items-center justify-between gap-3">
     <div class="flex flex-col gap-1 min-w-0">
-     <div class="flex items-center gap-2 text-sm font-medium">%s<a href="/team/%s" class="group-hover:text-orange-600 dark:text-orange-400 dark:group-hover:text-orange-300 transition-colors truncate">%s</a></div>
-     <div class="flex items-center gap-2 text-sm font-medium">%s<a href="/team/%s" class="group-hover:text-orange-600 dark:text-orange-400 dark:group-hover:text-orange-300 transition-colors truncate">%s</a></div>
-    </div>
-	    <div class="text-right font-mono text-sm %s whitespace-nowrap group-hover:scale-110 transition-transform">%s - %s</div>
-	   </div>
-		  </div>|html}
+	     <div class="flex items-center gap-2 text-sm font-medium">%s<a href="/team/%s" class="group-hover:text-orange-600 dark:text-orange-400 dark:group-hover:text-orange-300 transition-colors truncate">%s</a></div>
+	     <div class="flex items-center gap-2 text-sm font-medium">%s<a href="/team/%s" class="group-hover:text-orange-600 dark:text-orange-400 dark:group-hover:text-orange-300 transition-colors truncate">%s</a></div>
+	    </div>
+		    <div class="text-right font-mono text-sm %s whitespace-nowrap group-hover:scale-110 transition-transform">%s</div>
+		   </div>
+			  </div>|html}
          card_attrs
          card_class
-	       (escape_html g.game_date)
-	       action_html
+		       (escape_html g.game_date)
+		       action_html
 	       (team_logo_tag ~class_name:"w-4 h-4" g.home_team)
        (Uri.pct_encode g.home_team)
        (escape_html g.home_team)
@@ -554,8 +558,7 @@ onkeydown="if(event.key==='Enter'||event.key===' ') { event.preventDefault(); wi
        (Uri.pct_encode g.away_team)
        (escape_html g.away_team)
        status_class
-       score_a
-       score_b)
+       score_html)
     |> String.concat "\n"
   in
 

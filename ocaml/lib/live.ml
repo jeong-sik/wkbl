@@ -44,7 +44,9 @@ let get_current_games () =
 let live_game_to_json (lg: live_game) =
   let q = String.trim lg.lg_quarter in
   let is_pre_game =
-    (not lg.lg_is_live) && (q = "경기전" || q = "경기 전" || q = "예정")
+    (not lg.lg_is_live)
+    && (q = "경기전" || q = "경기 전" || q = "예정"
+        || (q = "" && lg.lg_home_score = 0 && lg.lg_away_score = 0))
   in
   let home_score_json = if is_pre_game then "null" else string_of_int lg.lg_home_score in
   let away_score_json = if is_pre_game then "null" else string_of_int lg.lg_away_score in
