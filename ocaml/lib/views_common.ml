@@ -196,9 +196,12 @@ let team_badge ?(max_width="max-w-[130px]") team_name =
   let color = Domain.team_code_of_string display |> Option.map Domain.team_code_to_color |> Option.value ~default:"#666" in
   Printf.sprintf {html|<a href="/team/%s" class="inline-flex min-w-0 items-center gap-1.5 px-1.5 py-0.5 rounded text-[11px] font-medium transition backdrop-blur-sm" style="background-color: %s20; color: %s; border: 1px solid %s40">%s<span class="truncate">%s</span></a>|html} (Uri.pct_encode team_name) color color color (team_logo_tag ~class_name:"w-5 h-5 shrink-0" display) (escape_html display)
 
-let player_img_tag ?(class_name="w-12 h-12") player_id _name =
+let player_img_tag ?(class_name="w-12 h-12") player_id name =
   let remote_src = Printf.sprintf "https://www.wkbl.or.kr/static/images/player/pimg/m_%s.jpg" player_id in
-  Printf.sprintf {html|<img src="%s" class="%s rounded-full object-cover bg-slate-100 border border-slate-300" loading="lazy" onerror="this.src='/static/images/player_placeholder.svg'">|html} remote_src class_name
+  Printf.sprintf {html|<img src="%s" alt="%s" class="%s rounded-full object-cover bg-slate-100 border border-slate-300" loading="lazy" onerror="this.src='/static/images/player_placeholder.svg'">|html}
+    remote_src
+    (escape_html name)
+    class_name
 
 let player_id_badge player_id =
   Printf.sprintf
