@@ -1915,10 +1915,73 @@ let test_qa_dashboard_schedule_coverage () =
   Alcotest.(check bool) "contains schedule coverage header" true (contains_substring html "시즌별 일정-경기 매칭");
   Alcotest.(check bool) "contains no games flag" true (contains_substring html "경기 없음")
 
+let test_qa_dashboard_english_mode () =
+  let report : Wkbl.Db.qa_db_report = {
+    qdr_generated_at = "2026-02-06T00:00:00Z";
+    qdr_games_total = 0;
+    qdr_games_with_stats = 0;
+    qdr_plus_minus_games = 0;
+    qdr_plus_minus_coverage_pct = 0.0;
+    qdr_schedule_total = 0;
+    qdr_schedule_completed = 0;
+    qdr_schedule_missing_game_count = 0;
+    qdr_schedule_missing_game_pct = 0.0;
+    qdr_schedule_missing_game_sample = [];
+    qdr_schedule_missing_stats_count = 0;
+    qdr_schedule_missing_stats_pct = 0.0;
+    qdr_schedule_missing_stats_sample = [];
+    qdr_schedule_coverage = [
+      { qsc_season_code = "001";
+        qsc_schedule_completed = 20;
+        qsc_games_total = 0;
+        qsc_matched = 0;
+        qsc_missing = 20;
+        qsc_coverage_pct = 0.0;
+        qsc_season_uningested = true;
+        qsc_games_missing_team = false;
+      }
+    ];
+    qdr_score_mismatch_count = 0;
+    qdr_score_mismatch_sample = [];
+    qdr_team_count_anomaly_count = 0;
+    qdr_team_count_anomaly_sample = [];
+    qdr_duplicate_player_row_count = 0;
+    qdr_duplicate_player_row_sample = [];
+    qdr_duplicate_player_name_count = 0;
+    qdr_duplicate_player_name_sample = [];
+    qdr_duplicate_player_identity_count = 0;
+    qdr_duplicate_player_identity_sample = [];
+  } in
+  let html = Wkbl.Views_tools.qa_dashboard_page ~lang:Wkbl.I18n.En report () in
+  Alcotest.(check bool) "en heading" true (contains_substring html "Data Check");
+  Alcotest.(check bool) "en last checked" true (contains_substring html "Last checked");
+  Alcotest.(check bool) "en schedule coverage heading" true (contains_substring html "Schedule coverage");
+  Alcotest.(check bool) "en sources summary" true (contains_substring html "Sources / How it is checked");
+  Alcotest.(check bool) "en score mismatch block" true (contains_substring html "Score mismatch")
+
+let test_qa_schedule_missing_english_mode () =
+  let report : Wkbl.Db.qa_schedule_missing_report =
+    { qsmr_generated_at = "2026-02-06T00:00:00Z";
+      qsmr_summary =
+        { qsms_missing_ingested = 1;
+          qsms_missing_uningested = 2;
+          qsms_missing_total = 3;
+        };
+      qsmr_reason_counts = [ ("no_game_on_date", 1) ];
+      qsmr_samples = [];
+    }
+  in
+  let html = Wkbl.Views_tools.qa_schedule_missing_page ~lang:Wkbl.I18n.En report () in
+  Alcotest.(check bool) "en heading" true (contains_substring html "Schedule gaps");
+  Alcotest.(check bool) "en last checked" true (contains_substring html "Last checked");
+  Alcotest.(check bool) "en table headers" true (contains_substring html ">Reason<")
+
 let qa_util_tests = [
   Alcotest.test_case "coverage pct" `Quick test_coverage_pct;
   Alcotest.test_case "split csv ids" `Quick test_split_csv_ids;
   Alcotest.test_case "qa schedule coverage block" `Quick test_qa_dashboard_schedule_coverage;
+  Alcotest.test_case "qa dashboard english mode" `Quick test_qa_dashboard_english_mode;
+  Alcotest.test_case "qa schedule missing english mode" `Quick test_qa_schedule_missing_english_mode;
 ]
 
 (* ============================================= *)
