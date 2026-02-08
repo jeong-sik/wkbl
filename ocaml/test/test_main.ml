@@ -957,7 +957,8 @@ let test_game_flow_chart_single_point () =
   } in
   let html = Wkbl.Views_tools.game_flow_chart ~home_team:"A" ~away_team:"B" [pt] in
   Alcotest.(check bool) "renders svg" true (contains_substring html "<svg");
-  Alcotest.(check bool) "has header" true (contains_substring html "경기 흐름")
+  Alcotest.(check bool) "has header" true (contains_substring html "경기 흐름");
+  Alcotest.(check bool) "uses neutral line stroke" true (contains_substring html "stroke=\"currentColor\"")
 
 let score_flow_tests = [
   Alcotest.test_case "Period to number conversion" `Quick test_period_to_number;
@@ -973,6 +974,25 @@ let score_flow_tests = [
 let views_tools_tests = [
   Alcotest.test_case "game_flow_chart empty" `Quick test_game_flow_chart_empty;
   Alcotest.test_case "game_flow_chart single point" `Quick test_game_flow_chart_single_point;
+]
+
+(* ============================================= *)
+(* Boxscore Link Chips Tests                     *)
+(* ============================================= *)
+
+let test_boxscore_pbp_chip_disabled_when_no_pbp () =
+  let html = Wkbl.Views.boxscore_pbp_chip_html ~has_pbp:false "046-01-2" in
+  Alcotest.(check bool) "shows unavailable label" true (contains_substring html "문자중계 없음");
+  Alcotest.(check bool) "not a link" false (contains_substring html "<a href=\"/boxscore/046-01-2/pbp\"")
+
+let test_boxscore_flow_chip_disabled_when_no_pbp () =
+  let html = Wkbl.Views.boxscore_flow_chip_html ~has_pbp:false "046-01-2" in
+  Alcotest.(check bool) "shows unavailable label" true (contains_substring html "득점흐름 없음");
+  Alcotest.(check bool) "not a link" false (contains_substring html "<a href=\"/boxscore/046-01-2/flow\"")
+
+let boxscore_link_chip_tests = [
+  Alcotest.test_case "pbp chip disabled when no pbp" `Quick test_boxscore_pbp_chip_disabled_when_no_pbp;
+  Alcotest.test_case "flow chip disabled when no pbp" `Quick test_boxscore_flow_chip_disabled_when_no_pbp;
 ]
 
 (* ============================================= *)
@@ -2551,6 +2571,57 @@ let games_view_tests = [
 ]
 
 (* ============================================= *)
+(* Team Page Tests                               *)
+(* ============================================= *)
+
+let test_team_profile_page_hides_0_0_and_has_roster_toggle () =
+  let seasons : Wkbl.Domain.season_info list =
+    [ { code = "046"; name = "2025-2026" } ]
+  in
+  let g_future : Wkbl.Domain.team_game_result =
+    {
+      tgr_game_id = "046-01-999";
+      tgr_game_date = "2100-01-01";
+      tgr_opponent = "BNK 썸";
+      tgr_is_home = true;
+      tgr_team_score = 0;
+      tgr_opponent_score = 0;
+      tgr_is_win = false;
+    }
+  in
+  let g_past : Wkbl.Domain.team_game_result =
+    {
+      tgr_game_id = "046-01-998";
+      tgr_game_date = "2000-01-01";
+      tgr_opponent = "우리은행";
+      tgr_is_home = false;
+      tgr_team_score = 0;
+      tgr_opponent_score = 0;
+      tgr_is_win = false;
+    }
+  in
+  let detail : Wkbl.Domain.team_full_detail =
+    {
+      tfd_team_name = "KB스타즈";
+      tfd_standing = None;
+      tfd_roster = [];
+      tfd_game_results = [];
+      tfd_recent_games = [ g_future; g_past ];
+      tfd_team_totals = None;
+    }
+  in
+  let html = Wkbl.Views_team.team_profile_page detail ~season:"046" ~seasons in
+  Alcotest.(check bool) "roster cards id exists" true (contains_substring html "id=\"roster-cards\"");
+  Alcotest.(check bool) "details ontoggle exists" true (contains_substring html "ontoggle=");
+  Alcotest.(check bool) "shows scheduled label" true (contains_substring html "예정");
+  Alcotest.(check bool) "shows missing-score label" true (contains_substring html "점수 없음");
+  Alcotest.(check bool) "does not show 0-0" false (contains_substring html "0 - 0")
+
+let team_page_tests = [
+  Alcotest.test_case "team profile hides 0-0 and has roster toggle" `Quick test_team_profile_page_hides_0_0_and_has_roster_toggle;
+]
+
+(* ============================================= *)
 (* Boxscores View Tests                          *)
 (* ============================================= *)
 
@@ -2620,6 +2691,7 @@ let () =
     "Clutch Time", clutch_tests;
     "Score Flow", score_flow_tests;
     "Views Tools", views_tools_tests;
+    "Boxscore Link Chips", boxscore_link_chip_tests;
     "AI Summary", ai_game_summary_tests;
     "Lineup Chemistry", lineup_chemistry_tests;
     "On/Off Impact", on_off_impact_tests;
@@ -2635,6 +2707,7 @@ let () =
     "Team Stints", team_stint_tests;
     "Player Collapse", player_collapse_tests;
     "Games View", games_view_tests;
+    "Team Page", team_page_tests;
     "Boxscores View", boxscores_view_tests;
     "Form URL-Encoded", form_urlencoded_tests;
   ]

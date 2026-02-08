@@ -1568,72 +1568,55 @@ let game_flow_chart ~home_team ~away_team (flow_points: Domain.score_flow_point 
       |> String.concat "\n"
     in
 
-    (* Determine fill color based on final score *)
-    let final_diff = last_pt.Domain.sfp_diff in
-    let gradient_id = "flowGradient" in
-    let (gradient_color, line_color) =
-      if final_diff > 0 then ("#0ea5e920", "#0ea5e9")  (* Sky blue for home lead *)
-      else if final_diff < 0 then ("#f9731620", "#f97316")  (* Orange for away lead *)
-      else ("#64748b20", "#64748b")  (* Gray for tie *)
-    in
-
-	    Printf.sprintf
-	      {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-lg">
-	        <div class="flex items-center justify-between mb-4">
-	          <h3 class="text-lg font-bold text-slate-900 dark:text-slate-200 flex items-center gap-2">
-	            <span class="w-1 h-6 bg-orange-500 rounded-full"></span>
-	            경기 흐름
-	          </h3>
-	          <div class="flex items-center gap-4 text-xs">
-	            <div class="flex items-center gap-1">
-	              <span class="w-3 h-3 rounded-full bg-sky-500"></span>
-	              <span class="text-slate-600 dark:text-slate-400">%s 우세</span>
-	            </div>
-	            <div class="flex items-center gap-1">
-	              <span class="w-3 h-3 rounded-full bg-orange-500"></span>
-	              <span class="text-slate-600 dark:text-slate-400">%s 우세</span>
-	            </div>
-	          </div>
-	        </div>
-        <div class="overflow-x-auto">
-          <svg viewBox="0 0 %d %d" class="w-full min-w-[600px]" preserveAspectRatio="xMidYMid meet">
-            <defs>
-              <linearGradient id="%s" x1="0%%" y1="0%%" x2="0%%" y2="100%%">
-                <stop offset="0%%" stop-color="%s"/>
-                <stop offset="100%%" stop-color="transparent"/>
-              </linearGradient>
-            </defs>
-            <!-- Grid lines -->
-            %s
-            <!-- Zero baseline -->
-            %s
-            <!-- Area fill -->
-            <path d="%s" fill="url(#%s)" opacity="0.5"/>
-            <!-- Line -->
-            <path d="%s" fill="none" stroke="%s" stroke-width="2" stroke-linejoin="round"/>
-            <!-- Data points -->
-            %s
-            <!-- X-axis labels -->
-            %s
-            %s
+		    Printf.sprintf
+		      {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-lg">
+		        <div class="flex items-center justify-between mb-4">
+		          <h3 class="text-lg font-bold text-slate-900 dark:text-slate-200 flex items-center gap-2">
+		            <span class="w-1 h-6 bg-orange-500 rounded-full"></span>
+		            경기 흐름
+		          </h3>
+		          <div class="flex items-center gap-4 text-xs">
+		            <div class="flex items-center gap-1">
+		              <span class="w-3 h-3 rounded-full bg-sky-500"></span>
+		              <span class="text-slate-600 dark:text-slate-400">%s 우세</span>
+		            </div>
+		            <div class="flex items-center gap-1">
+		              <span class="w-3 h-3 rounded-full bg-orange-500"></span>
+		              <span class="text-slate-600 dark:text-slate-400">%s 우세</span>
+		            </div>
+		          </div>
+		        </div>
+	        <div class="overflow-x-auto">
+	          <svg viewBox="0 0 %d %d" class="w-full min-w-[600px]" preserveAspectRatio="xMidYMid meet">
+	            <!-- Grid lines -->
+	            %s
+	            <!-- Zero baseline -->
+	            %s
+	            <!-- Area fill -->
+	            <path d="%s" fill="currentColor" class="text-slate-400/15 dark:text-slate-700/20"/>
+	            <!-- Line -->
+	            <path d="%s" fill="none" stroke="currentColor" class="text-slate-700 dark:text-slate-200" stroke-width="2" stroke-linejoin="round"/>
+	            <!-- Data points -->
+	            %s
+	            <!-- X-axis labels -->
+	            %s
+	            %s
             <!-- Y-axis labels -->
             %s
           </svg>
         </div>
-      </div>|html}
-      (escape_html home_team)
-      (escape_html away_team)
-      width height
-      gradient_id
-      gradient_color
-      quarter_lines
-      zero_line
-      area_path gradient_id
-      path_d line_color
-      data_points
-      quarter_labels
-      ot_labels
-      y_labels
+	      </div>|html}
+	      (escape_html home_team)
+	      (escape_html away_team)
+	      width height
+	      quarter_lines
+	      zero_line
+	      area_path
+	      path_d
+	      data_points
+	      quarter_labels
+	      ot_labels
+	      y_labels
 
 (** Game flow page with chart and summary statistics *)
 let game_flow_page ?(lang=I18n.Ko) ~(game: Domain.game_info) (flow_points: Domain.score_flow_point list) =
