@@ -70,25 +70,32 @@ module Pbp_backfill = struct
                   ~finally:(fun () -> Hashtbl.remove inflight game_id)
                   (fun () ->
                     try
-                      Eio.Time.with_timeout_exn clock timeout_seconds (fun () ->
-                        let events =
-                          Scraper.fetch_game_pbp_events ~sw ~env ~season_gu ~game_type ~game_no ()
-                        in
-                        if events <> [] then (
-                          let rows =
-                            events |> List.map (fun (e : Domain.pbp_event) -> (e, None))
-                          in
-                          match Db_sync.replace_pbp_events ~game_id rows with
-                          | Ok _n -> ()
-                          | Error e ->
-                              Printf.eprintf "[%s] backfill DB error (%s): %s\n%!"
-                                tag
-                                game_id
-                                (Db.show_db_error e)
-                        ))
+                      let events_opt =
+                        try
+                          Some
+                            (Eio.Time.with_timeout_exn clock timeout_seconds (fun () ->
+                               Scraper.fetch_game_pbp_events ~sw ~env ~season_gu ~game_type
+                                 ~game_no ()))
+                        with
+                        | Eio.Time.Timeout -> None
+                      in
+                      (match events_opt with
+                      | None ->
+                          Printf.eprintf "[%s] backfill fetch timeout (%s)\n%!" tag game_id
+                      | Some events ->
+                          if events <> [] then (
+                            let rows =
+                              events |> List.map (fun (e : Domain.pbp_event) -> (e, None))
+                            in
+                            match Db_sync.replace_pbp_events ~game_id rows with
+                            | Ok _n -> ()
+                            | Error e ->
+                                Printf.eprintf "[%s] backfill DB error (%s): %s\n%!"
+                                  tag
+                                  game_id
+                                  (Db.show_db_error e)
+                          ))
                     with
-                    | Eio.Time.Timeout ->
-                        Printf.eprintf "[%s] backfill timeout (%s)\n%!" tag game_id
                     | exn ->
                         Printf.eprintf "[%s] backfill error (%s): %s\n%!"
                           tag
