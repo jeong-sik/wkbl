@@ -1691,6 +1691,21 @@ let test_schedule_status_from_scores () =
     "in_progress"
     (schedule_status_from_scores (Some 71) None)
 
+let test_normalize_placeholder_scores () =
+  let open Wkbl.Scraper in
+  Alcotest.(check (Alcotest.pair (Alcotest.option Alcotest.int) (Alcotest.option Alcotest.int)))
+    "0-0 placeholder -> (None, None)"
+    (None, None)
+    (normalize_placeholder_scores (Some 0) (Some 0));
+  Alcotest.(check (Alcotest.pair (Alcotest.option Alcotest.int) (Alcotest.option Alcotest.int)))
+    "real scores preserved"
+    (Some 63, Some 65)
+    (normalize_placeholder_scores (Some 63) (Some 65));
+  Alcotest.(check (Alcotest.pair (Alcotest.option Alcotest.int) (Alcotest.option Alcotest.int)))
+    "non-placeholder partial preserved"
+    (Some 0, None)
+    (normalize_placeholder_scores (Some 0) None)
+
 let test_game_params_of_href () =
   let href = "/game/result.asp?season_gu=046&gun=1&game_type=01&game_no=40&ym=202601&viewType=2" in
   let (game_type, game_no) = Wkbl.Scraper.game_params_of_href href in
@@ -2037,6 +2052,31 @@ let test_parse_live_pbp_xml_basic () =
   let e1b = List.nth events2 1 in
   Alcotest.(check int) "seq0 offset applied" 51 e1b.pe_event_index
 
+let test_parse_player_detail_html_basic () =
+  let html =
+    {|
+    <div class="profile_view">
+      <h3 class="tit_name">
+        No.13 <span class="language" data-kr="박지수" data-en="PARK JI SU">박지수</span>
+      </h3>
+      <div class="scr_area default-skin">
+        <ul class="list_text">
+          <li><span class="language" data-kr="포지션" data-en="Position">포지션</span> - F</li>
+          <li><span class="language" data-kr="신장" data-en="Height">신장</span> - 177 cm</li>
+          <li><span class="language" data-kr="생년월일" data-en="Birth">생년월일</span> - 2003.04.12</li>
+        </ul>
+      </div>
+    </div>
+    |}
+  in
+  match Wkbl.Scraper.parse_player_detail_html ~player_id:"096136" html with
+  | None -> Alcotest.fail "expected Some player_info"
+  | Some info ->
+      Alcotest.(check string) "name" "박지수" info.name;
+      Alcotest.(check (option string)) "position" (Some "F") info.position;
+      Alcotest.(check (option int)) "height" (Some 177) info.height;
+      Alcotest.(check (option string)) "birth_date normalized" (Some "2003-04-12") info.birth_date
+
 let scraper_tests = [
   Alcotest.test_case "code_from_team_name known" `Quick test_code_from_team_name_known;
   Alcotest.test_case "code_from_team_name unknown" `Quick test_code_from_team_name_unknown;
@@ -2050,6 +2090,7 @@ let scraper_tests = [
   Alcotest.test_case "season_start_year_of_datalab_code" `Quick test_season_start_year_of_datalab_code;
   Alcotest.test_case "is_league_team variants" `Quick test_is_league_team_variants;
   Alcotest.test_case "schedule_status_from_scores" `Quick test_schedule_status_from_scores;
+  Alcotest.test_case "normalize_placeholder_scores" `Quick test_normalize_placeholder_scores;
   Alcotest.test_case "schedule sync success policy" `Quick test_schedule_sync_success_policy;
   Alcotest.test_case "schedule sync suspicion policy" `Quick test_schedule_sync_suspicion_reason_policy;
   Alcotest.test_case "game_params_of_href" `Quick test_game_params_of_href;
@@ -2061,6 +2102,7 @@ let scraper_tests = [
   Alcotest.test_case "parse_boxscore_html extracts two teams" `Quick test_parse_boxscore_html_two_teams;
   Alcotest.test_case "parse_boxscore_html keeps low minutes player" `Quick test_parse_boxscore_html_low_minutes_player;
   Alcotest.test_case "parse_live_pbp_xml basic" `Quick test_parse_live_pbp_xml_basic;
+  Alcotest.test_case "parse_player_detail_html basic" `Quick test_parse_player_detail_html_basic;
 ]
 
 (* ============================================= *)
