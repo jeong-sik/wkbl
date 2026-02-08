@@ -795,19 +795,19 @@ Sitemap: https://wkbl.win/sitemap.xml
 	              let flow_points = fetch_flow_points periods in
 
 	              (* If the flow doesn't reach the final score for a past game, refresh once. *)
-	              let g = bs.boxscore_game in
-	              let scores_known = g.gi_home_score > 0 && g.gi_away_score > 0 in
-	              let is_past_game =
-	                let d = String.trim g.gi_game_date in
-	                d <> "" && String.compare d today_kst < 0
-	              in
-	              let flow_points =
-	                if scores_known && is_past_game
-	                   && not (score_flow_matches_final ~final_home:g.gi_home_score ~final_away:g.gi_away_score flow_points)
-	                then (
-	                  backfill_once ();
-	                  match Db.get_pbp_periods ~game_id () with
-	                  | Ok periods2 -> fetch_flow_points periods2
+		              let g = bs.boxscore_game in
+		              let scores_known = g.gi_home_score > 0 && g.gi_away_score > 0 in
+		              let is_not_future_game =
+		                let d = String.trim g.gi_game_date in
+		                d <> "" && String.compare d today_kst <= 0
+		              in
+		              let flow_points =
+		                if scores_known && is_not_future_game
+		                   && not (score_flow_matches_final ~final_home:g.gi_home_score ~final_away:g.gi_away_score flow_points)
+		                then (
+		                  backfill_once ();
+		                  match Db.get_pbp_periods ~game_id () with
+		                  | Ok periods2 -> fetch_flow_points periods2
 	                  | Error _ -> flow_points
 	                ) else flow_points
 	              in
@@ -848,23 +848,23 @@ Sitemap: https://wkbl.win/sitemap.xml
 	          (* If PBP/quarter scores are clearly incomplete, refresh once so the boxscore page doesn't
 	             show nonsense quarter flow. *)
 	          let g = bs.boxscore_game in
-	          let periods =
-	            match Db.get_pbp_periods ~game_id () with
-	            | Ok ps -> ps
-	            | Error _ -> []
-	          in
-	          let scores_known = g.gi_home_score > 0 && g.gi_away_score > 0 in
-	          let is_past_game =
-	            let d = String.trim g.gi_game_date in
-	            d <> "" && String.compare d today_kst < 0
-	          in
-	          let q4_mismatch =
-	            if scores_known && is_past_game then (
-	              match Db.get_quarter_scores game_id with
-	              | Error _ -> false
-	              | Ok qs ->
-	                  match List.find_opt (fun (q : Domain.quarter_score) -> q.qs_period = "Q4") qs with
-	                  | None -> false
+		          let periods =
+		            match Db.get_pbp_periods ~game_id () with
+		            | Ok ps -> ps
+		            | Error _ -> []
+		          in
+		          let scores_known = g.gi_home_score > 0 && g.gi_away_score > 0 in
+		          let is_not_future_game =
+		            let d = String.trim g.gi_game_date in
+		            d <> "" && String.compare d today_kst <= 0
+		          in
+		          let q4_mismatch =
+		            if scores_known && is_not_future_game then (
+		              match Db.get_quarter_scores game_id with
+		              | Error _ -> false
+		              | Ok qs ->
+		                  match List.find_opt (fun (q : Domain.quarter_score) -> q.qs_period = "Q4") qs with
+		                  | None -> false
 	                  | Some q4 ->
 	                      q4.qs_home_score <> g.gi_home_score || q4.qs_away_score <> g.gi_away_score
 	            ) else false
