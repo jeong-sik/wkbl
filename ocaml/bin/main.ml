@@ -1658,18 +1658,28 @@ Sitemap: https://wkbl.win/sitemap.xml
 	          | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e)))
 	    );
 
-	    (* QA & System *)
-	    Kirin.get "/qa" (fun request ->
-	      let lang = request_lang request in
-	      let markdown = Qa.read_markdown_if_exists () in
-	      match Db.get_db_quality_report () with
-	      | Ok report -> Kirin.html (Views_tools.qa_dashboard_page report ~lang ~markdown ())
-	      | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
-	    );
-	    Kirin.get "/qa/schedule-missing" (fun request ->
-	      let lang = request_lang request in
-	      match Db.get_schedule_missing_report () with
-	      | Ok report -> Kirin.html (Views_tools.qa_schedule_missing_page report ~lang ())
+		    (* QA & System *)
+		    Kirin.get "/qa" (fun request ->
+		      let lang = request_lang request in
+		      let markdown = Qa.read_markdown_if_exists () in
+		      match Db.get_db_quality_report () with
+		      | Ok report -> Kirin.html (Views_tools.qa_dashboard_page report ~lang ~markdown ())
+		      | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
+		    );
+		    Kirin.get "/qa/pbp-missing" (fun request ->
+		      let lang = request_lang request in
+		      match Db.get_seasons () with
+		      | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
+		      | Ok seasons ->
+		          let season = query_season_or_latest request seasons in
+		          (match Db.get_pbp_missing_report ~season () with
+		          | Ok report -> Kirin.html (Views_tools.qa_pbp_missing_page report ~lang ~season ~seasons ())
+		          | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e)))
+		    );
+		    Kirin.get "/qa/schedule-missing" (fun request ->
+		      let lang = request_lang request in
+		      match Db.get_schedule_missing_report () with
+		      | Ok report -> Kirin.html (Views_tools.qa_schedule_missing_page report ~lang ())
 	      | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
 	    );
 
