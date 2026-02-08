@@ -1988,6 +1988,38 @@ let canonical_host_tests = [
 ]
 
 (* ============================================= *)
+(* Player Identity Tests                         *)
+(* ============================================= *)
+
+let test_player_identity_redirect_location_none () =
+  let open Wkbl.Player_identity in
+  let uri = Uri.of_string "/player/095533?scope=totals&ops=1" in
+  Alcotest.(check (option string)) "same id -> no redirect" None
+    (redirect_location ~requested_id:"095533" ~canonical_id:"095533" uri)
+
+let test_player_identity_redirect_location_preserves_query () =
+  let open Wkbl.Player_identity in
+  let uri = Uri.of_string "/player/096136?scope=totals&ops=1" in
+  Alcotest.(check (option string)) "redirect keeps query"
+    (Some "/player/095533?scope=totals&ops=1")
+    (redirect_location ~requested_id:"096136" ~canonical_id:"095533" uri)
+
+let test_player_identity_redirect_location_suffix () =
+  let open Wkbl.Player_identity in
+  let uri = Uri.of_string "/player/096136/games?season=046&include_mismatch=1" in
+  Alcotest.(check (option string)) "suffix + query"
+    (Some "/player/095533/games?season=046&include_mismatch=1")
+    (redirect_location ~requested_id:"096136" ~canonical_id:"095533" ~suffix:"games" uri)
+
+let player_identity_tests =
+  [
+    Alcotest.test_case "redirect_location none" `Quick test_player_identity_redirect_location_none;
+    Alcotest.test_case "redirect_location preserves query" `Quick
+      test_player_identity_redirect_location_preserves_query;
+    Alcotest.test_case "redirect_location suffix" `Quick test_player_identity_redirect_location_suffix;
+  ]
+
+(* ============================================= *)
 (* QA Utility Tests                              *)
 (* ============================================= *)
 
@@ -2829,6 +2861,7 @@ let () =
     "I18n", i18n_tests;
     "Request Params", request_params_tests;
     "Canonical Host", canonical_host_tests;
+    "Player Identity", player_identity_tests;
     "QA Utils", qa_util_tests;
     "Observability", observability_tests;
     "UI Copy", ui_copy_tests;
