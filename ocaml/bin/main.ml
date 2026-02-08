@@ -814,14 +814,66 @@ Sitemap: https://wkbl.win/sitemap.xml
 	              Kirin.html (Views_tools.game_flow_page ~lang ~game:bs.boxscore_game flow_points))
 	    );
 
-    (* Boxscore Detail - MUST come AFTER more specific /boxscore/:id/* routes *)
-    Kirin.get "/boxscore/:id" (fun request ->
-      let lang = request_lang request in
-      let game_id = Kirin.param "id" request in
-      match Db.get_boxscore ~game_id () with
-      | Ok bs -> Kirin.html (Views.boxscore_page ~lang bs)
-      | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
-    );
+	    (* Boxscore Detail - MUST come AFTER more specific /boxscore/:id/* routes *)
+	    Kirin.get "/boxscore/:id" (fun request ->
+	      let lang = request_lang request in
+	      let game_id = Kirin.param "id" request in
+	      match Db.get_boxscore ~game_id () with
+	      | Ok bs ->
+	          let today_kst = Live.today_str () in
+	          let parse_game_id id =
+	            match String.split_on_char '-' (String.trim id) with
+	            | [season_gu; game_type; game_no_s] -> (
+	                match int_of_string_opt (String.trim game_no_s) with
+	                | Some game_no -> Some (String.trim season_gu, String.trim game_type, game_no)
+	                | None -> None)
+	            | _ -> None
+	          in
+	          let backfill_pbp_from_wkbl () =
+	            match parse_game_id game_id with
+	            | None -> ()
+	            | Some (season_gu, game_type, game_no) ->
+	                let events =
+	                  Scraper.fetch_game_pbp_events ~sw ~env ~season_gu ~game_type ~game_no ()
+	                in
+	                if events <> [] then (
+	                  let rows = events |> List.map (fun (e : Domain.pbp_event) -> (e, None)) in
+	                  match Db_sync.replace_pbp_events ~game_id rows with
+	                  | Ok _n -> ()
+	                  | Error e ->
+	                      Printf.eprintf "[BOX] backfill DB error (%s): %s\n%!" game_id (Db.show_db_error e)
+	                )
+	          in
+
+	          (* If PBP/quarter scores are clearly incomplete, refresh once so the boxscore page doesn't
+	             show nonsense quarter flow. *)
+	          let g = bs.boxscore_game in
+	          let periods =
+	            match Db.get_pbp_periods ~game_id () with
+	            | Ok ps -> ps
+	            | Error _ -> []
+	          in
+	          let scores_known = g.gi_home_score > 0 && g.gi_away_score > 0 in
+	          let is_past_game =
+	            let d = String.trim g.gi_game_date in
+	            d <> "" && String.compare d today_kst < 0
+	          in
+	          let q4_mismatch =
+	            if scores_known && is_past_game then (
+	              match Db.get_quarter_scores game_id with
+	              | Error _ -> false
+	              | Ok qs ->
+	                  match List.find_opt (fun (q : Domain.quarter_score) -> q.qs_period = "Q4") qs with
+	                  | None -> false
+	                  | Some q4 ->
+	                      q4.qs_home_score <> g.gi_home_score || q4.qs_away_score <> g.gi_away_score
+	            ) else false
+	          in
+	          if pbp_should_backfill ~today_kst g periods || q4_mismatch then
+	            backfill_pbp_from_wkbl ();
+	          Kirin.html (Views.boxscore_page ~lang bs)
+	      | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
+	    );
 
     (* Leaders *)
     Kirin.get "/leaders" (fun request ->
