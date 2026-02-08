@@ -1061,6 +1061,95 @@ let pbp_refresh_tests = [
   Alcotest.test_case "score_flow_matches_final: false" `Quick test_score_flow_matches_final_false;
 ]
 
+(* ============================================= *)
+(* DB Transaction Wrapper Tests                  *)
+(* ============================================= *)
+
+let test_with_transaction_success () =
+  let calls = ref [] in
+  let push x = calls := !calls @ [ x ] in
+  let begin_tx () = push "begin"; Ok () in
+  let commit_tx () = push "commit"; Ok () in
+  let rollback_tx () = push "rollback"; Ok () in
+  let body () = push "body"; Ok 42 in
+  let res =
+    Wkbl.Db_sync.PbpSync.with_transaction ~begin_tx ~commit_tx ~rollback_tx body
+  in
+  Alcotest.(check (result int string)) "result" (Ok 42) res;
+  Alcotest.(check (list string)) "calls"
+    [ "begin"; "body"; "commit" ] !calls
+
+let test_with_transaction_body_error_rolls_back () =
+  let calls = ref [] in
+  let push x = calls := !calls @ [ x ] in
+  let begin_tx () = push "begin"; Ok () in
+  let commit_tx () = push "commit"; Ok () in
+  let rollback_tx () = push "rollback"; Ok () in
+  let body () = push "body"; Error "boom" in
+  let res =
+    Wkbl.Db_sync.PbpSync.with_transaction ~begin_tx ~commit_tx ~rollback_tx body
+  in
+  Alcotest.(check (result int string)) "result" (Error "boom") res;
+  Alcotest.(check (list string)) "calls"
+    [ "begin"; "body"; "rollback" ] !calls
+
+let test_with_transaction_commit_error_rolls_back () =
+  let calls = ref [] in
+  let push x = calls := !calls @ [ x ] in
+  let begin_tx () = push "begin"; Ok () in
+  let commit_tx () = push "commit"; Error "commit-failed" in
+  let rollback_tx () = push "rollback"; Ok () in
+  let body () = push "body"; Ok 1 in
+  let res =
+    Wkbl.Db_sync.PbpSync.with_transaction ~begin_tx ~commit_tx ~rollback_tx body
+  in
+  Alcotest.(check (result int string)) "result" (Error "commit-failed") res;
+  Alcotest.(check (list string)) "calls"
+    [ "begin"; "body"; "commit"; "rollback" ] !calls
+
+let test_with_transaction_begin_error_skips_body () =
+  let calls = ref [] in
+  let push x = calls := !calls @ [ x ] in
+  let begin_tx () = push "begin"; Error "begin-failed" in
+  let commit_tx () = push "commit"; Ok () in
+  let rollback_tx () = push "rollback"; Ok () in
+  let body () = push "body"; Ok 1 in
+  let res =
+    Wkbl.Db_sync.PbpSync.with_transaction ~begin_tx ~commit_tx ~rollback_tx body
+  in
+  Alcotest.(check (result int string)) "result" (Error "begin-failed") res;
+  Alcotest.(check (list string)) "calls"
+    [ "begin" ] !calls
+
+let test_with_transaction_exception_rolls_back () =
+  let calls = ref [] in
+  let push x = calls := !calls @ [ x ] in
+  let begin_tx () = push "begin"; Ok () in
+  let commit_tx () = push "commit"; Ok () in
+  let rollback_tx () = push "rollback"; Ok () in
+  let body () = push "body"; failwith "boom" in
+  let raised =
+    try
+      let _ =
+        Wkbl.Db_sync.PbpSync.with_transaction ~begin_tx ~commit_tx ~rollback_tx body
+      in
+      false
+    with
+    | Failure msg when msg = "boom" -> true
+    | _ -> false
+  in
+  Alcotest.(check bool) "raises" true raised;
+  Alcotest.(check (list string)) "calls"
+    [ "begin"; "body"; "rollback" ] !calls
+
+let db_transaction_tests = [
+  Alcotest.test_case "with_transaction: success" `Quick test_with_transaction_success;
+  Alcotest.test_case "with_transaction: body error rolls back" `Quick test_with_transaction_body_error_rolls_back;
+  Alcotest.test_case "with_transaction: commit error rolls back" `Quick test_with_transaction_commit_error_rolls_back;
+  Alcotest.test_case "with_transaction: begin error skips body" `Quick test_with_transaction_begin_error_skips_body;
+  Alcotest.test_case "with_transaction: exception rolls back" `Quick test_with_transaction_exception_rolls_back;
+]
+
 let views_tools_tests = [
   Alcotest.test_case "game_flow_chart empty" `Quick test_game_flow_chart_empty;
   Alcotest.test_case "game_flow_chart single point" `Quick test_game_flow_chart_single_point;
@@ -2993,6 +3082,7 @@ let () =
     "Clutch Time", clutch_tests;
     "Score Flow", score_flow_tests;
     "PBP Refresh", pbp_refresh_tests;
+    "DB Transaction", db_transaction_tests;
     "Views Tools", views_tools_tests;
     "Tables UX", table_row_link_tests;
     "Boxscore Link Chips", boxscore_link_chip_tests;
