@@ -70,7 +70,7 @@ module Pbp_backfill = struct
                   ~finally:(fun () -> Hashtbl.remove inflight game_id)
                   (fun () ->
                     try
-                      Eio.Time.with_timeout clock timeout_seconds (fun () ->
+                      Eio.Time.with_timeout_exn clock timeout_seconds (fun () ->
                         let events =
                           Scraper.fetch_game_pbp_events ~sw ~env ~season_gu ~game_type ~game_no ()
                         in
