@@ -170,6 +170,14 @@ let player_disambiguation_line ~team_name ~player_id (info_opt: player_info opti
   let parts = ref [] in
   let team = normalize_name team_name |> String.trim in
   if team <> "" then parts := !parts @ [team];
+  let has_extra =
+    match info_opt with
+    | None -> false
+    | Some info ->
+        (match info.position with Some p when String.trim p <> "" -> true | _ -> false)
+        || (match info.birth_date with Some d -> extract_year d |> Option.is_some | None -> false)
+        || (match info.height with Some h when h > 0 -> true | _ -> false)
+  in
   (match info_opt with
   | Some info ->
       (match info.position with
@@ -182,10 +190,12 @@ let player_disambiguation_line ~team_name ~player_id (info_opt: player_info opti
       | Some h when h > 0 -> parts := !parts @ [Printf.sprintf "%dcm" h]
       | _ -> ())
   | None -> ());
-  parts := !parts @ [Printf.sprintf "고유번호 %s" player_id];
+  if not has_extra then parts := !parts @ [Printf.sprintf "고유번호 %s" player_id];
   let text = String.concat " · " !parts in
+  let title_text = Printf.sprintf "%s · 고유번호 %s" text player_id in
   Printf.sprintf
-    {html|<div class="text-[10px] text-slate-500 dark:text-slate-400 font-mono whitespace-nowrap">%s</div>|html}
+    {html|<div class="text-[10px] text-slate-500 dark:text-slate-400 font-mono leading-tight break-words" title="%s">%s</div>|html}
+    (escape_html title_text)
     (escape_html text)
 
 let team_logo_tag ?(class_name="w-8 h-8") team_name =

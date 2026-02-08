@@ -4913,8 +4913,9 @@ module Queries = struct
       game_date = COALESCE(EXCLUDED.game_date, games.game_date),
       home_team_code = COALESCE(EXCLUDED.home_team_code, games.home_team_code),
       away_team_code = COALESCE(EXCLUDED.away_team_code, games.away_team_code),
-      home_score = COALESCE(EXCLUDED.home_score, games.home_score),
-      away_score = COALESCE(EXCLUDED.away_score, games.away_score),
+      -- Treat 0 as a placeholder score (schedule pages often show 0-0).
+      home_score = COALESCE(NULLIF(EXCLUDED.home_score, 0), NULLIF(games.home_score, 0)),
+      away_score = COALESCE(NULLIF(EXCLUDED.away_score, 0), NULLIF(games.away_score, 0)),
       stadium = COALESCE(EXCLUDED.stadium, games.stadium),
       attendance = COALESCE(EXCLUDED.attendance, games.attendance)
   |}

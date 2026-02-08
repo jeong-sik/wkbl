@@ -155,6 +155,32 @@ let update_game_scores_if_missing ~game_id ~away_score ~home_score =
 let get_game_teams ~game_id =
   Db.with_db (fun db -> BoxscoreSync.get_game_teams ~game_id db)
 
+module PlayerInfoSync = struct
+  open Caqti_request.Infix
+  open Caqti_type
+
+  let i = int
+  let s = string
+
+  let upsert_player_info_query =
+    (t2 s (t2 s (t2 (option s) (t2 (option s) (t2 (option i) (option i))))) ->. unit)
+    {|INSERT INTO players (player_id, player_name, position, birth_date, height, weight)
+      VALUES ($1, $2, $3, $4::date, $5, $6)
+      ON CONFLICT (player_id) DO UPDATE SET
+        player_name = EXCLUDED.player_name,
+        position = COALESCE(EXCLUDED.position, players.position),
+        birth_date = COALESCE(EXCLUDED.birth_date, players.birth_date),
+        height = COALESCE(EXCLUDED.height, players.height),
+        weight = COALESCE(EXCLUDED.weight, players.weight)|}
+
+  let upsert_player_info (info : Domain.player_info) (module Db_conn : Caqti_eio.CONNECTION) =
+    Db_conn.exec upsert_player_info_query
+      (info.id, (info.name, (info.position, (info.birth_date, (info.height, info.weight)))))
+end
+
+let upsert_player_info (info : Domain.player_info) =
+  Db.with_db (fun db -> PlayerInfoSync.upsert_player_info info db)
+
 module PbpSync = struct
   open Caqti_request.Infix
   open Caqti_type

@@ -1182,10 +1182,11 @@ let boxscore_page ?(lang=I18n.Ko) (bs: game_boxscore) =
  let label_diff = tr { ko = "점수차"; en = "Diff" } in
  let label_points_unit = tr { ko = "점"; en = "" } in
  let label_summary = tr { ko = "요약"; en = "Summary" } in
+ let label_refresh = tr { ko = "새로고침"; en = "Refresh" } in
  let label_stats_missing =
   tr {
-    ko = "선수 기록이 아직 없습니다. 잠시 후 다시 확인해 주세요.";
-    en = "Player stats aren't available yet. Please check back later.";
+    ko = "선수 기록을 가져오는 중입니다. 잠시 후 다시 확인해 주세요.";
+    en = "Player stats are being fetched. Please check back later.";
   }
  in
  let gi = bs.boxscore_game in
@@ -1255,8 +1256,10 @@ let boxscore_page ?(lang=I18n.Ko) (bs: game_boxscore) =
 	 let stats_notice =
 	  if has_scores && not has_player_stats then
 	    Printf.sprintf
-	      {html|<div class="max-w-2xl mx-auto bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 rounded-lg p-4 text-sm text-slate-700 dark:text-slate-300">%s</div>|html}
+	      {html|<div class="max-w-2xl mx-auto bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 rounded-lg p-4 text-sm text-slate-700 dark:text-slate-300"><div class="flex items-start justify-between gap-3"><div class="min-w-0">%s</div><a href="/boxscore/%s" class="shrink-0 px-3 py-1.5 rounded-lg bg-white/80 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-[11px] font-bold text-slate-700 dark:text-slate-200 hover:border-orange-300 dark:hover:border-orange-700 hover:text-orange-700 dark:hover:text-orange-300 transition whitespace-nowrap">%s</a></div></div>|html}
 	      (escape_html label_stats_missing)
+	      (escape_html gi.gi_game_id)
+	      (escape_html label_refresh)
 	  else ""
 	 in
 	 let ai_summary_section =

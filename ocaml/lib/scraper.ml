@@ -264,6 +264,102 @@ let fetch_game_boxscore ~sw ~env ~season_gu ~game_type ~game_no ~ym =
   let html = post_url ~sw ~env ~referer url params in
   if String.length html > 0 then parse_boxscore_html html else []
 
+(** =========================== PLAYER DETAIL (META) ========================== *)
+
+let normalize_birth_date (s : string) : string option =
+  let digits =
+    s
+    |> String.to_seq
+    |> Seq.filter (fun c -> c >= '0' && c <= '9')
+    |> String.of_seq
+  in
+  if String.length digits = 8 then
+    let y = String.sub digits 0 4 in
+    let m = String.sub digits 4 2 in
+    let d = String.sub digits 6 2 in
+    Some (Printf.sprintf "%s-%s-%s" y m d)
+  else
+    None
+
+let parse_player_detail_html ~(player_id : string) (html : string) : Domain.player_info option =
+  let open Soup in
+  let soup = parse html in
+  let pick_label li : string option =
+    match select_one "span.language" li with
+    | None -> None
+    | Some sp ->
+        let raw =
+          match attribute "data-kr" sp with
+          | Some _ as v -> v
+          | None -> leaf_text sp
+        in
+        let raw = raw |> Option.map String.trim in
+        Option.bind raw (fun s -> if s = "" then None else Some s)
+  in
+  let li_text li : string =
+    li |> texts |> List.map String.trim |> List.filter (fun s -> s <> "") |> String.concat " " |> String.trim
+  in
+  let pick_value ~(label : string) li : string option =
+    let t = li_text li in
+    if not (String.starts_with ~prefix:label t) then None
+    else
+      let rest =
+        let after = String.sub t (String.length label) (String.length t - String.length label) in
+        String.trim after
+      in
+      let rest =
+        if String.starts_with ~prefix:"-" rest then
+          String.sub rest 1 (String.length rest - 1) |> String.trim
+        else rest
+      in
+      if rest = "" then None else Some rest
+  in
+  let items = soup |> select ".profile_view .list_text li" |> to_list in
+  let find_value label =
+    items
+    |> List.find_map (fun li ->
+        match pick_label li with
+        | Some l when l = label -> pick_value ~label li
+        | _ -> None)
+  in
+  let name =
+    let name_opt =
+      match soup |> select_one ".profile_view .tit_name span.language" with
+      | None -> None
+      | Some n -> (
+          match attribute "data-kr" n with
+          | Some _ as v -> v
+          | None -> leaf_text n)
+    in
+    name_opt |> Option.map String.trim |> Option.value ~default:""
+  in
+  if String.trim name = "" then None
+  else
+    let position =
+      match find_value "포지션" with
+      | None -> None
+      | Some s ->
+          let s = s |> String.trim |> String.uppercase_ascii in
+          if s = "" then None else Some s
+    in
+    let height =
+      match find_value "신장" with
+      | None -> None
+      | Some s ->
+          s
+          |> String.to_seq
+          |> Seq.filter (fun c -> c >= '0' && c <= '9')
+          |> String.of_seq
+          |> int_of_string_opt
+    in
+    let birth_date = Option.bind (find_value "생년월일") normalize_birth_date in
+    Some { id = player_id; name; position; birth_date; height; weight = None }
+
+let fetch_player_detail ~sw ~env ~(player_id : string) : Domain.player_info option =
+  let url = Printf.sprintf "%s/player/detail.asp?pno=%s" base_url (Uri.pct_encode (String.trim player_id)) in
+  let html = fetch_url ~sw ~env url in
+  if String.length html = 0 then None else parse_player_detail_html ~player_id html
+
 (** Draft entry type *)
 type draft_entry = {
   season_code: string;      (* e.g., "044" for 2025-2026 *)
@@ -2312,6 +2408,13 @@ let schedule_status_from_scores home_score away_score =
   | None, None -> "scheduled"
   | _ -> "in_progress"
 
+(** Some schedule pages use 0-0 placeholders for "not started".
+    Treat those as missing scores so UI/QA does not see fake 0-0 games. *)
+let normalize_placeholder_scores home_score away_score =
+  match (home_score, away_score) with
+  | Some 0, Some 0 -> (None, None)
+  | hs, as_ -> (hs, as_)
+
 (** Last successful sync timestamp (Unix time) *)
 let last_sync_time : float option ref = ref None
 
@@ -2540,6 +2643,10 @@ let sync_current_season_schedule ~sw ~env () =
         when not (String.starts_with ~prefix:"XX_" home_team_code)
              && not (String.starts_with ~prefix:"XX_" away_team_code) ->
           let game_id = Printf.sprintf "%s-%s-%d" current_season_code game_type game_no in
+          (* Some schedule pages use 0-0 placeholders. Avoid writing fake scores to [games]. *)
+          let home_score, away_score =
+            normalize_placeholder_scores entry.sch_home_score entry.sch_away_score
+          in
           let game_res =
             Db.with_db (fun db ->
 	              Db.Repo.upsert_game_entry
@@ -2550,8 +2657,8 @@ let sync_current_season_schedule ~sw ~env () =
 	                ~game_date:(Some game_date)
 	                ~home_team_code
 	                ~away_team_code
-	                ~home_score:entry.sch_home_score
-	                ~away_score:entry.sch_away_score
+	                ~home_score
+	                ~away_score
                 ~stadium:venue
                 ~attendance:None
                 db)
