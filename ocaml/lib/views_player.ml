@@ -482,7 +482,7 @@ let player_profile_page ?(lang=I18n.Ko) ?(leaderboards=None) ?(show_ops=false) (
   in
   let recent_games_header_html =
     Printf.sprintf
-      {html|<div class="flex items-start justify-between gap-3"><h3 class="text-xl font-bold text-slate-900 dark:text-white">최근 경기</h3><div class="flex flex-wrap items-center justify-end gap-2 shrink-0">%s<a href="/player/%s/games" class="text-xs bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-3 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all shadow-sm whitespace-nowrap border border-slate-200 dark:border-slate-700">전체 경기</a></div></div><p class="text-[11px] text-slate-500 dark:text-slate-500 mt-1">개인 <span class="font-mono text-slate-700 dark:text-slate-300">+/-</span>는 문자중계 기반입니다. 문자중계가 없으면 <span class="font-mono text-slate-700 dark:text-slate-300">M</span>으로 팀 득실마진(경기 최종 점수)을 대신 표시합니다. <span class="font-mono text-slate-700 dark:text-slate-300">Σ</span>는 득점합 기반 보정 결과입니다.</p>|html}
+      {html|<div class="flex items-start justify-between gap-3"><h3 class="text-xl font-bold text-slate-900 dark:text-white">최근 경기</h3><div class="flex flex-wrap items-center justify-end gap-2 shrink-0">%s<a href="/player/%s/games" class="text-xs bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-3 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all shadow-sm whitespace-nowrap border border-slate-200 dark:border-slate-700">전체 경기</a></div></div><p class="text-[11px] text-slate-500 dark:text-slate-500 mt-1">개인 <span class="font-mono text-slate-700 dark:text-slate-300">+/-</span>는 문자중계가 있는 경기에서만 계산할 수 있어요. 문자중계가 없으면 이 항목이 비어 있을 수 있습니다.</p>|html}
       recent_wl_summary_html
       (Uri.pct_encode p.id)
   in
@@ -1069,9 +1069,9 @@ let player_game_logs_page ?(lang=I18n.Ko) (profile: player_profile) ~(season: st
         | Mismatch -> (v, d, m + 1))
       (0, 0, 0)
   in
-    let quality_chips =
-      Printf.sprintf
-      {html|<div class="flex flex-wrap items-center gap-2 text-[11px] font-mono text-slate-600 dark:text-slate-400"><span class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700/60 whitespace-nowrap">✓ %d</span><span class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700/60 whitespace-nowrap">Σ %d</span><span class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700/60 whitespace-nowrap">! %d</span></div>|html}
+  let quality_chips =
+    Printf.sprintf
+      {html|<div class="flex flex-wrap items-center gap-2 text-[11px] text-slate-600 dark:text-slate-400"><span class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700/60 whitespace-nowrap">일치 %d</span><span class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700/60 whitespace-nowrap">추정 %d</span><span class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700/60 whitespace-nowrap">불일치 %d</span></div>|html}
       verified_cnt derived_cnt mismatch_cnt
   in
   let rows =

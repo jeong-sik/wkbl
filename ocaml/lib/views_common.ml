@@ -681,37 +681,24 @@ let eff_badge ?(show_label=false) eff =
 
 let score_quality_badge ?(lang=I18n.Ko) ?(compact=false) q =
   let tr = I18n.t lang in
-  let label_verified = tr { ko = "일치"; en = "Verified" } in
+  let label_verified = tr { ko = "일치"; en = "Match" } in
   let label_derived = tr { ko = "추정"; en = "Estimated" } in
   let label_mismatch = tr { ko = "불일치"; en = "Mismatch" } in
+  let pad_cls = if compact then "px-1.5" else "px-2" in
+  let mk cls label =
+    Printf.sprintf
+      "<span class=\"%s py-0.5 rounded border text-[10px] font-bold whitespace-nowrap %s\">%s</span>"
+      pad_cls
+      cls
+      (escape_html label)
+  in
   match q with
   | Verified ->
-      if compact then
-        Printf.sprintf
-          "<span class=\"text-sky-500\" title=\"%s\">✓</span>"
-          (escape_html label_verified)
-      else
-        Printf.sprintf
-          "<span class=\"px-2 py-0.5 rounded bg-sky-500/10 text-sky-600 border border-sky-500/30 text-[10px] font-mono whitespace-nowrap inline-flex items-center gap-1\"><span aria-hidden=\"true\">✓</span><span class=\"hidden sm:inline\">%s</span></span>"
-          (escape_html label_verified)
+      mk "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/30" label_verified
   | Derived ->
-      if compact then
-        Printf.sprintf
-          "<span class=\"text-amber-500\" title=\"%s\">Σ</span>"
-          (escape_html label_derived)
-      else
-        Printf.sprintf
-          "<span class=\"px-2 py-0.5 rounded bg-amber-500/10 text-amber-600 border border-amber-500/30 text-[10px] font-mono whitespace-nowrap inline-flex items-center gap-1\"><span aria-hidden=\"true\">Σ</span><span class=\"hidden sm:inline\">%s</span></span>"
-          (escape_html label_derived)
+      mk "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30" label_derived
   | Mismatch ->
-      if compact then
-        Printf.sprintf
-          "<span class=\"text-rose-500\" title=\"%s\">!</span>"
-          (escape_html label_mismatch)
-      else
-        Printf.sprintf
-          "<span class=\"px-2 py-0.5 rounded bg-rose-500/10 text-rose-600 border border-rose-500/30 text-[10px] font-mono whitespace-nowrap inline-flex items-center gap-1\"><span aria-hidden=\"true\">!</span><span class=\"hidden sm:inline\">%s</span></span>"
-          (escape_html label_mismatch)
+      mk "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30" label_mismatch
 
 let team_scope_to_string = function PerGame -> "per_game" | Totals -> "totals"
 
