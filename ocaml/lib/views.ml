@@ -1122,24 +1122,37 @@ let boxscore_flow_link_html ?(lang=I18n.Ko) game_id =
     (escape_html game_id)
     label_html
 
-let boxscore_disabled_chip_html text =
+let boxscore_disabled_chip_html ?(text_short=None) text_full =
+  let content_html =
+    match text_short with
+    | None -> escape_html text_full
+    | Some short ->
+        Printf.sprintf
+          {html|<span class="sm:hidden">%s</span><span class="hidden sm:inline">%s</span>|html}
+          (escape_html short)
+          (escape_html text_full)
+  in
   Printf.sprintf
-    {html|<span class="px-2 py-1 rounded-full bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 text-[10px] font-mono tracking-wider text-slate-500 dark:text-slate-500 cursor-default">%s</span>|html}
-    (escape_html text)
+    {html|<span class="px-2 py-1 rounded-full bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 text-[10px] font-mono tracking-wider text-slate-500 dark:text-slate-500 cursor-default whitespace-nowrap">%s</span>|html}
+    content_html
 
 let boxscore_pbp_chip_html ?(lang=I18n.Ko) ~has_pbp game_id =
   let tr = I18n.t lang in
   if has_pbp then
     boxscore_pbp_link_html ~lang game_id
   else
-    boxscore_disabled_chip_html (tr { ko = "문자중계 없음"; en = "No play-by-play" })
+    boxscore_disabled_chip_html
+      ~text_short:(Some (tr { ko = "없음"; en = "None" }))
+      (tr { ko = "문자중계 없음"; en = "No play-by-play" })
 
 let boxscore_flow_chip_html ?(lang=I18n.Ko) ~has_pbp game_id =
   let tr = I18n.t lang in
   if has_pbp then
     boxscore_flow_link_html ~lang game_id
   else
-    boxscore_disabled_chip_html (tr { ko = "득점흐름 없음"; en = "No scoring flow" })
+    boxscore_disabled_chip_html
+      ~text_short:(Some (tr { ko = "없음"; en = "None" }))
+      (tr { ko = "득점흐름 없음"; en = "No scoring flow" })
 
 let boxscore_data_notes_html ~official_link =
   Printf.sprintf
