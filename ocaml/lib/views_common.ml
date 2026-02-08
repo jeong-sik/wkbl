@@ -692,7 +692,7 @@ let score_quality_badge ?(lang=I18n.Ko) ?(compact=false) q =
           (escape_html label_verified)
       else
         Printf.sprintf
-          "<span class=\"px-2 py-0.5 rounded bg-sky-500/10 text-sky-600 border border-sky-500/30 text-[10px] font-mono\">%s</span>"
+          "<span class=\"px-2 py-0.5 rounded bg-sky-500/10 text-sky-600 border border-sky-500/30 text-[10px] font-mono whitespace-nowrap inline-flex items-center gap-1\"><span aria-hidden=\"true\">✓</span><span class=\"hidden sm:inline\">%s</span></span>"
           (escape_html label_verified)
   | Derived ->
       if compact then
@@ -701,7 +701,7 @@ let score_quality_badge ?(lang=I18n.Ko) ?(compact=false) q =
           (escape_html label_derived)
       else
         Printf.sprintf
-          "<span class=\"px-2 py-0.5 rounded bg-amber-500/10 text-amber-600 border border-amber-500/30 text-[10px] font-mono\">%s</span>"
+          "<span class=\"px-2 py-0.5 rounded bg-amber-500/10 text-amber-600 border border-amber-500/30 text-[10px] font-mono whitespace-nowrap inline-flex items-center gap-1\"><span aria-hidden=\"true\">Σ</span><span class=\"hidden sm:inline\">%s</span></span>"
           (escape_html label_derived)
   | Mismatch ->
       if compact then
@@ -710,7 +710,7 @@ let score_quality_badge ?(lang=I18n.Ko) ?(compact=false) q =
           (escape_html label_mismatch)
       else
         Printf.sprintf
-          "<span class=\"px-2 py-0.5 rounded bg-rose-500/10 text-rose-600 border border-rose-500/30 text-[10px] font-mono\">%s</span>"
+          "<span class=\"px-2 py-0.5 rounded bg-rose-500/10 text-rose-600 border border-rose-500/30 text-[10px] font-mono whitespace-nowrap inline-flex items-center gap-1\"><span aria-hidden=\"true\">!</span><span class=\"hidden sm:inline\">%s</span></span>"
           (escape_html label_mismatch)
 
 let team_scope_to_string = function PerGame -> "per_game" | Totals -> "totals"
