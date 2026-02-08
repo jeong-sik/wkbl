@@ -281,18 +281,29 @@ let extract_score_flow (events: pbp_event list) : score_flow_point list =
         (* NOTE: In our PBP model, team1_score is AWAY and team2_score is HOME. *)
         | (Some away, Some home) ->
             let elapsed = calculate_elapsed_seconds ~period_code:e.pe_period_code ~clock:e.pe_clock in
-            Some {
-              sfp_clock = e.pe_clock;
-              sfp_period = e.pe_period_code;
-              sfp_home_score = home;
-              sfp_away_score = away;
-              sfp_diff = home - away;
-              sfp_elapsed_seconds = elapsed;
-            }
+            Some
+              ( elapsed,
+                e.pe_event_index,
+                {
+                  sfp_clock = e.pe_clock;
+                  sfp_period = e.pe_period_code;
+                  sfp_home_score = home;
+                  sfp_away_score = away;
+                  sfp_diff = home - away;
+                  sfp_elapsed_seconds = elapsed;
+                }
+              )
         | _ -> None)
   in
-  (* Sort by elapsed time and deduplicate consecutive same scores *)
-  let sorted = List.sort (fun a b -> compare a.sfp_elapsed_seconds b.sfp_elapsed_seconds) score_changes in
+  (* Sort by elapsed time; when multiple score changes share the same timestamp,
+     keep their original event order stable via event_index. *)
+  let sorted =
+    score_changes
+    |> List.sort (fun (t1, i1, _) (t2, i2, _) ->
+         let c = compare t1 t2 in
+         if c <> 0 then c else compare i1 i2)
+    |> List.map (fun (_t, _i, p) -> p)
+  in
   (* Deduplicate consecutive same scores using fold_left *)
   let dedup lst =
     List.fold_left (fun acc x ->
