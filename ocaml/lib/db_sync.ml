@@ -217,6 +217,42 @@ module PbpSync = struct
     (s ->. unit)
     {|DELETE FROM play_by_play_events WHERE game_id = ?|}
 
+  let begin_tx_query =
+    (unit ->. unit)
+    {|BEGIN|}
+
+  let commit_tx_query =
+    (unit ->. unit)
+    {|COMMIT|}
+
+  let rollback_tx_query =
+    (unit ->. unit)
+    {|ROLLBACK|}
+
+  let with_transaction
+      ~(begin_tx : unit -> (unit, 'e) result)
+      ~(commit_tx : unit -> (unit, 'e) result)
+      ~(rollback_tx : unit -> (unit, 'e) result)
+      (f : unit -> ('a, 'e) result) : ('a, 'e) result =
+    match begin_tx () with
+    | Error e -> Error e
+    | Ok () -> (
+        try
+          match f () with
+          | Ok v -> (
+              match commit_tx () with
+              | Ok () -> Ok v
+              | Error e ->
+                  let _ = rollback_tx () in
+                  Error e)
+          | Error e ->
+              let _ = rollback_tx () in
+              Error e
+        with
+        | exn ->
+            let _ = rollback_tx () in
+            raise exn)
+
   let pbp_row_type =
     t2 s
       (t2 s
@@ -260,15 +296,20 @@ module PbpSync = struct
 
   let replace_pbp_events ~(game_id : string) (rows : (Domain.pbp_event * string option) list)
       (module Db_conn : Caqti_eio.CONNECTION) =
-    let (let*) = Result.bind in
-    let* () = delete_pbp_by_game ~game_id (module Db_conn) in
-    let rec loop n = function
-      | [] -> Ok n
-      | (e, pid) :: rest ->
-          let* () = upsert_pbp_event ~game_id e ~player_id:pid (module Db_conn) in
-          loop (n + 1) rest
-    in
-    loop 0 rows
+    with_transaction
+      ~begin_tx:(fun () -> Db_conn.exec begin_tx_query ())
+      ~commit_tx:(fun () -> Db_conn.exec commit_tx_query ())
+      ~rollback_tx:(fun () -> Db_conn.exec rollback_tx_query ())
+      (fun () ->
+        let (let*) = Result.bind in
+        let* () = delete_pbp_by_game ~game_id (module Db_conn) in
+        let rec loop n = function
+          | [] -> Ok n
+          | (e, pid) :: rest ->
+              let* () = upsert_pbp_event ~game_id e ~player_id:pid (module Db_conn) in
+              loop (n + 1) rest
+        in
+        loop 0 rows)
 end
 
 let get_games_missing_pbp ?(season="ALL") () =
