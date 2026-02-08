@@ -218,7 +218,7 @@ let format_int_compact n = if abs n < 1000 then string_of_int n else Printf.spri
 let points_total_cell ?(extra_classes="") ?(width_style="") avg total =
   let classes = String.concat " " ["px-3 py-2 text-right"; extra_classes] in
   Printf.sprintf
-    {html|<td class="%s" style="%s"><div class="flex flex-col items-end leading-tight"><span class="text-orange-600 dark:text-orange-400 font-bold font-mono">%.1f</span><span class="text-slate-400 dark:text-slate-500 text-[9px] font-mono whitespace-nowrap" title="누적">Σ%s</span></div></td>|html}
+    {html|<td class="%s" style="%s"><div class="flex flex-col items-end leading-tight"><span class="text-orange-600 dark:text-orange-400 font-bold font-mono">%.1f</span><span class="text-slate-400 dark:text-slate-500 text-[9px] font-mono whitespace-nowrap" title="누적">누적%s</span></div></td>|html}
     classes
     width_style
     avg
@@ -227,7 +227,7 @@ let points_total_cell ?(extra_classes="") ?(width_style="") avg total =
 let stat_total_cell ?(extra_classes="") ?(width_style="") avg total =
   let classes = String.concat " " ["px-3 py-2 text-right"; extra_classes] in
   Printf.sprintf
-    {html|<td class="%s" style="%s"><div class="flex flex-col items-end leading-tight"><span class="text-slate-700 dark:text-slate-300 font-mono">%.1f</span><span class="text-slate-400 dark:text-slate-500 text-[9px] font-mono whitespace-nowrap" title="누적">Σ%s</span></div></td>|html}
+    {html|<td class="%s" style="%s"><div class="flex flex-col items-end leading-tight"><span class="text-slate-700 dark:text-slate-300 font-mono">%.1f</span><span class="text-slate-400 dark:text-slate-500 text-[9px] font-mono whitespace-nowrap" title="누적">누적%s</span></div></td>|html}
     classes
     width_style
     avg
