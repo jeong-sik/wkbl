@@ -19,6 +19,18 @@
 
   function initRowCursor(root) {
     const scope = root || document;
+    // HTMX often swaps only a <tbody>, so the swap target may not contain the <table>.
+    // If we're inside a matching table, scope to that table; otherwise search within scope.
+    if (scope && typeof scope.closest === 'function') {
+      const table = scope.closest('table[data-row-link="team"]');
+      if (table) {
+        table.querySelectorAll('tbody tr').forEach((row) => {
+          row.style.cursor = 'pointer';
+        });
+        return;
+      }
+    }
+
     scope.querySelectorAll('table[data-row-link="team"] tbody tr').forEach((row) => {
       row.style.cursor = 'pointer';
     });
@@ -43,4 +55,3 @@
     initRowCursor(e.detail.target);
   });
 })();
-
