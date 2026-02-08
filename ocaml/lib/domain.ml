@@ -332,10 +332,12 @@ let pbp_periods_complete_for_regulation (periods : string list) : bool =
     We only treat missing quarters as a problem for past games (KST) with non-zero scores.
     This avoids hammering WKBL endpoints for live games that are still in progress. *)
 let pbp_should_backfill ~today_kst (g : game_info) (periods : string list) : bool =
+  let scores_known = g.gi_home_score > 0 && g.gi_away_score > 0 in
   match periods with
-  | [] -> true
+  | [] ->
+      (* Avoid fetching PBP for scheduled games (0-0), but allow live/finished games. *)
+      scores_known
   | _ ->
-      let scores_known = g.gi_home_score > 0 && g.gi_away_score > 0 in
       let game_date = String.trim g.gi_game_date in
       let is_past_game =
         game_date <> "" && String.compare game_date (String.trim today_kst) < 0
