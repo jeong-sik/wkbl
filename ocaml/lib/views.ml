@@ -400,12 +400,12 @@ let teams_table ?(lang=I18n.Ko) ~season ~scope (stats: Domain.team_stats list) =
 	    |> List.mapi (fun idx s ->
 	        let rank = Printf.sprintf {html|<span class="font-bold text-slate-500 dark:text-slate-400">%d</span>|html} (idx + 1) in
 	        let logo = team_logo_tag ~class_name:"w-5 h-5 shrink-0" s.team in
-	        let team_cell =
-	          Printf.sprintf
-	            {html|<a href="%s" class="team-link flex items-center gap-2 min-w-0 hover:text-orange-600 dark:text-orange-400 transition-colors">%s<span class="truncate">%s</span></a>|html}
-	            (escape_html (team_link s))
-	            logo
-	            (escape_html s.team)
+		        let team_cell =
+		          Printf.sprintf
+		            {html|<a href="%s" class="team-link flex w-full items-center gap-2 min-w-0 hover:text-orange-600 dark:text-orange-400 transition-colors cursor-pointer -mx-3 -my-2 px-3 py-2">%s<span class="truncate">%s</span></a>|html}
+		            (escape_html (team_link s))
+		            logo
+		            (escape_html s.team)
 	        in
 	        let margin_str =
 	          let v = s.margin in
@@ -480,12 +480,12 @@ let standings_table ?(lang=I18n.Ko) ~season (standings : team_standing list) =
 	       else
 	        Printf.sprintf "/team/%s?season=%s" (Uri.pct_encode s.team_name) (Uri.pct_encode season)
 	      in
-	      let team_cell =
-	        Printf.sprintf
-	          {html|<a href="%s" class="team-link team-name inline-flex items-center gap-2 hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 transition-colors" style="white-space: nowrap; word-break: keep-all;">%s<span>%s</span></a>|html}
-	          (escape_html team_href)
-	          (team_logo_tag ~class_name:"w-5 h-5 shrink-0" s.team_name)
-	          (escape_html s.team_name)
+		      let team_cell =
+		        Printf.sprintf
+		          {html|<a href="%s" class="team-link team-name flex w-full items-center gap-2 min-w-0 hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 transition-colors cursor-pointer -mx-3 -my-2 px-3 py-2" style="white-space: nowrap; word-break: keep-all;">%s<span class="truncate">%s</span></a>|html}
+		          (escape_html team_href)
+		          (team_logo_tag ~class_name:"w-5 h-5 shrink-0" s.team_name)
+		          (escape_html s.team_name)
 	      in
 	      let pct_bar_width = int_of_float (s.win_pct *. 100.0) in
 	      let pct_cell = Printf.sprintf {html|<div class="flex flex-col items-end gap-1 leading-tight">
@@ -553,7 +553,22 @@ let games_table ?(lang=I18n.Ko) (games : game_summary list) =
   let label_away = tr { ko = "원정"; en = "Away" } in
   let label_action = tr { ko = "보기"; en = "Action" } in
   let label_scheduled = tr { ko = "예정"; en = "Scheduled" } in
+  let label_missing_score = tr { ko = "점수 없음"; en = "No score" } in
   let label_boxscore = tr { ko = "박스스코어"; en = "Boxscore" } in
+  let today_ymd =
+    (* KST is UTC+9 and has no DST. Compare ISO date strings lexicographically. *)
+    let tm = Unix.gmtime (Unix.time () +. (9. *. 3600.)) in
+    Printf.sprintf "%04d-%02d-%02d" (tm.Unix.tm_year + 1900) (tm.Unix.tm_mon + 1) tm.Unix.tm_mday
+	  in
+	  let status_label_for_game (g : game_summary) =
+	    let game_ymd =
+	      if String.length g.game_date >= 10 then String.sub g.game_date 0 10 else g.game_date
+	    in
+	    if String.length game_ymd = 10 && String.compare game_ymd today_ymd < 0 then
+	      label_missing_score
+	    else
+	      label_scheduled
+	  in
   let cols = [
     col label_date ~w:(px 120);
     col label_home;
@@ -574,14 +589,14 @@ let games_table ?(lang=I18n.Ko) (games : game_summary list) =
       let score_b = match g.away_score with Some s when has_score -> string_of_int s | _ -> "-" in
       let score_html =
         if has_score then Printf.sprintf "%s - %s" score_a score_b
-        else escape_html label_scheduled
+        else escape_html (status_label_for_game g)
       in
       let status_class = if has_score then "text-slate-900 dark:text-slate-200" else "text-slate-600 dark:text-slate-400" in
       let action_html =
        if not has_score then
         Printf.sprintf
           {html|<span class="text-[10px] text-slate-600 dark:text-slate-400">%s</span>|html}
-          (escape_html label_scheduled)
+          (escape_html (status_label_for_game g))
        else
         Printf.sprintf
          {html|<a href="/boxscore/%s" class="text-[10px] bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-2 py-1 rounded text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white dark:text-slate-200 transition">%s</a>|html}
@@ -605,11 +620,11 @@ onkeydown="if(event.key==='Enter'||event.key===' ') { event.preventDefault(); wi
             (escape_html aria)
             (escape_html g.game_id)
             (escape_html g.game_id)
-        else
-          Printf.sprintf {|role="group" aria-label="%s"|} (escape_html label_scheduled)
-      in
-      Printf.sprintf
-       {html|<div %s class="%s">
+	        else
+	          Printf.sprintf {|role="group" aria-label="%s"|} (escape_html (status_label_for_game g))
+	      in
+	      Printf.sprintf
+	       {html|<div %s class="%s">
 	   <div class="flex items-center justify-between text-[11px] text-slate-600 dark:text-slate-400 font-mono">
 	    <span>%s</span>
 	    %s
@@ -656,15 +671,15 @@ onkeydown="if(event.key==='Enter'||event.key===' ') { event.preventDefault(); wi
 		            (escape_html g.home_team)
 		        in
 		        let score_cell =
-		          if has_score then
-		            Printf.sprintf
+	          if has_score then
+	            Printf.sprintf
 		              {html|<span class="font-bold text-orange-600 dark:text-orange-400 font-mono group-hover:scale-110 transition-transform whitespace-nowrap w-28">%s - %s</span>|html}
 	              score_a
 	              score_b
 	          else
 	            Printf.sprintf
 	              {html|<span class="text-xs text-slate-500 dark:text-slate-400 font-mono whitespace-nowrap">%s</span>|html}
-	              (escape_html label_scheduled)
+	              (escape_html (status_label_for_game g))
 	        in
 		        let away_cell =
 		          Printf.sprintf
@@ -677,7 +692,7 @@ onkeydown="if(event.key==='Enter'||event.key===' ') { event.preventDefault(); wi
 				          if not has_score then
 				            Printf.sprintf
 				              {html|<span class="text-xs text-slate-400 font-mono">%s</span>|html}
-			              (escape_html label_scheduled)
+			              (escape_html (status_label_for_game g))
 			          else
 			            Printf.sprintf
 			              {html|<a href="/boxscore/%s" class="text-[10px] sm:text-xs bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-2 py-1 rounded text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition group-hover:ring-2 group-hover:ring-orange-500/50 whitespace-nowrap">%s</a>|html}
