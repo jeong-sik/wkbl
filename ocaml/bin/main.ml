@@ -17,14 +17,9 @@ let query_nonempty request name =
       let trimmed = String.trim v in
       if trimmed = "" then None else Some trimmed
 
-let latest_season_code (seasons : season_info list) =
-  match List.rev seasons with
-  | s :: _ -> s.code
-  | [] -> "ALL"
-
 let query_season_or_latest request (seasons : season_info list) =
-  query_nonempty request "season"
-  |> Option.value ~default:(latest_season_code seasons)
+  let requested = query_nonempty request "season" |> Option.value ~default:"" in
+  Request_params.normalize_season ~seasons ~requested
 
 let is_safe_redirect_path (s : string) =
   let t = String.trim s in
@@ -372,12 +367,12 @@ Sitemap: https://wkbl.win/sitemap.xml
               let live_games =
 	                let current = Live.get_current_games () in
 	                if current <> [] then current
-	                else
-	                  let today = Live.today_str () in
-	                  let live_season = latest_season_code seasons in
-	                  match Db.get_games ~season:live_season ~page_size:400 () with
-	                  | Error _ -> []
-	                  | Ok games ->
+		                else
+		                  let today = Live.today_str () in
+		                  let live_season = Request_params.latest_season_code seasons in
+		                  match Db.get_games ~season:live_season ~page_size:400 () with
+		                  | Error _ -> []
+		                  | Ok games ->
 	                      games
 	                      |> List.filter (fun (g: Domain.game_summary) ->
 	                          String.length g.game_date >= 10 && String.sub g.game_date 0 10 = today)
@@ -1825,13 +1820,13 @@ Sitemap: https://wkbl.win/sitemap.xml
 	        else
 	          (* Fallback to today's schedule so the UI doesn't look empty if live polling fails. *)
 	          let today = Live.today_str () in
-	          match Db.get_seasons () with
-	          | Error _ -> []
-	          | Ok seasons ->
-	              let live_season = latest_season_code seasons in
-	              (match Db.get_games ~season:live_season ~page_size:400 () with
-              | Error _ -> []
-              | Ok gs ->
+		          match Db.get_seasons () with
+		          | Error _ -> []
+		          | Ok seasons ->
+		              let live_season = Request_params.latest_season_code seasons in
+		              (match Db.get_games ~season:live_season ~page_size:400 () with
+	              | Error _ -> []
+	              | Ok gs ->
                   gs
 	                  |> List.filter (fun (g: Domain.game_summary) ->
 	                      String.length g.game_date >= 10 && String.sub g.game_date 0 10 = today)
@@ -1870,13 +1865,13 @@ Sitemap: https://wkbl.win/sitemap.xml
 		        if current <> [] then current
 		        else
 		          let today = Live.today_str () in
-	          match Db.get_seasons () with
-	          | Error _ -> []
-	          | Ok seasons ->
-	              let live_season = latest_season_code seasons in
-	              (match Db.get_games ~season:live_season ~page_size:400 () with
-              | Error _ -> []
-              | Ok gs ->
+		          match Db.get_seasons () with
+		          | Error _ -> []
+		          | Ok seasons ->
+		              let live_season = Request_params.latest_season_code seasons in
+		              (match Db.get_games ~season:live_season ~page_size:400 () with
+	              | Error _ -> []
+	              | Ok gs ->
                   gs
 	                  |> List.filter (fun (g: Domain.game_summary) ->
 	                      String.length g.game_date >= 10 && String.sub g.game_date 0 10 = today)
@@ -2038,11 +2033,11 @@ Sitemap: https://wkbl.win/sitemap.xml
 	    (* SSE: Live scores endpoint *)
 	    Kirin.get "/api/live/scores" (fun _request ->
 	      let today = Live.today_str () in
-	      let season =
-	        match Db.get_seasons () with
-	        | Ok seasons -> latest_season_code seasons
-	        | Error _ -> Seasons_catalog.current_regular_season_code ()
-	      in
+		      let season =
+		        match Db.get_seasons () with
+		        | Ok seasons -> Request_params.latest_season_code seasons
+		        | Error _ -> Seasons_catalog.current_regular_season_code ()
+		      in
 	      (* Use a larger page size so "today" isn't dropped due to future games. *)
 	      match Db.get_games ~season ~page_size:400 () with
 	      | Ok games ->
