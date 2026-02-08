@@ -1015,61 +1015,74 @@ let boxscore_player_table (title: string) (players: boxscore_player_stat list) =
   (escape_html title) table
 
 (** Render quarter flow section for boxscore page *)
-let quarter_flow_section ~home_name ~away_name (quarters: quarter_score list) =
-  let cols = [
-    col "QTR";
-    col (home_name ^ " Sum") ~w:(px 60) ~align:`Right ~highlight:true;
-    col "Q" ~w:(px 60) ~align:`Right ~resp:`Hidden_sm;
-    col "" ~w:(px 40) ~align:`Center;
-    col (away_name ^ " Sum") ~w:(px 60) ~align:`Right ~highlight:true;
-    col "Q" ~w:(px 60) ~align:`Right ~resp:`Hidden_sm;
-    col "Flow" ~w:(px 80) ~align:`Center;
-  ] in
+let quarter_flow_section ?(lang=I18n.Ko) ~home_name ~away_name (quarters: quarter_score list) =
+  if quarters = [] then ""
+  else
+    let tr = I18n.t lang in
+    let label_sum = tr { ko = "누적"; en = "Sum" } in
+    let label_q = tr { ko = "Q"; en = "Q" } in
+    let label_diff = tr { ko = "득실"; en = "Diff" } in
+    let label_heading = tr { ko = "쿼터별 흐름"; en = "Quarter Flow" } in
+    let title_q_points = tr { ko = "이번 쿼터 득점"; en = "Points in this quarter" } in
+    let title_q_diff = tr { ko = "이번 쿼터 득실(홈-원정)"; en = "Quarter diff (home-away)" } in
 
- if quarters = [] then "" else
- let rows_data = List.mapi (fun i q ->
-  let prev_home = if i = 0 then 0 else (List.nth quarters (i-1)).qs_home_score in
-  let prev_away = if i = 0 then 0 else (List.nth quarters (i-1)).qs_away_score in
-  let home_q = q.qs_home_score - prev_home in
-  let away_q = q.qs_away_score - prev_away in
-  let diff = home_q - away_q in
-  let flow_indicator =
-   if diff > 5 then Printf.sprintf {html|<span class="text-sky-500">🔵 +%d</span>|html} diff
-   else if diff > 0 then Printf.sprintf {html|<span class="text-sky-400">▲ +%d</span>|html} diff
-   else if diff < -5 then Printf.sprintf {html|<span class="text-orange-500">🔴 %d</span>|html} diff
-   else if diff < 0 then Printf.sprintf {html|<span class="text-orange-400">▼ %d</span>|html} diff
-   else {html|<span class="text-slate-400">━</span>|html}
-  in
-  let period_label = match q.qs_period with
-   | "Q1" -> "1Q" | "Q2" -> "2Q" | "Q3" -> "3Q" | "Q4" -> "4Q"
-   | "X1" -> "OT1" | "X2" -> "OT2" | p -> p
-  in
-  let home_q_cell = Printf.sprintf {html|<span class="font-mono text-xs text-slate-400">%d</span>|html} home_q in
-  let away_q_cell = Printf.sprintf {html|<span class="font-mono text-xs text-slate-400">%d</span>|html} away_q in
-  let vs_cell = {html|<span class="text-slate-500 dark:text-slate-400">vs</span>|html} in
-  
-  [
-    Printf.sprintf {html|<span class="font-bold text-slate-700 dark:text-slate-300">%s</span>|html} period_label;
-    string_of_int q.qs_home_score;
-    home_q_cell;
-    vs_cell;
-    string_of_int q.qs_away_score;
-    away_q_cell;
-    flow_indicator;
-  ]
- ) quarters in
- 
- let table = render_fixed_table ~id:"quarter-flow" ~min_width:"w-full" ~cols rows_data in
- 
-	  Printf.sprintf
-	  {html|<div class="max-w-2xl mx-auto bg-white dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-800 p-4">
-	   <div class="flex items-center gap-2 mb-3">
-	    <span class="text-lg">📊</span>
-	    <span class="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">쿼터별 흐름</span>
-	   </div>
-	   %s
-	  </div>|html}
-	  table
+    let cols = [
+      col (tr { ko = "Q"; en = "QTR" });
+      col (home_name ^ " " ^ label_sum) ~w:(px 60) ~align:`Right ~highlight:true;
+      col label_q ~w:(px 60) ~align:`Right ~resp:`Hidden_sm ~title:title_q_points;
+      col "" ~w:(px 40) ~align:`Center;
+      col (away_name ^ " " ^ label_sum) ~w:(px 60) ~align:`Right ~highlight:true;
+      col label_q ~w:(px 60) ~align:`Right ~resp:`Hidden_sm ~title:title_q_points;
+      col label_diff ~w:(px 80) ~align:`Center ~title:title_q_diff;
+    ] in
+
+    let rows_data =
+      List.mapi (fun i q ->
+        let prev_home = if i = 0 then 0 else (List.nth quarters (i - 1)).qs_home_score in
+        let prev_away = if i = 0 then 0 else (List.nth quarters (i - 1)).qs_away_score in
+        let home_q = q.qs_home_score - prev_home in
+        let away_q = q.qs_away_score - prev_away in
+        let diff = home_q - away_q in
+        let diff_str = if diff > 0 then Printf.sprintf "+%d" diff else string_of_int diff in
+        let diff_cls =
+          if diff > 0 then "text-sky-600 dark:text-sky-400 font-bold"
+          else if diff < 0 then "text-orange-600 dark:text-orange-400 font-bold"
+          else "text-slate-400 dark:text-slate-500"
+        in
+        let flow_indicator =
+          Printf.sprintf {html|<span class="%s font-mono">%s</span>|html} diff_cls diff_str
+        in
+        let period_label =
+          match q.qs_period with
+          | "Q1" -> "1Q" | "Q2" -> "2Q" | "Q3" -> "3Q" | "Q4" -> "4Q"
+          | "X1" -> "OT1" | "X2" -> "OT2" | p -> p
+        in
+        let home_q_cell = Printf.sprintf {html|<span class="font-mono text-xs text-slate-400">%d</span>|html} home_q in
+        let away_q_cell = Printf.sprintf {html|<span class="font-mono text-xs text-slate-400">%d</span>|html} away_q in
+        let vs_cell = {html|<span class="text-slate-500 dark:text-slate-400">vs</span>|html} in
+        [
+          Printf.sprintf {html|<span class="font-bold text-slate-700 dark:text-slate-300">%s</span>|html} period_label;
+          string_of_int q.qs_home_score;
+          home_q_cell;
+          vs_cell;
+          string_of_int q.qs_away_score;
+          away_q_cell;
+          flow_indicator;
+        ]
+      ) quarters
+    in
+
+    let table = render_fixed_table ~id:"quarter-flow" ~min_width:"w-full" ~cols rows_data in
+
+    Printf.sprintf
+      {html|<div class="max-w-2xl mx-auto bg-white dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-800 p-4">
+       <div class="flex items-center gap-2 mb-3">
+        <span class="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">%s</span>
+       </div>
+       %s
+      </div>|html}
+      (escape_html label_heading)
+      table
 
 let boxscore_pbp_link_html ?(lang=I18n.Ko) game_id =
   let tr = I18n.t lang in
@@ -1174,7 +1187,7 @@ let boxscore_page ?(lang=I18n.Ko) (bs: game_boxscore) =
   | Ok qs -> qs
   | Error _ -> []
  in
- let quarter_section = quarter_flow_section ~home_name:gi.gi_home_team_name ~away_name:gi.gi_away_team_name quarters in
+ let quarter_section = quarter_flow_section ~lang ~home_name:gi.gi_home_team_name ~away_name:gi.gi_away_team_name quarters in
 	 (* Game summary (guarded to avoid making up results) *)
 	 let ai_summary = Ai.generate_game_summary ~lang bs in
 	 let stats_notice =

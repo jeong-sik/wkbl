@@ -851,9 +851,9 @@ let clutch_tests = [
 (* Score Flow Tests                              *)
 (* ============================================= *)
 
-let make_pbp_event ~period_code ~clock ~home_score ~away_score =
+let make_pbp_event ?(event_index=0) ~period_code ~clock ~home_score ~away_score () =
   { pe_period_code = period_code;
-    pe_event_index = 0;
+    pe_event_index = event_index;
     pe_team_side = 1;
     pe_description = "Test event";
     (* team1_score = away, team2_score = home *)
@@ -895,9 +895,9 @@ let test_calculate_elapsed_seconds () =
 
 let test_extract_score_flow_basic () =
   let events = [
-    make_pbp_event ~period_code:"Q1" ~clock:"09:30" ~home_score:(Some 2) ~away_score:(Some 0);
-    make_pbp_event ~period_code:"Q1" ~clock:"08:00" ~home_score:(Some 2) ~away_score:(Some 3);
-    make_pbp_event ~period_code:"Q1" ~clock:"06:00" ~home_score:(Some 5) ~away_score:(Some 3);
+    make_pbp_event ~period_code:"Q1" ~clock:"09:30" ~home_score:(Some 2) ~away_score:(Some 0) ();
+    make_pbp_event ~period_code:"Q1" ~clock:"08:00" ~home_score:(Some 2) ~away_score:(Some 3) ();
+    make_pbp_event ~period_code:"Q1" ~clock:"06:00" ~home_score:(Some 5) ~away_score:(Some 3) ();
   ] in
   let flow = extract_score_flow events in
   (* Should have starting point + 3 score changes *)
@@ -914,21 +914,33 @@ let test_extract_score_flow_empty () =
 
 let test_extract_score_flow_no_scores () =
   let events = [
-    make_pbp_event ~period_code:"Q1" ~clock:"09:30" ~home_score:None ~away_score:None;
-    make_pbp_event ~period_code:"Q1" ~clock:"08:00" ~home_score:(Some 2) ~away_score:None;
+    make_pbp_event ~period_code:"Q1" ~clock:"09:30" ~home_score:None ~away_score:None ();
+    make_pbp_event ~period_code:"Q1" ~clock:"08:00" ~home_score:(Some 2) ~away_score:None ();
   ] in
   let flow = extract_score_flow events in
   Alcotest.(check int) "No complete scores -> empty flow" 0 (List.length flow)
 
 let test_extract_score_flow_dedup () =
   let events = [
-    make_pbp_event ~period_code:"Q1" ~clock:"09:30" ~home_score:(Some 2) ~away_score:(Some 0);
-    make_pbp_event ~period_code:"Q1" ~clock:"09:00" ~home_score:(Some 2) ~away_score:(Some 0);  (* Same score, should be deduped *)
-    make_pbp_event ~period_code:"Q1" ~clock:"08:00" ~home_score:(Some 4) ~away_score:(Some 0);
+    make_pbp_event ~period_code:"Q1" ~clock:"09:30" ~home_score:(Some 2) ~away_score:(Some 0) ();
+    make_pbp_event ~period_code:"Q1" ~clock:"09:00" ~home_score:(Some 2) ~away_score:(Some 0) ();  (* Same score, should be deduped *)
+    make_pbp_event ~period_code:"Q1" ~clock:"08:00" ~home_score:(Some 4) ~away_score:(Some 0) ();
   ] in
   let flow = extract_score_flow events in
   (* Should have: start (0-0), first 2-0, and 4-0 (deduped the duplicate 2-0) *)
   Alcotest.(check int) "Deduped flow = 3 points" 3 (List.length flow)
+
+let test_extract_score_flow_stable_order_same_time () =
+  let events = [
+    make_pbp_event ~event_index:1 ~period_code:"Q1" ~clock:"09:30" ~home_score:(Some 2) ~away_score:(Some 0) ();
+    make_pbp_event ~event_index:2 ~period_code:"Q1" ~clock:"09:30" ~home_score:(Some 4) ~away_score:(Some 0) ();
+  ] in
+  let flow = extract_score_flow events in
+  Alcotest.(check int) "start + 2 score changes" 3 (List.length flow);
+  let p1 = List.nth flow 1 in
+  let p2 = List.nth flow 2 in
+  Alcotest.(check int) "first change home" 2 p1.sfp_home_score;
+  Alcotest.(check int) "second change home" 4 p2.sfp_home_score
 
 let test_game_flow_chart_empty () =
   let html = Wkbl.Views_tools.game_flow_chart ~home_team:"A" ~away_team:"B" [] in
@@ -955,6 +967,7 @@ let score_flow_tests = [
   Alcotest.test_case "Extract score flow empty" `Quick test_extract_score_flow_empty;
   Alcotest.test_case "Extract score flow no scores" `Quick test_extract_score_flow_no_scores;
   Alcotest.test_case "Extract score flow dedup" `Quick test_extract_score_flow_dedup;
+  Alcotest.test_case "Extract score flow stable order on same timestamp" `Quick test_extract_score_flow_stable_order_same_time;
 ]
 
 let views_tools_tests = [
