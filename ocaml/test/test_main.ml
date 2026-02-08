@@ -2384,12 +2384,44 @@ let test_totals_tooltip_is_season () =
   Alcotest.(check bool) "totals tooltip is cumulative" true (contains_substring html {|title="누적"|});
   Alcotest.(check bool) "no career total tooltip" false (contains_substring html "Career Total")
 
+let test_boxscore_shooting_hides_0_0_pct () =
+  let p : Wkbl.Domain.boxscore_player_stat =
+    { bs_player_id = "P0001"
+    ; bs_player_name = "테스트"
+    ; bs_position = Some "G"
+    ; bs_team_code = "09"
+    ; bs_team_name = "우리은행"
+    ; bs_minutes = 10.0
+    ; bs_pts = 0
+    ; bs_plus_minus = Some 0
+    ; bs_reb = 0
+    ; bs_ast = 0
+    ; bs_stl = 0
+    ; bs_blk = 0
+    ; bs_tov = 0
+    ; bs_fg_made = 0
+    ; bs_fg_att = 1
+    ; bs_fg_pct = 0.0
+    ; bs_fg3_made = 0
+    ; bs_fg3_att = 0
+    ; bs_fg3_pct = 0.0
+    ; bs_ft_made = 0
+    ; bs_ft_att = 0
+    ; bs_ft_pct = 0.0
+    }
+  in
+  let html = Wkbl.Views.boxscore_player_table "Test" [ p ] in
+  Alcotest.(check bool) "avoid 0-0 (0.0%)" false (contains_substring html "0-0 (0.0%)");
+  Alcotest.(check bool) "dash for zero attempts" true
+    (contains_substring html {|<span class="text-slate-400 dark:text-slate-600">-</span>|})
+
 let ui_copy_tests = [
   Alcotest.test_case "find_substring_from" `Quick test_find_substring_from;
   Alcotest.test_case "ui copy avoids dev terms" `Quick test_ui_copy_no_dev_terms;
   Alcotest.test_case "ops copy hidden by default" `Quick test_ops_copy_hidden_by_default;
   Alcotest.test_case "nav labels are Korean" `Quick test_nav_labels_are_korean;
   Alcotest.test_case "totals tooltip is season" `Quick test_totals_tooltip_is_season;
+  Alcotest.test_case "boxscore hides 0-0%" `Quick test_boxscore_shooting_hides_0_0_pct;
 ]
 
 (* ============================================= *)
