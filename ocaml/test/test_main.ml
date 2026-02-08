@@ -2499,6 +2499,45 @@ let player_collapse_tests = [
 ]
 
 (* ============================================= *)
+(* Games View Tests                              *)
+(* ============================================= *)
+
+let test_games_table_shows_missing_score_for_past_games () =
+  let g : game_summary =
+    { game_id = "999-01-01";
+      game_date = "2000-01-01";
+      home_team = "A";
+      away_team = "B";
+      home_score = Some 0;
+      away_score = Some 0;
+      game_type = "01";
+    }
+  in
+  let html = Wkbl.Views.games_table [ g ] in
+  Alcotest.(check bool) "shows missing score label" true (contains_substring html "점수 없음");
+  Alcotest.(check bool) "does not show scheduled label" false (contains_substring html "예정")
+
+let test_games_table_shows_scheduled_for_future_games () =
+  let g : game_summary =
+    { game_id = "999-01-02";
+      game_date = "2100-01-01";
+      home_team = "A";
+      away_team = "B";
+      home_score = None;
+      away_score = None;
+      game_type = "01";
+    }
+  in
+  let html = Wkbl.Views.games_table [ g ] in
+  Alcotest.(check bool) "shows scheduled label" true (contains_substring html "예정");
+  Alcotest.(check bool) "does not show missing score label" false (contains_substring html "점수 없음")
+
+let games_view_tests = [
+  Alcotest.test_case "games table shows missing score for past games" `Quick test_games_table_shows_missing_score_for_past_games;
+  Alcotest.test_case "games table shows scheduled for future games" `Quick test_games_table_shows_scheduled_for_future_games;
+]
+
+(* ============================================= *)
 (* Boxscores View Tests                          *)
 (* ============================================= *)
 
@@ -2582,6 +2621,7 @@ let () =
     "Live API", live_api_tests;
     "Team Stints", team_stint_tests;
     "Player Collapse", player_collapse_tests;
+    "Games View", games_view_tests;
     "Boxscores View", boxscores_view_tests;
     "Form URL-Encoded", form_urlencoded_tests;
   ]
