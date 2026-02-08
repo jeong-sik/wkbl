@@ -1932,6 +1932,33 @@ let i18n_tests = [
 ]
 
 (* ============================================= *)
+(* Request Param Tests                           *)
+(* ============================================= *)
+
+let test_request_params_normalize_season () =
+  let seasons : Wkbl.Domain.season_info list =
+    [
+      { code = "045"; name = "2024-2025" };
+      { code = "046"; name = "2025-2026" };
+    ]
+  in
+  let open Wkbl.Request_params in
+  Alcotest.(check string) "empty -> latest" "046"
+    (normalize_season ~seasons ~requested:"");
+  Alcotest.(check string) "trim -> keep" "046"
+    (normalize_season ~seasons ~requested:" 046 ");
+  Alcotest.(check string) "ALL" "ALL"
+    (normalize_season ~seasons ~requested:"all");
+  Alcotest.(check string) "invalid -> latest" "046"
+    (normalize_season ~seasons ~requested:"024");
+  Alcotest.(check string) "empty seasons -> ALL" "ALL"
+    (normalize_season ~seasons:[] ~requested:"024")
+
+let request_params_tests = [
+  Alcotest.test_case "normalize_season" `Quick test_request_params_normalize_season;
+]
+
+(* ============================================= *)
 (* QA Utility Tests                              *)
 (* ============================================= *)
 
@@ -2699,6 +2726,7 @@ let () =
     "Scraper Functions", scraper_tests;
     "Disambiguation", disambiguation_tests;
     "I18n", i18n_tests;
+    "Request Params", request_params_tests;
     "QA Utils", qa_util_tests;
     "Observability", observability_tests;
     "UI Copy", ui_copy_tests;
