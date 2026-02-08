@@ -124,6 +124,14 @@ let utf8_middleware : Kirin.middleware = fun next_handler request ->
       Kirin.with_header "Content-Type" "text/html; charset=utf-8" response
   | _ -> response)
 
+let woman_win_redirect_middleware : Kirin.middleware = fun next_handler request ->
+  match Kirin.header "Host" request with
+  | Some host when Canonical_host.should_redirect_to_wkbl host ->
+      let request_uri = Kirin.Request.uri request |> Uri.to_string in
+      let location = Canonical_host.wkbl_location ~request_uri in
+      Kirin.redirect ~status:`Permanent_redirect location
+  | _ -> next_handler request
+
 let () =
   (* Initialize RNG for HTTPS/TLS requests (Critical for Live Scraper) *)
   Mirage_crypto_rng_unix.use_default ();
@@ -260,6 +268,7 @@ let () =
 
   Kirin.run ~config:{ Kirin.default_config with port } ~sw ~env
   @@ Kirin.logger
+  @@ woman_win_redirect_middleware
   @@ utf8_middleware
   @@ Kirin.static "/static" ~dir:static_path
   @@ Kirin.router [
