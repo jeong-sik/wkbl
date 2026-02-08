@@ -629,12 +629,18 @@ let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json
 	          window.announceToScreenReader(isOpen ? '%s' : '%s');
 	        });
 	      }
-	    })();
-	  </script>
-	  <script src="/static/js/skeleton-loader.js"></script>
-	  <script src="/static/js/data-freshness.js"></script>
-		</body>
-		</html>|html}
+		    })();
+		  </script>
+		  <script src="/static/js/htmx-1.9.10.min.js"></script>
+		  <script src="/static/js/page-transitions.js"></script>
+		  <script src="/static/js/scroll-shadow.js"></script>
+		  <script src="/static/js/table-sort.js"></script>
+		  <script src="/static/js/number-format.js"></script>
+		  <script src="/static/js/a11y-utils.js"></script>
+		  <script src="/static/js/skeleton-loader.js"></script>
+		  <script src="/static/js/data-freshness.js"></script>
+			</body>
+			</html>|html}
 	    (escape_html html_lang)
 	    title
 	    og_img_html
