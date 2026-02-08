@@ -267,9 +267,9 @@ let qa_dashboard_page ?(lang=I18n.Ko) (report: Db.qa_db_report) ?(markdown=None)
       ; en = "Live text feed; available for some games only."
       }
   in
-  let label_match = tr { ko = "일치 (✓)"; en = "Match (✓)" } in
-  let label_estimate = tr { ko = "추정 (Σ)"; en = "Partial (Σ)" } in
-  let label_mismatch = tr { ko = "불일치 (!)"; en = "Mismatch (!)" } in
+  let label_match = tr { ko = "일치"; en = "Match" } in
+  let label_estimate = tr { ko = "추정"; en = "Estimated" } in
+  let label_mismatch = tr { ko = "불일치"; en = "Mismatch" } in
   let desc_match =
     tr
       { ko = "최종 스코어와 양 팀 선수 득점 합계가 모두 일치"
