@@ -174,25 +174,43 @@ module PbpSync = struct
 
   let games_missing_pbp_query =
     (t2 s s ->* missing_pbp_game_tuple_type)
-    {|SELECT
-        g.game_id,
-        g.season_code,
-        g.game_type,
-        g.game_no,
-        COALESCE(g.game_date::text, '')
-      FROM games g
+    {|WITH sums AS (
+        SELECT game_id, team_code, SUM(pts) AS pts_sum
+        FROM game_stats_clean
+        GROUP BY game_id, team_code
+      ),
+      scored_games AS (
+        SELECT
+          g.game_id,
+          g.season_code,
+          g.game_type,
+          g.game_no,
+          g.game_date,
+          COALESCE(NULLIF(g.home_score, 0), sh.pts_sum) AS home_score_calc,
+          COALESCE(NULLIF(g.away_score, 0), sa.pts_sum) AS away_score_calc
+        FROM games g
+        LEFT JOIN sums sh ON sh.game_id = g.game_id AND sh.team_code = g.home_team_code
+        LEFT JOIN sums sa ON sa.game_id = g.game_id AND sa.team_code = g.away_team_code
+      )
+      SELECT
+        sg.game_id,
+        sg.season_code,
+        sg.game_type,
+        sg.game_no,
+        COALESCE(sg.game_date::text, '')
+      FROM scored_games sg
       LEFT JOIN (
         SELECT DISTINCT game_id FROM play_by_play_events
-      ) p ON p.game_id = g.game_id
+      ) p ON p.game_id = sg.game_id
       WHERE
         p.game_id IS NULL
-        AND g.game_date IS NOT NULL
-        AND g.home_score IS NOT NULL
-        AND g.away_score IS NOT NULL
-        AND g.home_score > 0
-        AND g.away_score > 0
-        AND ($1 = 'ALL' OR g.season_code = $2)
-      ORDER BY g.game_date DESC
+        AND sg.game_date IS NOT NULL
+        AND sg.home_score_calc IS NOT NULL
+        AND sg.away_score_calc IS NOT NULL
+        AND sg.home_score_calc > 0
+        AND sg.away_score_calc > 0
+        AND ($1 = 'ALL' OR sg.season_code = $2)
+      ORDER BY sg.game_date DESC
       LIMIT 200|}
 
   let delete_pbp_by_game_query =

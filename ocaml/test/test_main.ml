@@ -1018,14 +1018,14 @@ let test_pbp_should_backfill_incomplete_past_game () =
   Alcotest.(check bool) "missing quarters in past game -> backfill" true
     (Wkbl.Domain.pbp_should_backfill ~today_kst:"2026-02-08" g ["Q1"])
 
-let test_pbp_should_backfill_incomplete_today_game_is_false () =
+let test_pbp_should_backfill_incomplete_today_game () =
   let g =
     make_game_info_for_pbp_refresh
       ~game_id:"046-01-99"
       ~date:"2026-02-08"
       ~home_score:10 ~away_score:8
   in
-  Alcotest.(check bool) "missing quarters for today game -> no backfill" false
+  Alcotest.(check bool) "missing quarters for today game -> backfill" true
     (Wkbl.Domain.pbp_should_backfill ~today_kst:"2026-02-08" g ["Q1"])
 
 let test_score_flow_matches_final_true () =
@@ -1056,7 +1056,7 @@ let pbp_refresh_tests = [
   Alcotest.test_case "pbp_should_backfill: empty periods" `Quick test_pbp_should_backfill_empty_periods;
   Alcotest.test_case "pbp_should_backfill: scheduled empty periods is false" `Quick test_pbp_should_backfill_scheduled_empty_periods_is_false;
   Alcotest.test_case "pbp_should_backfill: incomplete past game" `Quick test_pbp_should_backfill_incomplete_past_game;
-  Alcotest.test_case "pbp_should_backfill: today game is false" `Quick test_pbp_should_backfill_incomplete_today_game_is_false;
+  Alcotest.test_case "pbp_should_backfill: today game" `Quick test_pbp_should_backfill_incomplete_today_game;
   Alcotest.test_case "score_flow_matches_final: true" `Quick test_score_flow_matches_final_true;
   Alcotest.test_case "score_flow_matches_final: false" `Quick test_score_flow_matches_final_false;
 ]
