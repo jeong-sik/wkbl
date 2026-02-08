@@ -329,8 +329,8 @@ let pbp_periods_complete_for_regulation (periods : string list) : bool =
 
 (** Decide whether to refresh PBP data on-demand.
 
-    We only treat missing quarters as a problem for past games (KST) with non-zero scores.
-    This avoids hammering WKBL endpoints for live games that are still in progress. *)
+    We treat missing quarters as a problem for finished games (KST) with non-zero scores.
+    (We include today's games here because our boxscore pages are only served once stats exist.) *)
 let pbp_should_backfill ~today_kst (g : game_info) (periods : string list) : bool =
   let scores_known = g.gi_home_score > 0 && g.gi_away_score > 0 in
   match periods with
@@ -339,10 +339,10 @@ let pbp_should_backfill ~today_kst (g : game_info) (periods : string list) : boo
       scores_known
   | _ ->
       let game_date = String.trim g.gi_game_date in
-      let is_past_game =
-        game_date <> "" && String.compare game_date (String.trim today_kst) < 0
+      let is_not_future_game =
+        game_date <> "" && String.compare game_date (String.trim today_kst) <= 0
       in
-      scores_known && is_past_game && not (pbp_periods_complete_for_regulation periods)
+      scores_known && is_not_future_game && not (pbp_periods_complete_for_regulation periods)
 
 let score_flow_last_scores (flow_points : score_flow_point list) : (int * int) option =
   match List.rev flow_points with
