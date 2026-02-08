@@ -2176,7 +2176,8 @@ let test_layout_observability_off () =
             ())))
   in
   Alcotest.(check bool) "no sentry script" false (contains_substring html "js.sentry-cdn.com");
-  Alcotest.(check bool) "no clarity script" false (contains_substring html "clarity.ms/tag/")
+  Alcotest.(check bool) "no clarity script" false (contains_substring html "clarity.ms/tag/");
+  Alcotest.(check bool) "includes htmx" true (contains_substring html "/static/js/htmx-1.9.10.min.js")
 
 let test_layout_observability_on () =
   let dsn = "https://PUBLICKEY@o0.ingest.sentry.io/0" in
