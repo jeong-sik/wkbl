@@ -548,10 +548,10 @@ let qa_dashboard_page ?(lang=I18n.Ko) (report: Db.qa_db_report) ?(markdown=None)
       (escape_html th_ids)
       dup_identity_rows
   in
-  layout ~lang ~title:page_title
-    ~content:(Printf.sprintf
-      {html|<div class="space-y-6 animate-fade-in">%s%s<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">%s%s%s%s%s%s%s%s</div><div class="grid grid-cols-1 lg:grid-cols-4 gap-4">%s%s%s%s</div><div class="grid grid-cols-1 gap-4">%s%s%s%s%s%s%s</div>%s</div>|html}
-      (Printf.sprintf
+	  layout ~lang ~title:page_title
+	    ~content:(Printf.sprintf
+	      {html|<div class="space-y-6 animate-fade-in">%s%s<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">%s%s%s%s%s%s%s%s%s</div><div class="grid grid-cols-1 lg:grid-cols-4 gap-4">%s%s%s%s</div><div class="grid grid-cols-1 gap-4">%s%s%s%s%s%s%s</div>%s</div>|html}
+	      (Printf.sprintf
          {html|<div class="flex flex-col gap-2"><h2 class="text-2xl font-black text-slate-900 dark:text-slate-200">%s</h2><div class="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">%s <span class="text-slate-400">(%s: <span class="font-mono">%s</span>)</span></div></div>|html}
          (escape_html heading)
 	         (escape_html desc)
@@ -559,10 +559,19 @@ let qa_dashboard_page ?(lang=I18n.Ko) (report: Db.qa_db_report) ?(markdown=None)
 	         (escape_html (pretty_timestamp report.qdr_generated_at)))
 	      sources_block
 	      (kpi_card ~label:(tr { ko = "경기"; en = "Games" }) ~value_html:(int_chip report.qdr_games_total) ~hint_html:(tr { ko = "전체 경기 수(정규/PO, 시범 제외)"; en = "Total games (regular/playoffs, excluding exhibition)." }))
+	      (kpi_card ~label:(tr { ko = "문자중계 수집"; en = "Live text coverage" })
+	        ~value_html:(pct_chip report.qdr_pbp_coverage_pct)
+	        ~hint_html:(Printf.sprintf
+	          {html|%s: %d · %s: %d · <a href="/qa/pbp-missing" class="underline decoration-slate-300 hover:decoration-slate-600">%s</a>|html}
+	          (escape_html (tr { ko = "종료 경기"; en = "Finished" }))
+	          report.qdr_finished_games_total
+	          (escape_html (tr { ko = "문자중계 있음"; en = "With live text" }))
+	          report.qdr_pbp_games
+	          (escape_html (tr { ko = "누락 경기 보기"; en = "View missing games" }))))
 	      (kpi_card ~label:(tr { ko = "기록 수집 경기"; en = "With boxscores" }) ~value_html:(int_chip report.qdr_games_with_stats) ~hint_html:(tr { ko = "선수 기록(박스스코어)이 수집된 경기"; en = "Games where player boxscores were collected." }))
 	      (kpi_card ~label:(tr { ko = "스케줄 전체"; en = "Schedule rows" }) ~value_html:(int_chip report.qdr_schedule_total) ~hint_html:(tr { ko = "전체 스케줄 행 수"; en = "Total schedule rows." }))
 	      (kpi_card ~label:(tr { ko = "종료 경기"; en = "Completed" }) ~value_html:(int_chip report.qdr_schedule_completed) ~hint_html:(tr { ko = "종료된 일정"; en = "Completed schedule rows." }))
-	      (kpi_card ~label:(tr { ko = "문자중계 +/- 비율"; en = "Live text +/- rate" }) ~value_html:(pct_chip report.qdr_plus_minus_coverage_pct) ~hint_html:(Printf.sprintf "%s: %d" (tr { ko = "문자중계 +/-가 있는 경기"; en = "Games with +/-" }) report.qdr_plus_minus_games))
+	      (kpi_card ~label:(tr { ko = "+/- 가능"; en = "+/- available" }) ~value_html:(pct_chip report.qdr_plus_minus_coverage_pct) ~hint_html:(Printf.sprintf "%s: %d" (tr { ko = "+/-가 계산된 경기"; en = "Games with +/-" }) report.qdr_plus_minus_games))
 	      (kpi_card ~label:(tr { ko = "스케줄-경기 누락"; en = "Schedule not matched" }) ~value_html:(int_chip report.qdr_schedule_missing_game_count) ~hint_html:(Printf.sprintf "%s: %.1f%%" (tr { ko = "종료 일정 중 경기 매칭 누락"; en = "Missing match (completed)" }) report.qdr_schedule_missing_game_pct))
 	      (kpi_card ~label:(tr { ko = "선수 기록 누락"; en = "Missing player stats" }) ~value_html:(int_chip report.qdr_schedule_missing_stats_count) ~hint_html:(Printf.sprintf "%s: %.1f%%" (tr { ko = "종료 일정 중 선수 기록 없음"; en = "No player stats (completed)" }) report.qdr_schedule_missing_stats_pct))
 	      (kpi_card ~label:label_last_checked ~value_html:(Printf.sprintf {html|<div class="text-sm font-mono text-slate-900 dark:text-slate-200">%s</div>|html} (escape_html (pretty_timestamp report.qdr_generated_at))) ~hint_html:(tr { ko = "자동으로 갱신됩니다."; en = "Auto-updated." }))
@@ -577,7 +586,154 @@ let qa_dashboard_page ?(lang=I18n.Ko) (report: Db.qa_db_report) ?(markdown=None)
       duplicate_player_rows_block
       duplicate_player_name_block
       duplicate_player_identity_block
-      markdown_block) ()
+	      markdown_block) ()
+
+(** Live text missing QA:
+    Shows finished games where live text (play-by-play) was not saved. *)
+let qa_pbp_missing_page
+    ?(lang=I18n.Ko)
+    ~season
+    ~(seasons: Domain.season_info list)
+    (report: Db.qa_pbp_missing_report)
+    () =
+  let tr = I18n.t lang in
+  let page_title =
+    tr { ko = "데이터 점검 | 문자중계 누락 | WKBL"; en = "Data Check | Missing live text | WKBL" }
+  in
+  let heading = tr { ko = "문자중계 누락(종료 경기)"; en = "Missing live text (finished games)" } in
+  let desc =
+    tr
+      { ko = "종료 경기를 기준으로, 문자중계가 저장되지 않은 경기를 보여줍니다."
+      ; en = "Shows finished games where live text was not saved."
+      }
+  in
+
+  let season_options =
+    seasons
+    |> List.map (fun (s: Domain.season_info) ->
+        Printf.sprintf {html|<option value="%s"%s>%s</option>|html}
+          (escape_html s.code)
+          (if s.code = season then " selected" else "")
+          (escape_html s.name))
+    |> String.concat "\n"
+  in
+
+  let int_chip v =
+    Printf.sprintf {html|<div class="text-2xl font-black text-slate-900 dark:text-slate-200 font-mono tabular-nums">%d</div>|html} v
+  in
+  let pct_chip v =
+    Printf.sprintf {html|<div class="text-2xl font-black text-slate-900 dark:text-slate-200 font-mono tabular-nums">%.1f%%</div>|html} v
+  in
+  let kpi_card ~label ~value_html ~hint_html =
+    Printf.sprintf
+      {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 shadow-lg"><div class="text-slate-500 dark:text-slate-400 text-[11px] uppercase tracking-widest font-bold">%s</div><div class="mt-2">%s</div><div class="mt-2 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">%s</div></div>|html}
+      (escape_html label)
+      value_html
+      hint_html
+  in
+
+  let missing_rows =
+    report.qpmr_missing_sample
+    |> List.map (fun (g: Db.qa_pbp_missing_game) ->
+        let game_id_url = Uri.pct_encode g.qpmg_game_id in
+        let matchup = Printf.sprintf "%s vs %s" g.qpmg_home_team g.qpmg_away_team in
+        Printf.sprintf
+          {html|<tr class="border-t border-slate-200 dark:border-slate-800">
+  <td class="px-3 py-2 text-xs font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap">%s</td>
+  <td class="px-3 py-2 text-sm text-slate-800 dark:text-slate-200">%s</td>
+  <td class="px-3 py-2 text-sm font-mono text-slate-700 dark:text-slate-300 whitespace-nowrap">%d - %d</td>
+  <td class="px-3 py-2 text-right whitespace-nowrap">
+    <a href="/boxscore/%s" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-700 hover:bg-slate-800 text-white">기록</a>
+    <a href="/boxscore/%s/pbp" class="ml-2 px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-200 hover:border-slate-500 transition">문자중계</a>
+  </td>
+</tr>|html}
+          (escape_html g.qpmg_game_date)
+          (escape_html matchup)
+          g.qpmg_home_score
+          g.qpmg_away_score
+          (escape_html game_id_url)
+          (escape_html game_id_url))
+    |> String.concat "\n"
+  in
+
+  let sample_note =
+    let shown = List.length report.qpmr_missing_sample in
+    if report.qpmr_missing_games > shown then
+      Printf.sprintf
+        {html|<div class="text-xs text-slate-500 dark:text-slate-400">표시: 최근 %d경기 (전체 누락 %d경기)</div>|html}
+        shown
+        report.qpmr_missing_games
+    else
+      ""
+  in
+
+  let table_or_empty =
+    if report.qpmr_missing_games = 0 then
+      Printf.sprintf
+        {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-lg"><div class="text-slate-600 dark:text-slate-400">%s</div></div>|html}
+        (escape_html (tr { ko = "이 시즌에는 문자중계 누락 경기가 없습니다."; en = "No missing live text games for this season." }))
+    else
+      Printf.sprintf
+        {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-lg">
+  <div class="flex items-center justify-between gap-3">
+    <h2 class="text-lg font-black text-slate-900 dark:text-slate-200">%s</h2>
+    %s
+  </div>
+  <div class="mt-4 overflow-x-auto">
+    <table class="min-w-[900px] w-full text-sm table-fixed" aria-label="문자중계 누락 경기 목록">
+      <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px]">
+        <tr>
+          <th scope="col" class="px-3 py-2 text-left">%s</th>
+          <th scope="col" class="px-3 py-2 text-left">%s</th>
+          <th scope="col" class="px-3 py-2 text-left">%s</th>
+          <th scope="col" class="px-3 py-2 text-right">%s</th>
+        </tr>
+      </thead>
+      <tbody>%s</tbody>
+    </table>
+  </div>
+</div>|html}
+        (escape_html (tr { ko = "누락 경기"; en = "Missing games" }))
+        sample_note
+        (escape_html (tr { ko = "날짜"; en = "Date" }))
+        (escape_html (tr { ko = "매치업"; en = "Matchup" }))
+        (escape_html (tr { ko = "스코어"; en = "Score" }))
+        (escape_html (tr { ko = "보기"; en = "View" }))
+        missing_rows
+  in
+
+  layout ~lang ~title:page_title
+    ~content:(Printf.sprintf
+      {html|<div class="space-y-6 animate-fade-in">
+  <div class="flex items-start justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-black text-slate-900 dark:text-slate-200">%s</h1>
+      <div class="mt-1 text-sm text-slate-600 dark:text-slate-400">%s</div>
+    </div>
+    <form action="/qa/pbp-missing" method="get" class="flex items-center gap-2">
+      <select name="season" onchange="this.form.submit()" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/40 transition-colors">
+        %s
+      </select>
+    </form>
+  </div>
+
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    %s
+    %s
+    %s
+    %s
+  </div>
+
+  %s
+</div>|html}
+      (escape_html heading)
+      (escape_html desc)
+      season_options
+      (kpi_card ~label:(tr { ko = "종료 경기"; en = "Finished games" }) ~value_html:(int_chip report.qpmr_finished_games_total) ~hint_html:(tr { ko = "스코어가 확인된 경기"; en = "Games with known final scores." }))
+      (kpi_card ~label:(tr { ko = "문자중계 있음"; en = "With live text" }) ~value_html:(int_chip report.qpmr_pbp_games) ~hint_html:(tr { ko = "문자중계 이벤트가 저장된 경기"; en = "Games with saved live text events." }))
+      (kpi_card ~label:(tr { ko = "누락"; en = "Missing" }) ~value_html:(int_chip report.qpmr_missing_games) ~hint_html:(tr { ko = "종료 경기 중 문자중계 없음"; en = "Finished games without live text." }))
+      (kpi_card ~label:(tr { ko = "수집 비율"; en = "Coverage" }) ~value_html:(pct_chip report.qpmr_coverage_pct) ~hint_html:(Printf.sprintf "%s: %s" (tr { ko = "마지막 확인"; en = "Last checked" }) (escape_html (pretty_timestamp report.qpmr_generated_at))))
+      table_or_empty) ()
 
 (** Schedule Missing QA:
     Focuses on "completed schedule rows that do not match games" for seasons that have games ingested.
