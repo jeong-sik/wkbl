@@ -1959,6 +1959,35 @@ let request_params_tests = [
 ]
 
 (* ============================================= *)
+(* Canonical Host Tests                          *)
+(* ============================================= *)
+
+let test_canonical_host_strip_port () =
+  let open Wkbl.Canonical_host in
+  Alcotest.(check string) "no port" "woman.win" (strip_port "woman.win");
+  Alcotest.(check string) "with port" "woman.win" (strip_port "woman.win:443");
+  Alcotest.(check string) "trim + case" "www.woman.win" (strip_port "  WWW.WOMAN.WIN:80  ")
+
+let test_canonical_host_should_redirect_to_wkbl () =
+  let open Wkbl.Canonical_host in
+  Alcotest.(check bool) "woman.win" true (should_redirect_to_wkbl "woman.win");
+  Alcotest.(check bool) "www.woman.win" true (should_redirect_to_wkbl "www.woman.win:443");
+  Alcotest.(check bool) "wkbl.win" false (should_redirect_to_wkbl "wkbl.win");
+  Alcotest.(check bool) "random" false (should_redirect_to_wkbl "example.com")
+
+let test_canonical_host_wkbl_location () =
+  let open Wkbl.Canonical_host in
+  Alcotest.(check string) "root fallback" "https://wkbl.win/" (wkbl_location ~request_uri:"");
+  Alcotest.(check string) "path+query" "https://wkbl.win/games?season=046"
+    (wkbl_location ~request_uri:"/games?season=046")
+
+let canonical_host_tests = [
+  Alcotest.test_case "strip_port" `Quick test_canonical_host_strip_port;
+  Alcotest.test_case "should_redirect_to_wkbl" `Quick test_canonical_host_should_redirect_to_wkbl;
+  Alcotest.test_case "wkbl_location" `Quick test_canonical_host_wkbl_location;
+]
+
+(* ============================================= *)
 (* QA Utility Tests                              *)
 (* ============================================= *)
 
@@ -2727,6 +2756,7 @@ let () =
     "Disambiguation", disambiguation_tests;
     "I18n", i18n_tests;
     "Request Params", request_params_tests;
+    "Canonical Host", canonical_host_tests;
     "QA Utils", qa_util_tests;
     "Observability", observability_tests;
     "UI Copy", ui_copy_tests;
