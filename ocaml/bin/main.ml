@@ -106,6 +106,63 @@ module Pbp_backfill = struct
         )
 end
 
+module Player_meta_backfill = struct
+  (* Guardrails:
+     - Never block HTTP responses on network scraping.
+     - Deduplicate concurrent fetches per player_id.
+     - Cooldown avoids repeated upstream hits when data is persistently missing. *)
+  let inflight : (string, unit) Hashtbl.t = Hashtbl.create 256
+  let last_attempt : (string, float) Hashtbl.t = Hashtbl.create 256
+
+  let cooldown_seconds = 6.0 *. 60.0 *. 60.0
+  let timeout_seconds = 10.0
+
+  let maybe_spawn ~sw ~env ~(player_id : string) ~(tag : string) () : unit =
+    let pid = String.trim player_id in
+    if pid = "" then ()
+    else
+      let now = Unix.time () in
+      if Hashtbl.mem inflight pid then ()
+      else (
+        match Hashtbl.find_opt last_attempt pid with
+        | Some last when now -. last < cooldown_seconds -> ()
+        | _ ->
+            Hashtbl.replace inflight pid ();
+            Hashtbl.replace last_attempt pid now;
+            let clock = Eio.Stdenv.clock env in
+            Eio.Fiber.fork ~sw (fun () ->
+              Fun.protect
+                ~finally:(fun () -> Hashtbl.remove inflight pid)
+                (fun () ->
+                  try
+                    let info_opt =
+                      try
+                        Eio.Time.with_timeout_exn clock timeout_seconds (fun () ->
+                          Scraper.fetch_player_detail ~sw ~env ~player_id:pid)
+                      with
+                      | Eio.Time.Timeout -> None
+                    in
+                    match info_opt with
+                    | None -> ()
+                    | Some info -> (
+                        match Db_sync.upsert_player_info info with
+                        | Ok () -> ()
+                        | Error e ->
+                            Printf.eprintf "[%s] player meta DB error (%s): %s\n%!"
+                              tag
+                              pid
+                              (Db.show_db_error e))
+                  with
+                  | exn ->
+                      Printf.eprintf "[%s] player meta error (%s): %s\n%!"
+                        tag
+                        pid
+                        (Printexc.to_string exn)
+                )
+            )
+      )
+end
+
 (* Admin guard for QA override tools (exclude/restore).
    This should not be publicly accessible without a token. *)
 let admin_cookie_name = "wkbl_admin"
@@ -179,6 +236,36 @@ let get_player_info_map () =
   match Db.get_all_player_info () with
   | Ok infos -> Some (build_player_info_map infos)
   | Error _ -> None
+
+let player_meta_missing (info_opt : player_info option) : bool =
+  match info_opt with
+  | None -> true
+  | Some info -> info.position = None && info.birth_date = None && info.height = None
+
+let backfill_duplicate_player_meta ~sw ~env ~(players : player_aggregate list)
+    (player_info_map : (string, player_info) Hashtbl.t option) : unit =
+  match player_info_map with
+  | None -> ()
+  | Some map ->
+      let name_counts : (string, int) Hashtbl.t = Hashtbl.create 64 in
+      players |> List.iter (fun (p : player_aggregate) ->
+        let key = Views_common.normalize_name p.name in
+        let prev = Hashtbl.find_opt name_counts key |> Option.value ~default:0 in
+        Hashtbl.replace name_counts key (prev + 1)
+      );
+      players |> List.iter (fun (p : player_aggregate) ->
+        let key = Views_common.normalize_name p.name in
+        let is_dup =
+          match Hashtbl.find_opt name_counts key with
+          | Some c when c > 1 -> true
+          | _ -> false
+        in
+        if is_dup then (
+          let info_opt = Hashtbl.find_opt map p.player_id in
+          if player_meta_missing info_opt then
+            Player_meta_backfill.maybe_spawn ~sw ~env ~player_id:p.player_id ~tag:"PLAYERS" ()
+        )
+      )
 
 let rec find_static_path start_dir =
   let has_styles path = Sys.file_exists (Filename.concat path "css/styles.css") in
@@ -278,22 +365,152 @@ let () =
   | Error e ->
       Printf.eprintf "Failed to ensure seasons catalog: %s\n%!" (Db.show_db_error e));
 
-  (* Background scheduler: sync game results every 12 hours with exponential backoff retry *)
-  let twelve_hours = 12.0 *. 60.0 *. 60.0 in
+  (* Background scheduler: sync schedule/metadata regularly with exponential backoff retry *)
+  let one_hour = 60.0 *. 60.0 in
+  let sync_interval = one_hour in
   let retry_intervals = [| 5.0 *. 60.0; 15.0 *. 60.0; 45.0 *. 60.0 |] in  (* 5m, 15m, 45m *)
 
-  let sync_with_retry () =
+  let sync_missing_boxscores ~season () =
+    let take n xs =
+      let rec loop acc n = function
+        | [] -> List.rev acc
+        | _ when n <= 0 -> List.rev acc
+        | x :: rest -> loop (x :: acc) (n - 1) rest
+      in
+      loop [] n xs
+    in
+    let uniq_by_game_id (games : Db_sync.missing_boxscore_game list) =
+      let seen = Hashtbl.create 256 in
+      games
+      |> List.filter (fun g ->
+          if Hashtbl.mem seen g.Db_sync.game_id then false
+          else (
+            Hashtbl.add seen g.Db_sync.game_id ();
+            true))
+    in
+    let missing_games =
+      match Db_sync.get_games_missing_boxscore ~season () with
+      | Ok xs -> xs
+      | Error e ->
+          Printf.eprintf "[Scheduler] boxscore missing query error: %s\n%!"
+            (Db.show_db_error e);
+          []
+    in
+    let mismatch_games =
+      match Db_sync.get_games_score_mismatch ~season () with
+      | Ok xs -> xs
+      | Error _ -> []
+    in
+    let max_games = 12 in
+    let games = uniq_by_game_id (missing_games @ mismatch_games) |> take max_games in
+    let total = List.length games in
+    if total = 0 then ()
+    else (
+      Printf.printf
+        "[Scheduler] Syncing boxscores: %d missing + %d mismatch (running %d)\n%!"
+        (List.length missing_games)
+        (List.length mismatch_games)
+        total;
+      let clock = Eio.Stdenv.clock env in
+      games |> List.iteri (fun i (g : Db_sync.missing_boxscore_game) ->
+        Printf.printf "[Scheduler] [%d/%d] boxscore %s\n%!" (i + 1) total g.Db_sync.game_id;
+        let tables =
+          Scraper.fetch_game_boxscore
+            ~sw ~env
+            ~season_gu:g.Db_sync.season_code
+            ~game_type:g.Db_sync.game_type
+            ~game_no:g.Db_sync.game_no
+            ~ym:g.Db_sync.ym
+        in
+        match tables with
+        | [away_stats; home_stats] ->
+            let upsert_team team_code stats =
+              stats |> List.iter (fun s ->
+                match Db_sync.upsert_game_stat s ~game_id:g.Db_sync.game_id ~team_code with
+                | Ok () -> ()
+                | Error e ->
+                    Printf.eprintf "[Scheduler] boxscore upsert error (%s): %s\n%!"
+                      g.Db_sync.game_id
+                      (Db.show_db_error e))
+            in
+            upsert_team g.Db_sync.away_team_code away_stats;
+            upsert_team g.Db_sync.home_team_code home_stats;
+            let sum_pts stats =
+              stats |> List.fold_left (fun acc s -> acc + s.Scraper.bs_pts) 0
+            in
+            let away_pts = sum_pts away_stats in
+            let home_pts = sum_pts home_stats in
+            (match Db_sync.update_game_scores_if_missing ~game_id:g.Db_sync.game_id ~away_score:away_pts ~home_score:home_pts with
+            | Ok () -> ()
+            | Error e ->
+                Printf.eprintf "[Scheduler] score backfill error (%s): %s\n%!"
+                  g.Db_sync.game_id
+                  (Db.show_db_error e));
+            Eio.Time.sleep clock 0.2
+        | _ -> ()
+      );
+      ignore (Db.refresh_matviews ())
+    )
+  in
+
+  let sync_missing_pbp ~season () =
+    let take n xs =
+      let rec loop acc n = function
+        | [] -> List.rev acc
+        | _ when n <= 0 -> List.rev acc
+        | x :: rest -> loop (x :: acc) (n - 1) rest
+      in
+      loop [] n xs
+    in
+    let missing_games =
+      match Db_sync.get_games_missing_pbp ~season () with
+      | Ok xs -> xs
+      | Error _ -> []
+    in
+    let max_games = 8 in
+    let games = missing_games |> take max_games in
+    let total = List.length games in
+    if total = 0 then ()
+    else (
+      Printf.printf "[Scheduler] Syncing play-by-play for %d games (season=%s)\n%!" total season;
+      let clock = Eio.Stdenv.clock env in
+      games |> List.iteri (fun i (g : Db_sync.PbpSync.missing_pbp_game) ->
+        Printf.printf "[Scheduler] [%d/%d] pbp %s\n%!" (i + 1) total g.game_id;
+        try
+          let events =
+            Eio.Time.with_timeout_exn clock 10.0 (fun () ->
+              Scraper.fetch_game_pbp_events ~sw ~env ~season_gu:g.season_code ~game_type:g.game_type ~game_no:g.game_no ())
+          in
+          if events <> [] then (
+            let rows = events |> List.map (fun (e : Domain.pbp_event) -> (e, None)) in
+            match Db_sync.replace_pbp_events ~game_id:g.game_id rows with
+            | Ok _n -> ()
+            | Error e ->
+                Printf.eprintf "[Scheduler] pbp DB error (%s): %s\n%!" g.game_id (Db.show_db_error e)
+          );
+          Eio.Time.sleep clock 0.2
+        with
+        | Eio.Time.Timeout -> ()
+        | exn ->
+            Printf.eprintf "[Scheduler] pbp error (%s): %s\n%!" g.game_id (Printexc.to_string exn)
+      )
+    )
+  in
+
+  let sync_with_retry () : bool =
     let rec attempt n =
       Printf.printf "[Scheduler] Sync attempt %d...\n%!" (n + 1);
       let (schedule_synced, games_upserted, errors) =
         Scraper.sync_current_season_schedule ~sw ~env ()
       in
-      if Scraper.schedule_sync_success ~schedule_synced ~games_upserted ~errors then
+      if Scraper.schedule_sync_success ~schedule_synced ~games_upserted ~errors then (
         Printf.printf
           "[Scheduler] Sync successful: %d schedule, %d games, %d errors\n%!"
           schedule_synced
           games_upserted
-          errors
+          errors;
+        true
+      )
       else if n < Array.length retry_intervals then begin
         Printf.printf
           "[Scheduler] Sync failed (%d schedule, %d games, %d errors), retrying in %.0f minutes...\n%!"
@@ -304,21 +521,32 @@ let () =
         Eio.Time.sleep env#clock retry_intervals.(n);
         attempt (n + 1)
       end else
-        Printf.eprintf "[Scheduler] Sync failed after %d retries, giving up until next cycle\n%!"
-          (Array.length retry_intervals)
+        (Printf.eprintf "[Scheduler] Sync failed after %d retries, giving up until next cycle\n%!"
+           (Array.length retry_intervals);
+         false)
     in
     attempt 0
   in
 
   Eio.Fiber.fork ~sw (fun () ->
-    Printf.printf "[Scheduler] Background sync started (12h interval with retry)\n%!";
+    Printf.printf "[Scheduler] Background sync started (%.0fm interval with retry)\n%!" (sync_interval /. 60.0);
     (* Initial sync on startup *)
-    sync_with_retry ();
+    let ok = sync_with_retry () in
+    if ok then (
+      let season = Scraper.current_season_code_auto () |> Scraper.main_to_datalab in
+      sync_missing_boxscores ~season ();
+      sync_missing_pbp ~season ()
+    );
     (* Periodic sync *)
     while true do
-      Eio.Time.sleep env#clock twelve_hours;
+      Eio.Time.sleep env#clock sync_interval;
       Printf.printf "[Scheduler] Running scheduled sync...\n%!";
-      sync_with_retry ()
+      let ok = sync_with_retry () in
+      if ok then (
+        let season = Scraper.current_season_code_auto () |> Scraper.main_to_datalab in
+        sync_missing_boxscores ~season ();
+        sync_missing_pbp ~season ()
+      )
     done
   );
 
@@ -531,6 +759,7 @@ Sitemap: https://wkbl.win/sitemap.xml
           match Db.get_players ~season ~search ~sort ~include_mismatch () with
           | Ok p ->
               let player_info_map = get_player_info_map () in
+              backfill_duplicate_player_meta ~sw ~env ~players:p player_info_map;
               Kirin.html (Views.players_page ~lang ~player_info_map ~season ~seasons ~search ~sort:sort_str ~include_mismatch p)
           | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
     );
@@ -548,6 +777,7 @@ Sitemap: https://wkbl.win/sitemap.xml
           match Db.get_players ~season ~search ~sort ~include_mismatch () with
           | Ok p ->
               let player_info_map = get_player_info_map () in
+              backfill_duplicate_player_meta ~sw ~env ~players:p player_info_map;
               Kirin.html (Views.players_table ~lang ~player_info_map p)
           | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
     );
