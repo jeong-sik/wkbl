@@ -1086,6 +1086,58 @@ let boxscore_link_chip_tests = [
 ]
 
 (* ============================================= *)
+(* Table Row Link Tests                          *)
+(* ============================================= *)
+
+let test_standings_table_has_row_link_attr () =
+  let s : team_standing =
+    {
+      team_name = "KB스타즈";
+      games_played = 1;
+      wins = 1;
+      losses = 0;
+      win_pct = 1.0;
+      gb = 0.0;
+      avg_pts = 80.0;
+      avg_opp_pts = 70.0;
+      diff = 10.0;
+    }
+  in
+  let html = Wkbl.Views.standings_table ~season:"046" [ s ] in
+  Alcotest.(check bool) "data-row-link present" true (contains_substring html "data-row-link=\"team\"")
+
+let test_teams_table_has_row_link_attr () =
+  let s : team_stats =
+    {
+      team = "KB스타즈";
+      gp = 1;
+      min_total = 40.0;
+      pts = 80.0;
+      margin = 10.0;
+      pts_against = 70.0;
+      reb = 35.0;
+      ast = 20.0;
+      stl = 8.0;
+      blk = 2.0;
+      turnovers = 12.0;
+      fg_pct = 45.0;
+      fg3_pct = 33.3;
+      ft_pct = 75.0;
+      efg_pct = 50.0;
+      ts_pct = 55.0;
+      pace = 78.0;
+      eff = 90.0;
+    }
+  in
+  let html = Wkbl.Views.teams_table ~season:"046" ~scope:PerGame [ s ] in
+  Alcotest.(check bool) "data-row-link present" true (contains_substring html "data-row-link=\"team\"")
+
+let table_row_link_tests = [
+  Alcotest.test_case "standings table has row-click attr" `Quick test_standings_table_has_row_link_attr;
+  Alcotest.test_case "teams table has row-click attr" `Quick test_teams_table_has_row_link_attr;
+]
+
+(* ============================================= *)
 (* AI Game Summary Tests                         *)
 (* ============================================= *)
 
@@ -2942,6 +2994,7 @@ let () =
     "Score Flow", score_flow_tests;
     "PBP Refresh", pbp_refresh_tests;
     "Views Tools", views_tools_tests;
+    "Tables UX", table_row_link_tests;
     "Boxscore Link Chips", boxscore_link_chip_tests;
     "AI Summary", ai_game_summary_tests;
     "Lineup Chemistry", lineup_chemistry_tests;

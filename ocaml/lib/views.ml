@@ -438,7 +438,7 @@ let teams_table ?(lang=I18n.Ko) ~season ~scope (stats: Domain.team_stats list) =
   in
 
   (* 3. Render Table *)
-  render_fixed_table ~id:"teams-table-inner" ~min_width:"min-w-[1040px]" ~cols rows_data
+  render_fixed_table ~table_attrs:{|data-row-link="team"|} ~id:"teams-table-inner" ~min_width:"min-w-[1040px]" ~cols rows_data
 
 let teams_page ?(lang=I18n.Ko) ~season ~seasons ~scope ~sort ~include_mismatch stats =
  let scope_value = team_scope_to_string scope in
@@ -513,7 +513,7 @@ let standings_table ?(lang=I18n.Ko) ~season (standings : team_standing list) =
     )
   in
   
-  render_fixed_table ~id:"standings-table-inner" ~min_width:"min-w-[560px]" ~cols rows_data
+  render_fixed_table ~table_attrs:{|data-row-link="team"|} ~id:"standings-table-inner" ~min_width:"min-w-[560px]" ~cols rows_data
 
 let standings_page ?(lang=I18n.Ko) ~season ~seasons standings =
  let tr = I18n.t lang in
