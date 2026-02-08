@@ -182,12 +182,12 @@ let players_table ?(lang=I18n.Ko) ?(player_info_map=None) (players: player_aggre
         
         (* Complex cells constructed as strings *)
         let pts_cell = 
-          Printf.sprintf {html|<div class="flex flex-col items-end leading-tight"><span class="text-orange-600 dark:text-orange-400 font-bold font-mono">%.1f</span><span class="text-slate-400 dark:text-slate-500 text-[9px] font-mono whitespace-nowrap" title="%s">Σ%s</span></div>|html} 
-          p.avg_points (escape_html label_total) (format_int_compact p.total_points)
+          Printf.sprintf {html|<div class="flex flex-col items-end leading-tight"><span class="text-orange-600 dark:text-orange-400 font-bold font-mono">%.1f</span><span class="text-slate-400 dark:text-slate-500 text-[9px] font-mono whitespace-nowrap" title="%s">%s%s</span></div>|html}
+          p.avg_points (escape_html label_total) (escape_html label_total) (format_int_compact p.total_points)
         in
         let stat_cell v total =
-          Printf.sprintf {html|<div class="flex flex-col items-end leading-tight"><span class="text-slate-700 dark:text-slate-300 font-mono">%.1f</span><span class="text-slate-400 dark:text-slate-500 text-[9px] font-mono whitespace-nowrap" title="%s">Σ%s</span></div>|html}
-          v (escape_html label_total) (format_int_compact total)
+          Printf.sprintf {html|<div class="flex flex-col items-end leading-tight"><span class="text-slate-700 dark:text-slate-300 font-mono">%.1f</span><span class="text-slate-400 dark:text-slate-500 text-[9px] font-mono whitespace-nowrap" title="%s">%s%s</span></div>|html}
+          v (escape_html label_total) (escape_html label_total) (format_int_compact total)
         in
         
         [
