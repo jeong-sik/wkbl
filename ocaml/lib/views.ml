@@ -984,16 +984,24 @@ let boxscore_player_table (title: string) (players: boxscore_player_stat list) =
       p.bs_player_id
       (escape_html (normalize_name p.bs_player_name))
       (escape_html (Option.value ~default:"-" p.bs_position))
-    in
-    let pm_cell = Printf.sprintf {html|<span class="%s">%s</span>|html} pm_cls (escape_html pm_str) in
-    
-    let fg_cell = Printf.sprintf {html|<span class="text-slate-600 dark:text-slate-400 text-xs">%d-%d (%.1f%%)</span>|html} p.bs_fg_made p.bs_fg_att p.bs_fg_pct in
-    let fg3_cell = Printf.sprintf {html|<span class="text-slate-600 dark:text-slate-400 text-xs">%d-%d (%.1f%%)</span>|html} p.bs_fg3_made p.bs_fg3_att p.bs_fg3_pct in
-    let ft_cell = Printf.sprintf {html|<span class="text-slate-600 dark:text-slate-400 text-xs">%d-%d (%.1f%%)</span>|html} p.bs_ft_made p.bs_ft_att p.bs_ft_pct in
+	    in
+	    let pm_cell = Printf.sprintf {html|<span class="%s">%s</span>|html} pm_cls (escape_html pm_str) in
+	    
+	    let shot_cell made att pct =
+	      if att <= 0 then
+	        {html|<span class="text-slate-400 dark:text-slate-600">-</span>|html}
+	      else
+	        Printf.sprintf
+	          {html|<span class="text-slate-600 dark:text-slate-400 text-xs">%d-%d (%.1f%%)</span>|html}
+	          made att pct
+	    in
+	    let fg_cell = shot_cell p.bs_fg_made p.bs_fg_att p.bs_fg_pct in
+	    let fg3_cell = shot_cell p.bs_fg3_made p.bs_fg3_att p.bs_fg3_pct in
+	    let ft_cell = shot_cell p.bs_ft_made p.bs_ft_att p.bs_ft_pct in
 
-    [
-      player_cell;
-      Printf.sprintf "%.1f" p.bs_minutes;
+	    [
+	      player_cell;
+	      Printf.sprintf "%.1f" p.bs_minutes;
       string_of_int p.bs_pts;
       pm_cell;
       string_of_int p.bs_reb;
