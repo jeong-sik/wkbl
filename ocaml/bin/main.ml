@@ -1436,56 +1436,105 @@ Sitemap: https://wkbl.win/sitemap.xml
       let show_ops = query_bool request "ops" in
       match Db.get_player_profile ~player_id () with
       | Ok (Some profile) ->
-          let final_profile =
-            if scope = "per_game" then profile
-            else
-              match Db.get_player_season_stats ~player_id ~scope () with
-              | Ok stats -> { profile with season_breakdown = stats }
-              | Error _ -> profile
-          in
-          let seasons_catalog =
-            match Db.get_seasons () with
-            | Ok seasons -> seasons
-            | Error _ -> []
-          in
-          let season_for_leaderboards =
-            match seasons_catalog with
-            | [] -> "ALL"
-            | seasons -> query_season_or_latest request seasons
-          in
-          let season_name_for_leaderboards =
-            seasons_catalog
-            |> List.find_opt (fun (s: season_info) -> s.code = season_for_leaderboards)
-            |> Option.map (fun (s: season_info) -> s.name)
-            |> Option.value ~default:season_for_leaderboards
-	          in
-	          let leaderboard_categories =
-            match String.lowercase_ascii scope with
-            | "totals" ->
-                [ "gp"; "min"; "pts"; "reb"; "ast"; "stl"; "blk"; "tov"; "fg_pct"; "fg3_pct"; "ft_pct"; "ts_pct"; "efg_pct" ]
-            | "per_36" ->
-                [ "pts"; "reb"; "ast"; "stl"; "blk"; "tov"; "eff"; "fg_pct"; "fg3_pct"; "ft_pct"; "ts_pct"; "efg_pct" ]
-            | _ ->
-                [ "pts"; "reb"; "ast"; "stl"; "blk"; "tov"; "min"; "eff"; "fg_pct"; "fg3_pct"; "ft_pct"; "ts_pct"; "efg_pct" ]
-          in
-          let rec fetch_all acc = function
-            | [] -> Ok (List.rev acc)
-            | category :: rest ->
-                match Db.get_leaders ~season:season_for_leaderboards ~scope category with
-                | Error e -> Error e
-                | Ok leaders -> fetch_all ((category, leaders) :: acc) rest
-	          in
-	          let leaderboards =
-	            match fetch_all [] leaderboard_categories with
-	            | Ok leaders_by_category ->
-	                Some (season_for_leaderboards, season_name_for_leaderboards, leaders_by_category)
-	            | Error _ ->
-	                None
-	          in
-	          Kirin.html (Views_player.player_profile_page ~lang ~leaderboards ~show_ops final_profile ~scope ~seasons_catalog)
-	      | Ok None -> Kirin.html (Views.error_page ~lang "Player not found")
-	      | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
-	    );
+          let canon_id = profile.player.id in
+          (match
+             Player_identity.redirect_location ~requested_id:player_id ~canonical_id:canon_id
+               (Kirin.Request.uri request)
+           with
+          | Some location -> Kirin.redirect ~status:`Permanent_redirect location
+          | None ->
+              let final_profile =
+                if scope = "per_game" then profile
+                else
+                  match Db.get_player_season_stats ~player_id ~scope () with
+                  | Ok stats -> { profile with season_breakdown = stats }
+                  | Error _ -> profile
+              in
+              let seasons_catalog =
+                match Db.get_seasons () with
+                | Ok seasons -> seasons
+                | Error _ -> []
+              in
+              let season_for_leaderboards =
+                match seasons_catalog with
+                | [] -> "ALL"
+                | seasons -> query_season_or_latest request seasons
+              in
+              let season_name_for_leaderboards =
+                seasons_catalog
+                |> List.find_opt (fun (s : season_info) -> s.code = season_for_leaderboards)
+                |> Option.map (fun (s : season_info) -> s.name)
+                |> Option.value ~default:season_for_leaderboards
+              in
+              let leaderboard_categories =
+                match String.lowercase_ascii scope with
+                | "totals" ->
+                    [
+                      "gp";
+                      "min";
+                      "pts";
+                      "reb";
+                      "ast";
+                      "stl";
+                      "blk";
+                      "tov";
+                      "fg_pct";
+                      "fg3_pct";
+                      "ft_pct";
+                      "ts_pct";
+                      "efg_pct";
+                    ]
+                | "per_36" ->
+                    [
+                      "pts";
+                      "reb";
+                      "ast";
+                      "stl";
+                      "blk";
+                      "tov";
+                      "eff";
+                      "fg_pct";
+                      "fg3_pct";
+                      "ft_pct";
+                      "ts_pct";
+                      "efg_pct";
+                    ]
+                | _ ->
+                    [
+                      "pts";
+                      "reb";
+                      "ast";
+                      "stl";
+                      "blk";
+                      "tov";
+                      "min";
+                      "eff";
+                      "fg_pct";
+                      "fg3_pct";
+                      "ft_pct";
+                      "ts_pct";
+                      "efg_pct";
+                    ]
+              in
+              let rec fetch_all acc = function
+                | [] -> Ok (List.rev acc)
+                | category :: rest -> (
+                    match Db.get_leaders ~season:season_for_leaderboards ~scope category with
+                    | Error e -> Error e
+                    | Ok leaders -> fetch_all ((category, leaders) :: acc) rest)
+              in
+              let leaderboards =
+                match fetch_all [] leaderboard_categories with
+                | Ok leaders_by_category ->
+                    Some (season_for_leaderboards, season_name_for_leaderboards, leaders_by_category)
+                | Error _ -> None
+              in
+              Kirin.html
+                (Views_player.player_profile_page ~lang ~leaderboards ~show_ops final_profile ~scope
+                   ~seasons_catalog))
+      | Ok None -> Kirin.html (Views.error_page ~lang "Player not found")
+      | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
+    );
 
 	    (* Player Game Log *)
 	    Kirin.get "/player/:id/games" (fun request ->
@@ -1494,13 +1543,23 @@ Sitemap: https://wkbl.win/sitemap.xml
 	      let include_mismatch = query_bool request "include_mismatch" in
 	      match Db.get_player_profile ~player_id (), Db.get_seasons () with
 	      | Ok None, _ -> Kirin.html (Views.error_page ~lang "Player not found")
-	      | Error e, _ | _, Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
-	      | Ok (Some profile), Ok seasons ->
-	          let season = query_season_or_latest request seasons in
-	          (match Db.get_player_game_logs ~player_id ~season ~include_mismatch () with
-	          | Ok games -> Kirin.html (Views_player.player_game_logs_page ~lang profile ~season ~seasons ~include_mismatch games)
-	          | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e)))
-	    );
+      | Error e, _ | _, Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
+      | Ok (Some profile), Ok seasons ->
+          let canon_id = profile.player.id in
+          match
+            Player_identity.redirect_location ~requested_id:player_id ~canonical_id:canon_id
+              ~suffix:"games" (Kirin.Request.uri request)
+          with
+	          | Some location -> Kirin.redirect ~status:`Permanent_redirect location
+	          | None ->
+	              let season = query_season_or_latest request seasons in
+	              match Db.get_player_game_logs ~player_id ~season ~include_mismatch () with
+		              | Ok games ->
+		                  Kirin.html
+		                    (Views_player.player_game_logs_page ~lang profile ~season ~seasons
+		                       ~include_mismatch games)
+		              | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
+		    );
 
 	    (* Player Season Stats HTMX Partial *)
 	    Kirin.get "/player/:id/season-stats" (fun request ->
