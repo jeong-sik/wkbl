@@ -971,6 +971,85 @@ let score_flow_tests = [
   Alcotest.test_case "Extract score flow stable order on same timestamp" `Quick test_extract_score_flow_stable_order_same_time;
 ]
 
+(* ============================================= *)
+(* PBP Refresh Heuristics Tests                   *)
+(* ============================================= *)
+
+let make_game_info_for_pbp_refresh ~game_id ~date ~home_score ~away_score =
+  {
+    gi_game_id = game_id;
+    gi_game_date = date;
+    gi_home_team_code = "SS";
+    gi_home_team_name = "삼성생명";
+    gi_away_team_code = "SH";
+    gi_away_team_name = "신한은행";
+    gi_home_score = home_score;
+    gi_away_score = away_score;
+    gi_score_quality = Derived;
+  }
+
+let test_pbp_should_backfill_empty_periods () =
+  let g =
+    make_game_info_for_pbp_refresh
+      ~game_id:"046-01-01"
+      ~date:"2026-01-01"
+      ~home_score:70 ~away_score:60
+  in
+  Alcotest.(check bool) "empty periods -> backfill" true
+    (Wkbl.Domain.pbp_should_backfill ~today_kst:"2026-02-08" g [])
+
+let test_pbp_should_backfill_incomplete_past_game () =
+  let g =
+    make_game_info_for_pbp_refresh
+      ~game_id:"046-01-65"
+      ~date:"2026-01-21"
+      ~home_score:69 ~away_score:55
+  in
+  Alcotest.(check bool) "missing quarters in past game -> backfill" true
+    (Wkbl.Domain.pbp_should_backfill ~today_kst:"2026-02-08" g ["Q1"])
+
+let test_pbp_should_backfill_incomplete_today_game_is_false () =
+  let g =
+    make_game_info_for_pbp_refresh
+      ~game_id:"046-01-99"
+      ~date:"2026-02-08"
+      ~home_score:10 ~away_score:8
+  in
+  Alcotest.(check bool) "missing quarters for today game -> no backfill" false
+    (Wkbl.Domain.pbp_should_backfill ~today_kst:"2026-02-08" g ["Q1"])
+
+let test_score_flow_matches_final_true () =
+  let pt : Wkbl.Domain.score_flow_point = {
+    sfp_clock = "00:05";
+    sfp_period = "Q4";
+    sfp_home_score = 70;
+    sfp_away_score = 60;
+    sfp_diff = 10;
+    sfp_elapsed_seconds = 2395;
+  } in
+  Alcotest.(check bool) "matches final" true
+    (Wkbl.Domain.score_flow_matches_final ~final_home:70 ~final_away:60 [pt])
+
+let test_score_flow_matches_final_false () =
+  let pt : Wkbl.Domain.score_flow_point = {
+    sfp_clock = "00:05";
+    sfp_period = "Q4";
+    sfp_home_score = 68;
+    sfp_away_score = 60;
+    sfp_diff = 8;
+    sfp_elapsed_seconds = 2395;
+  } in
+  Alcotest.(check bool) "does not match final" false
+    (Wkbl.Domain.score_flow_matches_final ~final_home:70 ~final_away:60 [pt])
+
+let pbp_refresh_tests = [
+  Alcotest.test_case "pbp_should_backfill: empty periods" `Quick test_pbp_should_backfill_empty_periods;
+  Alcotest.test_case "pbp_should_backfill: incomplete past game" `Quick test_pbp_should_backfill_incomplete_past_game;
+  Alcotest.test_case "pbp_should_backfill: today game is false" `Quick test_pbp_should_backfill_incomplete_today_game_is_false;
+  Alcotest.test_case "score_flow_matches_final: true" `Quick test_score_flow_matches_final_true;
+  Alcotest.test_case "score_flow_matches_final: false" `Quick test_score_flow_matches_final_false;
+]
+
 let views_tools_tests = [
   Alcotest.test_case "game_flow_chart empty" `Quick test_game_flow_chart_empty;
   Alcotest.test_case "game_flow_chart single point" `Quick test_game_flow_chart_single_point;
@@ -2850,6 +2929,7 @@ let () =
     "Hot Streaks", streaks_tests;
     "Clutch Time", clutch_tests;
     "Score Flow", score_flow_tests;
+    "PBP Refresh", pbp_refresh_tests;
     "Views Tools", views_tools_tests;
     "Boxscore Link Chips", boxscore_link_chip_tests;
     "AI Summary", ai_game_summary_tests;
