@@ -1094,19 +1094,33 @@ let quarter_flow_section ?(lang=I18n.Ko) ~home_name ~away_name (quarters: quarte
 
 let boxscore_pbp_link_html ?(lang=I18n.Ko) game_id =
   let tr = I18n.t lang in
-  let label = tr { ko = "문자중계"; en = "Play-by-play" } in
+  let label_full = tr { ko = "문자중계"; en = "Play-by-play" } in
+  let label_short = tr { ko = "중계"; en = "Plays" } in
+  let label_html =
+    Printf.sprintf
+      {html|<span class="sm:hidden">%s</span><span class="hidden sm:inline">%s</span>|html}
+      (escape_html label_short)
+      (escape_html label_full)
+  in
   Printf.sprintf
-    {html|<a href="/boxscore/%s/pbp" class="px-2 py-1 rounded-full bg-slate-100 dark:bg-slate-800/70 border border-slate-300 dark:border-slate-700 text-[10px] font-mono tracking-wider text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white dark:text-slate-200 hover:border-slate-500 transition">%s</a>|html}
+    {html|<a href="/boxscore/%s/pbp" class="px-2 py-1 rounded-full bg-slate-100 dark:bg-slate-800/70 border border-slate-300 dark:border-slate-700 text-[10px] font-mono tracking-wider text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white dark:text-slate-200 hover:border-slate-500 transition whitespace-nowrap">%s</a>|html}
     (escape_html game_id)
-    (escape_html label)
+    label_html
 
 let boxscore_flow_link_html ?(lang=I18n.Ko) game_id =
   let tr = I18n.t lang in
-  let label = tr { ko = "득점흐름"; en = "Scoring flow" } in
+  let label_full = tr { ko = "득점흐름"; en = "Scoring flow" } in
+  let label_short = tr { ko = "흐름"; en = "Flow" } in
+  let label_html =
+    Printf.sprintf
+      {html|<span class="sm:hidden">%s</span><span class="hidden sm:inline">%s</span>|html}
+      (escape_html label_short)
+      (escape_html label_full)
+  in
   Printf.sprintf
-    {html|<a href="/boxscore/%s/flow" class="px-2 py-1 rounded-full bg-slate-100 dark:bg-slate-800/70 border border-slate-300 dark:border-slate-700 text-[10px] font-mono tracking-wider text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white dark:text-slate-200 hover:border-slate-500 transition">%s</a>|html}
+    {html|<a href="/boxscore/%s/flow" class="px-2 py-1 rounded-full bg-slate-100 dark:bg-slate-800/70 border border-slate-300 dark:border-slate-700 text-[10px] font-mono tracking-wider text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white dark:text-slate-200 hover:border-slate-500 transition whitespace-nowrap">%s</a>|html}
     (escape_html game_id)
-    (escape_html label)
+    label_html
 
 let boxscore_disabled_chip_html text =
   Printf.sprintf
