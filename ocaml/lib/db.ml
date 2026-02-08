@@ -5924,6 +5924,7 @@ let get_scored_games ?(season = "ALL") ?(include_mismatch=false) () =
   cached scored_games_cache key (fun () ->
     with_db (fun db -> Repo.get_scored_games ~season ~include_mismatch db))
 let get_game_season_code ~game_id () = with_db (fun db -> Repo.get_game_season_code ~game_id db)
+let get_game_info ~game_id () = with_db (fun db -> Repo.get_game_info ~game_id db)
 let get_pbp_periods ~game_id () = with_db (fun db -> Repo.get_pbp_periods ~game_id db)
 let get_pbp_events ~game_id ~period_code () =
   with_db (fun db -> Repo.get_pbp_events ~game_id ~period_code db)
