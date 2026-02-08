@@ -7,6 +7,7 @@ module Db_sync = Db_sync
 module Stats = Stats
 module I18n = I18n
 module Canonical_host = Canonical_host
+module Player_identity = Player_identity
 module Request_params = Request_params
 module Views = Views
 module Views_common = Views_common

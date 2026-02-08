@@ -2982,13 +2982,16 @@ module Queries = struct
   |}
   let boxscore_stats_by_game_id = (string ->* Types.boxscore_player_stat) {|
     WITH player_total_minutes AS (
-      SELECT player_id, SUM(min_seconds) AS total_min_seconds
-      FROM game_stats_clean
-      GROUP BY player_id
+      SELECT
+        pi.canonical_player_id AS player_id,
+        SUM(s.min_seconds) AS total_min_seconds
+      FROM game_stats_clean s
+      JOIN player_identities pi ON pi.player_id = s.player_id
+      GROUP BY pi.canonical_player_id
     ),
     ranked AS (
       SELECT
-        p.player_id,
+        pi.canonical_player_id AS player_id,
         TRIM(REPLACE(REPLACE(p.player_name, chr(92), ''), '"', '')) AS player_name,
         p.position,
         t.team_code,
@@ -3033,10 +3036,11 @@ module Queries = struct
               p.player_id DESC
 	        ) AS rn
 	      FROM game_stats_clean s
-	      JOIN players p ON s.player_id = p.player_id
+	      JOIN player_identities pi ON pi.player_id = s.player_id
+	      JOIN players p ON p.player_id = pi.canonical_player_id
 	      JOIN teams t ON s.team_code = t.team_code
 	      LEFT JOIN player_plus_minus pm ON pm.game_id = s.game_id AND pm.player_id = s.player_id
-	      LEFT JOIN player_total_minutes ptm ON ptm.player_id = p.player_id
+	      LEFT JOIN player_total_minutes ptm ON ptm.player_id = pi.canonical_player_id
 	      WHERE s.game_id = ?
 	    )
 	    SELECT
