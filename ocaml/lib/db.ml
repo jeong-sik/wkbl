@@ -4827,19 +4827,35 @@ module Queries = struct
 
   (** Games with incomplete PBP data (for re-scraping) *)
   let games_with_incomplete_pbp = (unit ->* t4 string string string string) {|
-    WITH pbp_final AS (
+    WITH sums AS (
+      SELECT game_id, team_code, SUM(pts) AS pts_sum
+      FROM game_stats_clean
+      GROUP BY game_id, team_code
+    ),
+    pbp_final AS (
       SELECT game_id, MAX(team1_score) as t1, MAX(team2_score) as t2
       FROM play_by_play_events WHERE team1_score IS NOT NULL
       GROUP BY game_id
+    ),
+    scored_games AS (
+      SELECT
+        g.game_id,
+        g.season_code,
+        g.game_date,
+        COALESCE(NULLIF(g.home_score, 0), sh.pts_sum) AS home_score_calc,
+        COALESCE(NULLIF(g.away_score, 0), sa.pts_sum) AS away_score_calc
+      FROM games g
+      LEFT JOIN sums sh ON sh.game_id = g.game_id AND sh.team_code = g.home_team_code
+      LEFT JOIN sums sa ON sa.game_id = g.game_id AND sa.team_code = g.away_team_code
     )
     SELECT g.game_id, g.season_code, g.game_date::text,
            CASE
-             WHEN g.home_score = 0 OR g.away_score = 0 THEN 'SCORE_MISSING'
+             WHEN g.home_score_calc IS NULL OR g.away_score_calc IS NULL THEN 'SCORE_MISSING'
              ELSE 'PBP_INCOMPLETE'
            END as issue_type
-    FROM games g JOIN pbp_final p ON g.game_id = p.game_id
-    WHERE NOT (g.home_score = p.t2 AND g.away_score = p.t1)
-      AND g.home_score > 0 AND g.away_score > 0
+    FROM scored_games g JOIN pbp_final p ON g.game_id = p.game_id
+    WHERE NOT (g.home_score_calc = p.t2 AND g.away_score_calc = p.t1)
+      AND g.home_score_calc > 0 AND g.away_score_calc > 0
     ORDER BY g.season_code DESC, g.game_date DESC
     LIMIT 100
   |}
