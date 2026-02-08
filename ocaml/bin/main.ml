@@ -453,19 +453,64 @@ let () =
     )
   in
 
+  let sync_missing_pbp ~season () =
+    let take n xs =
+      let rec loop acc n = function
+        | [] -> List.rev acc
+        | _ when n <= 0 -> List.rev acc
+        | x :: rest -> loop (x :: acc) (n - 1) rest
+      in
+      loop [] n xs
+    in
+    let missing_games =
+      match Db_sync.get_games_missing_pbp ~season () with
+      | Ok xs -> xs
+      | Error _ -> []
+    in
+    let max_games = 8 in
+    let games = missing_games |> take max_games in
+    let total = List.length games in
+    if total = 0 then ()
+    else (
+      Printf.printf "[Scheduler] Syncing play-by-play for %d games (season=%s)\n%!" total season;
+      let clock = Eio.Stdenv.clock env in
+      games |> List.iteri (fun i (g : Db_sync.PbpSync.missing_pbp_game) ->
+        Printf.printf "[Scheduler] [%d/%d] pbp %s\n%!" (i + 1) total g.game_id;
+        try
+          let events =
+            Eio.Time.with_timeout_exn clock 10.0 (fun () ->
+              Scraper.fetch_game_pbp_events ~sw ~env ~season_gu:g.season_code ~game_type:g.game_type ~game_no:g.game_no ())
+          in
+          if events <> [] then (
+            let rows = events |> List.map (fun (e : Domain.pbp_event) -> (e, None)) in
+            match Db_sync.replace_pbp_events ~game_id:g.game_id rows with
+            | Ok _n -> ()
+            | Error e ->
+                Printf.eprintf "[Scheduler] pbp DB error (%s): %s\n%!" g.game_id (Db.show_db_error e)
+          );
+          Eio.Time.sleep clock 0.2
+        with
+        | Eio.Time.Timeout -> ()
+        | exn ->
+            Printf.eprintf "[Scheduler] pbp error (%s): %s\n%!" g.game_id (Printexc.to_string exn)
+      )
+    )
+  in
+
   let sync_with_retry () : bool =
     let rec attempt n =
       Printf.printf "[Scheduler] Sync attempt %d...\n%!" (n + 1);
       let (schedule_synced, games_upserted, errors) =
         Scraper.sync_current_season_schedule ~sw ~env ()
       in
-      if Scraper.schedule_sync_success ~schedule_synced ~games_upserted ~errors then
+      if Scraper.schedule_sync_success ~schedule_synced ~games_upserted ~errors then (
         Printf.printf
           "[Scheduler] Sync successful: %d schedule, %d games, %d errors\n%!"
           schedule_synced
           games_upserted
           errors;
         true
+      )
       else if n < Array.length retry_intervals then begin
         Printf.printf
           "[Scheduler] Sync failed (%d schedule, %d games, %d errors), retrying in %.0f minutes...\n%!"
@@ -489,7 +534,8 @@ let () =
     let ok = sync_with_retry () in
     if ok then (
       let season = Scraper.current_season_code_auto () |> Scraper.main_to_datalab in
-      sync_missing_boxscores ~season ()
+      sync_missing_boxscores ~season ();
+      sync_missing_pbp ~season ()
     );
     (* Periodic sync *)
     while true do
@@ -498,7 +544,8 @@ let () =
       let ok = sync_with_retry () in
       if ok then (
         let season = Scraper.current_season_code_auto () |> Scraper.main_to_datalab in
-        sync_missing_boxscores ~season ()
+        sync_missing_boxscores ~season ();
+        sync_missing_pbp ~season ()
       )
     done
   );
