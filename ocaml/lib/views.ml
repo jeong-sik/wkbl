@@ -1100,6 +1100,25 @@ let boxscore_flow_link_html ?(lang=I18n.Ko) game_id =
     (escape_html game_id)
     (escape_html label)
 
+let boxscore_disabled_chip_html text =
+  Printf.sprintf
+    {html|<span class="px-2 py-1 rounded-full bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 text-[10px] font-mono tracking-wider text-slate-500 dark:text-slate-500 cursor-default">%s</span>|html}
+    (escape_html text)
+
+let boxscore_pbp_chip_html ?(lang=I18n.Ko) ~has_pbp game_id =
+  let tr = I18n.t lang in
+  if has_pbp then
+    boxscore_pbp_link_html ~lang game_id
+  else
+    boxscore_disabled_chip_html (tr { ko = "문자중계 없음"; en = "No play-by-play" })
+
+let boxscore_flow_chip_html ?(lang=I18n.Ko) ~has_pbp game_id =
+  let tr = I18n.t lang in
+  if has_pbp then
+    boxscore_flow_link_html ~lang game_id
+  else
+    boxscore_disabled_chip_html (tr { ko = "득점흐름 없음"; en = "No scoring flow" })
+
 let boxscore_data_notes_html ~official_link =
   Printf.sprintf
     {html|<details class="max-w-2xl mx-auto bg-white dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-800 p-4 text-xs text-slate-600 dark:text-slate-400">
@@ -1163,20 +1182,28 @@ let boxscore_page ?(lang=I18n.Ko) (bs: game_boxscore) =
       (escape_html label_points_unit)
  in
  let quality_badge = if is_scheduled then "" else score_quality_badge ~lang gi.gi_score_quality in
- let official_link =
-  match wkbl_official_game_result_url ~game_id:gi.gi_game_id ~game_date:gi.gi_game_date with
-  | None -> ""
-  | Some url ->
+	 let official_link =
+	  match wkbl_official_game_result_url ~game_id:gi.gi_game_id ~game_date:gi.gi_game_date with
+	  | None -> ""
+	  | Some url ->
     Printf.sprintf
      {html|<a href="%s" target="_blank" rel="noreferrer" class="text-orange-600 dark:text-orange-400 hover:text-orange-700 underline-offset-2 hover:underline">WKBL 원본</a>|html}
-     (escape_html url)
-	 in
-		 let pbp_link = if is_scheduled then "" else boxscore_pbp_link_html ~lang gi.gi_game_id in
-		 let flow_link = if is_scheduled then "" else boxscore_flow_link_html ~lang gi.gi_game_id in
-		 let data_notes = if is_scheduled then "" else boxscore_data_notes_html ~official_link in
-		 let home_table =
-		  if bs.boxscore_home_players = [] then ""
-		  else boxscore_player_table gi.gi_home_team_name bs.boxscore_home_players
+	     (escape_html url)
+		 in
+			 let pbp_periods =
+			   if is_scheduled then []
+			   else
+			     match Db.get_pbp_periods ~game_id:gi.gi_game_id () with
+			     | Ok ps -> ps
+			     | Error _ -> []
+			 in
+			 let has_pbp = pbp_periods <> [] in
+			 let pbp_link = if is_scheduled then "" else boxscore_pbp_chip_html ~lang ~has_pbp gi.gi_game_id in
+			 let flow_link = if is_scheduled then "" else boxscore_flow_chip_html ~lang ~has_pbp gi.gi_game_id in
+			 let data_notes = if is_scheduled then "" else boxscore_data_notes_html ~official_link in
+			 let home_table =
+			  if bs.boxscore_home_players = [] then ""
+			  else boxscore_player_table gi.gi_home_team_name bs.boxscore_home_players
 		 in
 		 let away_table =
 		  if bs.boxscore_away_players = [] then ""
