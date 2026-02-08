@@ -1069,10 +1069,10 @@ let player_game_logs_page ?(lang=I18n.Ko) (profile: player_profile) ~(season: st
         | Mismatch -> (v, d, m + 1))
       (0, 0, 0)
   in
-	  let quality_chips =
-	    Printf.sprintf
-	      {html|<div class="flex flex-wrap items-center gap-2 text-[11px] text-slate-600 dark:text-slate-400"><span class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700/60 whitespace-nowrap">일치 %d</span><span class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700/60 whitespace-nowrap">추정 %d</span><span class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700/60 whitespace-nowrap">불일치 %d</span></div>|html}
-	      verified_cnt derived_cnt mismatch_cnt
+  let quality_chips =
+    Printf.sprintf
+      {html|<div class="flex flex-wrap items-center gap-2 text-[11px] text-slate-600 dark:text-slate-400"><span class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700/60 whitespace-nowrap">일치 %d</span><span class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700/60 whitespace-nowrap">추정 %d</span><span class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700/60 whitespace-nowrap">불일치 %d</span></div>|html}
+      verified_cnt derived_cnt mismatch_cnt
   in
   let rows =
     if games = [] then
