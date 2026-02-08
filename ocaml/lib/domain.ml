@@ -323,6 +323,35 @@ let extract_score_flow (events: pbp_event list) : score_flow_point list =
   in
   dedup with_start
 
+(** PBP periods should include regulation quarters for a finished game. *)
+let pbp_periods_complete_for_regulation (periods : string list) : bool =
+  List.for_all (fun p -> List.mem p periods) [ "Q1"; "Q2"; "Q3"; "Q4" ]
+
+(** Decide whether to refresh PBP data on-demand.
+
+    We only treat missing quarters as a problem for past games (KST) with non-zero scores.
+    This avoids hammering WKBL endpoints for live games that are still in progress. *)
+let pbp_should_backfill ~today_kst (g : game_info) (periods : string list) : bool =
+  match periods with
+  | [] -> true
+  | _ ->
+      let scores_known = g.gi_home_score > 0 && g.gi_away_score > 0 in
+      let game_date = String.trim g.gi_game_date in
+      let is_past_game =
+        game_date <> "" && String.compare game_date (String.trim today_kst) < 0
+      in
+      scores_known && is_past_game && not (pbp_periods_complete_for_regulation periods)
+
+let score_flow_last_scores (flow_points : score_flow_point list) : (int * int) option =
+  match List.rev flow_points with
+  | [] -> None
+  | p :: _ -> Some (p.sfp_home_score, p.sfp_away_score)
+
+let score_flow_matches_final ~final_home ~final_away (flow_points : score_flow_point list) : bool =
+  match score_flow_last_scores flow_points with
+  | None -> false
+  | Some (h, a) -> h = final_home && a = final_away
+
 type leader_entry = {
   le_player_id: string;
   le_player_name: string;
