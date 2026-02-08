@@ -87,10 +87,33 @@ type qa_schedule_coverage = {
   qsc_games_missing_team: bool;
 }
 
+type qa_pbp_missing_game = {
+  qpmg_game_id: string;
+  qpmg_game_date: string;
+  qpmg_home_team: string;
+  qpmg_away_team: string;
+  qpmg_home_score: int;
+  qpmg_away_score: int;
+}
+
+type qa_pbp_missing_report = {
+  qpmr_generated_at: string;
+  qpmr_season_code: string;
+  qpmr_finished_games_total: int;
+  qpmr_pbp_games: int;
+  qpmr_missing_games: int;
+  qpmr_coverage_pct: float;
+  qpmr_missing_sample: qa_pbp_missing_game list;
+}
+
 type qa_db_report = {
   qdr_generated_at: string;
   qdr_games_total: int;
+  qdr_finished_games_total: int;
   qdr_games_with_stats: int;
+  qdr_pbp_games: int;
+  qdr_pbp_missing_games: int;
+  qdr_pbp_coverage_pct: float;
   qdr_plus_minus_games: int;
   qdr_plus_minus_coverage_pct: float;
   qdr_schedule_total: int;
@@ -499,6 +522,26 @@ module Types = struct
       }
     in
     custom ~encode ~decode (t2 string (t2 string (t2 string string)))
+
+  let qa_pbp_missing_game =
+    let encode _ = Error "Encode not supported: read-only type" in
+    let decode (game_id, (game_date, (home_team, (away_team, (home_score, away_score))))) =
+      Ok {
+        qpmg_game_id = game_id;
+        qpmg_game_date = game_date;
+        qpmg_home_team = home_team;
+        qpmg_away_team = away_team;
+        qpmg_home_score = home_score;
+        qpmg_away_score = away_score;
+      }
+    in
+    let t = t2 in
+    custom ~encode ~decode
+      (t string
+         (t string
+            (t string
+               (t string
+                  (t int int)))))
 
   let qa_schedule_coverage =
     let encode _ = Error "Encode not supported: read-only type" in
@@ -2290,6 +2333,14 @@ module Queries = struct
     WHERE game_type != '10'
   |}
 
+  let qa_finished_games_total = (unit ->? int) {|
+    SELECT COUNT(*)
+    FROM games_calc_v3 g
+    WHERE g.game_type != '10'
+      AND g.home_score_calc IS NOT NULL
+      AND g.away_score_calc IS NOT NULL
+  |}
+
   let qa_games_with_stats = (unit ->? int) {|
     SELECT COUNT(DISTINCT s.game_id)
     FROM game_stats_clean s
@@ -2297,11 +2348,72 @@ module Queries = struct
     WHERE g.game_type != '10'
   |}
 
+  let qa_pbp_games = (unit ->? int) {|
+    SELECT COUNT(DISTINCT e.game_id)
+    FROM play_by_play_events e
+    JOIN games_calc_v3 g ON g.game_id = e.game_id
+    WHERE g.game_type != '10'
+      AND g.home_score_calc IS NOT NULL
+      AND g.away_score_calc IS NOT NULL
+  |}
+
   let qa_plus_minus_games = (unit ->? int) {|
     SELECT COUNT(DISTINCT pm.game_id)
     FROM player_plus_minus pm
-    JOIN games g ON g.game_id = pm.game_id
+    JOIN games_calc_v3 g ON g.game_id = pm.game_id
     WHERE g.game_type != '10'
+      AND g.home_score_calc IS NOT NULL
+      AND g.away_score_calc IS NOT NULL
+  |}
+
+  let qa_finished_games_total_by_season = (string ->? int) {|
+    SELECT COUNT(*)
+    FROM games_calc_v3 g
+    WHERE g.game_type != '10'
+      AND g.season_code = ?
+      AND g.home_score_calc IS NOT NULL
+      AND g.away_score_calc IS NOT NULL
+  |}
+
+  let qa_pbp_games_by_season = (string ->? int) {|
+    SELECT COUNT(DISTINCT e.game_id)
+    FROM play_by_play_events e
+    JOIN games_calc_v3 g ON g.game_id = e.game_id
+    WHERE g.game_type != '10'
+      AND g.season_code = ?
+      AND g.home_score_calc IS NOT NULL
+      AND g.away_score_calc IS NOT NULL
+  |}
+
+  let qa_pbp_missing_games_sample_by_season = (string ->* Types.qa_pbp_missing_game) {|
+    WITH finished AS (
+      SELECT
+        game_id,
+        game_date,
+        home_team_code,
+        away_team_code,
+        home_score_calc::int as home_score,
+        away_score_calc::int as away_score
+      FROM games_calc_v3
+      WHERE game_type != '10'
+        AND season_code = ?
+        AND home_score_calc IS NOT NULL
+        AND away_score_calc IS NOT NULL
+    )
+    SELECT
+      f.game_id,
+      f.game_date::text,
+      th.team_name_kr as home_team,
+      ta.team_name_kr as away_team,
+      f.home_score,
+      f.away_score
+    FROM finished f
+    JOIN teams th ON th.team_code = f.home_team_code
+    JOIN teams ta ON ta.team_code = f.away_team_code
+    LEFT JOIN play_by_play_events e ON e.game_id = f.game_id
+    WHERE e.game_id IS NULL
+    ORDER BY f.game_date DESC, f.game_id DESC
+    LIMIT 200
   |}
 
   let qa_schedule_total = (unit ->? int) {|
@@ -5063,8 +5175,16 @@ end
     Db.collect_list Queries.team_active_player_ids (team_name, game_id)
 
   let qa_games_total (module Db : Caqti_eio.CONNECTION) = Db.find_opt Queries.qa_games_total ()
+  let qa_finished_games_total (module Db : Caqti_eio.CONNECTION) = Db.find_opt Queries.qa_finished_games_total ()
   let qa_games_with_stats (module Db : Caqti_eio.CONNECTION) = Db.find_opt Queries.qa_games_with_stats ()
+  let qa_pbp_games (module Db : Caqti_eio.CONNECTION) = Db.find_opt Queries.qa_pbp_games ()
   let qa_plus_minus_games (module Db : Caqti_eio.CONNECTION) = Db.find_opt Queries.qa_plus_minus_games ()
+  let qa_finished_games_total_by_season ~season (module Db : Caqti_eio.CONNECTION) =
+    Db.find_opt Queries.qa_finished_games_total_by_season season
+  let qa_pbp_games_by_season ~season (module Db : Caqti_eio.CONNECTION) =
+    Db.find_opt Queries.qa_pbp_games_by_season season
+  let qa_pbp_missing_games_sample_by_season ~season (module Db : Caqti_eio.CONNECTION) =
+    Db.collect_list Queries.qa_pbp_missing_games_sample_by_season season
   let qa_score_mismatch_count (module Db : Caqti_eio.CONNECTION) = Db.find_opt Queries.qa_score_mismatch_count ()
   let qa_score_mismatch_sample (module Db : Caqti_eio.CONNECTION) = Db.collect_list Queries.qa_score_mismatch_sample ()
   let qa_team_count_anomaly_count (module Db : Caqti_eio.CONNECTION) = Db.find_opt Queries.qa_team_count_anomaly_count ()
@@ -5382,6 +5502,7 @@ let trade_years_cache = Cache.create ~ttl:300.0 ~max_entries:8
 let trade_events_cache = Cache.create ~ttl:300.0 ~max_entries:32
 let qa_report_cache = Cache.create ~ttl:300.0 ~max_entries:4
 let qa_schedule_missing_report_cache = Cache.create ~ttl:300.0 ~max_entries:4
+let qa_pbp_missing_report_cache = Cache.create ~ttl:300.0 ~max_entries:16
 let history_cache = Cache.create ~ttl:(60.0 *. 60.0 *. 6.0) ~max_entries:16  (* 6h TTL for history data *)
 let legends_cache = Cache.create ~ttl:(60.0 *. 60.0 *. 6.0) ~max_entries:16
 let coaches_cache = Cache.create ~ttl:(60.0 *. 60.0 *. 6.0) ~max_entries:16
@@ -5984,7 +6105,9 @@ let get_db_quality_report () : qa_db_report db_result =
     let (let*) = Result.bind in
     let int_or_zero = Option.value ~default:0 in
     let* games_total_opt = with_db (fun db -> Repo.qa_games_total db) in
+    let* finished_games_total_opt = with_db (fun db -> Repo.qa_finished_games_total db) in
     let* games_with_stats_opt = with_db (fun db -> Repo.qa_games_with_stats db) in
+    let* pbp_games_opt = with_db (fun db -> Repo.qa_pbp_games db) in
     let* plus_minus_games_opt = with_db (fun db -> Repo.qa_plus_minus_games db) in
     let* schedule_total_opt = with_db (fun db -> Repo.qa_schedule_total db) in
     let* schedule_completed_opt = with_db (fun db -> Repo.qa_schedule_completed db) in
@@ -6004,13 +6127,17 @@ let get_db_quality_report () : qa_db_report db_result =
     let* dup_identity_count_opt = with_db (fun db -> Repo.qa_duplicate_player_identity_count db) in
     let* dup_identity_rows = with_db (fun db -> Repo.qa_duplicate_player_identity_sample db) in
     let games_total = int_or_zero games_total_opt in
+    let finished_games_total = int_or_zero finished_games_total_opt in
     let games_with_stats = int_or_zero games_with_stats_opt in
+    let pbp_games = int_or_zero pbp_games_opt in
     let plus_minus_games = int_or_zero plus_minus_games_opt in
     let schedule_total = int_or_zero schedule_total_opt in
     let schedule_completed = int_or_zero schedule_completed_opt in
     let schedule_missing_game_count = int_or_zero schedule_missing_game_count_opt in
     let schedule_missing_stats_count = int_or_zero schedule_missing_stats_count_opt in
-    let plus_minus_coverage_pct = Db_common.coverage_pct ~total:games_total ~covered:plus_minus_games in
+    let pbp_missing_games = max 0 (finished_games_total - pbp_games) in
+    let pbp_coverage_pct = Db_common.coverage_pct ~total:finished_games_total ~covered:pbp_games in
+    let plus_minus_coverage_pct = Db_common.coverage_pct ~total:finished_games_total ~covered:plus_minus_games in
     let schedule_missing_game_pct = Db_common.coverage_pct ~total:schedule_completed ~covered:schedule_missing_game_count in
     let schedule_missing_stats_pct = Db_common.coverage_pct ~total:schedule_completed ~covered:schedule_missing_stats_count in
     let dup_name_sample =
@@ -6032,7 +6159,11 @@ let get_db_quality_report () : qa_db_report db_result =
     in
     Ok { qdr_generated_at = iso8601_utc ();
         qdr_games_total = games_total;
+        qdr_finished_games_total = finished_games_total;
         qdr_games_with_stats = games_with_stats;
+        qdr_pbp_games = pbp_games;
+        qdr_pbp_missing_games = pbp_missing_games;
+        qdr_pbp_coverage_pct = pbp_coverage_pct;
         qdr_plus_minus_games = plus_minus_games;
         qdr_plus_minus_coverage_pct = plus_minus_coverage_pct;
         qdr_schedule_total = schedule_total;
@@ -6055,6 +6186,32 @@ let get_db_quality_report () : qa_db_report db_result =
         qdr_duplicate_player_identity_count = int_or_zero dup_identity_count_opt;
         qdr_duplicate_player_identity_sample = dup_identity_sample;
       })
+
+let get_pbp_missing_report ~season () : qa_pbp_missing_report db_result =
+  let s =
+    season |> String.trim |> fun v ->
+    if v = "" then Seasons_catalog.current_regular_season_code () else v
+  in
+  let key = Printf.sprintf "season=%s" (cache_key_text s) in
+  cached qa_pbp_missing_report_cache key (fun () ->
+    let (let*) = Result.bind in
+    let int_or_zero = Option.value ~default:0 in
+    let* finished_games_total_opt = with_db (fun db -> Repo.qa_finished_games_total_by_season ~season:s db) in
+    let* pbp_games_opt = with_db (fun db -> Repo.qa_pbp_games_by_season ~season:s db) in
+    let* missing_sample = with_db (fun db -> Repo.qa_pbp_missing_games_sample_by_season ~season:s db) in
+    let finished_games_total = int_or_zero finished_games_total_opt in
+    let pbp_games = int_or_zero pbp_games_opt in
+    let missing_games = max 0 (finished_games_total - pbp_games) in
+    let coverage_pct = Db_common.coverage_pct ~total:finished_games_total ~covered:pbp_games in
+    Ok {
+      qpmr_generated_at = iso8601_utc ();
+      qpmr_season_code = s;
+      qpmr_finished_games_total = finished_games_total;
+      qpmr_pbp_games = pbp_games;
+      qpmr_missing_games = missing_games;
+      qpmr_coverage_pct = coverage_pct;
+      qpmr_missing_sample = missing_sample;
+    })
 
 let get_schedule_missing_report () : qa_schedule_missing_report db_result =
   cached qa_schedule_missing_report_cache "qa_schedule_missing_report" (fun () ->
@@ -6578,6 +6735,7 @@ let clear_all_caches () =
   clear_cache trade_events_cache;
   clear_cache qa_report_cache;
   clear_cache qa_schedule_missing_report_cache;
+  clear_cache qa_pbp_missing_report_cache;
   clear_cache history_cache;
   clear_cache legends_cache;
   clear_cache coaches_cache;

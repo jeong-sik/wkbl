@@ -2002,11 +2002,15 @@ let test_split_csv_ids () =
   Alcotest.(check list_string) "empty" [] (Wkbl.Db.split_csv_ids "");
   Alcotest.(check list_string) "trim + skip empty" ["a"; "b"] (Wkbl.Db.split_csv_ids "a,, ,b,")
 
-let test_qa_dashboard_schedule_coverage () =
+ let test_qa_dashboard_schedule_coverage () =
   let report : Wkbl.Db.qa_db_report = {
     qdr_generated_at = "2026-02-06T00:00:00Z";
     qdr_games_total = 0;
+    qdr_finished_games_total = 0;
     qdr_games_with_stats = 0;
+    qdr_pbp_games = 0;
+    qdr_pbp_missing_games = 0;
+    qdr_pbp_coverage_pct = 0.0;
     qdr_plus_minus_games = 0;
     qdr_plus_minus_coverage_pct = 0.0;
     qdr_schedule_total = 0;
@@ -2041,13 +2045,19 @@ let test_qa_dashboard_schedule_coverage () =
   } in
   let html = Wkbl.Views_tools.qa_dashboard_page report () in
   Alcotest.(check bool) "contains schedule coverage header" true (contains_substring html "시즌별 일정-경기 매칭");
-  Alcotest.(check bool) "contains no games flag" true (contains_substring html "경기 없음")
+  Alcotest.(check bool) "contains no games flag" true (contains_substring html "경기 없음");
+  Alcotest.(check bool) "shows live text kpi" true (contains_substring html "문자중계 수집");
+  Alcotest.(check bool) "links to pbp missing page" true (contains_substring html "/qa/pbp-missing")
 
 let test_qa_dashboard_english_mode () =
   let report : Wkbl.Db.qa_db_report = {
     qdr_generated_at = "2026-02-06T00:00:00Z";
     qdr_games_total = 0;
+    qdr_finished_games_total = 0;
     qdr_games_with_stats = 0;
+    qdr_pbp_games = 0;
+    qdr_pbp_missing_games = 0;
+    qdr_pbp_coverage_pct = 0.0;
     qdr_plus_minus_games = 0;
     qdr_plus_minus_coverage_pct = 0.0;
     qdr_schedule_total = 0;
@@ -2085,7 +2095,8 @@ let test_qa_dashboard_english_mode () =
   Alcotest.(check bool) "en last checked" true (contains_substring html "Last checked");
   Alcotest.(check bool) "en schedule coverage heading" true (contains_substring html "Schedule coverage");
   Alcotest.(check bool) "en sources summary" true (contains_substring html "Sources / How it is checked");
-  Alcotest.(check bool) "en score mismatch block" true (contains_substring html "Score mismatch")
+  Alcotest.(check bool) "en score mismatch block" true (contains_substring html "Score mismatch");
+  Alcotest.(check bool) "en live text kpi" true (contains_substring html "Live text coverage")
 
 let test_qa_schedule_missing_english_mode () =
   let report : Wkbl.Db.qa_schedule_missing_report =
@@ -2104,12 +2115,40 @@ let test_qa_schedule_missing_english_mode () =
   Alcotest.(check bool) "en last checked" true (contains_substring html "Last checked");
   Alcotest.(check bool) "en table headers" true (contains_substring html ">Reason<")
 
+let test_qa_pbp_missing_page_korean () =
+  let seasons : Wkbl.Domain.season_info list = [
+    { code = "046"; name = "2025-2026" };
+  ] in
+  let report : Wkbl.Db.qa_pbp_missing_report =
+    { qpmr_generated_at = "2026-02-06T00:00:00Z";
+      qpmr_season_code = "046";
+      qpmr_finished_games_total = 10;
+      qpmr_pbp_games = 7;
+      qpmr_missing_games = 3;
+      qpmr_coverage_pct = 70.0;
+      qpmr_missing_sample = [
+        { qpmg_game_id = "GAME-1";
+          qpmg_game_date = "2026-02-01";
+          qpmg_home_team = "우리은행";
+          qpmg_away_team = "KB스타즈";
+          qpmg_home_score = 70;
+          qpmg_away_score = 65;
+        }
+      ];
+    }
+  in
+  let html = Wkbl.Views_tools.qa_pbp_missing_page ~season:"046" ~seasons report () in
+  Alcotest.(check bool) "korean heading" true (contains_substring html "문자중계 누락");
+  Alcotest.(check bool) "has boxscore link" true (contains_substring html "/boxscore/GAME-1");
+  Alcotest.(check bool) "has live text link" true (contains_substring html "/boxscore/GAME-1/pbp")
+
 let qa_util_tests = [
   Alcotest.test_case "coverage pct" `Quick test_coverage_pct;
   Alcotest.test_case "split csv ids" `Quick test_split_csv_ids;
   Alcotest.test_case "qa schedule coverage block" `Quick test_qa_dashboard_schedule_coverage;
   Alcotest.test_case "qa dashboard english mode" `Quick test_qa_dashboard_english_mode;
   Alcotest.test_case "qa schedule missing english mode" `Quick test_qa_schedule_missing_english_mode;
+  Alcotest.test_case "qa live text missing page (ko)" `Quick test_qa_pbp_missing_page_korean;
 ]
 
 (* ============================================= *)
