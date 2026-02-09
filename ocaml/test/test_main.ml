@@ -2720,6 +2720,57 @@ let test_boxscore_shooting_hides_0_0_pct () =
   Alcotest.(check bool) "dash for zero attempts" true
     (contains_substring html {|<span class="text-slate-400 dark:text-slate-600">-</span>|})
 
+let test_pbp_page_passes_lang_to_layout () =
+  let game : Wkbl.Domain.game_info =
+    { gi_game_id = "046-01-62";
+      gi_game_date = "2026-02-04";
+      gi_home_team_code = "09";
+      gi_home_team_name = "하나은행";
+      gi_away_team_code = "03";
+      gi_away_team_name = "삼성생명";
+      gi_home_score = 54;
+      gi_away_score = 74;
+      gi_score_quality = Wkbl.Domain.Derived;
+    }
+  in
+  let html =
+    Wkbl.Views.pbp_page
+      ~lang:Wkbl.I18n.En
+      ~game
+      ~periods:[]
+      ~selected_period:"ALL"
+      ~events:[]
+      ()
+  in
+  Alcotest.(check bool) "html lang is en" true (contains_substring html {|<html lang="en">|});
+  Alcotest.(check bool) "has English heading" true (contains_substring html "Play by play")
+
+let test_game_flow_page_no_scoring_hides_chart () =
+  let game : Wkbl.Domain.game_info =
+    { gi_game_id = "046-01-62";
+      gi_game_date = "2026-02-04";
+      gi_home_team_code = "09";
+      gi_home_team_name = "하나은행";
+      gi_away_team_code = "03";
+      gi_away_team_name = "삼성생명";
+      gi_home_score = 54;
+      gi_away_score = 74;
+      gi_score_quality = Wkbl.Domain.Derived;
+    }
+  in
+  let pt : Wkbl.Domain.score_flow_point =
+    { sfp_clock = "10:00";
+      sfp_period = "Q1";
+      sfp_home_score = 0;
+      sfp_away_score = 0;
+      sfp_diff = 0;
+      sfp_elapsed_seconds = 0;
+    }
+  in
+  let html = Wkbl.Views_tools.game_flow_page ~game [ pt ] in
+  Alcotest.(check bool) "empty state text" true (contains_substring html "득점흐름을 만들 기록이 없어요");
+  Alcotest.(check bool) "no flow chart html" false (contains_substring html "Area fill")
+
 let ui_copy_tests = [
   Alcotest.test_case "find_substring_from" `Quick test_find_substring_from;
   Alcotest.test_case "ui copy avoids dev terms" `Quick test_ui_copy_no_dev_terms;
@@ -2727,6 +2778,8 @@ let ui_copy_tests = [
   Alcotest.test_case "nav labels are Korean" `Quick test_nav_labels_are_korean;
   Alcotest.test_case "totals tooltip is season" `Quick test_totals_tooltip_is_season;
   Alcotest.test_case "boxscore hides 0-0%" `Quick test_boxscore_shooting_hides_0_0_pct;
+  Alcotest.test_case "pbp page passes lang to layout" `Quick test_pbp_page_passes_lang_to_layout;
+  Alcotest.test_case "flow page hides chart when no scoring" `Quick test_game_flow_page_no_scoring_hides_chart;
 ]
 
 (* ============================================= *)

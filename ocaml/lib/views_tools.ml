@@ -1777,7 +1777,10 @@ let game_flow_chart ~home_team ~away_team (flow_points: Domain.score_flow_point 
 (** Game flow page with chart and summary statistics *)
 let game_flow_page ?(lang=I18n.Ko) ~(game: Domain.game_info) (flow_points: Domain.score_flow_point list) =
   let title = Printf.sprintf "경기 흐름: %s 대 %s" game.gi_home_team_name game.gi_away_team_name in
-  let chart = game_flow_chart ~home_team:game.gi_home_team_name ~away_team:game.gi_away_team_name flow_points in
+  let has_scoring =
+    flow_points
+    |> List.exists (fun (p: Domain.score_flow_point) -> (p.sfp_home_score + p.sfp_away_score) > 0)
+  in
 
   match flow_points with
   | [] ->
@@ -1791,7 +1794,6 @@ let game_flow_page ?(lang=I18n.Ko) ~(game: Domain.game_info) (flow_points: Domai
               <div class="text-slate-500 dark:text-slate-400 text-sm mt-1">%s</div>
               <div class="text-3xl font-black text-slate-900 dark:text-slate-200 mt-2">%d - %d</div>
             </div>
-            %s
             <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 text-slate-600 dark:text-slate-400 text-sm">
               문자중계가 없는 경기라 득점흐름을 만들 수 없어요.
             </div>
@@ -1805,11 +1807,43 @@ let game_flow_page ?(lang=I18n.Ko) ~(game: Domain.game_info) (flow_points: Domai
           (escape_html game.gi_game_date)
           game.gi_home_score
           game.gi_away_score
-          chart
+          (escape_html game.gi_game_id)
+          (escape_html game.gi_game_id))
+        ()
+  | _ when not has_scoring ->
+      layout
+        ~lang
+        ~title
+        ~content:(Printf.sprintf
+          {html|<div class="space-y-6 animate-fade-in">
+            <div class="text-center">
+              <h1 class="text-2xl font-black text-slate-900 dark:text-slate-200">%s 대 %s</h1>
+              <div class="text-slate-500 dark:text-slate-400 text-sm mt-1">%s</div>
+              <div class="text-3xl font-black text-slate-900 dark:text-slate-200 mt-2">%d - %d</div>
+            </div>
+            <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 text-slate-600 dark:text-slate-400 text-sm">
+              득점흐름을 만들 기록이 없어요.
+            </div>
+            <div class="flex justify-center gap-4">
+              <a href="/boxscore/%s" class="px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-200 hover:border-slate-500 transition">← 박스스코어</a>
+              <a href="/boxscore/%s/pbp" class="px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-200 hover:border-slate-500 transition">문자중계 →</a>
+            </div>
+          </div>|html}
+          (escape_html game.gi_home_team_name)
+          (escape_html game.gi_away_team_name)
+          (escape_html game.gi_game_date)
+          game.gi_home_score
+          game.gi_away_score
           (escape_html game.gi_game_id)
           (escape_html game.gi_game_id))
         ()
   | _ ->
+      let chart =
+        game_flow_chart
+          ~home_team:game.gi_home_team_name
+          ~away_team:game.gi_away_team_name
+          flow_points
+      in
       (* Calculate lead changes and biggest leads *)
       let (lead_changes, biggest_home_lead, biggest_away_lead) =
         let rec count_changes prev_leader changes home_max away_max = function
