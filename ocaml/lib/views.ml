@@ -1310,13 +1310,24 @@ let pbp_period_label =
 
 let pbp_page ?(lang=I18n.Ko) ~(game: game_info) ~(periods: string list) ~(selected_period: string) ~(events: pbp_event list) () =
  let tr = I18n.t lang in
+ let label_pbp = tr { ko = "문자중계"; en = "Play by play" } in
+ let label_back_boxscore = tr { ko = "← 박스스코어"; en = "← Boxscore" } in
+ let label_wkbl_source = tr { ko = "WKBL 원본"; en = "WKBL source" } in
+ let title_page =
+  tr
+   {
+     ko = Printf.sprintf "문자중계: %s vs %s" game.gi_home_team_name game.gi_away_team_name;
+     en = Printf.sprintf "Play by play: %s vs %s" game.gi_home_team_name game.gi_away_team_name;
+   }
+ in
  let official_link =
   match wkbl_official_game_result_url ~game_id:game.gi_game_id ~game_date:game.gi_game_date with
   | None -> ""
   | Some url ->
     Printf.sprintf
-     {html|<a href="%s" target="_blank" rel="noreferrer" class="text-orange-600 dark:text-orange-400 hover:text-orange-700 underline-offset-2 hover:underline">WKBL 원본</a>|html}
+     {html|<a href="%s" target="_blank" rel="noreferrer" class="text-orange-600 dark:text-orange-400 hover:text-orange-700 underline-offset-2 hover:underline">%s</a>|html}
      (escape_html url)
+     (escape_html label_wkbl_source)
  in
  let tabs =
   match periods with
@@ -1342,19 +1353,16 @@ let pbp_page ?(lang=I18n.Ko) ~(game: game_info) ~(periods: string list) ~(select
  let rows =
   events
   |> List.map (fun (e: pbp_event) ->
-    let team_name, side_label =
+    let team_name =
      match e.pe_team_side with
-     | 1 -> (game.gi_away_team_name, tr { ko = "원정"; en = "AWAY" })
-     | 2 -> (game.gi_home_team_name, tr { ko = "홈"; en = "HOME" })
-     | _ -> ("", "—")
+     | 1 -> game.gi_away_team_name
+     | 2 -> game.gi_home_team_name
+     | _ -> ""
     in
     let side_badge =
      match e.pe_team_side with
      | 1 | 2 ->
-       Printf.sprintf
-        {html|<div class="flex items-center gap-2">%s<span class="text-[10px] font-mono text-slate-600 dark:text-slate-400 tracking-wider">%s</span></div>|html}
-        (team_badge ~max_width:"max-w-[110px] sm:max-w-[140px]" team_name)
-        (escape_html side_label)
+       team_badge ~max_width:"max-w-[110px] sm:max-w-[140px]" team_name
      | _ ->
        {html|<div class="flex items-center gap-2"><div class="w-6 h-6 rounded bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-xs">🏀</div><span class="text-[10px] font-mono text-slate-600 dark:text-slate-400 tracking-wider">—</span></div>|html}
     in
@@ -1365,14 +1373,12 @@ let pbp_page ?(lang=I18n.Ko) ~(game: game_info) ~(periods: string list) ~(select
          tr
            {
              ko = Printf.sprintf "원정 %s / 홈 %s" game.gi_away_team_name game.gi_home_team_name;
-             en = Printf.sprintf "AWAY %s / HOME %s" game.gi_away_team_name game.gi_home_team_name;
+             en = Printf.sprintf "Away %s / Home %s" game.gi_away_team_name game.gi_home_team_name;
            }
        in
-       let text =
-         tr { ko = Printf.sprintf "원정 %d - %d 홈" a h; en = Printf.sprintf "A %d - %d H" a h }
-       in
+       let text = Printf.sprintf "%d - %d" a h in
        Printf.sprintf
-        {html|<span class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800/40 border border-slate-300 dark:border-slate-700/40 text-[10px] font-mono text-slate-700 dark:text-slate-300 whitespace-nowrap" title="%s">%s</span>|html}
+        {html|<span class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800/40 border border-slate-300 dark:border-slate-700/40 text-[11px] tabular-nums font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap" title="%s">%s</span>|html}
         (escape_html title)
         (escape_html text)
      | _ -> ""
@@ -1400,65 +1406,93 @@ let pbp_page ?(lang=I18n.Ko) ~(game: game_info) ~(periods: string list) ~(select
      (escape_html e.pe_description))
   |> String.concat "\n"
  in
+ let title_no_pbp = tr { ko = "문자중계가 없어요"; en = "No play by play for this game" } in
+ let desc_no_pbp =
+  tr
+   {
+     ko = "WKBL에서 문자중계를 제공하지 않았거나, 아직 준비되지 않은 경기입니다. 문자중계가 없으면 일부 세부 기록이 표시되지 않을 수 있어요.";
+     en = "WKBL did not provide play by play for this game, or it is not available yet. When the feed is missing, some detailed stats may not be shown.";
+   }
+ in
+ let title_no_rows = tr { ko = "이 쿼터에는 기록이 없어요"; en = "No events in this period" } in
+ let desc_no_rows =
+  tr
+   {
+     ko = "다른 쿼터를 눌러보거나, WKBL 원본 링크가 있으면 확인해 주세요.";
+     en = "Try another period, or check the WKBL source link if available.";
+   }
+ in
+ let note_score_order =
+  tr
+   {
+     ko = "문자중계 점수는 보통 원정 / 홈 순서로 표시됩니다.";
+     en = "In the feed, the score is usually shown as Away / Home.";
+   }
+ in
 	 let body =
 	  match periods with
 	  | [] ->
 	    Printf.sprintf
 	      {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 text-slate-600 dark:text-slate-400 text-sm">
-	        <div class="font-bold text-slate-900 dark:text-slate-200 mb-2">문자중계가 없어요</div>
-	        <div class="leading-relaxed">
-	          WKBL에서 문자중계를 제공하지 않았거나, 아직 준비되지 않은 경기입니다.
-	          개인 <span class="font-mono text-slate-900 dark:text-slate-200">+/-</span> 계산도 문자중계 기반이라 이 경기에는 표시되지 않을 수 있습니다.
-	        </div>
+	        <div class="font-bold text-slate-900 dark:text-slate-200 mb-2">%s</div>
+	        <div class="leading-relaxed">%s</div>
 	      </div>|html}
+	      (escape_html title_no_pbp)
+	      (escape_html desc_no_pbp)
 	  | _ ->
 	    if events = [] then
 	      Printf.sprintf
 	        {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xl">%s
 	          <div class="p-6 text-slate-600 dark:text-slate-400 text-sm">
-	            <div class="font-bold text-slate-900 dark:text-slate-200 mb-2">이 쿼터에는 기록이 없어요</div>
-	            <div class="leading-relaxed">다른 쿼터를 눌러보거나, WKBL 원본 링크가 있으면 확인해 주세요.</div>
+	            <div class="font-bold text-slate-900 dark:text-slate-200 mb-2">%s</div>
+	            <div class="leading-relaxed">%s</div>
 	          </div>
 	        </div>|html}
 	        tabs
+	        (escape_html title_no_rows)
+	        (escape_html desc_no_rows)
 	    else
 	      Printf.sprintf
 	        {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xl">%s<ul class="divide-y divide-slate-800/60">%s</ul></div>|html}
 	        tabs
 	        rows
-	 in
+ in
  layout
-  ~title:(Printf.sprintf "문자중계: %s vs %s" game.gi_home_team_name game.gi_away_team_name)
+  ~lang
+  ~title:title_page
   ~content:(Printf.sprintf
    {html|<div class="space-y-6 animate-fade-in">
     <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
      <div class="space-y-2">
-      <div class="text-slate-600 dark:text-slate-400 font-mono text-sm uppercase tracking-widest">%s</div>
-      <h2 class="text-2xl font-black text-slate-900 dark:text-slate-200">문자중계</h2>
+      <div class="text-slate-600 dark:text-slate-400 text-sm font-semibold">%s</div>
+      <h2 class="text-2xl font-black text-slate-900 dark:text-slate-200">%s</h2>
       <div class="flex flex-wrap items-center gap-2 text-sm">
        %s
        <span class="text-slate-600">vs</span>
        %s
-       <span class="text-slate-600 dark:text-slate-400 font-mono">%d - %d</span>
+       <span class="text-slate-600 dark:text-slate-400 tabular-nums font-semibold">%d - %d</span>
       </div>
      </div>
      <div class="flex items-center gap-3">
       %s
-      <a href="/boxscore/%s" class="px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white transition">← 박스스코어</a>
+      <a href="/boxscore/%s" class="px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white transition">%s</a>
      </div>
     </div>
     <div class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-     문자중계 점수는 보통 <span class="font-mono text-slate-900 dark:text-slate-200">원정</span> / <span class="font-mono text-slate-900 dark:text-slate-200">홈</span> 순서로 표시됩니다.
+     %s
     </div>
     %s
    </div>|html}
    (escape_html game.gi_game_date)
+   (escape_html label_pbp)
    (team_badge ~max_width:"max-w-[160px]" game.gi_home_team_name)
    (team_badge ~max_width:"max-w-[160px]" game.gi_away_team_name)
    game.gi_home_score
    game.gi_away_score
    official_link
    (escape_html game.gi_game_id)
+   (escape_html label_back_boxscore)
+   (escape_html note_score_order)
    body) ()
 
 let compare_stat_row ?(signed=false) label val1 val2 =
