@@ -84,7 +84,7 @@ let render_fixed_table ?(table_attrs="") ~id ~min_width ~(cols : col_spec list) 
     |> List.map (fun c ->
         let width_style =
           match c.width with
-          | Some w -> Printf.sprintf "width: %dpx; min-width: %dpx;" w w
+          | Some w -> Printf.sprintf "width: %dpx;" w
           | None -> "width: auto;"
         in
         let base_cls = "px-3 py-2 font-sans whitespace-nowrap" in
@@ -118,7 +118,7 @@ let render_fixed_table ?(table_attrs="") ~id ~min_width ~(cols : col_spec list) 
             List.map2 (fun c data ->
               let width_style =
                 match c.width with
-                | Some w -> Printf.sprintf "width: %dpx; min-width: %dpx;" w w
+                | Some w -> Printf.sprintf "width: %dpx;" w
                 | None -> "width: auto;"
               in
               let base_cls = "px-3 py-2 whitespace-nowrap overflow-hidden truncate" in

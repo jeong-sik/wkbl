@@ -116,7 +116,7 @@ let shot_distribution_chart ~fg2_pct ~fg2_made ~fg2_attempts
   let mid_zone = zone_overlay ~zone:"mid" ~pct:fg2_pct ~made:fg2_made ~attempts:fg2_attempts in
   let three_zone = zone_overlay ~zone:"three" ~pct:fg3_pct ~made:fg3_made ~attempts:fg3_attempts in
   Printf.sprintf {|<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="0 0 %d %d">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 %d %d" class="w-full h-auto" style="max-width: %dpx;">
   <defs>
     <filter id="glow">
       <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
@@ -158,7 +158,7 @@ let shot_distribution_chart ~fg2_pct ~fg2_made ~fg2_attempts
   </g>
 </svg>|}
     (court_width + 100) (court_height + 80)
-    (court_width + 100) (court_height + 80)
+    (court_width + 100)
     court
     three_zone
     mid_zone

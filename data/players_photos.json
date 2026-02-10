@@ -7,12 +7,12 @@
     "photo_url_pattern": "https://www.wkbl.or.kr/static/images/player/pimg/np_{player_id}.png"
   },
   "teams": {
-    "삼성생명": 16,
-    "신한은행": 14,
-    "우리은행": 18,
-    "하나은행": 14,
-    "BNK 썸": 18,
-    "KB스타즈": 22
+    "삼성생명": 17,
+    "신한은행": 16,
+    "우리은행": 19,
+    "하나은행": 15,
+    "BNK 썸": 17,
+    "KB스타즈": 18
   },
   "players": [
     {"name": "가와무라 미유키", "team": "삼성생명", "player_id": "096027", "photo_url": "https://www.wkbl.or.kr/static/images/player/pimg/np_096027.png"},
