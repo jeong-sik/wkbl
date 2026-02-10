@@ -253,7 +253,7 @@ tbody tr:nth-child(even):hover {
 
 /* Roster table: keep layout stable even if Tailwind is delayed/blocked */
 .roster-table {
-  min-width: 944px;
+  min-width: 980px;
   table-layout: fixed;
 }
 
@@ -963,7 +963,7 @@ body.menu-open {
 /* Sticky table header for long tables */
 .table-sticky thead {
   position: sticky;
-  top: 64px; /* Header height */
+  top: 3.5rem; /* Header height: h-14 = 3.5rem (56px) */
   z-index: 20;
   background: inherit;
 }
@@ -983,7 +983,7 @@ body.menu-open {
  * 2. Sticky headers that work within the container
  * The max-height creates a scrolling context where sticky works */
 .table-scroll-container {
-  max-height: 70vh;
+  max-height: clamp(400px, 70vh, 900px);
   overflow-y: auto;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
