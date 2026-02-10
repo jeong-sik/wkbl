@@ -54,7 +54,7 @@ type col_spec = {
   header : string;
   width : int option;
   align : [ `Left | `Right | `Center ];
-  resp : [ `Always | `Hidden_sm | `Hidden_md | `Hidden_lg ];
+  resp : [ `Always | `Hidden_sm | `Hidden_md | `Hidden_lg | `Hidden_xl ];
   sort : string option;
   title : string option;
   highlight : bool;
@@ -72,6 +72,7 @@ let render_fixed_table ?(table_attrs="") ~id ~min_width ~(cols : col_spec list) 
     | `Hidden_sm -> "hidden sm:table-cell"
     | `Hidden_md -> "hidden md:table-cell"
     | `Hidden_lg -> "hidden lg:table-cell"
+    | `Hidden_xl -> "hidden xl:table-cell"
   in
   let align_class = function
     | `Left -> "text-left"
