@@ -1,0 +1,69 @@
+{
+  "_description": "WKBL 팀 프랜차이즈 변천 매핑. 역대 팀명 → 현재 프랜차이즈로 정규화.",
+  "franchises": [
+    {
+      "current_name": "삼성생명",
+      "full_name": "용인 삼성생명 블루밍스",
+      "founded": 1977,
+      "history": [
+        {"name": "삼성생명", "period": "1998-present"}
+      ]
+    },
+    {
+      "current_name": "우리은행",
+      "full_name": "아산 우리은행 우리WON",
+      "founded": 1958,
+      "history": [
+        {"name": "상업은행", "period": "1958-1998"},
+        {"name": "우리은행", "period": "1998-present"}
+      ]
+    },
+    {
+      "current_name": "신한은행",
+      "full_name": "인천 신한은행 에스버드",
+      "founded": 1986,
+      "history": [
+        {"name": "현대중공업", "period": "1986-1998"},
+        {"name": "현대", "period": "1998-2004"},
+        {"name": "신한은행", "period": "2004-present"}
+      ]
+    },
+    {
+      "current_name": "KB스타즈",
+      "full_name": "청주 KB 스타즈",
+      "founded": 1963,
+      "history": [
+        {"name": "국민은행", "period": "1963-2011"},
+        {"name": "KB스타즈", "period": "2011-present"}
+      ]
+    },
+    {
+      "current_name": "BNK 썸",
+      "full_name": "부산 BNK 썸",
+      "founded": 2000,
+      "history": [
+        {"name": "금호생명", "period": "2000-2009"},
+        {"name": "OK저축은행", "period": "2009-2019"},
+        {"name": "BNK 썸", "period": "2019-present"}
+      ]
+    },
+    {
+      "current_name": "하나은행",
+      "full_name": "부천 하나은행",
+      "founded": 1997,
+      "history": [
+        {"name": "신세계", "period": "1997-2012"},
+        {"name": "하나은행", "period": "2012-present"}
+      ]
+    }
+  ],
+  "aliases": {
+    "현대": "신한은행",
+    "현대중공업": "신한은행",
+    "국민은행": "KB스타즈",
+    "금호생명": "BNK 썸",
+    "OK저축은행": "BNK 썸",
+    "신세계": "하나은행",
+    "상업은행": "우리은행"
+  }
+}
