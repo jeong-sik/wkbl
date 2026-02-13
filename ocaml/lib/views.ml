@@ -602,8 +602,8 @@ let games_table ?(lang=I18n.Ko) (games : game_summary list) =
           (escape_html (status_label_for_game g))
        else
         Printf.sprintf
-         {html|<a href="/boxscore/%s" class="text-[10px] bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-2 py-1 rounded text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white dark:text-slate-200 transition">%s</a>|html}
-         (escape_html g.game_id)
+         {html|<a href="%s" class="text-[10px] bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-2 py-1 rounded text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white dark:text-slate-200 transition">%s</a>|html}
+         (boxscore_href g.game_id)
          (escape_html label_boxscore)
       in
       let card_class =
@@ -698,8 +698,8 @@ onkeydown="if(event.key==='Enter'||event.key===' ') { event.preventDefault(); wi
 			              (escape_html (status_label_for_game g))
 			          else
 			            Printf.sprintf
-			              {html|<a href="/boxscore/%s" class="text-[10px] sm:text-xs bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-2 py-1 rounded text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition group-hover:ring-2 group-hover:ring-orange-500/50 whitespace-nowrap">%s</a>|html}
-			              (escape_html g.game_id)
+			              {html|<a href="%s" class="text-[10px] sm:text-xs bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-2 py-1 rounded text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition group-hover:ring-2 group-hover:ring-orange-500/50 whitespace-nowrap">%s</a>|html}
+			              (boxscore_href g.game_id)
 			              (escape_html label_boxscore)
 		        in
 
@@ -814,7 +814,7 @@ let boxscores_table ?(lang=I18n.Ko) (games : game_summary list) =
      <div class="flex items-center gap-2 text-sm font-medium w-full">%s<a href="/team/%s" class="hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 transition-colors truncate">%s</a><span class="ml-auto font-mono text-slate-900 dark:text-slate-200">%d</span></div>
      <div class="flex items-center gap-2 text-sm font-medium w-full">%s<a href="/team/%s" class="hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 transition-colors truncate">%s</a><span class="ml-auto font-mono text-slate-900 dark:text-slate-200">%d</span></div>
     </div>
-			    <a href="/boxscore/%s" class="text-[10px] bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-2 py-1 rounded text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition">%s</a>
+			    <a href="%s" class="text-[10px] bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-2 py-1 rounded text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition">%s</a>
 		   </div>
 		  </div>|html}
 	        (escape_html g.game_date)
@@ -829,7 +829,7 @@ let boxscores_table ?(lang=I18n.Ko) (games : game_summary list) =
 	        (Uri.pct_encode g.away_team)
 	        (escape_html g.away_team)
 		        score_b
-		        (escape_html g.game_id)
+		        (boxscore_href g.game_id)
 		        (escape_html label_view))
     |> String.concat "\n"
   in
@@ -847,8 +847,8 @@ let boxscores_table ?(lang=I18n.Ko) (games : game_summary list) =
       let away_cell = Printf.sprintf {html|<span class="inline-flex items-center gap-2"><a href="/team/%s">%s</a>%s</span>|html} (Uri.pct_encode g.away_team) (escape_html g.away_team) (team_logo_tag ~class_name:"w-4 h-4" g.away_team) in
       let link_cell =
         Printf.sprintf
-          {html|<a href="/boxscore/%s" class="text-[10px] sm:text-xs bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-2 py-1 rounded text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition whitespace-nowrap">%s</a>|html}
-          (escape_html g.game_id)
+          {html|<a href="%s" class="text-[10px] sm:text-xs bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-2 py-1 rounded text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition whitespace-nowrap">%s</a>|html}
+          (boxscore_href g.game_id)
           (escape_html label_view)
       in
       let margin_cell = Printf.sprintf {html|<span class="%s font-mono">%s</span>|html} margin_color margin_str in
@@ -1104,8 +1104,8 @@ let boxscore_pbp_link_html ?(lang=I18n.Ko) game_id =
       (escape_html label_full)
   in
   Printf.sprintf
-    {html|<a href="/boxscore/%s/pbp" class="px-2 py-1 rounded-full bg-slate-100 dark:bg-slate-800/70 border border-slate-300 dark:border-slate-700 text-[10px] font-mono tracking-wider text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white dark:text-slate-200 hover:border-slate-500 transition whitespace-nowrap">%s</a>|html}
-    (escape_html game_id)
+    {html|<a href="%s" class="px-2 py-1 rounded-full bg-slate-100 dark:bg-slate-800/70 border border-slate-300 dark:border-slate-700 text-[10px] font-mono tracking-wider text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white dark:text-slate-200 hover:border-slate-500 transition whitespace-nowrap">%s</a>|html}
+    (boxscore_pbp_href game_id)
     label_html
 
 let boxscore_flow_link_html ?(lang=I18n.Ko) game_id =
@@ -1257,9 +1257,9 @@ let boxscore_page ?(lang=I18n.Ko) (bs: game_boxscore) =
 	 let stats_notice =
 	  if has_scores && not has_player_stats then
 	    Printf.sprintf
-	      {html|<div class="max-w-2xl mx-auto bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 rounded-lg p-4 text-sm text-slate-700 dark:text-slate-300"><div class="flex items-start justify-between gap-3"><div class="min-w-0">%s</div><a href="/boxscore/%s" class="shrink-0 px-3 py-1.5 rounded-lg bg-white/80 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-[11px] font-bold text-slate-700 dark:text-slate-200 hover:border-orange-300 dark:hover:border-orange-700 hover:text-orange-700 dark:hover:text-orange-300 transition whitespace-nowrap">%s</a></div></div>|html}
+	      {html|<div class="max-w-2xl mx-auto bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 rounded-lg p-4 text-sm text-slate-700 dark:text-slate-300"><div class="flex items-start justify-between gap-3"><div class="min-w-0">%s</div><a href="%s" class="shrink-0 px-3 py-1.5 rounded-lg bg-white/80 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-[11px] font-bold text-slate-700 dark:text-slate-200 hover:border-orange-300 dark:hover:border-orange-700 hover:text-orange-700 dark:hover:text-orange-300 transition whitespace-nowrap">%s</a></div></div>|html}
 	      (escape_html label_stats_missing)
-	      (escape_html gi.gi_game_id)
+	      (boxscore_href gi.gi_game_id)
 	      (escape_html label_refresh)
 	  else ""
 	 in
@@ -1477,7 +1477,7 @@ let pbp_page ?(lang=I18n.Ko) ~(game: game_info) ~(periods: string list) ~(select
      </div>
      <div class="flex items-center gap-3">
       %s
-      <a href="/boxscore/%s" class="px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white transition">%s</a>
+      <a href="%s" class="px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white transition">%s</a>
      </div>
     </div>
     <div class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
@@ -1485,7 +1485,7 @@ let pbp_page ?(lang=I18n.Ko) ~(game: game_info) ~(periods: string list) ~(select
     </div>
     %s
    </div>|html}
-   (breadcrumb [("홈", "/"); ("경기", "/games"); ("박스스코어", "/boxscore/" ^ game.gi_game_id); ("문자중계", "")])
+   (breadcrumb [("홈", "/"); ("경기", "/games"); ("박스스코어", boxscore_href game.gi_game_id); ("문자중계", "")])
    (escape_html game.gi_game_date)
    (escape_html label_pbp)
    (team_badge ~max_width:"max-w-[160px]" game.gi_home_team_name)
@@ -1493,7 +1493,7 @@ let pbp_page ?(lang=I18n.Ko) ~(game: game_info) ~(periods: string list) ~(select
    game.gi_home_score
    game.gi_away_score
    official_link
-   (escape_html game.gi_game_id)
+   (boxscore_href game.gi_game_id)
    (escape_html label_back_boxscore)
    (escape_html note_score_order)
    body) ()

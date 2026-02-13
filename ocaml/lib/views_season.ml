@@ -199,11 +199,11 @@ let season_summary_page ?(lang=I18n.Ko) ~season ~seasons
   (* Season navigation arrows *)
   let nav_html =
     let prev_link = match prev_season with
-      | Some s -> Printf.sprintf {html|<a href="/season/%s" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors" title="%s">← %s</a>|html} s.code (escape_html s.name) (escape_html s.name)
+      | Some s -> Printf.sprintf {html|<a href="%s" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors" title="%s">← %s</a>|html} (season_href s.code) (escape_html s.name) (escape_html s.name)
       | None -> {|<span></span>|}
     in
     let next_link = match next_season with
-      | Some s -> Printf.sprintf {html|<a href="/season/%s" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors" title="%s">%s →</a>|html} s.code (escape_html s.name) (escape_html s.name)
+      | Some s -> Printf.sprintf {html|<a href="%s" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors" title="%s">%s →</a>|html} (season_href s.code) (escape_html s.name) (escape_html s.name)
       | None -> {|<span></span>|}
     in
     Printf.sprintf
