@@ -96,8 +96,15 @@
       return direction === 'desc' ? -cmp : cmp;
     });
 
-    // Re-append rows in sorted order
-    indexed.forEach(({ row }) => tbody.appendChild(row));
+    // Re-append rows in sorted order and reapply stripe classes
+    indexed.forEach(({ row }, i) => {
+      tbody.appendChild(row);
+      // Toggle stripe: odd rows get the subtle background
+      row.classList.remove('bg-slate-50/50', 'dark:bg-slate-800/20');
+      if (i % 2 === 1) {
+        row.classList.add('bg-slate-50/50', 'dark:bg-slate-800/20');
+      }
+    });
   }
 
   /**
