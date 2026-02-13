@@ -4992,6 +4992,82 @@ module Queries = struct
   let delete_schedule_by_season = (string ->. unit) {|
     DELETE FROM schedule WHERE season_code = $1
   |}
+
+  (* ===== Awards Table Queries ===== *)
+
+  let ensure_awards_table = (unit ->. unit) {|
+    CREATE TABLE IF NOT EXISTS awards (
+      id SERIAL PRIMARY KEY,
+      season_name TEXT NOT NULL,
+      category TEXT NOT NULL,
+      award_type TEXT NOT NULL,
+      player_name TEXT NOT NULL,
+      stat_value TEXT,
+      votes TEXT,
+      UNIQUE(season_name, category, player_name)
+    )
+  |}
+
+  let ensure_awards_index_season = (unit ->. unit) {|
+    CREATE INDEX IF NOT EXISTS idx_awards_season ON awards(season_name)
+  |}
+
+  let ensure_awards_index_category = (unit ->. unit) {|
+    CREATE INDEX IF NOT EXISTS idx_awards_category ON awards(category)
+  |}
+
+  let ensure_awards_index_player = (unit ->. unit) {|
+    CREATE INDEX IF NOT EXISTS idx_awards_player ON awards(player_name)
+  |}
+
+  let upsert_award = (t2 string (t2 string (t2 string (t2 string (t2 (option string) (option string))))) ->. unit) {|
+    INSERT INTO awards (season_name, category, award_type, player_name, stat_value, votes)
+    VALUES (?, ?, ?, ?, ?, ?)
+    ON CONFLICT (season_name, category, player_name)
+    DO UPDATE SET
+      award_type = EXCLUDED.award_type,
+      stat_value = COALESCE(EXCLUDED.stat_value, awards.stat_value),
+      votes = COALESCE(EXCLUDED.votes, awards.votes)
+  |}
+
+  (** Query awards by category *)
+  let awards_by_category = (string ->* t2 string (t2 string (t2 string (t2 (option string) (option string))))) {|
+    SELECT season_name, category, player_name, stat_value, votes
+    FROM awards
+    WHERE category = ?
+    ORDER BY season_name DESC
+  |}
+
+  (** Query awards by season *)
+  let awards_by_season = (string ->* t2 string (t2 string (t2 string (t2 (option string) (option string))))) {|
+    SELECT season_name, category, player_name, stat_value, votes
+    FROM awards
+    WHERE season_name = ?
+    ORDER BY category
+  |}
+
+  (** Query awards by player name (partial match) *)
+  let awards_by_player = (string ->* t2 string (t2 string (t2 string (t2 (option string) (option string))))) {|
+    SELECT season_name, category, player_name, stat_value, votes
+    FROM awards
+    WHERE player_name LIKE '%' || ? || '%'
+    ORDER BY season_name DESC, category
+  |}
+
+  (** Count total awards *)
+  let count_awards = (unit ->? int) {|
+    SELECT COUNT(*) FROM awards
+  |}
+
+  (** Get distinct award winners with win counts *)
+  let award_leaders = (string ->* t2 string int) {|
+    SELECT player_name, COUNT(*) as cnt
+    FROM awards
+    WHERE category = ?
+    GROUP BY player_name
+    ORDER BY cnt DESC
+    LIMIT 20
+  |}
 end
 
 (** Database operations *)
@@ -5056,7 +5132,12 @@ end
       let* () = Db.exec Queries.ensure_score_mismatch_index () in
       let* () = Db.exec Queries.ensure_games_calc_matview () in
       let* () = Db.exec Queries.ensure_games_calc_index () in
-      Db.exec Queries.ensure_games_calc_season_index ()
+      let* () = Db.exec Queries.ensure_games_calc_season_index () in
+      (* Awards table for scraped WKBL award data *)
+      let* () = Db.exec Queries.ensure_awards_table () in
+      let* () = Db.exec Queries.ensure_awards_index_season () in
+      let* () = Db.exec Queries.ensure_awards_index_category () in
+      Db.exec Queries.ensure_awards_index_player ()
 
     (* Refresh materialized views - call after data sync *)
     let refresh_matviews (module Db : Caqti_eio.CONNECTION) =
@@ -5174,6 +5255,25 @@ end
   (** Upsert a single season entry *)
   let upsert_season ~season_code ~season_name (module Db : Caqti_eio.CONNECTION) =
     Db.exec Queries.upsert_season (season_code, season_name)
+
+  (* Awards queries *)
+  let upsert_award ~season_name ~category ~award_type ~player_name ~stat_value ~votes (module Db : Caqti_eio.CONNECTION) =
+    Db.exec Queries.upsert_award (season_name, (category, (award_type, (player_name, (stat_value, votes)))))
+
+  let get_awards_by_category ~category (module Db : Caqti_eio.CONNECTION) =
+    Db.collect_list Queries.awards_by_category category
+
+  let get_awards_by_season ~season_name (module Db : Caqti_eio.CONNECTION) =
+    Db.collect_list Queries.awards_by_season season_name
+
+  let get_awards_by_player ~player_name (module Db : Caqti_eio.CONNECTION) =
+    Db.collect_list Queries.awards_by_player player_name
+
+  let get_award_count (module Db : Caqti_eio.CONNECTION) =
+    Db.find_opt Queries.count_awards ()
+
+  let get_award_leaders ~category (module Db : Caqti_eio.CONNECTION) =
+    Db.collect_list Queries.award_leaders category
 
   (** Data-quality overrides: exclude/restore a (game_id, player_id) stat row *)
   let upsert_game_stats_exclusion ~game_id ~player_id ~reason (module Db : Caqti_eio.CONNECTION) =
@@ -5601,6 +5701,9 @@ let boxscore_cache = Cache.create ~ttl:120.0 ~max_entries:128
 let leaders_base_cache = Cache.create ~ttl:120.0 ~max_entries:16
 let leaders_cache = Cache.create ~ttl:120.0 ~max_entries:128
 let awards_cache = Cache.create ~ttl:300.0 ~max_entries:32
+let awards_db_cache = Cache.create ~ttl:300.0 ~max_entries:64
+let awards_count_cache = Cache.create ~ttl:300.0 ~max_entries:4
+let awards_leaders_cache = Cache.create ~ttl:300.0 ~max_entries:32
 let draft_years_cache = Cache.create ~ttl:300.0 ~max_entries:8
 let draft_picks_cache = Cache.create ~ttl:300.0 ~max_entries:32
 let trade_years_cache = Cache.create ~ttl:300.0 ~max_entries:8
@@ -6198,6 +6301,34 @@ let get_stat_mip_eff_delta ~season ~prev_season ?(include_mismatch=false) () =
   let key = Printf.sprintf "mip|season=%s|prev=%s|mismatch=%b" season prev_season include_mismatch in
   cached awards_cache key (fun () ->
     with_db (fun db -> Repo.get_stat_mip_eff_delta ~season ~prev_season ~include_mismatch db))
+
+(* Awards DB queries — separate caches per return type *)
+let save_award ~season_name ~category ~award_type ~player_name ?stat_value ?votes () =
+  with_db (fun db -> Repo.upsert_award ~season_name ~category ~award_type ~player_name ~stat_value ~votes db)
+
+let get_awards_by_category ~category () =
+  let key = Printf.sprintf "awards_cat|%s" category in
+  cached awards_db_cache key (fun () ->
+    with_db (fun db -> Repo.get_awards_by_category ~category db))
+
+let get_awards_by_season ~season_name () =
+  let key = Printf.sprintf "awards_season|%s" season_name in
+  cached awards_db_cache key (fun () ->
+    with_db (fun db -> Repo.get_awards_by_season ~season_name db))
+
+let get_awards_by_player ~player_name () =
+  let key = Printf.sprintf "awards_player|%s" player_name in
+  cached awards_db_cache key (fun () ->
+    with_db (fun db -> Repo.get_awards_by_player ~player_name db))
+
+let get_award_count () =
+  cached awards_count_cache "award_count" (fun () ->
+    with_db (fun db -> Repo.get_award_count db))
+
+let get_award_leaders ~category () =
+  let key = Printf.sprintf "award_leaders|%s" category in
+  cached awards_leaders_cache key (fun () ->
+    with_db (fun db -> Repo.get_award_leaders ~category db))
 
 let get_player_profile ~player_id () =
   let key = Printf.sprintf "player_id=%s" player_id in
@@ -6876,6 +7007,9 @@ let clear_all_caches () =
   clear_cache leaders_base_cache;
   clear_cache leaders_cache;
   clear_cache awards_cache;
+  clear_cache awards_db_cache;
+  clear_cache awards_count_cache;
+  clear_cache awards_leaders_cache;
   clear_cache draft_years_cache;
   clear_cache draft_picks_cache;
   clear_cache trade_years_cache;
