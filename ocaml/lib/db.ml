@@ -3605,7 +3605,7 @@ module Queries = struct
     SELECT
       g.season_code,
       se.season_name,
-      COALESCE((SELECT t.team_name FROM teams t
+      COALESCE((SELECT t.team_name_kr FROM teams t
         WHERE t.team_code = (
           SELECT sub.team_code FROM game_stats_clean sub
           JOIN player_identities sub_pi ON sub_pi.player_id = sub.player_id
@@ -3647,20 +3647,20 @@ module Queries = struct
         ),
         0
       ) as margin,
-      CASE WHEN SUM(COALESCE(s.fg2_a, 0) + COALESCE(s.fg3_a, 0)) > 0
-        THEN CAST(SUM(COALESCE(s.fg2_m, 0) + COALESCE(s.fg3_m, 0)) AS REAL) / SUM(COALESCE(s.fg2_a, 0) + COALESCE(s.fg3_a, 0))
+      CASE WHEN SUM(COALESCE(s.fg_2p_a, 0) + COALESCE(s.fg_3p_a, 0)) > 0
+        THEN CAST(SUM(COALESCE(s.fg_2p_m, 0) + COALESCE(s.fg_3p_m, 0)) AS REAL) / SUM(COALESCE(s.fg_2p_a, 0) + COALESCE(s.fg_3p_a, 0))
         ELSE 0.0 END as fg_pct,
-      CASE WHEN SUM(COALESCE(s.fg3_a, 0)) > 0
-        THEN CAST(SUM(COALESCE(s.fg3_m, 0)) AS REAL) / SUM(COALESCE(s.fg3_a, 0))
+      CASE WHEN SUM(COALESCE(s.fg_3p_a, 0)) > 0
+        THEN CAST(SUM(COALESCE(s.fg_3p_m, 0)) AS REAL) / SUM(COALESCE(s.fg_3p_a, 0))
         ELSE 0.0 END as fg3_pct,
       CASE WHEN SUM(COALESCE(s.ft_a, 0)) > 0
         THEN CAST(SUM(COALESCE(s.ft_m, 0)) AS REAL) / SUM(COALESCE(s.ft_a, 0))
         ELSE 0.0 END as ft_pct,
-      CASE WHEN SUM(COALESCE(s.fg2_a, 0) + COALESCE(s.fg3_a, 0)) + 0.44 * SUM(COALESCE(s.ft_a, 0)) > 0
-        THEN CAST(SUM(s.pts) AS REAL) / (2.0 * (SUM(COALESCE(s.fg2_a, 0) + COALESCE(s.fg3_a, 0)) + 0.44 * SUM(COALESCE(s.ft_a, 0))))
+      CASE WHEN SUM(COALESCE(s.fg_2p_a, 0) + COALESCE(s.fg_3p_a, 0)) + 0.44 * SUM(COALESCE(s.ft_a, 0)) > 0
+        THEN CAST(SUM(s.pts) AS REAL) / (2.0 * (SUM(COALESCE(s.fg_2p_a, 0) + COALESCE(s.fg_3p_a, 0)) + 0.44 * SUM(COALESCE(s.ft_a, 0))))
         ELSE 0.0 END as ts_pct,
-      CASE WHEN SUM(COALESCE(s.fg2_a, 0) + COALESCE(s.fg3_a, 0)) > 0
-        THEN (CAST(SUM(COALESCE(s.fg2_m, 0) + COALESCE(s.fg3_m, 0)) AS REAL) + 0.5 * SUM(COALESCE(s.fg3_m, 0))) / SUM(COALESCE(s.fg2_a, 0) + COALESCE(s.fg3_a, 0))
+      CASE WHEN SUM(COALESCE(s.fg_2p_a, 0) + COALESCE(s.fg_3p_a, 0)) > 0
+        THEN (CAST(SUM(COALESCE(s.fg_2p_m, 0) + COALESCE(s.fg_3p_m, 0)) AS REAL) + 0.5 * SUM(COALESCE(s.fg_3p_m, 0))) / SUM(COALESCE(s.fg_2p_a, 0) + COALESCE(s.fg_3p_a, 0))
         ELSE 0.0 END as efg_pct
     FROM game_stats_clean s
     JOIN player_identities pi ON pi.player_id = s.player_id
@@ -3720,10 +3720,10 @@ module Queries = struct
 		        ELSE 1
 		      END as score_quality,
 		      s.min_seconds / 60.0,
-		      COALESCE(s.fg2_m, 0) + COALESCE(s.fg3_m, 0),
-		      COALESCE(s.fg2_a, 0) + COALESCE(s.fg3_a, 0),
-		      COALESCE(s.fg3_m, 0),
-		      COALESCE(s.fg3_a, 0),
+		      COALESCE(s.fg_2p_m, 0) + COALESCE(s.fg_3p_m, 0),
+		      COALESCE(s.fg_2p_a, 0) + COALESCE(s.fg_3p_a, 0),
+		      COALESCE(s.fg_3p_m, 0),
+		      COALESCE(s.fg_3p_a, 0),
 		      COALESCE(s.ft_m, 0),
 		      COALESCE(s.ft_a, 0),
 		      s.pts,
@@ -3785,10 +3785,10 @@ module Queries = struct
 		        ELSE 1
 		      END as score_quality,
 		      s.min_seconds / 60.0,
-		      COALESCE(s.fg2_m, 0) + COALESCE(s.fg3_m, 0),
-		      COALESCE(s.fg2_a, 0) + COALESCE(s.fg3_a, 0),
-		      COALESCE(s.fg3_m, 0),
-		      COALESCE(s.fg3_a, 0),
+		      COALESCE(s.fg_2p_m, 0) + COALESCE(s.fg_3p_m, 0),
+		      COALESCE(s.fg_2p_a, 0) + COALESCE(s.fg_3p_a, 0),
+		      COALESCE(s.fg_3p_m, 0),
+		      COALESCE(s.fg_3p_a, 0),
 		      COALESCE(s.ft_m, 0),
 		      COALESCE(s.ft_a, 0),
 		      s.pts,
@@ -3844,10 +3844,10 @@ module Queries = struct
 		        ELSE 1
 		      END as score_quality,
 		      s.min_seconds / 60.0,
-		      COALESCE(s.fg2_m, 0) + COALESCE(s.fg3_m, 0),
-		      COALESCE(s.fg2_a, 0) + COALESCE(s.fg3_a, 0),
-		      COALESCE(s.fg3_m, 0),
-		      COALESCE(s.fg3_a, 0),
+		      COALESCE(s.fg_2p_m, 0) + COALESCE(s.fg_3p_m, 0),
+		      COALESCE(s.fg_2p_a, 0) + COALESCE(s.fg_3p_a, 0),
+		      COALESCE(s.fg_3p_m, 0),
+		      COALESCE(s.fg_3p_a, 0),
 		      COALESCE(s.ft_m, 0),
 		      COALESCE(s.ft_a, 0),
 		      s.pts,
@@ -3910,10 +3910,10 @@ module Queries = struct
 		        ELSE 1
 		      END as score_quality,
 		      s.min_seconds / 60.0,
-		      COALESCE(s.fg2_m, 0) + COALESCE(s.fg3_m, 0),
-		      COALESCE(s.fg2_a, 0) + COALESCE(s.fg3_a, 0),
-		      COALESCE(s.fg3_m, 0),
-		      COALESCE(s.fg3_a, 0),
+		      COALESCE(s.fg_2p_m, 0) + COALESCE(s.fg_3p_m, 0),
+		      COALESCE(s.fg_2p_a, 0) + COALESCE(s.fg_3p_a, 0),
+		      COALESCE(s.fg_3p_m, 0),
+		      COALESCE(s.fg_3p_a, 0),
 		      COALESCE(s.ft_m, 0),
 		      COALESCE(s.ft_a, 0),
 		      s.pts,
@@ -3977,10 +3977,10 @@ module Queries = struct
 	      NULL as opponent_score,
 	      1 as score_quality,
 	      COALESCE(s.min_seconds, 0) / 60.0,
-	      COALESCE(s.fg2_m, 0) + COALESCE(s.fg3_m, 0),
-	      COALESCE(s.fg2_a, 0) + COALESCE(s.fg3_a, 0),
-	      COALESCE(s.fg3_m, 0),
-	      COALESCE(s.fg3_a, 0),
+	      COALESCE(s.fg_2p_m, 0) + COALESCE(s.fg_3p_m, 0),
+	      COALESCE(s.fg_2p_a, 0) + COALESCE(s.fg_3p_a, 0),
+	      COALESCE(s.fg_3p_m, 0),
+	      COALESCE(s.fg_3p_a, 0),
 	      COALESCE(s.ft_m, 0),
 	      COALESCE(s.ft_a, 0),
 	      s.pts,
@@ -4019,10 +4019,10 @@ module Queries = struct
 	      NULL as opponent_score,
 	      1 as score_quality,
 	      COALESCE(s.min_seconds, 0) / 60.0,
-	      COALESCE(s.fg2_m, 0) + COALESCE(s.fg3_m, 0),
-	      COALESCE(s.fg2_a, 0) + COALESCE(s.fg3_a, 0),
-	      COALESCE(s.fg3_m, 0),
-	      COALESCE(s.fg3_a, 0),
+	      COALESCE(s.fg_2p_m, 0) + COALESCE(s.fg_3p_m, 0),
+	      COALESCE(s.fg_2p_a, 0) + COALESCE(s.fg_3p_a, 0),
+	      COALESCE(s.fg_3p_m, 0),
+	      COALESCE(s.fg_3p_a, 0),
 	      COALESCE(s.ft_m, 0),
 	      COALESCE(s.ft_a, 0),
 	      s.pts,
@@ -4061,10 +4061,10 @@ module Queries = struct
 	      NULL as opponent_score,
 	      1 as score_quality,
 	      COALESCE(s.min_seconds, 0) / 60.0,
-	      COALESCE(s.fg2_m, 0) + COALESCE(s.fg3_m, 0),
-	      COALESCE(s.fg2_a, 0) + COALESCE(s.fg3_a, 0),
-	      COALESCE(s.fg3_m, 0),
-	      COALESCE(s.fg3_a, 0),
+	      COALESCE(s.fg_2p_m, 0) + COALESCE(s.fg_3p_m, 0),
+	      COALESCE(s.fg_2p_a, 0) + COALESCE(s.fg_3p_a, 0),
+	      COALESCE(s.fg_3p_m, 0),
+	      COALESCE(s.fg_3p_a, 0),
 	      COALESCE(s.ft_m, 0),
 	      COALESCE(s.ft_a, 0),
 	      s.pts,
@@ -4103,10 +4103,10 @@ module Queries = struct
 	      NULL as opponent_score,
 	      1 as score_quality,
 	      COALESCE(s.min_seconds, 0) / 60.0,
-	      COALESCE(s.fg2_m, 0) + COALESCE(s.fg3_m, 0),
-	      COALESCE(s.fg2_a, 0) + COALESCE(s.fg3_a, 0),
-	      COALESCE(s.fg3_m, 0),
-	      COALESCE(s.fg3_a, 0),
+	      COALESCE(s.fg_2p_m, 0) + COALESCE(s.fg_3p_m, 0),
+	      COALESCE(s.fg_2p_a, 0) + COALESCE(s.fg_3p_a, 0),
+	      COALESCE(s.fg_3p_m, 0),
+	      COALESCE(s.fg_3p_a, 0),
 	      COALESCE(s.ft_m, 0),
 	      COALESCE(s.ft_a, 0),
 	      s.pts,
@@ -4145,10 +4145,10 @@ module Queries = struct
 	      NULL as opponent_score,
 	      1 as score_quality,
 	      COALESCE(s.min_seconds, 0) / 60.0,
-	      COALESCE(s.fg2_m, 0) + COALESCE(s.fg3_m, 0),
-	      COALESCE(s.fg2_a, 0) + COALESCE(s.fg3_a, 0),
-	      COALESCE(s.fg3_m, 0),
-	      COALESCE(s.fg3_a, 0),
+	      COALESCE(s.fg_2p_m, 0) + COALESCE(s.fg_3p_m, 0),
+	      COALESCE(s.fg_2p_a, 0) + COALESCE(s.fg_3p_a, 0),
+	      COALESCE(s.fg_3p_m, 0),
+	      COALESCE(s.fg_3p_a, 0),
 	      COALESCE(s.ft_m, 0),
 	      COALESCE(s.ft_a, 0),
 	      s.pts,
