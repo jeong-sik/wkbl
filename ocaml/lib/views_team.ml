@@ -395,8 +395,8 @@ let team_profile_page ?(lang=I18n.Ko) ?(player_info_map=None) (detail: team_full
 	          ""
 		        in
 		        Printf.sprintf
-		         {html|<a href="/boxscore/%s" class="group block w-2 sm:w-1.5 h-24" title="%s"><div class="h-1/2 flex items-end">%s</div><div class="h-1/2 flex items-start">%s</div></a>|html}
-		         (Uri.pct_encode g.tgr_game_id)
+		         {html|<a href="%s" class="group block w-2 sm:w-1.5 h-24" title="%s"><div class="h-1/2 flex items-end">%s</div><div class="h-1/2 flex items-start">%s</div></a>|html}
+		         (boxscore_href g.tgr_game_id)
 		         title
 		         pos_bar
 		         neg_bar)
@@ -474,8 +474,8 @@ let team_profile_page ?(lang=I18n.Ko) ?(player_info_map=None) (detail: team_full
 			      g.tgr_game_date
 			    in
 			    let row = Printf.sprintf
-			     {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors"><td class="px-3 py-2 text-slate-500 dark:text-slate-400 text-sm font-mono whitespace-nowrap w-24"><a href="/boxscore/%s" class="hover:text-orange-600 dark:hover:text-orange-400 transition-colors" title="%s"><span class="sm:hidden">%s</span><span class="hidden sm:inline">%s</span></a></td><td class="px-3 py-2 text-slate-900 dark:text-slate-200"><a class="block truncate hover:text-orange-600 dark:hover:text-orange-400 transition-colors" href="%s" title="%s">%s</a></td><td class="px-3 py-2 text-center font-bold %s whitespace-nowrap w-14"><span class="inline-flex items-center justify-center w-7">%s</span></td><td class="px-3 py-2 text-right font-mono text-slate-900 dark:text-slate-200 whitespace-nowrap w-36">%s</td><td class="px-2 py-2 text-right text-[10px] font-mono text-slate-400 dark:text-slate-500 whitespace-nowrap hidden sm:table-cell">%s</td></tr>|html}
-			     (Uri.pct_encode g.tgr_game_id)
+			     {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors"><td class="px-3 py-2 text-slate-500 dark:text-slate-400 text-sm font-mono whitespace-nowrap w-24"><a href="%s" class="hover:text-orange-600 dark:hover:text-orange-400 transition-colors" title="%s"><span class="sm:hidden">%s</span><span class="hidden sm:inline">%s</span></a></td><td class="px-3 py-2 text-slate-900 dark:text-slate-200"><a class="block truncate hover:text-orange-600 dark:hover:text-orange-400 transition-colors" href="%s" title="%s">%s</a></td><td class="px-3 py-2 text-center font-bold %s whitespace-nowrap w-14"><span class="inline-flex items-center justify-center w-7">%s</span></td><td class="px-3 py-2 text-right font-mono text-slate-900 dark:text-slate-200 whitespace-nowrap w-36">%s</td><td class="px-2 py-2 text-right text-[10px] font-mono text-slate-400 dark:text-slate-500 whitespace-nowrap hidden sm:table-cell">%s</td></tr>|html}
+			     (boxscore_href g.tgr_game_id)
 			     (escape_html g.tgr_game_date)
 			     (escape_html date_short)
 			     (escape_html g.tgr_game_date)
