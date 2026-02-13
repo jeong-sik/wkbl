@@ -905,14 +905,68 @@ let player_summary_comparison (seasons: season_stats list) =
     let career_mpg = total_min /. gp_f in
     let fmt v = Printf.sprintf "%.1f" v in
     let fmt_pct v = if v > 0.0 then Printf.sprintf "%.1f" (v *. 100.0) else "-" in
-    let cur_mpg = if current.ss_games_played > 0
-      then current.ss_total_minutes /. float_of_int current.ss_games_played else 0.0 in
     let stat_cell cls v = Printf.sprintf {html|<td class="px-2 py-1.5 text-right font-mono %s">%s</td>|html} cls v in
     let hdr cls lbl title = Printf.sprintf
       {html|<th class="px-2 py-1.5 text-right text-[10px] uppercase tracking-wider %s" title="%s">%s</th>|html} cls title lbl in
+    (* Render a single season row *)
+    let season_row ~label ~border (s: season_stats) =
+      let mpg = if s.ss_games_played > 0
+        then s.ss_total_minutes /. float_of_int s.ss_games_played else 0.0 in
+      let border_cls = if border then " border-b border-slate-200 dark:border-slate-700" else "" in
+      Printf.sprintf
+        {html|<tr class="%s">
+          <td class="px-2 py-1.5 text-left font-sans font-semibold text-slate-600 dark:text-slate-400">%s</td>
+          %s %s %s %s %s %s %s %s %s %s
+        </tr>|html}
+        border_cls
+        label
+        (stat_cell "" (string_of_int s.ss_games_played))
+        (stat_cell "" (fmt mpg))
+        (stat_cell "text-orange-600 dark:text-orange-400 font-bold" (fmt s.ss_avg_points))
+        (stat_cell "" (fmt s.ss_avg_rebounds))
+        (stat_cell "" (fmt s.ss_avg_assists))
+        (stat_cell "hidden sm:table-cell" (fmt s.ss_avg_steals))
+        (stat_cell "hidden sm:table-cell" (fmt s.ss_avg_blocks))
+        (stat_cell "hidden md:table-cell" (fmt_pct s.ss_ts_pct))
+        (stat_cell "hidden md:table-cell" (fmt_pct s.ss_efg_pct))
+        (stat_cell "" (fmt s.ss_efficiency))
+    in
+    let current_row = season_row ~label:current.ss_season_name ~border:true current in
+    (* Peak season: highest PPG among seasons with 10+ GP, different from current *)
+    let peak_row =
+      let eligible = seasons_desc |> List.filter (fun s -> s.ss_games_played >= 10) in
+      let peak_opt = eligible |> List.fold_left (fun best s ->
+        match best with
+        | None -> Some s
+        | Some b -> if s.ss_avg_points > b.ss_avg_points then Some s else best
+      ) None in
+      match peak_opt with
+      | Some peak when peak.ss_season_code <> current.ss_season_code ->
+          let label = Printf.sprintf "<span class=\"text-amber-600 dark:text-amber-400\">★</span> %s" peak.ss_season_name in
+          season_row ~label ~border:true peak
+      | _ -> ""
+    in
+    (* Career row *)
+    let career_row =
+      Printf.sprintf
+        {html|<tr>
+          <td class="px-2 py-1.5 text-left font-sans font-semibold text-slate-600 dark:text-slate-400">Career</td>
+          %s %s %s %s %s %s %s %s %s %s
+        </tr>|html}
+        (stat_cell "" (Printf.sprintf "%d <span class=\"text-[10px] text-slate-500\">(%d시즌)</span>" total_gp n))
+        (stat_cell "" (fmt career_mpg))
+        (stat_cell "text-orange-600 dark:text-orange-400 font-bold" (fmt (wavg (fun s -> s.ss_avg_points))))
+        (stat_cell "" (fmt (wavg (fun s -> s.ss_avg_rebounds))))
+        (stat_cell "" (fmt (wavg (fun s -> s.ss_avg_assists))))
+        (stat_cell "hidden sm:table-cell" (fmt (wavg (fun s -> s.ss_avg_steals))))
+        (stat_cell "hidden sm:table-cell" (fmt (wavg (fun s -> s.ss_avg_blocks))))
+        (stat_cell "hidden md:table-cell" (fmt_pct (wavg (fun s -> s.ss_ts_pct))))
+        (stat_cell "hidden md:table-cell" (fmt_pct (wavg (fun s -> s.ss_efg_pct))))
+        (stat_cell "" (fmt (wavg (fun s -> s.ss_efficiency))))
+    in
     Printf.sprintf
       {html|<div class="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-lg">
-        <h3 class="font-bold text-slate-900 dark:text-slate-200 text-sm mb-3">금시즌 vs 커리어</h3>
+        <h3 class="font-bold text-slate-900 dark:text-slate-200 text-sm mb-3">시즌 요약</h3>
         <div class="overflow-x-auto">
           <table class="w-full text-xs tabular-nums">
             <thead class="text-slate-500 dark:text-slate-500">
@@ -922,14 +976,7 @@ let player_summary_comparison (seasons: season_stats list) =
               </tr>
             </thead>
             <tbody class="text-slate-800 dark:text-slate-200">
-              <tr class="border-b border-slate-200 dark:border-slate-700">
-                <td class="px-2 py-1.5 text-left font-sans font-semibold text-slate-600 dark:text-slate-400">%s</td>
-                %s %s %s %s %s %s %s %s %s %s
-              </tr>
-              <tr>
-                <td class="px-2 py-1.5 text-left font-sans font-semibold text-slate-600 dark:text-slate-400">Career</td>
-                %s %s %s %s %s %s %s %s %s %s
-              </tr>
+              %s%s%s
             </tbody>
           </table>
         </div>
@@ -945,29 +992,10 @@ let player_summary_comparison (seasons: season_stats list) =
       (hdr "hidden md:table-cell" "TS%" "True Shooting %")
       (hdr "hidden md:table-cell" "eFG%" "Effective FG %")
       (hdr "" "EFF" "효율")
-      (* current season row *)
-      current.ss_season_name
-      (stat_cell "" (string_of_int current.ss_games_played))
-      (stat_cell "" (fmt cur_mpg))
-      (stat_cell "text-orange-600 dark:text-orange-400 font-bold" (fmt current.ss_avg_points))
-      (stat_cell "" (fmt current.ss_avg_rebounds))
-      (stat_cell "" (fmt current.ss_avg_assists))
-      (stat_cell "hidden sm:table-cell" (fmt current.ss_avg_steals))
-      (stat_cell "hidden sm:table-cell" (fmt current.ss_avg_blocks))
-      (stat_cell "hidden md:table-cell" (fmt_pct current.ss_ts_pct))
-      (stat_cell "hidden md:table-cell" (fmt_pct current.ss_efg_pct))
-      (stat_cell "" (fmt current.ss_efficiency))
-      (* career row *)
-      (stat_cell "" (Printf.sprintf "%d <span class=\"text-[10px] text-slate-500\">(%d시즌)</span>" total_gp n))
-      (stat_cell "" (fmt career_mpg))
-      (stat_cell "text-orange-600 dark:text-orange-400 font-bold" (fmt (wavg (fun s -> s.ss_avg_points))))
-      (stat_cell "" (fmt (wavg (fun s -> s.ss_avg_rebounds))))
-      (stat_cell "" (fmt (wavg (fun s -> s.ss_avg_assists))))
-      (stat_cell "hidden sm:table-cell" (fmt (wavg (fun s -> s.ss_avg_steals))))
-      (stat_cell "hidden sm:table-cell" (fmt (wavg (fun s -> s.ss_avg_blocks))))
-      (stat_cell "hidden md:table-cell" (fmt_pct (wavg (fun s -> s.ss_ts_pct))))
-      (stat_cell "hidden md:table-cell" (fmt_pct (wavg (fun s -> s.ss_efg_pct))))
-      (stat_cell "" (fmt (wavg (fun s -> s.ss_efficiency))))
+      (* rows *)
+      current_row
+      peak_row
+      career_row
 
 let player_season_stats_component ~(player_id: string) ~scope (seasons: season_stats list) =
   match seasons with
@@ -1260,72 +1288,79 @@ let career_trajectory_chart (seasons: season_stats list) =
   | _ ->
       let n = List.length seasons_asc in
       let width = 420 in
-      let height = 140 in
+      let height = 160 in
       let padding = 22 in
       let inner_w = width - (2 * padding) in
       let inner_h = height - (2 * padding) in
-      let max_pts =
+      (* Find global max across all 3 metrics for a shared y-axis *)
+      let global_max =
         seasons_asc
-        |> List.fold_left (fun acc s -> max acc s.ss_avg_points) 0.0
+        |> List.fold_left (fun acc s ->
+            max acc (max s.ss_avg_points (max s.ss_avg_rebounds s.ss_avg_assists))) 0.0
         |> fun m -> if m <= 0.0 then 1.0 else m
       in
       let x_of_i i =
         if n <= 1 then padding
         else padding + (i * inner_w) / (n - 1)
       in
-      let y_of_pts v =
-        let ratio = max 0.0 (min 1.0 (v /. max_pts)) in
+      let y_of v =
+        let ratio = max 0.0 (min 1.0 (v /. global_max)) in
         padding + int_of_float (float_of_int inner_h *. (1.0 -. ratio))
       in
-      let pts_xy =
-        seasons_asc
-        |> List.mapi (fun i s ->
-            let x = x_of_i i in
-            let y = y_of_pts s.ss_avg_points in
-            (x, y, s))
+      (* Generate path + dots for a metric *)
+      let make_line ~extract ~color ~fill ~label =
+        let xy =
+          seasons_asc
+          |> List.mapi (fun i s -> (x_of_i i, y_of (extract s), s))
+        in
+        let path_d =
+          match xy with
+          | [] -> ""
+          | (x0, y0, _) :: tl ->
+              let rest = tl |> List.map (fun (x, y, _) -> Printf.sprintf "L %d %d" x y) |> String.concat " " in
+              Printf.sprintf "M %d %d %s" x0 y0 rest
+        in
+        let dots =
+          xy
+          |> List.map (fun (x, y, s) ->
+              let tip = Printf.sprintf "%s: %s %.1f" s.ss_season_name label (extract s) in
+              Printf.sprintf {svg|<g><title>%s</title><circle cx="%d" cy="%d" r="3" class="%s"/></g>|svg}
+                (escape_html tip) x y fill)
+          |> String.concat "\n"
+        in
+        Printf.sprintf {svg|<path d="%s" fill="none" stroke="currentColor" class="%s" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.85"/>%s|svg}
+          (escape_html path_d) color dots
       in
-      let path_d =
-        match pts_xy with
-        | [] -> ""
-        | (x0, y0, _) :: tl ->
-            let rest =
-              tl |> List.map (fun (x, y, _) -> Printf.sprintf "L %d %d" x y) |> String.concat " "
-            in
-            Printf.sprintf "M %d %d %s" x0 y0 rest
-      in
-      let dots =
-        pts_xy
-        |> List.map (fun (x, y, s) ->
-            let tip = Printf.sprintf "%s: 평균 득점 %.1f" s.ss_season_name s.ss_avg_points in
-            Printf.sprintf
-              {svg|<g><title>%s</title><circle cx="%d" cy="%d" r="3.5" class="fill-orange-500"/></g>|svg}
-              (escape_html tip) x y)
-        |> String.concat "\n"
-      in
+      let pts_line = make_line ~extract:(fun s -> s.ss_avg_points) ~color:"text-orange-500" ~fill:"fill-orange-500" ~label:"PPG" in
+      let reb_line = make_line ~extract:(fun s -> s.ss_avg_rebounds) ~color:"text-sky-500" ~fill:"fill-sky-500" ~label:"RPG" in
+      let ast_line = make_line ~extract:(fun s -> s.ss_avg_assists) ~color:"text-emerald-500" ~fill:"fill-emerald-500" ~label:"APG" in
       let first_season = (List.hd seasons_asc).ss_season_name in
       let last_season = (List.hd (List.rev seasons_asc)).ss_season_name in
       Printf.sprintf
         {html|<div class="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 p-5 shadow-lg">
           <div class="flex items-end justify-between gap-3">
             <div>
-              <h3 class="text-slate-900 dark:text-slate-200 font-bold">평균 득점 추이</h3>
+              <h3 class="text-slate-900 dark:text-slate-200 font-bold">커리어 스탯 추이</h3>
               <div class="text-[11px] text-slate-500 dark:text-slate-500">%s → %s</div>
             </div>
-            <div class="text-[11px] text-slate-500 dark:text-slate-500 font-mono">최대 %.1f</div>
+            <div class="flex items-center gap-3 text-[11px]">
+              <span class="flex items-center gap-1"><span class="w-3 h-0.5 bg-orange-500 rounded"></span><span class="text-slate-500 dark:text-slate-400">PPG</span></span>
+              <span class="flex items-center gap-1"><span class="w-3 h-0.5 bg-sky-500 rounded"></span><span class="text-slate-500 dark:text-slate-400">RPG</span></span>
+              <span class="flex items-center gap-1"><span class="w-3 h-0.5 bg-emerald-500 rounded"></span><span class="text-slate-500 dark:text-slate-400">APG</span></span>
+            </div>
           </div>
           <div class="mt-4">
             <svg viewBox="0 0 %d %d" class="w-full max-w-xl">
-              <path d="%s" fill="none" stroke="currentColor" class="text-orange-500" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+              %s
+              %s
               %s
             </svg>
           </div>
         </div>|html}
         (escape_html first_season)
         (escape_html last_season)
-        max_pts
         width height
-        (escape_html path_d)
-        dots
+        pts_line reb_line ast_line
 let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2") ?(include_team=true) ?(player_info=None) (rank: int) (p: player_aggregate) =
   let id_badge = if show_player_id then player_id_badge p.player_id else "" in
   let display_name = normalize_name p.name in
@@ -1407,12 +1442,21 @@ let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2") ?(include_
 	      let item_html (it: career_high_item) =
 	        let venue = if it.chi_is_home then "홈" else "원정" in
 	        let href = Printf.sprintf "/boxscore/%s" (Uri.pct_encode it.chi_game_id) in
+	        let opp_code = team_code_of_string it.chi_opponent |> Option.value ~default:"" in
+	        let opp_logo = team_logo_tag ~class_name:"w-4 h-4 inline-block" opp_code in
 	        Printf.sprintf
 	          {html|<a href="%s" class="block bg-slate-100 dark:bg-slate-800/40 border border-slate-300 dark:border-slate-700/50 rounded-lg p-4 hover:border-orange-400 dark:hover:border-orange-600 transition-colors">
 	            <div class="flex items-start justify-between gap-3">
 	              <div class="min-w-0">
 	                <div class="text-[11px] text-slate-500 dark:text-slate-500 font-mono uppercase tracking-wider">%s</div>
-	                <div class="mt-1 text-sm text-slate-700 dark:text-slate-300 truncate">%s · %s</div>
+	                <div class="mt-1 flex items-center gap-1.5 text-sm text-slate-700 dark:text-slate-300">
+	                  <span class="font-mono text-[11px] text-slate-500 dark:text-slate-500">%s</span>
+	                  <span class="text-slate-400 dark:text-slate-600">·</span>
+	                  <span class="text-[11px] text-slate-500 dark:text-slate-500">%s</span>
+	                  <span class="text-slate-400 dark:text-slate-600">·</span>
+	                  %s
+	                  <span class="truncate">%s</span>
+	                </div>
 	              </div>
 	              <div class="text-2xl font-black text-slate-900 dark:text-slate-200 font-mono tabular-nums">%d</div>
 	            </div>
@@ -1420,7 +1464,9 @@ let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2") ?(include_
 	          (escape_html href)
 	          (escape_html it.chi_label)
 	          (escape_html it.chi_game_date)
-	          (escape_html (venue ^ " · " ^ it.chi_opponent))
+	          (escape_html venue)
+	          opp_logo
+	          (escape_html it.chi_opponent)
 	          it.chi_value
 	      in
 	      let items_html = items |> List.map item_html |> String.concat "\n" in

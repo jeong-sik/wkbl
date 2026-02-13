@@ -173,40 +173,55 @@ let milestone_tracker_card (avg: player_aggregate) =
       (milestone_progress_bar games_ms)
 
 (** Advanced Stats Card - TS%, eFG%, PER, Usage% *)
-let advanced_stats_card (avg: player_aggregate) =
+let advanced_stats_card (avg: player_aggregate) (seasons: season_stats list) =
   if avg.games_played <= 0 then ""
   else
-    (* Calculate PER using existing function *)
     let per = Stats.per_of_player_aggregate avg in
-    (* Simple efficiency-based estimates without full shooting data *)
-    let pts_per_game = avg.avg_points in
+    let rpg = avg.avg_rebounds in
+    let apg = avg.avg_assists in
     let eff_per_game = avg.efficiency /. float_of_int avg.games_played in
-    let minutes_per_game = avg.total_minutes /. float_of_int avg.games_played in
-    (* PER rating color *)
+    (* Compute career TS% and eFG% from season breakdown via weighted averages *)
+    let career_ts_pct, career_efg_pct =
+      let total_gp = List.fold_left (fun acc (s: season_stats) -> acc + s.ss_games_played) 0 seasons in
+      if total_gp = 0 then (0.0, 0.0)
+      else
+        let gp_f = float_of_int total_gp in
+        let wavg field = (List.fold_left (fun acc (s: season_stats) -> acc +. field s *. float_of_int s.ss_games_played) 0.0 seasons) /. gp_f in
+        (wavg (fun s -> s.ss_ts_pct), wavg (fun s -> s.ss_efg_pct))
+    in
     let per_color =
       if per >= 25.0 then "text-emerald-600 dark:text-emerald-400"
       else if per >= 20.0 then "text-sky-600 dark:text-sky-400"
       else if per >= 15.0 then "text-slate-700 dark:text-slate-300"
       else "text-rose-600 dark:text-rose-400"
     in
+    let pct_color v =
+      if v >= 0.60 then "text-emerald-600 dark:text-emerald-400"
+      else if v >= 0.50 then "text-sky-600 dark:text-sky-400"
+      else if v >= 0.40 then "text-slate-700 dark:text-slate-300"
+      else if v > 0.0 then "text-rose-600 dark:text-rose-400"
+      else "text-slate-400 dark:text-slate-600"
+    in
     let stat_box label value unit description color =
       Printf.sprintf
         {html|<div class="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-3 text-center">
           <div class="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wider font-bold">%s</div>
-          <div class="text-2xl font-black %s font-mono tabular-nums">%.1f<span class="text-xs text-slate-400">%s</span></div>
+          <div class="text-2xl font-black %s font-mono tabular-nums">%s<span class="text-xs text-slate-400">%s</span></div>
           <div class="text-[9px] text-slate-400 dark:text-slate-500 mt-1">%s</div>
         </div>|html}
         (escape_html label) color value unit (escape_html description)
     in
+    let fmt_f1 v = Printf.sprintf "%.1f" v in
+    let fmt_pct v = if v > 0.0 then Printf.sprintf "%.1f" (v *. 100.0) else "-" in
     Printf.sprintf
       {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 sm:p-6 shadow-lg">
         <div class="flex items-start justify-between gap-4 mb-4">
           <div class="min-w-0">
-	            <h3 class="text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-xs flex items-center gap-2">
-	              <span class="text-lg">📊</span> 고급 지표
-	            </h3>
+            <h3 class="text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-xs flex items-center gap-2">
+              <span class="text-lg">📊</span> 고급 지표
+            </h3>
             <div class="mt-1 text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
-              효율 지표 및 영향력 분석
+              커리어 효율 지표 및 영향력 분석
             </div>
           </div>
         </div>
@@ -216,19 +231,29 @@ let advanced_stats_card (avg: player_aggregate) =
           %s
           %s
         </div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3">
+          %s
+          %s
+          %s
+          %s
+        </div>
         <div class="mt-4 pt-3 border-t border-slate-200 dark:border-slate-700">
           <div class="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed">
-	            <strong>PER</strong>: 선수 효율 지수 (리그 평균 ≈ 15.0) |
-	            <strong>EFF/G</strong>: 경기당 효율 |
-	            <strong>PTS/G</strong>: 경기당 득점 |
-	            <strong>MIN/G</strong>: 경기당 출전 시간
+            <strong>PER</strong>: 효율 지수 (리그 평균 ≈ 15.0) |
+            <strong>TS%%</strong>: 실질 슈팅 효율 |
+            <strong>eFG%%</strong>: 유효 야투율 |
+            <strong>EFF/G</strong>: 경기당 효율
           </div>
         </div>
       </div>|html}
-      (stat_box "PER" per "" "효율 레이팅" per_color)
-      (stat_box "EFF/G" eff_per_game "" "경기당 효율" "text-orange-600 dark:text-orange-400")
-      (stat_box "PTS/G" pts_per_game "" "경기당 득점" "text-slate-700 dark:text-slate-300")
-      (stat_box "MIN/G" minutes_per_game "" "경기당 출전" "text-slate-700 dark:text-slate-300")
+      (stat_box "PER" (fmt_f1 per) "" "효율 레이팅" per_color)
+      (stat_box "TS%" (fmt_pct career_ts_pct) "" "실질 슈팅" (pct_color career_ts_pct))
+      (stat_box "eFG%" (fmt_pct career_efg_pct) "" "유효 야투" (pct_color career_efg_pct))
+      (stat_box "EFF/G" (fmt_f1 eff_per_game) "" "경기당 효율" "text-orange-600 dark:text-orange-400")
+      (stat_box "PPG" (fmt_f1 avg.avg_points) "" "경기당 득점" "text-slate-700 dark:text-slate-300")
+      (stat_box "RPG" (fmt_f1 rpg) "" "경기당 리바운드" "text-slate-700 dark:text-slate-300")
+      (stat_box "APG" (fmt_f1 apg) "" "경기당 어시스트" "text-slate-700 dark:text-slate-300")
+      (stat_box "MIN/G" (fmt_f1 (avg.total_minutes /. float_of_int avg.games_played)) "" "경기당 출전" "text-slate-700 dark:text-slate-300")
 
 let player_profile_page ?(lang=I18n.Ko) ?(leaderboards=None) ?(show_ops=false) (profile: player_profile) ~scope ~(seasons_catalog: season_info list) =
   let _ = leaderboards in (* suppress unused warning *)
@@ -240,7 +265,6 @@ let player_profile_page ?(lang=I18n.Ko) ?(leaderboards=None) ?(show_ops=false) (
     | Some h when h > 0 && h <= 210 -> Printf.sprintf "%dcm" h  (* valid basketball height range *)
     | _ -> "-"
   in
-  let info_text = Printf.sprintf "%s | %s" pos height_text in
   let birth_text =
     match p.birth_date with
     | Some d when String.trim d <> "" -> d
@@ -252,6 +276,19 @@ let player_profile_page ?(lang=I18n.Ko) ?(leaderboards=None) ?(show_ops=false) (
     match List.rev profile.team_stints with
     | latest :: _ -> String.trim latest.pts_team_name
     | [] -> String.trim avg.team_name  (* fallback to averages if no stints *)
+  in
+  let info_text =
+    if current_team = "" then
+      Printf.sprintf "%s | %s" pos height_text
+    else
+      let team_code = team_code_of_string current_team |> Option.value ~default:"" in
+      Printf.sprintf
+        {html|<a href="%s" class="inline-flex items-center gap-1.5 hover:text-white transition-colors">%s %s</a> <span class="text-white/40">·</span> %s | %s|html}
+        (team_href current_team)
+        (team_logo_tag ~class_name:"w-5 h-5 inline-block" team_code)
+        (escape_html current_team)
+        pos
+        height_text
   in
   let team_color =
     team_code_of_string current_team
@@ -383,37 +420,52 @@ let player_profile_page ?(lang=I18n.Ko) ?(leaderboards=None) ?(show_ops=false) (
                 else if margin < 0 then "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30"
                 else "bg-slate-500/10 text-slate-700 dark:text-slate-300 border-slate-500/30"
               in
-              let label =
-                if margin > 0 then Printf.sprintf "W +%d" margin
-                else if margin < 0 then Printf.sprintf "L %d" margin
-                else "T 0"
-              in
+              let wl = if margin > 0 then "W" else if margin < 0 then "L" else "T" in
               Printf.sprintf
-                {html|<span class="inline-flex items-center justify-center px-2 py-0.5 rounded border text-[10px] font-mono min-w-[52px] %s">%s</span>|html}
-                cls label
+                {html|<span class="inline-flex items-center justify-center px-2 py-0.5 rounded border text-[10px] font-mono min-w-[52px] %s"><span class="font-bold">%s</span> %d-%d</span>|html}
+                cls wl team_score opponent_score
           | _ ->
               {html|<span class="inline-flex items-center justify-center px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700/60 text-[10px] font-mono text-slate-500 dark:text-slate-500 min-w-[52px]">-</span>|html}
         in
         let quality_badge = score_quality_badge ~lang ~compact:true g.score_quality in
-        let opponent_label = if g.is_home then "vs " ^ g.opponent else "@ " ^ g.opponent in
+        let ha_prefix = if g.is_home then "vs" else "@" in
+        let opp_logo = team_logo_tag ~class_name:"w-4 h-4" g.opponent in
         let opponent_href = team_href g.opponent in
+        let shooting_cell made att =
+          if att = 0 then {html|<td class="px-3 py-2 text-right font-mono text-slate-400 dark:text-slate-600 w-[60px] sm:w-[72px] hidden md:table-cell">-</td>|html}
+          else
+            let pct = float_of_int made /. float_of_int att *. 100.0 in
+            let pct_cls =
+              if pct >= 60.0 then "text-emerald-600 dark:text-emerald-400"
+              else if pct >= 45.0 then "text-slate-700 dark:text-slate-300"
+              else "text-rose-500 dark:text-rose-400"
+            in
+            Printf.sprintf {html|<td class="px-3 py-2 text-right font-mono w-[60px] sm:w-[72px] hidden md:table-cell"><span class="text-slate-700 dark:text-slate-300">%d-%d</span> <span class="text-[10px] %s">%.0f</span></td>|html}
+              made att pct_cls pct
+        in
         Printf.sprintf
-          {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/30 transition-colors"><td class="px-3 py-2 text-slate-600 dark:text-slate-400 text-sm font-mono whitespace-nowrap w-[90px] sm:w-[110px]"><a href="%s" class="hover:text-orange-600 dark:hover:text-orange-400 transition-colors">%s</a></td><td class="px-3 py-2 text-slate-900 dark:text-white"><div class="flex flex-wrap items-center gap-x-3 gap-y-2"><a href="%s" class="player-name min-w-0 flex-1 hover:text-orange-600 dark:hover:text-orange-400 transition-colors">%s</a><div class="flex items-center gap-2 shrink-0">%s%s</div></div></td><td class="px-3 py-2 text-right font-mono text-slate-600 dark:text-slate-400 w-[60px] sm:w-[72px] whitespace-nowrap">%.1f</td><td class="px-3 py-2 text-right font-bold %s w-[60px] sm:w-[72px] whitespace-nowrap">%d</td><td class="px-3 py-2 text-right font-mono w-[60px] sm:w-[72px] whitespace-nowrap %s">%s</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[60px] sm:w-[72px] whitespace-nowrap">%d</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[60px] sm:w-[72px] hidden sm:table-cell">%d</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[60px] sm:w-[72px] hidden sm:table-cell">%d</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[60px] sm:w-[72px] hidden sm:table-cell">%d</td></tr>|html}
+          {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/30 transition-colors"><td class="px-3 py-2 text-slate-600 dark:text-slate-400 text-sm font-mono whitespace-nowrap w-[90px] sm:w-[110px]"><a href="%s" class="hover:text-orange-600 dark:hover:text-orange-400 transition-colors">%s</a></td><td class="px-3 py-2 text-slate-900 dark:text-white"><div class="flex flex-wrap items-center gap-x-3 gap-y-2"><span class="text-[10px] text-slate-500 dark:text-slate-500 font-sans w-3">%s</span>%s<a href="%s" class="player-name min-w-0 flex-1 hover:text-orange-600 dark:hover:text-orange-400 transition-colors">%s</a><div class="flex items-center gap-2 shrink-0">%s%s</div></div></td><td class="px-3 py-2 text-right font-mono text-slate-600 dark:text-slate-400 w-[60px] sm:w-[72px] whitespace-nowrap">%.1f</td><td class="px-3 py-2 text-right font-bold %s w-[60px] sm:w-[72px] whitespace-nowrap">%d</td>%s%s%s<td class="px-3 py-2 text-right font-mono w-[60px] sm:w-[72px] whitespace-nowrap %s">%s</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[60px] sm:w-[72px] whitespace-nowrap">%d</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[60px] sm:w-[72px] hidden sm:table-cell">%d</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[60px] sm:w-[72px] hidden sm:table-cell">%d</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[60px] sm:w-[72px] hidden sm:table-cell">%d</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[60px] sm:w-[72px] hidden sm:table-cell">%d</td></tr>|html}
           (boxscore_href g.game_id)
           (escape_html g.game_date)
+          ha_prefix
+          opp_logo
           (escape_html opponent_href)
-          (escape_html opponent_label)
+          (escape_html g.opponent)
           margin_badge
           quality_badge
           g.min
           res_color
           g.pts
+          (shooting_cell g.fg_made g.fg_att)
+          (shooting_cell g.fg3_made g.fg3_att)
+          (shooting_cell g.ft_made g.ft_att)
           pm_class
           (escape_html pm_str)
           g.reb
           g.ast
           g.stl
-          g.blk)
+          g.blk
+          g.tov)
     |> String.concat "\n"
   in
   let birth_chip =
@@ -530,6 +582,47 @@ let player_profile_page ?(lang=I18n.Ko) ?(leaderboards=None) ?(show_ops=false) (
         (String.concat "" (List.rev bs))
   in
   let recent_rows = game_rows profile.recent_games in
+  let recent_tfoot =
+    let gs = profile.recent_games in
+    let n = List.length gs in
+    if n = 0 then ""
+    else
+      let nf = float_of_int n in
+      let sum_f f = List.fold_left (fun acc (g: player_game_stat) -> acc +. f g) 0.0 gs in
+      let sum_i f = List.fold_left (fun acc (g: player_game_stat) -> acc + f g) 0 gs in
+      let avg_min = sum_f (fun g -> g.min) /. nf in
+      let avg_pts = float_of_int (sum_i (fun g -> g.pts)) /. nf in
+      let avg_reb = float_of_int (sum_i (fun g -> g.reb)) /. nf in
+      let avg_ast = float_of_int (sum_i (fun g -> g.ast)) /. nf in
+      let avg_stl = float_of_int (sum_i (fun g -> g.stl)) /. nf in
+      let avg_blk = float_of_int (sum_i (fun g -> g.blk)) /. nf in
+      let avg_tov = float_of_int (sum_i (fun g -> g.tov)) /. nf in
+      let t_fg_m = sum_i (fun g -> g.fg_made) and t_fg_a = sum_i (fun g -> g.fg_att) in
+      let t_3p_m = sum_i (fun g -> g.fg3_made) and t_3p_a = sum_i (fun g -> g.fg3_att) in
+      let t_ft_m = sum_i (fun g -> g.ft_made) and t_ft_a = sum_i (fun g -> g.ft_att) in
+      let pct_str m a = if a = 0 then "-" else Printf.sprintf "%.0f" (float_of_int m /. float_of_int a *. 100.0) in
+      Printf.sprintf
+        {html|<tfoot class="bg-slate-100/80 dark:bg-slate-800/60 border-t-2 border-slate-300 dark:border-slate-700 font-bold text-xs">
+          <tr>
+            <td class="px-3 py-2 text-slate-600 dark:text-slate-400">%d경기 평균</td>
+            <td class="px-3 py-2"></td>
+            <td class="px-3 py-2 text-right">%.1f</td>
+            <td class="px-3 py-2 text-right text-orange-600 dark:text-orange-400">%.1f</td>
+            <td class="px-3 py-2 text-right hidden md:table-cell"><span class="text-slate-700 dark:text-slate-300">%s</span></td>
+            <td class="px-3 py-2 text-right hidden md:table-cell"><span class="text-slate-700 dark:text-slate-300">%s</span></td>
+            <td class="px-3 py-2 text-right hidden md:table-cell"><span class="text-slate-700 dark:text-slate-300">%s</span></td>
+            <td class="px-3 py-2"></td>
+            <td class="px-3 py-2 text-right">%.1f</td>
+            <td class="px-3 py-2 text-right hidden sm:table-cell">%.1f</td>
+            <td class="px-3 py-2 text-right hidden sm:table-cell">%.1f</td>
+            <td class="px-3 py-2 text-right hidden sm:table-cell">%.1f</td>
+            <td class="px-3 py-2 text-right hidden sm:table-cell">%.1f</td>
+          </tr>
+        </tfoot>|html}
+        n avg_min avg_pts
+        (pct_str t_fg_m t_fg_a) (pct_str t_3p_m t_3p_a) (pct_str t_ft_m t_ft_a)
+        avg_reb avg_ast avg_stl avg_blk avg_tov
+  in
   let all_star_rows = game_rows profile.all_star_games in
   let season_stats_component = player_season_stats_component ~player_id:p.id ~scope profile.season_breakdown in
   let summary_comparison_html = player_summary_comparison profile.season_breakdown in
@@ -739,7 +832,6 @@ let player_profile_page ?(lang=I18n.Ko) ?(leaderboards=None) ?(show_ops=false) (
 	          current_team_html transfers last_move_value_html stint_rows official_html
   in
 
-  let _career_highs_html = career_highs_card profile.career_highs in
   let leaderboards_html =
     match leaderboards with
     | None -> ""
@@ -1087,17 +1179,21 @@ let player_profile_page ?(lang=I18n.Ko) ?(leaderboards=None) ?(show_ops=false) (
           <div class="space-y-4">
             %s
             <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-lg">
-              <table class="min-w-[680px] sm:min-w-[920px] w-full text-xs sm:text-sm font-mono table-fixed tabular-nums" aria-label="최근 경기 기록">
+              <table class="min-w-[680px] md:min-w-[1100px] w-full text-xs sm:text-sm font-mono table-fixed tabular-nums" aria-label="최근 경기 기록">
                 <colgroup>
                   <col style="width: 110px;"> <!-- Date -->
                   <col style="width: auto;">  <!-- Opponent -->
                   <col style="width: 72px;">  <!-- MIN -->
                   <col style="width: 72px;">  <!-- PTS -->
+                  <col class="hidden md:table-column" style="width: 72px;"> <!-- FG -->
+                  <col class="hidden md:table-column" style="width: 72px;"> <!-- 3P -->
+                  <col class="hidden md:table-column" style="width: 72px;"> <!-- FT -->
                   <col style="width: 72px;">  <!-- +/- -->
                   <col style="width: 72px;">  <!-- REB -->
                   <col class="hidden sm:table-column" style="width: 72px;"> <!-- AST -->
                   <col class="hidden sm:table-column" style="width: 72px;"> <!-- STL -->
                   <col class="hidden sm:table-column" style="width: 72px;"> <!-- BLK -->
+                  <col class="hidden sm:table-column" style="width: 72px;"> <!-- TOV -->
                 </colgroup>
                 <thead class="bg-slate-100/80 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-600 dark:text-slate-400 uppercase tracking-wider text-[10px] sm:text-xs whitespace-nowrap">
                   <tr>
@@ -1105,14 +1201,19 @@ let player_profile_page ?(lang=I18n.Ko) ?(leaderboards=None) ?(show_ops=false) (
                     <th scope="col" class="px-3 py-2 text-left font-sans">상대</th>
                     <th scope="col" class="px-3 py-2 text-right" title="출전시간">MIN</th>
                     <th scope="col" class="px-3 py-2 text-right text-orange-600 dark:text-orange-400" title="득점">PTS</th>
+                    <th scope="col" class="px-3 py-2 text-right hidden md:table-cell" title="필드골 (성공-시도)">FG</th>
+                    <th scope="col" class="px-3 py-2 text-right hidden md:table-cell" title="3점슛 (성공-시도)">3P</th>
+                    <th scope="col" class="px-3 py-2 text-right hidden md:table-cell" title="자유투 (성공-시도)">FT</th>
                     <th scope="col" class="px-3 py-2 text-right" title="+/-">+/-</th>
                     <th scope="col" class="px-3 py-2 text-right" title="리바운드">REB</th>
                     <th scope="col" class="px-3 py-2 text-right hidden sm:table-cell" title="어시스트">AST</th>
                     <th scope="col" class="px-3 py-2 text-right hidden sm:table-cell" title="스틸">STL</th>
                     <th scope="col" class="px-3 py-2 text-right hidden sm:table-cell" title="블록">BLK</th>
+                    <th scope="col" class="px-3 py-2 text-right hidden sm:table-cell" title="턴오버">TOV</th>
                   </tr>
                 </thead>
                 <tbody>%s</tbody>
+                %s
               </table>
             </div>
           </div>
@@ -1150,12 +1251,13 @@ let player_profile_page ?(lang=I18n.Ko) ?(leaderboards=None) ?(show_ops=false) (
           career_trajectory_html
           recent_games_header_html
           recent_rows
+          recent_tfoot
           all_star_section_html
           team_movement_html
           leaderboards_html
           (Printf.sprintf {html|<div hx-get="%s/shot-chart" hx-trigger="load" hx-swap="innerHTML" class="htmx-indicator-wrapper"><div class="text-center py-4"><span class="htmx-indicator inline-flex items-center gap-2 text-slate-400"><span class="w-4 h-4 border-2 border-slate-300 border-t-orange-500 rounded-full animate-spin" aria-hidden="true"></span><span>슛 차트 로딩 중...</span></span></div></div>|html} (player_href p.id))
           trends_panel_html
-          (advanced_stats_card profile.averages)
+          (advanced_stats_card profile.averages profile.season_breakdown)
           (career_highs_card profile.career_highs)
           (milestone_tracker_card profile.averages)
           missing_data_html
@@ -1254,16 +1356,12 @@ let player_game_logs_page ?(lang=I18n.Ko) (profile: player_profile) ~(season: st
                 let cls =
                   if margin > 0 then "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/30"
                   else if margin < 0 then "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30"
-                  else "bg-slate-50 dark:bg-[#0b0e14]0/10 text-slate-700 dark:text-slate-300 border-slate-500/30"
+                  else "bg-slate-500/10 text-slate-700 dark:text-slate-300 border-slate-500/30"
                 in
-                let label =
-                  if margin > 0 then Printf.sprintf "W +%d" margin
-                  else if margin < 0 then Printf.sprintf "L %d" margin
-                  else "T 0"
-                in
+                let wl = if margin > 0 then "W" else if margin < 0 then "L" else "T" in
                 Printf.sprintf
-                  {html|<span class="inline-flex items-center px-2 py-0.5 rounded border text-[10px] font-mono %s">%s</span>|html}
-                  cls label
+                  {html|<span class="inline-flex items-center px-2 py-0.5 rounded border text-[10px] font-mono %s"><span class="font-bold">%s</span> %d-%d</span>|html}
+                  cls wl team_score opponent_score
             | _ ->
                 {html|<span class="inline-flex items-center px-2 py-0.5 rounded border border-slate-300 dark:border-slate-700/60 text-[10px] font-mono text-slate-600 dark:text-slate-400">-</span>|html}
           in
