@@ -377,7 +377,11 @@ let predict_match_nerd ~(context : prediction_context_input option) ~(season: st
   let final_margin = (elo_margin +. prob_margin) /. 2.0 in
 
   (* Calculate total score *)
-  let pace_factor = 1.0 in (* TODO: Calculate real pace from boxscores *)
+  (* Average both teams' pace estimates, normalize to league average ~70 possessions *)
+  let pace_factor =
+    let avg_pace = (home.pace +. away.pace) /. 2.0 in
+    if avg_pace > 0.0 then avg_pace /. 70.0 else 1.0
+  in
   let total_score = (home.pts +. away.pts) *. pace_factor in
 
   let result =
