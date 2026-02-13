@@ -1862,6 +1862,29 @@ Sitemap: https://wkbl.win/sitemap.xml
 		              | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
 		    );
 
+	    (* Player Splits — Home/Away, per-opponent, per-month *)
+	    Kirin.get "/player/:id/splits" (fun request ->
+	      let lang = request_lang request in
+	      let player_id = Kirin.param "id" request in
+	      match Db.get_player_profile ~player_id (), Db.get_seasons () with
+	      | Ok None, _ -> Kirin.html (Views.error_page ~lang "Player not found")
+	      | Error e, _ | _, Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
+	      | Ok (Some profile), Ok seasons ->
+	          let canon_id = profile.player.id in
+	          match
+	            Player_identity.redirect_location ~requested_id:player_id ~canonical_id:canon_id
+	              ~suffix:"splits" (Kirin.Request.uri request)
+	          with
+	          | Some location -> Kirin.redirect ~status:`Permanent_redirect location
+	          | None ->
+	              let season = query_season_or_latest request seasons in
+	              match Db.get_player_game_logs ~player_id ~season ~include_mismatch:false () with
+	              | Ok games ->
+	                  Kirin.html
+	                    (Views_player.player_splits_page ~lang profile ~season ~seasons games)
+	              | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
+	    );
+
 	    (* Player Season Stats HTMX Partial *)
 	    Kirin.get "/player/:id/season-stats" (fun request ->
 	      let lang = request_lang request in
@@ -1894,12 +1917,11 @@ Sitemap: https://wkbl.win/sitemap.xml
 	          if is_htmx then
 	            Kirin.html (Views_charts.zone_shot_chart_partial chart)
 	          else
-	            (match Db.get_seasons () with
-	            | Ok seasons ->
-	                let season_list = seasons |> List.map (fun s -> (s.code, s.name)) in
-	                Kirin.html (Views_charts.zone_shot_chart_page ~lang chart ~seasons:season_list ~current_season:season)
-	            | Error _ ->
-	                Kirin.html (Views_charts.zone_shot_chart_page ~lang chart ~seasons:[] ~current_season:season))
+	            (match Db.get_player_profile ~player_id (), Db.get_seasons () with
+	            | Ok (Some profile), Ok seasons ->
+	                Kirin.html (Views_player.player_shot_chart_page ~lang profile ~season ~seasons chart)
+	            | Ok None, _ -> Kirin.html (Views.error_page ~lang "Player not found")
+	            | Error e, _ | _, Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e)))
 	      | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
 	    );
 
@@ -2256,6 +2278,73 @@ Sitemap: https://wkbl.win/sitemap.xml
       end
     );
 
+    (* Unified Search API: players + teams + seasons *)
+    Kirin.get "/api/search" (fun request ->
+      let q = Kirin.query_opt "q" request |> Option.value ~default:"" in
+      let q_trimmed = String.trim q in
+      if String.length q_trimmed < 1 then
+        Kirin.json_string {|{"players":[],"teams":[],"seasons":[]}|}
+      else begin
+        let open Db_common in
+        let all_seasons = Db.get_seasons () in
+        (* Players *)
+        let players_json = match all_seasons with
+          | Error _ -> "[]"
+          | Ok seasons ->
+              let season = query_season_or_latest request seasons in
+              (match Db.get_players ~season ~search:q_trimmed ~limit:5 () with
+              | Error _ -> "[]"
+              | Ok players ->
+                  let items = List.map (fun p ->
+                    Printf.sprintf {|{"id":"%s","name":"%s","team":"%s","pts":%.1f}|}
+                      (Views_common.escape_html p.player_id)
+                      (Views_common.escape_html p.name)
+                      (Views_common.escape_html p.team_name)
+                      p.avg_points
+                  ) players in
+                  Printf.sprintf "[%s]" (String.concat "," items))
+        in
+        (* Teams *)
+        let teams_json = match Db.get_all_teams () with
+          | Error _ -> "[]"
+          | Ok teams ->
+              let needle = normalize_search_text q_trimmed in
+              let matched = teams
+                |> List.filter (fun (t: Domain.team_info) ->
+                    string_contains ~needle ~hay:t.team_name ||
+                    string_contains ~needle ~hay:t.team_code)
+                |> take 5
+              in
+              let items = List.map (fun (t: Domain.team_info) ->
+                Printf.sprintf {|{"code":"%s","name":"%s"}|}
+                  (Views_common.escape_html t.team_code)
+                  (Views_common.escape_html t.team_name)
+              ) matched in
+              Printf.sprintf "[%s]" (String.concat "," items)
+        in
+        (* Seasons *)
+        let seasons_json = match all_seasons with
+          | Error _ -> "[]"
+          | Ok seasons ->
+              let needle = normalize_search_text q_trimmed in
+              let matched = seasons
+                |> List.filter (fun (s: Domain.season_info) ->
+                    string_contains ~needle ~hay:s.name ||
+                    string_contains ~needle ~hay:s.code)
+                |> take 5
+              in
+              let items = List.map (fun (s: Domain.season_info) ->
+                Printf.sprintf {|{"code":"%s","name":"%s"}|}
+                  (Views_common.escape_html s.code)
+                  (Views_common.escape_html s.name)
+              ) matched in
+              Printf.sprintf "[%s]" (String.concat "," items)
+        in
+        Kirin.json_string (Printf.sprintf {|{"players":%s,"teams":%s,"seasons":%s}|}
+          players_json teams_json seasons_json)
+      end
+    );
+
     (* Live Scores API: JSON *)
     Kirin.get "/api/live/status" (fun _ ->
       let current = Live.get_current_games () in
@@ -2367,6 +2456,17 @@ Sitemap: https://wkbl.win/sitemap.xml
       match Db.get_historical_seasons () with
       | Ok seasons -> Kirin.html (Views_history.history_page ~lang seasons)
       | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
+    );
+
+    (* Season summary page *)
+    Kirin.get "/season/:code" (fun request ->
+      let lang = request_lang request in
+      let season = Kirin.param "code" request |> Uri.pct_decode in
+      match Db.get_seasons (), Db.get_standings ~season (), Db.get_leaders_base ~season (), Db.get_historical_seasons () with
+      | Ok seasons, Ok standings, Ok leaders, Ok histories ->
+          Kirin.html (Views_season.season_summary_page ~lang ~season ~seasons ~standings ~leaders ~histories ())
+      | Error e, _, _, _ | _, Error e, _, _ | _, _, Error e, _ | _, _, _, Error e ->
+          Kirin.html (Views.error_page ~lang (Db.show_db_error e))
     );
     Kirin.get "/legends" (fun request ->
       let lang = request_lang request in

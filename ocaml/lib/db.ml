@@ -889,6 +889,7 @@ module Types = struct
 	    let encode _ = Error "Encode not supported: read-only type" in
 	    let decode (season_code, rest) =
 	      let (season_name, rest) = rest in
+      let (team_name, rest) = rest in
       let (gp, rest) = rest in
       let (min, rest) = rest in
       let (pts, rest) = rest in
@@ -898,10 +899,15 @@ module Types = struct
       let (blk, rest) = rest in
       let (tov, rest) = rest in
       let (eff, rest) = rest in
-      let (margin, (ts, efg)) = rest in
+      let (margin, rest) = rest in
+      let (fg_pct, rest) = rest in
+      let (fg3_pct, rest) = rest in
+      let (ft_pct, rest) = rest in
+      let (ts, efg) = rest in
       Ok {
         ss_season_code = season_code;
         ss_season_name = season_name;
+        ss_team_name = team_name;
         ss_games_played = gp;
         ss_total_minutes = min;
         ss_avg_points = pts;
@@ -912,19 +918,22 @@ module Types = struct
         ss_avg_turnovers = tov;
         ss_efficiency = eff;
         ss_margin = margin;
+        ss_fg_pct = fg_pct;
+        ss_fg3_pct = fg3_pct;
+        ss_ft_pct = ft_pct;
         ss_ts_pct = ts;
         ss_efg_pct = efg;
       }
     in
     let t = t2 in
     custom ~encode ~decode
-      (t string (t string (t int (t float (t float (t float (t float (t float (t float (t float (t float (t float (t float float)))))))))))))
+      (t string (t string (t string (t int (t float (t float (t float (t float (t float (t float (t float (t float (t float (t float (t float (t float (t float float)))))))))))))))))
 
   let player_game_stat =
     let encode _ = Error "Encode not supported: read-only type" in
-    let decode (game_id, (game_date, (opponent, (is_home_int, (team_score, (opponent_score, (score_quality_int, (min, (pts, (reb, (ast, (stl, (blk, (tov, plus_minus)))))))))))))) =
+    let decode (game_id, (game_date, (opponent, (is_home_int, (team_score, (opponent_score, (score_quality_int, (min, (fg_made, (fg_att, (fg3_made, (fg3_att, (ft_made, (ft_att, (pts, (reb, (ast, (stl, (blk, (tov, plus_minus)))))))))))))))))))) =
       let is_home = is_home_int = 1 in
-      Ok { game_id; game_date; opponent; is_home; team_score; opponent_score; score_quality = game_score_quality_of_int score_quality_int; min; pts; reb; ast; stl; blk; tov; plus_minus }
+      Ok { game_id; game_date; opponent; is_home; team_score; opponent_score; score_quality = game_score_quality_of_int score_quality_int; min; fg_made; fg_att; fg3_made; fg3_att; ft_made; ft_att; pts; reb; ast; stl; blk; tov; plus_minus }
     in
     let t = t2 in
     custom ~encode ~decode
@@ -936,13 +945,13 @@ module Types = struct
                      (t (option int)
                         (t int
                            (t float
-                              (t int (t int (t int (t int (t int (t int (option int)))))))))))))))
+                              (t int (t int (t int (t int (t int (t int (t int (t int (t int (t int (t int (t int (option int)))))))))))))))))))))
 
   let player_game_stat_with_id =
     let encode _ = Error "Encode not supported: read-only type" in
-    let decode (player_id, (game_id, (game_date, (opponent, (is_home_int, (team_score, (opponent_score, (score_quality_int, (min, (pts, (reb, (ast, (stl, (blk, (tov, plus_minus))))))))))))))) =
+    let decode (player_id, (game_id, (game_date, (opponent, (is_home_int, (team_score, (opponent_score, (score_quality_int, (min, (fg_made, (fg_att, (fg3_made, (fg3_att, (ft_made, (ft_att, (pts, (reb, (ast, (stl, (blk, (tov, plus_minus))))))))))))))))))))) =
       let is_home = is_home_int = 1 in
-      let stat = { game_id; game_date; opponent; is_home; team_score; opponent_score; score_quality = game_score_quality_of_int score_quality_int; min; pts; reb; ast; stl; blk; tov; plus_minus } in
+      let stat = { game_id; game_date; opponent; is_home; team_score; opponent_score; score_quality = game_score_quality_of_int score_quality_int; min; fg_made; fg_att; fg3_made; fg3_att; ft_made; ft_att; pts; reb; ast; stl; blk; tov; plus_minus } in
       Ok { pgs_player_id = player_id; pgs_stat = stat }
     in
     let t = t2 in
@@ -956,7 +965,7 @@ module Types = struct
                         (t (option int)
                            (t int
                               (t float
-                                 (t int (t int (t int (t int (t int (t int (option int))))))))))))))))
+                                 (t int (t int (t int (t int (t int (t int (t int (t int (t int (t int (t int (t int (option int))))))))))))))))))))))
 
   let team_game_result =
     let encode _ = Error "Encode not supported: read-only type" in
@@ -3550,192 +3559,127 @@ module Queries = struct
     ORDER BY link_type ASC
   |}
   
+  (** Season stats SQL helper — generates query for per_game/totals/per_36 modes.
+      Eliminates duplication across 3 nearly-identical 85-line queries. *)
+  let make_season_stats_sql mode =
+    let stat_cols = match mode with
+      | `Per_game ->
+        {|COALESCE(AVG(s.pts), 0),
+      COALESCE(AVG(s.reb_tot), 0),
+      COALESCE(AVG(s.ast), 0),
+      COALESCE(AVG(s.stl), 0),
+      COALESCE(AVG(s.blk), 0),
+      COALESCE(AVG(s.tov), 0),
+      COALESCE(AVG(s.game_score), 0)|}
+      | `Totals ->
+        {|COALESCE(SUM(s.pts), 0),
+      COALESCE(SUM(s.reb_tot), 0),
+      COALESCE(SUM(s.ast), 0),
+      COALESCE(SUM(s.stl), 0),
+      COALESCE(SUM(s.blk), 0),
+      COALESCE(SUM(s.tov), 0),
+      COALESCE(SUM(s.game_score), 0)|}
+      | `Per_36 ->
+        {|(SUM(s.pts) * 2160.0 / SUM(s.min_seconds)),
+      (SUM(s.reb_tot) * 2160.0 / SUM(s.min_seconds)),
+      (SUM(s.ast) * 2160.0 / SUM(s.min_seconds)),
+      (SUM(s.stl) * 2160.0 / SUM(s.min_seconds)),
+      (SUM(s.blk) * 2160.0 / SUM(s.min_seconds)),
+      (SUM(s.tov) * 2160.0 / SUM(s.min_seconds)),
+      (SUM(s.game_score) * 2160.0 / SUM(s.min_seconds))|}
+    in
+    let having_clause = match mode with
+      | `Per_36 -> "\n    HAVING SUM(s.min_seconds) > 0"
+      | `Per_game | `Totals -> ""
+    in
+    Printf.sprintf {sql|
+    WITH pid AS (
+      SELECT ? AS player_id
+    ),
+    canon AS (
+      SELECT COALESCE(
+        (SELECT canonical_player_id FROM player_identities WHERE player_id = (SELECT player_id FROM pid)),
+        (SELECT player_id FROM pid)
+      ) AS canonical_player_id
+    )
+    SELECT
+      g.season_code,
+      se.season_name,
+      COALESCE((SELECT t.team_name FROM teams t
+        WHERE t.team_code = (
+          SELECT sub.team_code FROM game_stats_clean sub
+          JOIN player_identities sub_pi ON sub_pi.player_id = sub.player_id
+          JOIN games_calc_v3 sub_g ON sub.game_id = sub_g.game_id
+          WHERE sub_pi.canonical_player_id = (SELECT canonical_player_id FROM canon)
+            AND sub_g.season_code = g.season_code
+            AND sub_g.game_type != '10'
+          GROUP BY sub.team_code
+          ORDER BY COUNT(*) DESC
+          LIMIT 1
+        )), '') as team_name,
+      COUNT(DISTINCT s.game_id) as gp,
+      COALESCE(SUM(s.min_seconds) / 60.0, 0),
+      %s,
+      COALESCE(
+        (SUM(
+          CASE
+            WHEN g.home_score_calc IS NOT NULL
+              AND g.away_score_calc IS NOT NULL
+              AND (s.team_code = g.home_team_code OR s.team_code = g.away_team_code)
+            THEN (
+              (CASE WHEN g.home_team_code = s.team_code THEN g.home_score_calc ELSE g.away_score_calc END)
+              -
+              (CASE WHEN g.home_team_code = s.team_code THEN g.away_score_calc ELSE g.home_score_calc END)
+            ) * s.min_seconds
+            ELSE 0
+          END
+        ) * 1.0) / NULLIF(
+          SUM(
+            CASE
+              WHEN g.home_score_calc IS NOT NULL
+                AND g.away_score_calc IS NOT NULL
+                AND (s.team_code = g.home_team_code OR s.team_code = g.away_team_code)
+              THEN s.min_seconds
+              ELSE 0
+            END
+          ),
+          0
+        ),
+        0
+      ) as margin,
+      CASE WHEN SUM(COALESCE(s.fg2_a, 0) + COALESCE(s.fg3_a, 0)) > 0
+        THEN CAST(SUM(COALESCE(s.fg2_m, 0) + COALESCE(s.fg3_m, 0)) AS REAL) / SUM(COALESCE(s.fg2_a, 0) + COALESCE(s.fg3_a, 0))
+        ELSE 0.0 END as fg_pct,
+      CASE WHEN SUM(COALESCE(s.fg3_a, 0)) > 0
+        THEN CAST(SUM(COALESCE(s.fg3_m, 0)) AS REAL) / SUM(COALESCE(s.fg3_a, 0))
+        ELSE 0.0 END as fg3_pct,
+      CASE WHEN SUM(COALESCE(s.ft_a, 0)) > 0
+        THEN CAST(SUM(COALESCE(s.ft_m, 0)) AS REAL) / SUM(COALESCE(s.ft_a, 0))
+        ELSE 0.0 END as ft_pct,
+      CASE WHEN SUM(COALESCE(s.fg2_a, 0) + COALESCE(s.fg3_a, 0)) + 0.44 * SUM(COALESCE(s.ft_a, 0)) > 0
+        THEN CAST(SUM(s.pts) AS REAL) / (2.0 * (SUM(COALESCE(s.fg2_a, 0) + COALESCE(s.fg3_a, 0)) + 0.44 * SUM(COALESCE(s.ft_a, 0))))
+        ELSE 0.0 END as ts_pct,
+      CASE WHEN SUM(COALESCE(s.fg2_a, 0) + COALESCE(s.fg3_a, 0)) > 0
+        THEN (CAST(SUM(COALESCE(s.fg2_m, 0) + COALESCE(s.fg3_m, 0)) AS REAL) + 0.5 * SUM(COALESCE(s.fg3_m, 0))) / SUM(COALESCE(s.fg2_a, 0) + COALESCE(s.fg3_a, 0))
+        ELSE 0.0 END as efg_pct
+    FROM game_stats_clean s
+    JOIN player_identities pi ON pi.player_id = s.player_id
+    JOIN games_calc_v3 g ON s.game_id = g.game_id
+    JOIN seasons se ON g.season_code = se.season_code
+    WHERE pi.canonical_player_id = (SELECT canonical_player_id FROM canon)
+      AND g.game_type != '10'
+    GROUP BY g.season_code, se.season_name%s
+    ORDER BY g.season_code DESC
+  |sql} stat_cols having_clause
+
   (** Queries for Per Game (Average) *)
-	  let player_seasons_per_game = (string ->* Types.season_stats) {|
-	    WITH pid AS (
-	      SELECT ? AS player_id
-	    ),
-	    canon AS (
-	      SELECT COALESCE(
-	        (SELECT canonical_player_id FROM player_identities WHERE player_id = (SELECT player_id FROM pid)),
-	        (SELECT player_id FROM pid)
-	      ) AS canonical_player_id
-	    )
-	    SELECT
-	      g.season_code,
-	      se.season_name,
-	      COUNT(DISTINCT s.game_id) as gp,
-	      COALESCE(SUM(s.min_seconds) / 60.0, 0),
-	      COALESCE(AVG(s.pts), 0),
-	      COALESCE(AVG(s.reb_tot), 0),
-	      COALESCE(AVG(s.ast), 0),
-	      COALESCE(AVG(s.stl), 0),
-	      COALESCE(AVG(s.blk), 0),
-	      COALESCE(AVG(s.tov), 0),
-	      COALESCE(AVG(s.game_score), 0),
-	      COALESCE(
-	        (SUM(
-	          CASE
-	            WHEN g.home_score_calc IS NOT NULL
-	              AND g.away_score_calc IS NOT NULL
-	              AND (s.team_code = g.home_team_code OR s.team_code = g.away_team_code)
-	            THEN (
-	              (CASE WHEN g.home_team_code = s.team_code THEN g.home_score_calc ELSE g.away_score_calc END)
-	              -
-	              (CASE WHEN g.home_team_code = s.team_code THEN g.away_score_calc ELSE g.home_score_calc END)
-	            ) * s.min_seconds
-	            ELSE 0
-	          END
-	        ) * 1.0) / NULLIF(
-	          SUM(
-	            CASE
-	              WHEN g.home_score_calc IS NOT NULL
-	                AND g.away_score_calc IS NOT NULL
-	                AND (s.team_code = g.home_team_code OR s.team_code = g.away_team_code)
-	              THEN s.min_seconds
-	              ELSE 0
-	            END
-	          ),
-	          0
-	        ),
-	        0
-	      ) as margin,
-	      0.0 as ts_pct,
-	      0.0 as efg_pct
-	    FROM game_stats_clean s
-	    JOIN player_identities pi ON pi.player_id = s.player_id
-	    JOIN games_calc_v3 g ON s.game_id = g.game_id
-	    JOIN seasons se ON g.season_code = se.season_code
-	    WHERE pi.canonical_player_id = (SELECT canonical_player_id FROM canon)
-	      AND g.game_type != '10'
-	    GROUP BY g.season_code, se.season_name
-	    ORDER BY g.season_code DESC
-	  |}
+  let player_seasons_per_game = (string ->* Types.season_stats) (make_season_stats_sql `Per_game)
 
   (** Queries for Totals (Sum) *)
-	  let player_seasons_totals = (string ->* Types.season_stats) {|
-	    WITH pid AS (
-	      SELECT ? AS player_id
-	    ),
-	    canon AS (
-	      SELECT COALESCE(
-	        (SELECT canonical_player_id FROM player_identities WHERE player_id = (SELECT player_id FROM pid)),
-	        (SELECT player_id FROM pid)
-	      ) AS canonical_player_id
-	    )
-	    SELECT
-	      g.season_code,
-	      se.season_name,
-	      COUNT(DISTINCT s.game_id) as gp,
-	      COALESCE(SUM(s.min_seconds) / 60.0, 0),
-	      COALESCE(SUM(s.pts), 0),
-	      COALESCE(SUM(s.reb_tot), 0),
-	      COALESCE(SUM(s.ast), 0),
-	      COALESCE(SUM(s.stl), 0),
-	      COALESCE(SUM(s.blk), 0),
-	      COALESCE(SUM(s.tov), 0),
-		      COALESCE(SUM(s.game_score), 0),
-		      COALESCE(
-		        (SUM(
-		          CASE
-		            WHEN g.home_score_calc IS NOT NULL
-		              AND g.away_score_calc IS NOT NULL
-		              AND (s.team_code = g.home_team_code OR s.team_code = g.away_team_code)
-		            THEN (
-		              (CASE WHEN g.home_team_code = s.team_code THEN g.home_score_calc ELSE g.away_score_calc END)
-		              -
-		              (CASE WHEN g.home_team_code = s.team_code THEN g.away_score_calc ELSE g.home_score_calc END)
-		            ) * s.min_seconds
-		            ELSE 0
-		          END
-		        ) * 1.0) / NULLIF(
-		          SUM(
-		            CASE
-		              WHEN g.home_score_calc IS NOT NULL
-		                AND g.away_score_calc IS NOT NULL
-		                AND (s.team_code = g.home_team_code OR s.team_code = g.away_team_code)
-		              THEN s.min_seconds
-		              ELSE 0
-		            END
-		          ),
-		          0
-		        ),
-		        0
-		      ) as margin,
-	      0.0 as ts_pct,
-	      0.0 as efg_pct
-	    FROM game_stats_clean s
-	    JOIN player_identities pi ON pi.player_id = s.player_id
-	    JOIN games_calc_v3 g ON s.game_id = g.game_id
-	    JOIN seasons se ON g.season_code = se.season_code
-	    WHERE pi.canonical_player_id = (SELECT canonical_player_id FROM canon)
-		      AND g.game_type != '10'
-	    GROUP BY g.season_code, se.season_name
-	    ORDER BY g.season_code DESC
-	  |}
+  let player_seasons_totals = (string ->* Types.season_stats) (make_season_stats_sql `Totals)
 
   (** Queries for Per 36 Minutes (Normalized) *)
-	  let player_seasons_per36 = (string ->* Types.season_stats) {|
-	    WITH pid AS (
-	      SELECT ? AS player_id
-	    ),
-	    canon AS (
-	      SELECT COALESCE(
-	        (SELECT canonical_player_id FROM player_identities WHERE player_id = (SELECT player_id FROM pid)),
-	        (SELECT player_id FROM pid)
-	      ) AS canonical_player_id
-	    )
-	    SELECT
-	      g.season_code,
-	      se.season_name,
-	      COUNT(DISTINCT s.game_id) as gp,
-	      COALESCE(SUM(s.min_seconds) / 60.0, 0),
-	      (SUM(s.pts) * 2160.0 / SUM(s.min_seconds)),
-	      (SUM(s.reb_tot) * 2160.0 / SUM(s.min_seconds)),
-	      (SUM(s.ast) * 2160.0 / SUM(s.min_seconds)),
-	      (SUM(s.stl) * 2160.0 / SUM(s.min_seconds)),
-	      (SUM(s.blk) * 2160.0 / SUM(s.min_seconds)),
-		      (SUM(s.tov) * 2160.0 / SUM(s.min_seconds)),
-		      (SUM(s.game_score) * 2160.0 / SUM(s.min_seconds)),
-		      COALESCE(
-		        (SUM(
-		          CASE
-		            WHEN g.home_score_calc IS NOT NULL
-		              AND g.away_score_calc IS NOT NULL
-		              AND (s.team_code = g.home_team_code OR s.team_code = g.away_team_code)
-		            THEN (
-		              (CASE WHEN g.home_team_code = s.team_code THEN g.home_score_calc ELSE g.away_score_calc END)
-		              -
-		              (CASE WHEN g.home_team_code = s.team_code THEN g.away_score_calc ELSE g.home_score_calc END)
-		            ) * s.min_seconds
-		            ELSE 0
-		          END
-		        ) * 1.0) / NULLIF(
-		          SUM(
-		            CASE
-		              WHEN g.home_score_calc IS NOT NULL
-		                AND g.away_score_calc IS NOT NULL
-		                AND (s.team_code = g.home_team_code OR s.team_code = g.away_team_code)
-		              THEN s.min_seconds
-		              ELSE 0
-		            END
-		          ),
-		          0
-		        ),
-		        0
-		      ) as margin,
-	      0.0 as ts_pct,
-	      0.0 as efg_pct
-	    FROM game_stats_clean s
-	    JOIN player_identities pi ON pi.player_id = s.player_id
-	    JOIN games_calc_v3 g ON s.game_id = g.game_id
-	    JOIN seasons se ON g.season_code = se.season_code
-	    WHERE pi.canonical_player_id = (SELECT canonical_player_id FROM canon)
-		      AND g.game_type != '10'
-	    GROUP BY g.season_code, se.season_name
-	    HAVING SUM(s.min_seconds) > 0
-	    ORDER BY g.season_code DESC
-	  |}
+  let player_seasons_per36 = (string ->* Types.season_stats) (make_season_stats_sql `Per_36)
 
 	  let player_recent_games = (string ->* Types.player_game_stat) {|
 	    WITH pid AS (
@@ -3776,6 +3720,12 @@ module Queries = struct
 		        ELSE 1
 		      END as score_quality,
 		      s.min_seconds / 60.0,
+		      COALESCE(s.fg2_m, 0) + COALESCE(s.fg3_m, 0),
+		      COALESCE(s.fg2_a, 0) + COALESCE(s.fg3_a, 0),
+		      COALESCE(s.fg3_m, 0),
+		      COALESCE(s.fg3_a, 0),
+		      COALESCE(s.ft_m, 0),
+		      COALESCE(s.ft_a, 0),
 		      s.pts,
 		      s.reb_tot,
 		      s.ast,
@@ -3835,6 +3785,12 @@ module Queries = struct
 		        ELSE 1
 		      END as score_quality,
 		      s.min_seconds / 60.0,
+		      COALESCE(s.fg2_m, 0) + COALESCE(s.fg3_m, 0),
+		      COALESCE(s.fg2_a, 0) + COALESCE(s.fg3_a, 0),
+		      COALESCE(s.fg3_m, 0),
+		      COALESCE(s.fg3_a, 0),
+		      COALESCE(s.ft_m, 0),
+		      COALESCE(s.ft_a, 0),
 		      s.pts,
 		      s.reb_tot,
 		      s.ast,
@@ -3888,6 +3844,12 @@ module Queries = struct
 		        ELSE 1
 		      END as score_quality,
 		      s.min_seconds / 60.0,
+		      COALESCE(s.fg2_m, 0) + COALESCE(s.fg3_m, 0),
+		      COALESCE(s.fg2_a, 0) + COALESCE(s.fg3_a, 0),
+		      COALESCE(s.fg3_m, 0),
+		      COALESCE(s.fg3_a, 0),
+		      COALESCE(s.ft_m, 0),
+		      COALESCE(s.ft_a, 0),
 		      s.pts,
 		      s.reb_tot,
 		      s.ast,
@@ -3948,6 +3910,12 @@ module Queries = struct
 		        ELSE 1
 		      END as score_quality,
 		      s.min_seconds / 60.0,
+		      COALESCE(s.fg2_m, 0) + COALESCE(s.fg3_m, 0),
+		      COALESCE(s.fg2_a, 0) + COALESCE(s.fg3_a, 0),
+		      COALESCE(s.fg3_m, 0),
+		      COALESCE(s.fg3_a, 0),
+		      COALESCE(s.ft_m, 0),
+		      COALESCE(s.ft_a, 0),
 		      s.pts,
 		      s.reb_tot,
 		      s.ast,
@@ -4009,6 +3977,12 @@ module Queries = struct
 	      NULL as opponent_score,
 	      1 as score_quality,
 	      COALESCE(s.min_seconds, 0) / 60.0,
+	      COALESCE(s.fg2_m, 0) + COALESCE(s.fg3_m, 0),
+	      COALESCE(s.fg2_a, 0) + COALESCE(s.fg3_a, 0),
+	      COALESCE(s.fg3_m, 0),
+	      COALESCE(s.fg3_a, 0),
+	      COALESCE(s.ft_m, 0),
+	      COALESCE(s.ft_a, 0),
 	      s.pts,
 	      s.reb_tot,
 	      s.ast,
@@ -4045,6 +4019,12 @@ module Queries = struct
 	      NULL as opponent_score,
 	      1 as score_quality,
 	      COALESCE(s.min_seconds, 0) / 60.0,
+	      COALESCE(s.fg2_m, 0) + COALESCE(s.fg3_m, 0),
+	      COALESCE(s.fg2_a, 0) + COALESCE(s.fg3_a, 0),
+	      COALESCE(s.fg3_m, 0),
+	      COALESCE(s.fg3_a, 0),
+	      COALESCE(s.ft_m, 0),
+	      COALESCE(s.ft_a, 0),
 	      s.pts,
 	      s.reb_tot,
 	      s.ast,
@@ -4081,6 +4061,12 @@ module Queries = struct
 	      NULL as opponent_score,
 	      1 as score_quality,
 	      COALESCE(s.min_seconds, 0) / 60.0,
+	      COALESCE(s.fg2_m, 0) + COALESCE(s.fg3_m, 0),
+	      COALESCE(s.fg2_a, 0) + COALESCE(s.fg3_a, 0),
+	      COALESCE(s.fg3_m, 0),
+	      COALESCE(s.fg3_a, 0),
+	      COALESCE(s.ft_m, 0),
+	      COALESCE(s.ft_a, 0),
 	      s.pts,
 	      s.reb_tot,
 	      s.ast,
@@ -4117,6 +4103,12 @@ module Queries = struct
 	      NULL as opponent_score,
 	      1 as score_quality,
 	      COALESCE(s.min_seconds, 0) / 60.0,
+	      COALESCE(s.fg2_m, 0) + COALESCE(s.fg3_m, 0),
+	      COALESCE(s.fg2_a, 0) + COALESCE(s.fg3_a, 0),
+	      COALESCE(s.fg3_m, 0),
+	      COALESCE(s.fg3_a, 0),
+	      COALESCE(s.ft_m, 0),
+	      COALESCE(s.ft_a, 0),
 	      s.pts,
 	      s.reb_tot,
 	      s.ast,
@@ -4153,6 +4145,12 @@ module Queries = struct
 	      NULL as opponent_score,
 	      1 as score_quality,
 	      COALESCE(s.min_seconds, 0) / 60.0,
+	      COALESCE(s.fg2_m, 0) + COALESCE(s.fg3_m, 0),
+	      COALESCE(s.fg2_a, 0) + COALESCE(s.fg3_a, 0),
+	      COALESCE(s.fg3_m, 0),
+	      COALESCE(s.fg3_a, 0),
+	      COALESCE(s.ft_m, 0),
+	      COALESCE(s.ft_a, 0),
 	      s.pts,
 	      s.reb_tot,
 	      s.ast,
@@ -5384,7 +5382,8 @@ end
 				              team_stints_of_games team_games
 				              |> normalize_player_team_stints
 				            in
-				            Ok ((Some { player = p; averages; recent_games = recent; all_star_games = all_star; draft = draft_res; official_trade_events = trade_events_res; external_links = external_links_res; team_stints; season_breakdown = seasons; career_highs }))
+				            let career_entries = match Db.collect_list Queries.player_career_by_name p.name with Ok es -> es | Error _ -> [] in
+				            Ok ((Some { player = p; averages; recent_games = recent; all_star_games = all_star; draft = draft_res; official_trade_events = trade_events_res; external_links = external_links_res; team_stints; season_breakdown = seasons; career_highs; career_entries }))
 
   let get_player_season_stats ~player_id ~scope (module Db : Caqti_eio.CONNECTION) = let q = match scope with | "totals" -> Queries.player_seasons_totals | "per_36" -> Queries.player_seasons_per36 | _ -> Queries.player_seasons_per_game in Db.collect_list q player_id
   let get_player_game_logs ~player_id ~season ~include_mismatch (module Db : Caqti_eio.CONNECTION) =
@@ -6115,7 +6114,7 @@ let get_team_full_detail ~team_name ?(season="ALL") () =
     let* all_totals = with_db (fun db -> Repo.get_team_totals ~season ~include_mismatch:false db) in
     let standing = List.find_opt (fun (s: team_standing) -> s.team_name = team_name) standings in
     let team_totals = List.find_opt (fun (t: team_totals) -> t.team = team_name) all_totals in
-    Ok { tfd_team_name = team_name; tfd_standing = standing; tfd_roster = roster; tfd_game_results = game_results; tfd_recent_games = games; tfd_team_totals = team_totals })
+    Ok { tfd_team_name = team_name; tfd_standing = standing; tfd_standings = standings; tfd_roster = roster; tfd_game_results = game_results; tfd_recent_games = games; tfd_team_totals = team_totals; tfd_all_totals = all_totals })
 let get_player_h2h_data ~p1_id ~p2_id ?(season="ALL") () =
   with_db (fun db -> Repo.get_player_h2h ~p1_id ~p2_id ~season db)
 

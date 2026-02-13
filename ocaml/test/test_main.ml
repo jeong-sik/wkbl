@@ -559,6 +559,9 @@ let make_streak_game ~game_id ~game_date ~pts ~reb ~ast ~stl ~blk ?team_score ?o
     opponent_score;
     score_quality = Verified;
     min = 30.0;
+    fg_made = 0; fg_att = 0;
+    fg3_made = 0; fg3_att = 0;
+    ft_made = 0; ft_att = 0;
     pts; reb; ast; stl; blk;
     tov = 2;
     plus_minus = Some 5;
@@ -2623,6 +2626,7 @@ let test_ops_copy_hidden_by_default () =
     ; team_stints = []
     ; season_breakdown = []
     ; career_highs = None
+    ; career_entries = []
     }
   in
 
@@ -3090,10 +3094,12 @@ let test_team_profile_page_hides_0_0_and_has_roster_toggle () =
     {
       tfd_team_name = "KB스타즈";
       tfd_standing = None;
+      tfd_standings = [];
       tfd_roster = [];
-      tfd_game_results = [];
+      tfd_game_results = [ g_future; g_past ];
       tfd_recent_games = [ g_future; g_past ];
       tfd_team_totals = None;
+      tfd_all_totals = [];
     }
   in
   let html = Wkbl.Views_team.team_profile_page detail ~season:"046" ~seasons in

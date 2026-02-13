@@ -308,12 +308,8 @@ let analyze_flow (quarters: quarter_score list) =
         | q :: rest -> find_shifts (q.qs_home_score - q.qs_away_score) rest
         | [] -> []
       in
-      (* Calculate quarter-by-quarter scoring *)
-      let q_scores = List.mapi (fun i q ->
-        let prev_home = if i = 0 then 0 else (List.nth quarters (i-1)).qs_home_score in
-        let prev_away = if i = 0 then 0 else (List.nth quarters (i-1)).qs_away_score in
-        (q.qs_period, q.qs_home_score - prev_home, q.qs_away_score - prev_away)
-      ) quarters in
+      (* Calculate quarter-by-quarter scoring (O(n) via shared helper) *)
+      let q_scores = Views_common.quarter_deltas quarters in
       (* Find best quarter *)
       let best_q = List.fold_left (fun acc (period, home_q, away_q) ->
         let diff = abs (home_q - away_q) in

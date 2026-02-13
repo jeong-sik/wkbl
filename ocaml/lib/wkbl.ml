@@ -14,6 +14,7 @@ module Views_common = Views_common
 module Views_player = Views_player
 module Views_team = Views_team
 module Views_history = Views_history
+module Views_season = Views_season
 module Views_mvp = Views_mvp
 module Views_tools = Views_tools
 module Form_urlencoded = Form_urlencoded

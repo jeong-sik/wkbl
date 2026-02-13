@@ -1,17 +1,31 @@
 open Domain
 
 let escape_html s =
-  s
-  |> String.to_seq
-  |> Seq.map (function
-    | '<' -> "&lt;"
-    | '>' -> "&gt;"
-    | '&' -> "&amp;"
-    | '"' -> "&quot;"
-    | '\'' -> "&#x27;"
-    | c -> String.make 1 c)
-  |> List.of_seq
-  |> String.concat ""
+  (* Fast path: return original string if no escaping needed (common case) *)
+  let needs_escape = ref false in
+  for i = 0 to String.length s - 1 do
+    match String.unsafe_get s i with
+    | '<' | '>' | '&' | '"' | '\'' -> needs_escape := true
+    | _ -> ()
+  done;
+  if not !needs_escape then s
+  else begin
+    let buf = Buffer.create (String.length s + 8) in
+    String.iter (function
+      | '<' -> Buffer.add_string buf "&lt;"
+      | '>' -> Buffer.add_string buf "&gt;"
+      | '&' -> Buffer.add_string buf "&amp;"
+      | '"' -> Buffer.add_string buf "&quot;"
+      | '\'' -> Buffer.add_string buf "&#x27;"
+      | c -> Buffer.add_char buf c) s;
+    Buffer.contents buf
+  end
+
+(** URL-safe href for player pages. Always pct-encodes the ID. *)
+let player_href id = "/player/" ^ Uri.pct_encode id
+
+(** URL-safe href for team pages. Always pct-encodes the team name. *)
+let team_href name = "/team/" ^ Uri.pct_encode name
 
 let escape_js_string s =
   (* Defensive escaping for inline <script> blocks. *)
@@ -28,6 +42,18 @@ let escape_js_string s =
     | c -> String.make 1 c)
   |> List.of_seq
   |> String.concat ""
+
+(** Compute per-quarter scoring from cumulative quarter_score list.
+    Returns (period, home_q_pts, away_q_pts) tuples in O(n). *)
+let quarter_deltas (quarters : Domain.quarter_score list) =
+  let rec go prev_h prev_a = function
+    | [] -> []
+    | (q : Domain.quarter_score) :: rest ->
+      let h = q.qs_home_score - prev_h in
+      let a = q.qs_away_score - prev_a in
+      (q.qs_period, h, a) :: go q.qs_home_score q.qs_away_score rest
+  in
+  go 0 0 quarters
 
 let env_nonempty name =
   match Sys.getenv_opt name with
@@ -205,6 +231,18 @@ let team_logo_tag ?(class_name="w-8 h-8") team_name =
   | Some f -> Printf.sprintf {html|<img src="/static/images/%s" alt="" class="%s object-contain" loading="lazy">|html} f class_name
   | None -> Printf.sprintf {html|<div class="%s bg-slate-100 dark:bg-slate-800 rounded flex items-center justify-center text-xs">🏀</div>|html} class_name
 
+let breadcrumb (crumbs: (string * string) list) =
+  let n = List.length crumbs in
+  let items = crumbs |> List.mapi (fun i (label, href) ->
+    let is_last = (i = n - 1) in
+    let sep = if i > 0 then {html|<span class="text-slate-400 dark:text-slate-600 mx-1">/</span>|html} else "" in
+    if is_last then
+      Printf.sprintf {html|%s<span class="text-slate-600 dark:text-slate-400">%s</span>|html} sep (escape_html label)
+    else
+      Printf.sprintf {html|%s<a href="%s" class="text-slate-500 dark:text-slate-500 hover:text-orange-600 dark:hover:text-orange-400 transition-colors">%s</a>|html} sep (escape_html href) (escape_html label)
+  ) |> String.concat "" in
+  Printf.sprintf {html|<nav class="text-xs font-sans mb-4" aria-label="breadcrumb">%s</nav>|html} items
+
 let team_badge ?(max_width="max-w-[130px]") team_name =
   let _ = max_width in
   let display = normalize_name team_name in
@@ -269,7 +307,11 @@ let empty_state ?icon title desc =
 let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json_ld="") ?og_title ?og_description ?og_image ?data_freshness ~content () =
   let _ = og_title in let _ = og_description in
   let _ = canonical_path in
-  let _ = description in let _ = json_ld in
+  let _ = description in
+
+  let json_ld_html = if json_ld = "" then "" else
+    Printf.sprintf {|<script type="application/ld+json">%s</script>|} json_ld
+  in
 
   let tr = I18n.t lang in
   let html_lang = I18n.html_lang lang in
@@ -518,6 +560,9 @@ let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json
 	      </div>
       </div>
       <div class="flex items-center gap-2">
+        <button type="button" onclick="window.SearchModal&&SearchModal.open()" aria-label="Search (Cmd+K)" class="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors group">
+          <svg class="w-5 h-5 text-slate-500 dark:text-slate-400 group-hover:text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+        </button>
         %s
         %s
         <button id="theme-toggle" type="button" aria-label="%s" aria-pressed="false" class="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
@@ -538,6 +583,10 @@ let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json
 		        <a href="/games" class="block py-3 px-4 rounded-lg text-base font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">%s</a>
 		        <a href="/compare" class="block py-3 px-4 rounded-lg text-base font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">%s</a>
 		        <a href="/predict" class="block py-3 px-4 rounded-lg text-base font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">%s</a>
+		        <button type="button" onclick="window.SearchModal&&SearchModal.open();document.getElementById('mobile-menu').classList.add('hidden')" class="w-full text-left py-3 px-4 rounded-lg text-base font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center gap-2">
+		          <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+		          Search
+		        </button>
 		      </div>
 		    </div>
 		  </header>
@@ -655,12 +704,13 @@ let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json
 			  <script src="/static/js/a11y-utils.js"></script>
 			  <script src="/static/js/skeleton-loader.js"></script>
 			  <script src="/static/js/data-freshness.js"></script>
+			  <script src="/static/js/search-modal.js"></script>
 				</body>
 			</html>|html}
 	    (escape_html html_lang)
 	    title
 	    og_img_html
-	    observability_html
+	    (observability_html ^ json_ld_html)
 	    (escape_html skip_to_content)
 	    (escape_html nav_players)
 	    (escape_html nav_teams)
@@ -832,18 +882,119 @@ let normalize_stat_for_radar category current_val =
   in
   if max_val <= 0.0 then 0.0 else (current_val /. max_val) *. 5.0
 
-let player_season_stats_component ~(player_id: string) ~scope (seasons: season_stats list) =
-  let _ = scope in
+let player_summary_comparison (seasons: season_stats list) =
   match seasons with
   | [] -> ""
   | _ ->
+    let seasons_desc = List.sort (fun a b -> compare b.ss_season_code a.ss_season_code) seasons in
+    let current = List.hd seasons_desc in
+    let n = List.length seasons_desc in
+    let total_gp = List.fold_left (fun acc s -> acc + s.ss_games_played) 0 seasons_desc in
+    let gp_f = float_of_int (max total_gp 1) in
+    let wavg field = (List.fold_left (fun acc s -> acc +. field s *. float_of_int s.ss_games_played) 0.0 seasons_desc) /. gp_f in
+    let total_min = List.fold_left (fun acc s -> acc +. s.ss_total_minutes) 0.0 seasons_desc in
+    let career_mpg = total_min /. gp_f in
+    let fmt v = Printf.sprintf "%.1f" v in
+    let fmt_pct v = if v > 0.0 then Printf.sprintf "%.1f" (v *. 100.0) else "-" in
+    let cur_mpg = if current.ss_games_played > 0
+      then current.ss_total_minutes /. float_of_int current.ss_games_played else 0.0 in
+    let stat_cell cls v = Printf.sprintf {html|<td class="px-2 py-1.5 text-right font-mono %s">%s</td>|html} cls v in
+    let hdr cls lbl title = Printf.sprintf
+      {html|<th class="px-2 py-1.5 text-right text-[10px] uppercase tracking-wider %s" title="%s">%s</th>|html} cls title lbl in
+    Printf.sprintf
+      {html|<div class="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-lg">
+        <h3 class="font-bold text-slate-900 dark:text-slate-200 text-sm mb-3">금시즌 vs 커리어</h3>
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs tabular-nums">
+            <thead class="text-slate-500 dark:text-slate-500">
+              <tr>
+                <th class="px-2 py-1.5 text-left text-[10px] uppercase tracking-wider font-sans w-24"></th>
+                %s %s %s %s %s %s %s %s %s %s
+              </tr>
+            </thead>
+            <tbody class="text-slate-800 dark:text-slate-200">
+              <tr class="border-b border-slate-200 dark:border-slate-700">
+                <td class="px-2 py-1.5 text-left font-sans font-semibold text-slate-600 dark:text-slate-400">%s</td>
+                %s %s %s %s %s %s %s %s %s %s
+              </tr>
+              <tr>
+                <td class="px-2 py-1.5 text-left font-sans font-semibold text-slate-600 dark:text-slate-400">Career</td>
+                %s %s %s %s %s %s %s %s %s %s
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>|html}
+      (* headers *)
+      (hdr "" "GP" "경기수")
+      (hdr "" "MPG" "평균 출전시간")
+      (hdr "text-orange-600 dark:text-orange-400" "PPG" "평균 득점")
+      (hdr "" "RPG" "평균 리바운드")
+      (hdr "" "APG" "평균 어시스트")
+      (hdr "hidden sm:table-cell" "SPG" "평균 스틸")
+      (hdr "hidden sm:table-cell" "BPG" "평균 블록")
+      (hdr "hidden md:table-cell" "TS%" "True Shooting %")
+      (hdr "hidden md:table-cell" "eFG%" "Effective FG %")
+      (hdr "" "EFF" "효율")
+      (* current season row *)
+      current.ss_season_name
+      (stat_cell "" (string_of_int current.ss_games_played))
+      (stat_cell "" (fmt cur_mpg))
+      (stat_cell "text-orange-600 dark:text-orange-400 font-bold" (fmt current.ss_avg_points))
+      (stat_cell "" (fmt current.ss_avg_rebounds))
+      (stat_cell "" (fmt current.ss_avg_assists))
+      (stat_cell "hidden sm:table-cell" (fmt current.ss_avg_steals))
+      (stat_cell "hidden sm:table-cell" (fmt current.ss_avg_blocks))
+      (stat_cell "hidden md:table-cell" (fmt_pct current.ss_ts_pct))
+      (stat_cell "hidden md:table-cell" (fmt_pct current.ss_efg_pct))
+      (stat_cell "" (fmt current.ss_efficiency))
+      (* career row *)
+      (stat_cell "" (Printf.sprintf "%d <span class=\"text-[10px] text-slate-500\">(%d시즌)</span>" total_gp n))
+      (stat_cell "" (fmt career_mpg))
+      (stat_cell "text-orange-600 dark:text-orange-400 font-bold" (fmt (wavg (fun s -> s.ss_avg_points))))
+      (stat_cell "" (fmt (wavg (fun s -> s.ss_avg_rebounds))))
+      (stat_cell "" (fmt (wavg (fun s -> s.ss_avg_assists))))
+      (stat_cell "hidden sm:table-cell" (fmt (wavg (fun s -> s.ss_avg_steals))))
+      (stat_cell "hidden sm:table-cell" (fmt (wavg (fun s -> s.ss_avg_blocks))))
+      (stat_cell "hidden md:table-cell" (fmt_pct (wavg (fun s -> s.ss_ts_pct))))
+      (stat_cell "hidden md:table-cell" (fmt_pct (wavg (fun s -> s.ss_efg_pct))))
+      (stat_cell "" (fmt (wavg (fun s -> s.ss_efficiency))))
+
+let player_season_stats_component ~(player_id: string) ~scope (seasons: season_stats list) =
+  match seasons with
+  | [] -> ""
+  | _ ->
+      let scopes = [("per_game", "Per Game"); ("totals", "Totals"); ("per_36", "Per 36"); ("advanced", "Advanced")] in
+      let tab_html =
+        scopes |> List.map (fun (s, label) ->
+          let active = (s = scope) in
+          let cls = if active
+            then "px-3 py-1.5 text-sm font-semibold text-orange-600 dark:text-orange-400 border-b-2 border-orange-500"
+            else "px-3 py-1.5 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 border-b-2 border-transparent cursor-pointer"
+          in
+          Printf.sprintf
+            {html|<button class="%s" hx-get="/player/%s/season-stats?scope=%s" hx-target="#season-stats-panel" hx-swap="outerHTML">%s</button>|html}
+            cls (Uri.pct_encode player_id) s label
+        ) |> String.concat "\n"
+      in
+      let scope_label = match scope with "totals" -> "시즌별 합계" | "per_36" -> "36분당 환산" | "advanced" -> "고급 지표" | _ -> "시즌별 요약" in
+      let is_advanced = (scope = "advanced") in
       let season_code_int s = try int_of_string s with _ -> 0 in
       let seasons_desc =
         seasons
         |> List.sort (fun a b -> compare (season_code_int b.ss_season_code) (season_code_int a.ss_season_code))
       in
       let row (s: season_stats) =
-        let href =
+        let season_href =
+          Printf.sprintf "/standings?season=%s"
+            (Uri.pct_encode s.ss_season_code)
+        in
+        let team_href =
+          Printf.sprintf "/team/%s?season=%s"
+            (Uri.pct_encode s.ss_team_name)
+            (Uri.pct_encode s.ss_season_code)
+        in
+        let gamelog_href =
           Printf.sprintf "/player/%s/games?season=%s"
             (Uri.pct_encode player_id)
             (Uri.pct_encode s.ss_season_code)
@@ -851,66 +1002,242 @@ let player_season_stats_component ~(player_id: string) ~scope (seasons: season_s
         let mpg =
           if s.ss_games_played <= 0 then 0.0 else s.ss_total_minutes /. float_of_int s.ss_games_played
         in
-        Printf.sprintf
-          {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/40 transition-colors">
-            <td class="px-3 py-2 text-left font-sans">
-              <a class="hover:text-orange-600 dark:hover:text-orange-400 transition-colors" href="%s">%s</a>
-            </td>
-            <td class="px-3 py-2 text-right font-mono">%d</td>
-            <td class="px-3 py-2 text-right font-mono">%.1f</td>
-            <td class="px-3 py-2 text-right font-mono text-orange-600 dark:text-orange-400">%.1f</td>
-            <td class="px-3 py-2 text-right font-mono">%.1f</td>
-            <td class="px-3 py-2 text-right font-mono">%.1f</td>
-            <td class="px-3 py-2 text-right font-mono">%.1f</td>
-            <td class="px-3 py-2 text-right font-mono %s">%.1f</td>
-          </tr>|html}
-          (escape_html href)
-          (escape_html s.ss_season_name)
-          s.ss_games_played
-          mpg
-          s.ss_avg_points
-          s.ss_avg_rebounds
-          s.ss_avg_assists
-          s.ss_efficiency
-          (if s.ss_margin > 0.0 then "text-sky-600 dark:text-sky-400"
-           else if s.ss_margin < 0.0 then "text-rose-600 dark:text-rose-400"
-           else "text-slate-600 dark:text-slate-400")
-          s.ss_margin
+        let fmt_pct v = if v > 0.0 then Printf.sprintf "%.1f" (v *. 100.0) else "-" in
+        let margin_cls =
+          if s.ss_margin > 0.0 then "text-sky-600 dark:text-sky-400"
+          else if s.ss_margin < 0.0 then "text-rose-600 dark:text-rose-400"
+          else "text-slate-600 dark:text-slate-400"
+        in
+        let tr_cls = "border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/40 transition-colors" in
+        let season_td = Printf.sprintf
+          {html|<td class="px-3 py-2 text-left font-sans whitespace-nowrap">
+            <a class="hover:text-orange-600 dark:hover:text-orange-400 transition-colors" href="%s" title="시즌 순위표">%s</a>
+            <a class="ml-1 text-[10px] text-slate-400 hover:text-orange-500 transition-colors" href="%s" title="경기 기록">GL</a>
+          </td>|html}
+          (escape_html season_href) (escape_html s.ss_season_name) (escape_html gamelog_href)
+        in
+        let team_td = Printf.sprintf
+          {html|<td class="px-3 py-2 text-left font-sans whitespace-nowrap hidden sm:table-cell">
+            <a class="hover:text-orange-600 dark:hover:text-orange-400 transition-colors" href="%s">%s</a>
+          </td>|html}
+          (escape_html team_href) (escape_html s.ss_team_name)
+        in
+        if is_advanced then
+          let ast_tov =
+            if s.ss_avg_turnovers > 0.0 then Printf.sprintf "%.2f" (s.ss_avg_assists /. s.ss_avg_turnovers)
+            else "-"
+          in
+          Printf.sprintf
+            {html|<tr class="%s">%s%s
+              <td class="px-3 py-2 text-right font-mono">%d</td>
+              <td class="px-3 py-2 text-right font-mono">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono">%s</td>
+              <td class="px-3 py-2 text-right font-mono text-emerald-600 dark:text-emerald-400 font-semibold">%s</td>
+              <td class="px-3 py-2 text-right font-mono text-emerald-600 dark:text-emerald-400 font-semibold">%s</td>
+              <td class="px-3 py-2 text-right font-mono hidden md:table-cell">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono %s font-semibold">%+.1f</td>
+            </tr>|html}
+            tr_cls season_td team_td
+            s.ss_games_played mpg
+            s.ss_avg_points s.ss_avg_turnovers ast_tov
+            (fmt_pct s.ss_ts_pct) (fmt_pct s.ss_efg_pct)
+            s.ss_efficiency margin_cls s.ss_margin
+        else
+          Printf.sprintf
+            {html|<tr class="%s">%s%s
+              <td class="px-3 py-2 text-right font-mono">%d</td>
+              <td class="px-3 py-2 text-right font-mono">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono text-orange-600 dark:text-orange-400 font-semibold">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono hidden md:table-cell">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono hidden md:table-cell">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono hidden lg:table-cell">%s</td>
+              <td class="px-3 py-2 text-right font-mono hidden lg:table-cell">%s</td>
+              <td class="px-3 py-2 text-right font-mono hidden lg:table-cell">%s</td>
+              <td class="px-3 py-2 text-right font-mono hidden xl:table-cell">%s</td>
+              <td class="px-3 py-2 text-right font-mono hidden xl:table-cell">%s</td>
+              <td class="px-3 py-2 text-right font-mono">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono %s">%.1f</td>
+            </tr>|html}
+            tr_cls season_td team_td
+            s.ss_games_played mpg
+            s.ss_avg_points s.ss_avg_rebounds s.ss_avg_assists
+            s.ss_avg_steals s.ss_avg_blocks
+            (fmt_pct s.ss_fg_pct) (fmt_pct s.ss_fg3_pct) (fmt_pct s.ss_ft_pct)
+            (fmt_pct s.ss_ts_pct) (fmt_pct s.ss_efg_pct)
+            s.ss_efficiency margin_cls s.ss_margin
       in
       let rows = seasons_desc |> List.map row |> String.concat "\n" in
+      (* Career totals/averages footer *)
+      let n = List.length seasons_desc in
+      let total_gp = List.fold_left (fun acc s -> acc + s.ss_games_played) 0 seasons_desc in
+      let total_min = List.fold_left (fun acc s -> acc +. s.ss_total_minutes) 0.0 seasons_desc in
+      let gp_f = float_of_int (max total_gp 1) in
+      let wavg field = (List.fold_left (fun acc s -> acc +. field s *. float_of_int s.ss_games_played) 0.0 seasons_desc) /. gp_f in
+      let career_mpg = total_min /. gp_f in
+      let career_ppg = wavg (fun s -> s.ss_avg_points) in
+      let career_rpg = wavg (fun s -> s.ss_avg_rebounds) in
+      let career_apg = wavg (fun s -> s.ss_avg_assists) in
+      let career_spg = wavg (fun s -> s.ss_avg_steals) in
+      let career_bpg = wavg (fun s -> s.ss_avg_blocks) in
+      let career_tov = wavg (fun s -> s.ss_avg_turnovers) in
+      let career_eff = wavg (fun s -> s.ss_efficiency) in
+      let career_margin = wavg (fun s -> s.ss_margin) in
+      let fmt_pct_f v = if v > 0.0 then Printf.sprintf "%.1f" (v *. 100.0) else "-" in
+      let career_fg = wavg (fun s -> s.ss_fg_pct) in
+      let career_fg3 = wavg (fun s -> s.ss_fg3_pct) in
+      let career_ft = wavg (fun s -> s.ss_ft_pct) in
+      let career_ts = wavg (fun s -> s.ss_ts_pct) in
+      let career_efg = wavg (fun s -> s.ss_efg_pct) in
+      let tfoot_cls = "bg-slate-100 dark:bg-slate-800/70 font-semibold text-slate-900 dark:text-slate-200 border-t-2 border-slate-300 dark:border-slate-600" in
+      let career_margin_cls =
+        if career_margin > 0.0 then "text-sky-600 dark:text-sky-400"
+        else if career_margin < 0.0 then "text-rose-600 dark:text-rose-400"
+        else "text-slate-600 dark:text-slate-400"
+      in
+      let tfoot_html =
+        if is_advanced then
+          let career_ast_tov =
+            if career_tov > 0.0 then Printf.sprintf "%.2f" (career_apg /. career_tov) else "-"
+          in
+          Printf.sprintf
+            {html|<tfoot class="%s"><tr>
+              <td class="px-3 py-2 text-left font-sans">Career (%d시즌)</td>
+              <td class="px-3 py-2 hidden sm:table-cell"></td>
+              <td class="px-3 py-2 text-right font-mono">%d</td>
+              <td class="px-3 py-2 text-right font-mono">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono">%s</td>
+              <td class="px-3 py-2 text-right font-mono text-emerald-600 dark:text-emerald-400">%s</td>
+              <td class="px-3 py-2 text-right font-mono text-emerald-600 dark:text-emerald-400">%s</td>
+              <td class="px-3 py-2 text-right font-mono hidden md:table-cell">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono %s">%+.1f</td>
+            </tr></tfoot>|html}
+            tfoot_cls n total_gp career_mpg career_ppg career_tov career_ast_tov
+            (fmt_pct_f career_ts) (fmt_pct_f career_efg)
+            career_eff career_margin_cls career_margin
+        else
+          Printf.sprintf
+            {html|<tfoot class="%s"><tr>
+              <td class="px-3 py-2 text-left font-sans">Career (%d시즌)</td>
+              <td class="px-3 py-2 hidden sm:table-cell"></td>
+              <td class="px-3 py-2 text-right font-mono">%d</td>
+              <td class="px-3 py-2 text-right font-mono">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono text-orange-600 dark:text-orange-400">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono hidden md:table-cell">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono hidden md:table-cell">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono hidden lg:table-cell">%s</td>
+              <td class="px-3 py-2 text-right font-mono hidden lg:table-cell">%s</td>
+              <td class="px-3 py-2 text-right font-mono hidden lg:table-cell">%s</td>
+              <td class="px-3 py-2 text-right font-mono hidden xl:table-cell">%s</td>
+              <td class="px-3 py-2 text-right font-mono hidden xl:table-cell">%s</td>
+              <td class="px-3 py-2 text-right font-mono">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono %s">%.1f</td>
+            </tr></tfoot>|html}
+            tfoot_cls n total_gp career_mpg career_ppg career_rpg career_apg
+            career_spg career_bpg
+            (fmt_pct_f career_fg) (fmt_pct_f career_fg3) (fmt_pct_f career_ft)
+            (fmt_pct_f career_ts) (fmt_pct_f career_efg)
+            career_eff career_margin_cls career_margin
+      in
+      let colgroup_html =
+        if is_advanced then
+          {html|<colgroup>
+            <col style="width: 140px;">
+            <col class="hidden sm:table-column" style="width: 100px;">
+            <col style="width: 50px;">
+            <col style="width: 55px;">
+            <col style="width: 55px;">
+            <col style="width: 55px;">
+            <col style="width: 65px;">
+            <col style="width: 65px;">
+            <col style="width: 65px;">
+            <col class="hidden md:table-column" style="width: 60px;">
+            <col style="width: 60px;">
+          </colgroup>|html}
+        else
+          {html|<colgroup>
+            <col style="width: 140px;">
+            <col class="hidden sm:table-column" style="width: 100px;">
+            <col style="width: 55px;">
+            <col style="width: 60px;">
+            <col style="width: 60px;">
+            <col style="width: 55px;">
+            <col style="width: 55px;">
+            <col class="hidden md:table-column" style="width: 55px;">
+            <col class="hidden md:table-column" style="width: 55px;">
+            <col class="hidden lg:table-column" style="width: 55px;">
+            <col class="hidden lg:table-column" style="width: 55px;">
+            <col class="hidden lg:table-column" style="width: 55px;">
+            <col class="hidden xl:table-column" style="width: 55px;">
+            <col class="hidden xl:table-column" style="width: 55px;">
+            <col style="width: 60px;">
+            <col style="width: 60px;">
+          </colgroup>|html}
+      in
+      let thead_html =
+        if is_advanced then
+          {html|<thead class="bg-slate-100 dark:bg-slate-800/70 text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider"><tr>
+            <th scope="col" class="px-3 py-2 text-left font-sans">시즌</th>
+            <th scope="col" class="px-3 py-2 text-left font-sans hidden sm:table-cell">팀</th>
+            <th scope="col" class="px-3 py-2 text-right">GP</th>
+            <th scope="col" class="px-3 py-2 text-right" title="출전시간">MIN</th>
+            <th scope="col" class="px-3 py-2 text-right" title="득점">PTS</th>
+            <th scope="col" class="px-3 py-2 text-right" title="턴오버">TOV</th>
+            <th scope="col" class="px-3 py-2 text-right" title="어시스트/턴오버 비율">AST/TOV</th>
+            <th scope="col" class="px-3 py-2 text-right text-emerald-600 dark:text-emerald-400" title="True Shooting %">TS%</th>
+            <th scope="col" class="px-3 py-2 text-right text-emerald-600 dark:text-emerald-400" title="Effective FG%">eFG%</th>
+            <th scope="col" class="px-3 py-2 text-right hidden md:table-cell" title="효율">EFF</th>
+            <th scope="col" class="px-3 py-2 text-right" title="팀 득실마진(출전시간 가중)">+/-</th>
+          </tr></thead>|html}
+        else
+          Printf.sprintf
+            {html|<thead class="bg-slate-100 dark:bg-slate-800/70 text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider"><tr>
+              <th scope="col" class="px-3 py-2 text-left font-sans">시즌</th>
+              <th scope="col" class="px-3 py-2 text-left font-sans hidden sm:table-cell">팀</th>
+              <th scope="col" class="px-3 py-2 text-right">GP</th>
+              <th scope="col" class="px-3 py-2 text-right" title="출전시간">%s</th>
+              <th scope="col" class="px-3 py-2 text-right text-orange-600 dark:text-orange-400" title="득점">%s</th>
+              <th scope="col" class="px-3 py-2 text-right" title="리바운드">REB</th>
+              <th scope="col" class="px-3 py-2 text-right" title="어시스트">AST</th>
+              <th scope="col" class="px-3 py-2 text-right hidden md:table-cell" title="스틸">STL</th>
+              <th scope="col" class="px-3 py-2 text-right hidden md:table-cell" title="블록">BLK</th>
+              <th scope="col" class="px-3 py-2 text-right hidden lg:table-cell" title="야투 성공률">FG%%</th>
+              <th scope="col" class="px-3 py-2 text-right hidden lg:table-cell" title="3점슛 성공률">3P%%</th>
+              <th scope="col" class="px-3 py-2 text-right hidden lg:table-cell" title="자유투 성공률">FT%%</th>
+              <th scope="col" class="px-3 py-2 text-right hidden xl:table-cell" title="True Shooting %%">TS%%</th>
+              <th scope="col" class="px-3 py-2 text-right hidden xl:table-cell" title="Effective FG%%">eFG%%</th>
+              <th scope="col" class="px-3 py-2 text-right" title="효율">EFF</th>
+              <th scope="col" class="px-3 py-2 text-right" title="팀 득실마진(출전시간 가중)">+/-</th>
+            </tr></thead>|html}
+            "MIN" "PTS"
+      in
+      let min_w = if is_advanced then "min-w-[700px]" else "min-w-[800px]" in
       Printf.sprintf
-        {html|<details class="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 p-5 shadow-lg">
-          <summary class="cursor-pointer select-none font-bold text-slate-900 dark:text-slate-200">시즌별 요약</summary>
-          <div class="mt-2 text-[11px] text-slate-500 dark:text-slate-500 leading-relaxed">시즌을 누르면 해당 시즌 경기 로그로 이동합니다.</div>
-          <div class="mt-4 overflow-x-auto">
-            <table class="min-w-[860px] w-full text-sm table-fixed tabular-nums" aria-label="시즌별 요약">
-              <colgroup>
-                <col style="width: 160px;">
-                <col style="width: 70px;">
-                <col style="width: 70px;">
-                <col style="width: 70px;">
-                <col style="width: 70px;">
-                <col style="width: 70px;">
-                <col style="width: 80px;">
-                <col style="width: 80px;">
-              </colgroup>
-              <thead class="bg-slate-100 dark:bg-slate-800/70 text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider">
-                <tr>
-                  <th scope="col" class="px-3 py-2 text-left font-sans">시즌</th>
-                  <th scope="col" class="px-3 py-2 text-right">경기</th>
-                  <th scope="col" class="px-3 py-2 text-right" title="경기당 출전시간">MIN</th>
-                  <th scope="col" class="px-3 py-2 text-right" title="평균 득점">득점</th>
-                  <th scope="col" class="px-3 py-2 text-right" title="평균 리바운드">리바</th>
-                  <th scope="col" class="px-3 py-2 text-right" title="평균 어시스트">어시</th>
-                  <th scope="col" class="px-3 py-2 text-right" title="효율">EFF</th>
-                  <th scope="col" class="px-3 py-2 text-right" title="팀 득실마진(출전시간 가중)">MG</th>
-                </tr>
-              </thead>
+        {html|<div id="season-stats-panel" class="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 p-5 shadow-lg">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-bold text-slate-900 dark:text-slate-200">%s</h3>
+          </div>
+          <div class="flex gap-1 border-b border-slate-200 dark:border-slate-700 mb-4">
+            %s
+          </div>
+          <div class="text-[11px] text-slate-500 dark:text-slate-500 leading-relaxed mb-3">시즌명 → 순위표 | GL → 경기 기록 | 팀명 → 팀 페이지</div>
+          <div class="overflow-x-auto">
+            <table class="%s w-full text-sm table-fixed tabular-nums" aria-label="%s">
+              %s
+              %s
               <tbody>%s</tbody>
+              %s
             </table>
           </div>
-        </details>|html}
-        rows
+        </div>|html}
+        scope_label tab_html min_w scope_label colgroup_html thead_html rows tfoot_html
 
 let career_trajectory_chart (seasons: season_stats list) =
   let season_code_int s = try int_of_string s with _ -> 0 in
@@ -1022,7 +1349,7 @@ let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2") ?(include_
           %s
           <div class="flex flex-col min-w-0">
             <div class="flex items-center gap-2 min-w-0">
-              <a href="/player/%s" class="player-name hover:text-orange-600 dark:text-orange-400 transition-colors truncate break-keep min-w-0">%s</a>
+              <a href="%s" class="player-name hover:text-orange-600 dark:text-orange-400 transition-colors truncate break-keep min-w-0">%s</a>
               <span class="%s">%s</span>
             </div>
             %s
@@ -1035,7 +1362,7 @@ let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2") ?(include_
     </tr>|html}
     rank
     (player_img_tag ~class_name:"w-8 h-8 shrink-0" p.player_id p.name)
-    p.player_id
+    (player_href p.player_id)
     (escape_html display_name)
     (if show_player_id then "inline-flex" else "hidden")
     id_badge

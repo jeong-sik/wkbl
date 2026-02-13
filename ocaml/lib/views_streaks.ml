@@ -206,7 +206,7 @@ let streaks_page
   layout ~lang ~title:"연속 기록 | WKBL" ~canonical_path:"/streaks"
     ~description:"WKBL 여자농구 연속 기록 트래커. 20+ 득점, 더블더블, 팀 연승 등 진행 중인 기록과 역대 최고 기록을 확인하세요."
     ~content:(Printf.sprintf
-      {html|<div class="space-y-8">
+      {html|<div class="space-y-8">%s
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-200">연속 기록</h1>
@@ -257,6 +257,7 @@ let streaks_page
           </div>
         </section>
       </div>|html}
+      (breadcrumb [("홈", "/"); ("연속 기록", "")])
       season_options
       active_team_section
       active_player_section

@@ -18,6 +18,88 @@ let team_profile_page ?(lang=I18n.Ko) ?(player_info_map=None) (detail: team_full
   Printf.sprintf {html|<option value="ALL" %s>전체 시즌</option>%s|html} (if season = "ALL" then "selected" else "") base
  in
  let standing_info = match s with | Some st -> Printf.sprintf {html|<div class="flex gap-6 text-sm"><div class="flex flex-col"><span>승</span><span class="text-2xl font-black text-slate-900 dark:text-slate-200">%d</span></div><div class="flex flex-col"><span>패</span><span class="text-2xl font-black text-slate-900 dark:text-slate-200">%d</span></div><div class="flex flex-col"><span>승률</span><span class="text-2xl font-black text-orange-600 dark:text-orange-400">%.3f</span></div><div class="flex flex-col"><span>게임차</span><span class="text-2xl font-black text-slate-500 dark:text-slate-400">%.1f</span></div></div>|html} st.wins st.losses st.win_pct st.gb | None -> "" in
+ (* Prev/Next season navigation *)
+ let season_nav =
+  if season = "ALL" then ""
+  else
+   let idx = List.mapi (fun i (s: season_info) -> (i, s)) seasons
+    |> List.find_opt (fun (_, s) -> s.code = season)
+    |> Option.map fst in
+   match idx with
+   | None -> ""
+   | Some i ->
+    let prev_link =
+     if i > 0 then
+      let prev = List.nth seasons (i - 1) in
+      Printf.sprintf {html|<a href="/team/%s?season=%s" class="text-sm text-slate-500 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors" title="%s">&larr; %s</a>|html}
+       (Uri.pct_encode t) prev.code (escape_html prev.name) (escape_html prev.name)
+     else ""
+    in
+    let next_link =
+     if i < List.length seasons - 1 then
+      let next = List.nth seasons (i + 1) in
+      Printf.sprintf {html|<a href="/team/%s?season=%s" class="text-sm text-slate-500 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors" title="%s">%s &rarr;</a>|html}
+       (Uri.pct_encode t) next.code (escape_html next.name) (escape_html next.name)
+     else ""
+    in
+    Printf.sprintf {html|<div class="flex items-center justify-between">%s%s</div>|html} prev_link next_link
+ in
+ (* Team Metrics Summary — PTS/G, OPP PTS/G, DIFF, eFG%, Pace *)
+ let team_metrics_section =
+  let rank_of ~compare_fn standings =
+   let sorted = List.sort compare_fn standings in
+   List.mapi (fun i (s: team_standing) -> (i + 1, s)) sorted
+   |> List.find_opt (fun (_, s) -> s.team_name = t)
+   |> Option.map fst
+  in
+  let rank_label = function
+   | Some r ->
+    let n = List.length detail.tfd_standings in
+    Printf.sprintf {html|<span class="text-[10px] text-slate-400 dark:text-slate-500 font-mono">%d/%d</span>|html} r n
+   | None -> ""
+  in
+  let efg_pct_str, pace_str =
+   match detail.tfd_team_totals with
+   | Some totals ->
+    let fg_a = totals.fg2_a + totals.fg3_a in
+    let fg_m = totals.fg2_m + totals.fg3_m in
+    let efg = if fg_a = 0 then 0.0 else (float fg_m +. 0.5 *. float totals.fg3_m) /. float fg_a *. 100.0 in
+    let poss = float fg_a +. 0.44 *. float totals.ft_a +. float totals.turnovers -. float totals.reb_off in
+    let pace = if totals.min_total <= 0.0 then 0.0 else 40.0 *. (poss /. totals.min_total) in
+    (Printf.sprintf "%.1f" efg, Printf.sprintf "%.1f" pace)
+   | None -> ("-", "-")
+  in
+  match s with
+  | None -> ""
+  | Some st ->
+   let pts_rank = rank_of ~compare_fn:(fun a b -> compare b.avg_pts a.avg_pts) detail.tfd_standings in
+   let opp_rank = rank_of ~compare_fn:(fun a b -> compare a.avg_opp_pts b.avg_opp_pts) detail.tfd_standings in
+   let diff_cls =
+    if st.diff > 0.0 then "text-sky-600 dark:text-sky-400"
+    else if st.diff < 0.0 then "text-rose-600 dark:text-rose-400"
+    else "text-slate-500 dark:text-slate-400"
+   in
+   let metric_card label value rank_html color =
+    Printf.sprintf
+     {html|<div class="flex flex-col items-center p-3 bg-slate-100 dark:bg-slate-800/60 rounded-lg border border-slate-200 dark:border-slate-700/50">
+      <div class="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-widest font-bold">%s</div>
+      <div class="mt-1 text-xl font-black %s font-mono tabular-nums">%s</div>
+      %s
+     </div>|html}
+     label color value rank_html
+   in
+   Printf.sprintf
+    {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-lg">
+     <div class="grid grid-cols-3 sm:grid-cols-5 gap-3">
+      %s%s%s%s%s
+     </div>
+    </div>|html}
+    (metric_card "PTS/G" (Printf.sprintf "%.1f" st.avg_pts) (rank_label pts_rank) "text-orange-600 dark:text-orange-400")
+    (metric_card "OPP" (Printf.sprintf "%.1f" st.avg_opp_pts) (rank_label opp_rank) "text-slate-700 dark:text-slate-300")
+    (metric_card "DIFF" (Printf.sprintf "%+.1f" st.diff) "" diff_cls)
+    (metric_card "eFG%%" efg_pct_str "" "text-emerald-600 dark:text-emerald-400")
+    (metric_card "Pace" pace_str "" "text-sky-600 dark:text-sky-400")
+ in
  let roster_name_counts : (string, int) Hashtbl.t = Hashtbl.create 32 in
  detail.tfd_roster
  |> List.iter (fun (p: player_aggregate) ->
@@ -39,6 +121,59 @@ let team_profile_page ?(lang=I18n.Ko) ?(player_info_map=None) (detail: team_full
      | None -> None
     in
     player_row ~show_player_id ~include_team:false ~team_cell_class:"px-3 py-2" ~player_info (i + 1) p)
+  |> String.concat "\n"
+ in
+ let roster_totals_rows =
+  detail.tfd_roster
+  |> List.mapi (fun i (p: player_aggregate) ->
+   let key = normalize_name p.name in
+   let show_player_id =
+    match Hashtbl.find_opt roster_name_counts key with
+    | Some c when c > 1 -> true
+    | _ -> false
+   in
+   let id_badge = if show_player_id then player_id_badge p.player_id else "" in
+   let display_name = normalize_name p.name in
+   let min_int = int_of_float p.total_minutes in
+   Printf.sprintf
+    {html|<tr class="group border-b border-slate-200 dark:border-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors font-mono tabular-nums">
+      <td class="px-2 py-2 text-slate-500 dark:text-slate-500 text-sm text-center font-bold" style="width: 50px;">%d</td>
+      <td class="px-3 py-2 font-medium text-slate-900 dark:text-white font-sans whitespace-nowrap" style="width: 200px;">
+        <div class="flex items-center gap-3 min-w-0">
+          %s
+          <div class="flex flex-col min-w-0">
+            <div class="flex items-center gap-2 min-w-0">
+              <a href="%s" class="player-name hover:text-orange-600 dark:text-orange-400 transition-colors truncate break-keep min-w-0">%s</a>
+              <span class="%s">%s</span>
+            </div>
+          </div>
+        </div>
+      </td>
+      <td class="px-3 py-2 text-right text-slate-500 dark:text-slate-400 hidden sm:table-cell" style="width: 60px;">%d</td>
+      <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 hidden md:table-cell" style="width: 80px;">%d</td>
+      <td class="px-3 py-2 text-right text-orange-600 dark:text-orange-400 font-bold" style="width: 80px;">%d</td>
+      <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300" style="width: 80px;">%d</td>
+      <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 hidden md:table-cell" style="width: 80px;">%d</td>
+      <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 hidden lg:table-cell" style="width: 70px;">%d</td>
+      <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 hidden lg:table-cell" style="width: 70px;">%d</td>
+      <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 hidden lg:table-cell" style="width: 70px;">%d</td>
+      <td class="px-3 py-2 text-right text-orange-600 dark:text-orange-400 font-bold" style="width: 80px;">%.1f</td>
+    </tr>|html}
+    (i + 1)
+    (player_img_tag ~class_name:"w-8 h-8 shrink-0" p.player_id p.name)
+    (player_href p.player_id)
+    (escape_html display_name)
+    (if show_player_id then "inline-flex" else "hidden")
+    id_badge
+    p.games_played
+    min_int
+    p.total_points
+    p.total_rebounds
+    p.total_assists
+    p.total_steals
+    p.total_blocks
+    p.total_turnovers
+    p.efficiency)
   |> String.concat "\n"
  in
  let roster_cards =
@@ -77,7 +212,7 @@ let team_profile_page ?(lang=I18n.Ko) ?(player_info_map=None) (detail: team_full
 	        <div class="shrink-0">%s</div>
 	        <div class="min-w-0">
 	         <div class="text-sm font-bold text-slate-900 dark:text-slate-200 truncate">
-	          <a href="/player/%s" class="player-name hover:text-orange-600 dark:text-orange-400 transition-colors">%s</a>
+	          <a href="%s" class="player-name hover:text-orange-600 dark:text-orange-400 transition-colors">%s</a>
 	         </div>
 	         %s
 	         <div class="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400 font-mono tabular-nums">경기 %d • 기여도 %.1f</div>
@@ -104,7 +239,7 @@ let team_profile_page ?(lang=I18n.Ko) ?(player_info_map=None) (detail: team_full
 	      </div>
 	     </div>|html}
      (player_img_tag ~class_name:"w-10 h-10 border border-slate-300 dark:border-slate-700 shadow-sm" p.player_id p.name)
-     p.player_id
+     (player_href p.player_id)
      (escape_html (normalize_name p.name))
      disambiguation
      p.games_played
@@ -134,7 +269,56 @@ let team_profile_page ?(lang=I18n.Ko) ?(player_info_map=None) (detail: team_full
 	                       </colgroup>
 	                       <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px] sm:text-xs whitespace-nowrap"><tr><th scope="col" class="px-2 py-2 text-center font-sans whitespace-nowrap">#</th><th scope="col" class="px-3 py-2 text-left font-sans whitespace-nowrap">선수</th><th scope="col" class="px-3 py-2 text-right hidden sm:table-cell whitespace-nowrap" title="경기 수">GP</th><th scope="col" class="px-3 py-2 text-right text-orange-600 dark:text-orange-400 whitespace-nowrap" title="득점(경기당)">PTS</th><th scope="col" class="px-3 py-2 text-right hidden md:table-cell whitespace-nowrap" title="득실마진(MG, 출전시간 가중)">MG</th><th scope="col" class="px-3 py-2 text-right whitespace-nowrap" title="리바운드(경기당)">REB</th><th scope="col" class="px-3 py-2 text-right hidden md:table-cell whitespace-nowrap" title="어시스트(경기당)">AST</th><th scope="col" class="px-3 py-2 text-right hidden lg:table-cell whitespace-nowrap" title="스틸(경기당)">STL</th><th scope="col" class="px-3 py-2 text-right hidden lg:table-cell whitespace-nowrap" title="블록(경기당)">BLK</th><th scope="col" class="px-3 py-2 text-right hidden lg:table-cell whitespace-nowrap" title="턴오버(경기당)">TO</th><th scope="col" class="px-3 py-2 text-right text-orange-600 dark:text-orange-400 whitespace-nowrap" title="EFF(기여도)">EFF</th><th scope="col" class="px-3 py-2 text-right hidden sm:table-cell whitespace-nowrap" title="PER">PER</th></tr></thead><tbody>%s</tbody></table>|html}
 	                      roster_rows
-	                    in	 let season_label =
+	                    in
+ let roster_totals_table =
+  Printf.sprintf
+   {html|<table class="roster-table min-w-[900px] w-full text-xs sm:text-sm font-mono table-fixed tabular-nums" aria-label="팀 로스터 (합계)">
+    <colgroup>
+      <col style="width: 50px;">
+      <col style="width: 200px;">
+      <col class="hidden sm:table-column" style="width: 60px;">
+      <col class="hidden md:table-column" style="width: 80px;">
+      <col style="width: 80px;">
+      <col style="width: 80px;">
+      <col class="hidden md:table-column" style="width: 80px;">
+      <col class="hidden lg:table-column" style="width: 70px;">
+      <col class="hidden lg:table-column" style="width: 70px;">
+      <col class="hidden lg:table-column" style="width: 70px;">
+      <col style="width: 80px;">
+    </colgroup>
+    <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px] sm:text-xs whitespace-nowrap"><tr><th scope="col" class="px-2 py-2 text-center font-sans">#</th><th scope="col" class="px-3 py-2 text-left font-sans">선수</th><th scope="col" class="px-3 py-2 text-right hidden sm:table-cell" title="경기 수">GP</th><th scope="col" class="px-3 py-2 text-right hidden md:table-cell" title="출전시간 합계">MIN</th><th scope="col" class="px-3 py-2 text-right text-orange-600 dark:text-orange-400" title="득점 합계">PTS</th><th scope="col" class="px-3 py-2 text-right" title="리바운드 합계">REB</th><th scope="col" class="px-3 py-2 text-right hidden md:table-cell" title="어시스트 합계">AST</th><th scope="col" class="px-3 py-2 text-right hidden lg:table-cell" title="스틸 합계">STL</th><th scope="col" class="px-3 py-2 text-right hidden lg:table-cell" title="블록 합계">BLK</th><th scope="col" class="px-3 py-2 text-right hidden lg:table-cell" title="턴오버 합계">TOV</th><th scope="col" class="px-3 py-2 text-right text-orange-600 dark:text-orange-400" title="EFF(기여도)">EFF</th></tr></thead><tbody>%s</tbody></table>|html}
+   roster_totals_rows
+ in
+ let roster_desktop_section =
+  Printf.sprintf
+   {html|<div class="space-y-3">
+    <div class="flex gap-1 bg-slate-100 dark:bg-slate-800/60 rounded-lg p-1 w-fit">
+     <button onclick="switchRosterTab('pergame')" id="tab-pergame" class="px-4 py-1.5 rounded-md text-sm font-bold transition-colors bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-200 shadow-sm">경기당</button>
+     <button onclick="switchRosterTab('totals')" id="tab-totals" class="px-4 py-1.5 rounded-md text-sm font-bold transition-colors text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300">합계</button>
+    </div>
+    <div id="panel-pergame" class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-lg">%s</div>
+    <div id="panel-totals" class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-lg hidden">%s</div>
+    <script>
+    function switchRosterTab(tab) {
+     var tabs = ['pergame', 'totals'];
+     tabs.forEach(function(t) {
+      var panel = document.getElementById('panel-' + t);
+      var btn = document.getElementById('tab-' + t);
+      if (t === tab) {
+       panel.classList.remove('hidden');
+       btn.className = 'px-4 py-1.5 rounded-md text-sm font-bold transition-colors bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-200 shadow-sm';
+      } else {
+       panel.classList.add('hidden');
+       btn.className = 'px-4 py-1.5 rounded-md text-sm font-bold transition-colors text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300';
+      }
+     });
+    }
+    </script>
+   </div>|html}
+   roster_table_inner
+   roster_totals_table
+ in
+	 let season_label =
 		  if season = "ALL" then
 		   "전체 시즌"
 		  else
@@ -242,15 +426,20 @@ let team_profile_page ?(lang=I18n.Ko) ?(player_info_map=None) (detail: team_full
 			     "예정"
 			 in
 			 let game_rows =
-			  detail.tfd_recent_games
-			  |> List.map (fun (g: team_game_result) ->
+			  let (_, _, rows_rev) =
+			   List.fold_left (fun (w, l, acc) (g: team_game_result) ->
 			    let has_score = g.tgr_team_score > 0 && g.tgr_opponent_score > 0 in
+			    let new_w, new_l =
+			     if not has_score then (w, l)
+			     else if g.tgr_is_win then (w + 1, l) else (w, l + 1) in
 			    let res_class =
 			      if not has_score then "text-slate-500 dark:text-slate-400"
 			      else if g.tgr_is_win then "text-sky-600 dark:text-sky-400"
 			      else "text-rose-600 dark:text-rose-400"
 			    in
 			    let res_label = if not has_score then "—" else if g.tgr_is_win then "승" else "패" in
+			    let record_str =
+			     if has_score then Printf.sprintf "(%d-%d)" new_w new_l else "" in
 			    let score_inner =
 			      if has_score then
 			        let margin = g.tgr_team_score - g.tgr_opponent_score in
@@ -274,44 +463,72 @@ let team_profile_page ?(lang=I18n.Ko) ?(player_info_map=None) (detail: team_full
 			          {html|<div class="flex items-center justify-end"><span class="text-xs text-slate-500 dark:text-slate-400 font-mono whitespace-nowrap">%s</span></div>|html}
 			          (escape_html label)
 			    in
-		    let opponent_label =
-		     if g.tgr_is_home then "vs " ^ g.tgr_opponent else "@ " ^ g.tgr_opponent
-		    in
-		    let opponent_href = "/team/" ^ Uri.pct_encode g.tgr_opponent in
-	    let date_short =
-	     if String.length g.tgr_game_date >= 10 then
-	      String.sub g.tgr_game_date 5 5
-	     else
-	      g.tgr_game_date
-		    in
-		    Printf.sprintf
-		     {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors"><td class="px-3 py-2 text-slate-500 dark:text-slate-400 text-sm font-mono whitespace-nowrap w-24"><a href="/boxscore/%s" class="hover:text-orange-600 dark:text-orange-400 transition-colors" title="%s"><span class="sm:hidden">%s</span><span class="hidden sm:inline">%s</span></a></td><td class="px-3 py-2 text-slate-900 dark:text-slate-200"><a class="block truncate hover:text-orange-600 dark:text-orange-400 transition-colors" href="%s" title="%s">%s</a></td><td class="px-3 py-2 text-center font-bold %s whitespace-nowrap w-14"><span class="inline-flex items-center justify-center w-7">%s</span></td><td class="px-3 py-2 text-right font-mono text-slate-900 dark:text-slate-200 whitespace-nowrap w-36">%s</td></tr>|html}
-		     (Uri.pct_encode g.tgr_game_id)
-		     (escape_html g.tgr_game_date)
-		     (escape_html date_short)
-		     (escape_html g.tgr_game_date)
-		     (escape_html opponent_href)
-		     (escape_html opponent_label)
-		     (escape_html opponent_label)
-		     res_class
-		     res_label
-		     score_inner)
-	  |> String.concat "\n"
-	 in
- (* Four Factors Section *)
+			    let opponent_label =
+			     if g.tgr_is_home then "vs " ^ g.tgr_opponent else "@ " ^ g.tgr_opponent
+			    in
+			    let opponent_href = "/team/" ^ Uri.pct_encode g.tgr_opponent in
+			    let date_short =
+			     if String.length g.tgr_game_date >= 10 then
+			      String.sub g.tgr_game_date 5 5
+			     else
+			      g.tgr_game_date
+			    in
+			    let row = Printf.sprintf
+			     {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors"><td class="px-3 py-2 text-slate-500 dark:text-slate-400 text-sm font-mono whitespace-nowrap w-24"><a href="/boxscore/%s" class="hover:text-orange-600 dark:hover:text-orange-400 transition-colors" title="%s"><span class="sm:hidden">%s</span><span class="hidden sm:inline">%s</span></a></td><td class="px-3 py-2 text-slate-900 dark:text-slate-200"><a class="block truncate hover:text-orange-600 dark:hover:text-orange-400 transition-colors" href="%s" title="%s">%s</a></td><td class="px-3 py-2 text-center font-bold %s whitespace-nowrap w-14"><span class="inline-flex items-center justify-center w-7">%s</span></td><td class="px-3 py-2 text-right font-mono text-slate-900 dark:text-slate-200 whitespace-nowrap w-36">%s</td><td class="px-2 py-2 text-right text-[10px] font-mono text-slate-400 dark:text-slate-500 whitespace-nowrap hidden sm:table-cell">%s</td></tr>|html}
+			     (Uri.pct_encode g.tgr_game_id)
+			     (escape_html g.tgr_game_date)
+			     (escape_html date_short)
+			     (escape_html g.tgr_game_date)
+			     (escape_html opponent_href)
+			     (escape_html opponent_label)
+			     (escape_html opponent_label)
+			     res_class
+			     res_label
+			     score_inner
+			     (escape_html record_str)
+			    in
+			    (new_w, new_l, row :: acc))
+			   (0, 0, []) detail.tfd_game_results
+			  in
+			  rows_rev |> List.rev |> String.concat "\n"
+			 in
+ (* Four Factors Section — with league rankings *)
  let four_factors_section =
   match detail.tfd_team_totals with
   | None -> ""
   | Some totals ->
     let ff = Stats.four_factors_of_totals totals in
-    let stat_card label value desc color =
+    (* Compute Four Factors for all teams and rank *)
+    let all_ff = detail.tfd_all_totals
+     |> List.map (fun (tt: team_totals) -> (tt.team, Stats.four_factors_of_totals tt)) in
+    let n = List.length all_ff in
+    let ff_rank_of ~extract ~higher_is_better =
+     let sorted = List.sort (fun (_, a) (_, b) ->
+      let va = extract a and vb = extract b in
+      if higher_is_better then compare vb va else compare va vb)
+      all_ff in
+     List.mapi (fun i (name, _) -> (i + 1, name)) sorted
+     |> List.find_opt (fun (_, name) -> name = t)
+     |> Option.map fst
+    in
+    let rank_badge = function
+     | Some r ->
+      Printf.sprintf {html|<span class="text-[10px] text-slate-400 dark:text-slate-500 font-mono">%d/%d</span>|html} r n
+     | None -> ""
+    in
+    let efg_rank = ff_rank_of ~extract:(fun f -> f.Stats.efg_pct) ~higher_is_better:true in
+    let tov_rank = ff_rank_of ~extract:(fun f -> f.Stats.tov_pct) ~higher_is_better:false in
+    let orb_rank = ff_rank_of ~extract:(fun f -> f.Stats.orb_pct) ~higher_is_better:true in
+    let ftr_rank = ff_rank_of ~extract:(fun f -> f.Stats.ftr) ~higher_is_better:true in
+    let stat_card label value desc color rank_html =
      Printf.sprintf
       {html|<div class="bg-slate-100 dark:bg-slate-800/60 rounded-lg p-3 border border-slate-200 dark:border-slate-700/50">
        <div class="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-widest font-bold">%s</div>
        <div class="mt-1 text-xl font-black %s font-mono tabular-nums">%.1f%%</div>
+       %s
        <div class="mt-1 text-[10px] text-slate-500 dark:text-slate-400 leading-tight">%s</div>
       </div>|html}
-      label color value desc
+      label color value rank_html desc
     in
     Printf.sprintf
      {html|<div class="space-y-4">
@@ -328,28 +545,44 @@ let team_profile_page ?(lang=I18n.Ko) ?(player_info_map=None) (detail: team_full
        </div>
       </div>
      </div>|html}
-     (stat_card "eFG%%" ff.efg_pct "슈팅 효율" "text-emerald-600 dark:text-emerald-400")
-     (stat_card "TOV%%" ff.tov_pct "턴오버율 (낮을수록 좋음)" "text-rose-500 dark:text-rose-400")
-     (stat_card "ORB%%" ff.orb_pct "공격 리바운드율" "text-sky-600 dark:text-sky-400")
-     (stat_card "FTR" ff.ftr "자유투 시도율" "text-orange-600 dark:text-orange-400")
+     (stat_card "eFG%%" ff.efg_pct "슈팅 효율" "text-emerald-600 dark:text-emerald-400" (rank_badge efg_rank))
+     (stat_card "TOV%%" ff.tov_pct "턴오버율 (낮을수록 좋음)" "text-rose-500 dark:text-rose-400" (rank_badge tov_rank))
+     (stat_card "ORB%%" ff.orb_pct "공격 리바운드율" "text-sky-600 dark:text-sky-400" (rank_badge orb_rank))
+     (stat_card "FTR" ff.ftr "자유투 시도율" "text-orange-600 dark:text-orange-400" (rank_badge ftr_rank))
+ in
+ (* JSON-LD structured data for SportsTeam schema *)
+ let json_ld_data =
+   let record_str = match s with
+     | Some st -> Printf.sprintf {|,"record":"%d-%d"|} st.wins st.losses
+     | None -> ""
+   in
+   Printf.sprintf {|{"@context":"https://schema.org","@type":"SportsTeam","name":"%s","sport":"Basketball","memberOf":{"@type":"SportsOrganization","name":"WKBL"},"url":"https://wkbl.win/team/%s"%s}|}
+     (escape_html t) (Uri.pct_encode t) record_str
  in
 				 layout ~lang ~title:(t ^ " | WKBL 팀")
-				  ~content:(Printf.sprintf {html|<div class="space-y-6 sm:space-y-8 animate-fade-in"><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 sm:p-8 shadow-2xl flex flex-col md:flex-row items-center md:items-start gap-6 sm:gap-8"><div class="w-24 h-24 sm:w-32 sm:h-32 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center p-3 sm:p-4 border-2 border-slate-300 dark:border-slate-700 shadow-inner">%s</div><div class="text-center md:text-left space-y-4 w-full"><div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3"><h1 class="text-3xl sm:text-4xl font-black text-slate-900 dark:text-slate-200">%s</h1><form action="/team/%s" method="get" class="flex flex-col sm:flex-row items-stretch sm:items-center justify-center sm:justify-end gap-2 w-full sm:w-auto"><span class="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-widest font-bold">시즌</span><select name="season" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none w-full sm:w-48" onchange="this.form.submit()">%s</select></form></div>%s</div></div><div class="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8"><div class="space-y-4 lg:col-span-2"><h3 class="text-xl font-bold text-slate-900 dark:text-slate-200">로스터</h3><div id="roster-cards" class="sm:hidden space-y-3">%s</div><details id="roster-table-details" class="sm:hidden bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 p-4" ontoggle="(function(d){var c=document.getElementById('roster-cards'); if(c) c.hidden = d.open;})(this)"><summary class="cursor-pointer font-bold text-slate-700 dark:text-slate-300 select-none">표로 보기</summary><div class="mt-3 overflow-x-auto">%s</div></details><div class="hidden sm:block bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-lg">%s</div></div><div class="space-y-6 lg:col-span-1"><h3 class="text-xl font-bold text-slate-900 dark:text-slate-200">경기 결과</h3>%s%s<h3 class="text-xl font-bold text-slate-900 dark:text-slate-200">최근 경기</h3><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto overflow-y-hidden shadow-lg"><table class="min-w-[480px] w-full text-xs sm:text-sm font-mono tabular-nums table-fixed" aria-label="최근 경기 결과">
+				  ~canonical_path:(Printf.sprintf "/team/%s" (Uri.pct_encode t))
+				  ~description:(Printf.sprintf "%s WKBL 여자농구 팀 프로필 - 로스터, 경기 결과, 시즌 기록" (escape_html t))
+				  ~json_ld:json_ld_data
+				  ~content:(Printf.sprintf {html|<div class="space-y-6 sm:space-y-8 animate-fade-in">%s<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 sm:p-8 shadow-2xl flex flex-col md:flex-row items-center md:items-start gap-6 sm:gap-8"><div class="w-24 h-24 sm:w-32 sm:h-32 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center p-3 sm:p-4 border-2 border-slate-300 dark:border-slate-700 shadow-inner">%s</div><div class="text-center md:text-left space-y-4 w-full"><div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3"><h1 class="text-3xl sm:text-4xl font-black text-slate-900 dark:text-slate-200">%s</h1><form action="/team/%s" method="get" class="flex flex-col sm:flex-row items-stretch sm:items-center justify-center sm:justify-end gap-2 w-full sm:w-auto"><span class="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-widest font-bold">시즌</span><select name="season" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none w-full sm:w-48" onchange="this.form.submit()">%s</select></form></div>%s</div></div>%s%s<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8"><div class="space-y-4 lg:col-span-2"><h3 class="text-xl font-bold text-slate-900 dark:text-slate-200">로스터</h3><div id="roster-cards" class="sm:hidden space-y-3">%s</div><details id="roster-table-details" class="sm:hidden bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 p-4" ontoggle="(function(d){var c=document.getElementById('roster-cards'); if(c) c.hidden = d.open;})(this)"><summary class="cursor-pointer font-bold text-slate-700 dark:text-slate-300 select-none">표로 보기</summary><div class="mt-3 overflow-x-auto">%s</div></details><div class="hidden sm:block">%s</div></div><div class="space-y-6 lg:col-span-1"><h3 class="text-xl font-bold text-slate-900 dark:text-slate-200">경기 결과</h3>%s%s<h3 class="text-xl font-bold text-slate-900 dark:text-slate-200">전체 경기</h3><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto max-h-[600px] overflow-y-auto shadow-lg"><table class="min-w-[480px] w-full text-xs sm:text-sm font-mono tabular-nums table-fixed" aria-label="시즌 전체 경기">
   	          <colgroup>
   	            <col style="width: 96px;"> <!-- Date -->
   	            <col style="width: auto;"> <!-- Opponent -->
   	            <col style="width: 56px;"> <!-- Result -->
             <col style="width: 144px;"> <!-- Score -->
+            <col class="hidden sm:table-column" style="width: 56px;"> <!-- Record -->
           </colgroup>
-	          <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px] sm:text-xs whitespace-nowrap"><tr><th scope="col" class="px-3 py-2 text-left font-sans">날짜</th><th scope="col" class="px-3 py-2 text-left font-sans">상대</th><th scope="col" class="px-3 py-2 text-center font-sans" title="승/패">결과</th><th scope="col" class="px-3 py-2 text-right font-sans">점수</th></tr></thead><tbody>%s</tbody></table></div></div></div></div>|html}
+	          <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px] sm:text-xs whitespace-nowrap"><tr><th scope="col" class="px-3 py-2 text-left font-sans">날짜</th><th scope="col" class="px-3 py-2 text-left font-sans">상대</th><th scope="col" class="px-3 py-2 text-center font-sans" title="승/패">결과</th><th scope="col" class="px-3 py-2 text-right font-sans">점수</th><th scope="col" class="px-2 py-2 text-right font-sans hidden sm:table-cell">기록</th></tr></thead><tbody>%s</tbody></table></div></div></div></div>|html}
+	     (breadcrumb [("홈", "/"); ("팀", "/teams"); (t, "")])
 	     (team_logo_tag ~class_name:"w-16 h-16 sm:w-24 sm:h-24" t)
 	     (escape_html t)
 	     (Uri.pct_encode t)
 	     season_options
 	     standing_info
+	     season_nav
+	     team_metrics_section
 	     roster_cards
 	     roster_table_inner
-	     roster_table_inner
+	     roster_desktop_section
 	     game_results_chart
 	     four_factors_section
 	     game_rows) ()
@@ -432,7 +665,7 @@ let team_h2h_page ?(lang=I18n.Ko) ~team1 ~team2 ~season ~seasons (games : Domain
   in
   layout ~lang ~title:(Printf.sprintf "%s 대 %s | 팀 전적 비교" team1 team2)
     ~content:(Printf.sprintf
-      {html|<div class="space-y-6 animate-fade-in">
+      {html|<div class="space-y-6 animate-fade-in">%s
         <!-- Header with team selection -->
         <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-xl">
           <h1 class="text-2xl font-black text-slate-900 dark:text-slate-200 text-center mb-6">팀 간 전적 비교</h1>
@@ -502,6 +735,7 @@ let team_h2h_page ?(lang=I18n.Ko) ~team1 ~team2 ~season ~seasons (games : Domain
           </table>
         </div>
       </div>|html}
+      (breadcrumb [("홈", "/"); ("팀", "/teams"); (team1, "/team/" ^ Uri.pct_encode team1); ("전적 비교", "")])
       (team_logo_tag ~class_name:"w-12 h-12" team1)
       (escape_html team1)
       (escape_html team2)
