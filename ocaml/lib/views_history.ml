@@ -25,7 +25,7 @@ let history_page ?(lang=I18n.Ko) (seasons: historical_season list) =
     let scoring = match s.hs_scoring_leader with Some p -> escape_html p | None -> "-" in
     Printf.sprintf
       {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-50 dark:hover:bg-slate-800/30">
-        <td class="px-3 py-2 font-bold text-orange-600 dark:text-orange-400">%s</td>
+        <td class="px-3 py-2 font-bold"><a href="/season/%s" class="text-orange-600 dark:text-orange-400 hover:underline">%s</a></td>
         <td class="px-3 py-2 font-medium">%s</td>
         <td class="px-3 py-2">%s</td>
         <td class="px-3 py-2">%s</td>
@@ -33,23 +33,23 @@ let history_page ?(lang=I18n.Ko) (seasons: historical_season list) =
         <td class="px-3 py-2">%s</td>
         <td class="px-3 py-2">%s</td>
       </tr>|html}
-      (escape_html s.hs_season_name) champion runner_up mvp finals_mvp roy scoring
+      (escape_html s.hs_season_id) (escape_html s.hs_season_name) champion runner_up mvp finals_mvp roy scoring
   ) |> String.concat "\n" in
   let mobile_cards = seasons |> List.map (fun (s: historical_season) ->
     let champion = match s.hs_champion_team with Some t -> team_badge ~max_width:"max-w-[100px]" t | None -> "-" in
     let mvp = match s.hs_regular_mvp with Some p -> escape_html p | None -> "-" in
     Printf.sprintf
       {html|<div class="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-lg p-4 space-y-2">
-        <div class="font-bold text-orange-600 dark:text-orange-400 text-lg">%s</div>
+        <a href="/season/%s" class="font-bold text-orange-600 dark:text-orange-400 text-lg hover:underline block">%s</a>
         <div class="grid grid-cols-2 gap-2 text-sm">
           <div><span class="text-slate-500 dark:text-slate-400">우승:</span> <span class="font-medium">%s</span></div>
           <div><span class="text-slate-500 dark:text-slate-400">MVP:</span> <span class="font-medium">%s</span></div>
         </div>
       </div>|html}
-      (escape_html s.hs_season_name) champion mvp
+      (escape_html s.hs_season_id) (escape_html s.hs_season_name) champion mvp
   ) |> String.concat "\n" in
   layout ~lang ~title:"역대 기록 | WKBL" ~content:(Printf.sprintf
-    {html|<div class="space-y-6">
+    {html|<div class="space-y-6">%s
       <div><h2 class="text-2xl font-bold text-slate-900 dark:text-slate-200">WKBL 역대 기록</h2>
         <p class="text-slate-500 dark:text-slate-400 text-sm">1998년 이후 시즌 우승, MVP 등 주요 기록을 정리했습니다.</p></div>
       <div class="space-y-3 sm:hidden">%s</div>
@@ -71,6 +71,7 @@ let history_page ?(lang=I18n.Ko) (seasons: historical_season list) =
 	        </table>
       </div>
     </div>|html}
+    (breadcrumb [("홈", "/"); ("역대 기록", "")])
     mobile_cards rows) ()
 
 (** Legends page - Hall of fame and legendary players *)
@@ -136,7 +137,7 @@ let legends_page ?(lang=I18n.Ko) (legends: legend_player list) =
       l.lp_career_points l.lp_career_rebounds l.lp_career_assists
   ) |> String.concat "\n" in
   layout ~lang ~title:"레전드 | WKBL" ~content:(Printf.sprintf
-    {html|<div class="space-y-6">
+    {html|<div class="space-y-6">%s
       <div><h2 class="text-2xl font-bold text-slate-900 dark:text-slate-200">WKBL 레전드</h2>
         <p class="text-slate-500 dark:text-slate-400 text-sm">명예의 전당 및 역대 최고 선수들</p></div>
       <!-- Mobile card view -->
@@ -172,6 +173,7 @@ let legends_page ?(lang=I18n.Ko) (legends: legend_player list) =
         </table>
       </div>
     </div>|html}
+    (breadcrumb [("홈", "/"); ("레전드", "")])
     cards rows) ()
 
 (** Coaches page - Coaching records *)
@@ -239,7 +241,7 @@ let coaches_page ?(lang=I18n.Ko) (coaches: coach list) =
       (escape_html c.c_coach_name) team tenure c.c_championships c.c_regular_season_wins c.c_playoff_wins player_info
   ) |> String.concat "\n" in
   layout ~lang ~title:"감독 | WKBL" ~content:(Printf.sprintf
-    {html|<div class="space-y-6">
+    {html|<div class="space-y-6">%s
       <div><h2 class="text-2xl font-bold text-slate-900 dark:text-slate-200">WKBL 감독</h2>
         <p class="text-slate-500 dark:text-slate-400 text-sm">감독 기록 및 업적</p></div>
       <!-- Mobile card view -->
@@ -263,6 +265,7 @@ let coaches_page ?(lang=I18n.Ko) (coaches: coach list) =
         </table>
       </div>
     </div>|html}
+    (breadcrumb [("홈", "/"); ("감독", "")])
     cards rows) ()
 
 (** Player career page - Year by year stats for a player *)
@@ -290,7 +293,7 @@ let player_career_page ?(lang=I18n.Ko) ~player_name (entries: player_career_entr
       (escape_html e.pce_season_id) (escape_html e.pce_team) jersey gp ppg rpg apg allstar awards
   ) |> String.concat "\n" in
   layout ~lang ~title:(Printf.sprintf "%s 시즌별 기록 | WKBL" (escape_html player_name)) ~content:(Printf.sprintf
-    {html|<div class="space-y-6">
+    {html|<div class="space-y-6">%s
       <div><h2 class="text-2xl font-bold text-slate-900 dark:text-slate-200">%s</h2>
         <p class="text-slate-500 dark:text-slate-400 text-sm">시즌별 기록입니다.</p></div>
       <div class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 table-scroll-container shadow-lg">
@@ -314,6 +317,7 @@ let player_career_page ?(lang=I18n.Ko) ~player_name (entries: player_career_entr
 	      </div>
 	      <div class="text-center"><a href="/legends" class="text-orange-500 hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 text-sm">← 레전드 목록</a></div>
 	    </div>|html}
+    (breadcrumb [("홈", "/"); ("레전드", "/legends"); (escape_html player_name, "")])
     (escape_html player_name) rows) ()
 
 (** Error page *)

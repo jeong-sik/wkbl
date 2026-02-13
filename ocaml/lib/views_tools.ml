@@ -99,11 +99,11 @@ let qa_dashboard_page ?(lang=I18n.Ko) (report: Db.qa_db_report) ?(markdown=None)
     report.qdr_duplicate_player_row_sample
     |> List.map (fun (row: Db.qa_duplicate_player_row) ->
       Printf.sprintf
-        {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors"><td class="px-3 py-2 text-slate-900 dark:text-slate-200 font-mono text-xs"><a class="hover:text-orange-600 dark:text-orange-400" href="/boxscore/%s">%s</a></td><td class="px-3 py-2 text-xs">%s</td><td class="px-3 py-2 text-xs"><a class="hover:text-orange-600 dark:text-orange-400" href="/player/%s">%s</a></td><td class="px-3 py-2 text-right font-mono text-xs text-slate-900 dark:text-slate-200 tabular-nums">%d</td></tr>|html}
+        {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors"><td class="px-3 py-2 text-slate-900 dark:text-slate-200 font-mono text-xs"><a class="hover:text-orange-600 dark:text-orange-400" href="/boxscore/%s">%s</a></td><td class="px-3 py-2 text-xs">%s</td><td class="px-3 py-2 text-xs"><a class="hover:text-orange-600 dark:text-orange-400" href="%s">%s</a></td><td class="px-3 py-2 text-right font-mono text-xs text-slate-900 dark:text-slate-200 tabular-nums">%d</td></tr>|html}
         (Uri.pct_encode row.qdpr_game_id)
         (escape_html row.qdpr_game_id)
         (team_badge row.qdpr_team_name)
-        (escape_html row.qdpr_player_id)
+        (player_href row.qdpr_player_id)
         (escape_html row.qdpr_player_name)
         row.qdpr_row_count)
     |> String.concat "\n"
@@ -113,7 +113,7 @@ let qa_dashboard_page ?(lang=I18n.Ko) (report: Db.qa_db_report) ?(markdown=None)
     |> List.map (fun (row: Db.qa_duplicate_player_name) ->
       let ids =
         row.qdpn_player_ids
-        |> List.map (fun id -> Printf.sprintf {html|<a href="/player/%s" class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700/60 text-[10px] font-mono text-slate-900 dark:text-slate-200 hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300">%s</a>|html} (escape_html id) (escape_html id))
+        |> List.map (fun id -> Printf.sprintf {html|<a href="%s" class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700/60 text-[10px] font-mono text-slate-900 dark:text-slate-200 hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300">%s</a>|html} (player_href id) (escape_html id))
         |> String.concat " "
       in
       Printf.sprintf
@@ -128,7 +128,7 @@ let qa_dashboard_page ?(lang=I18n.Ko) (report: Db.qa_db_report) ?(markdown=None)
     |> List.map (fun (row: Db.qa_duplicate_player_identity) ->
       let ids =
         row.qdpi_player_ids
-        |> List.map (fun id -> Printf.sprintf {html|<a href="/player/%s" class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700/60 text-[10px] font-mono text-slate-900 dark:text-slate-200 hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300">%s</a>|html} (escape_html id) (escape_html id))
+        |> List.map (fun id -> Printf.sprintf {html|<a href="%s" class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700/60 text-[10px] font-mono text-slate-900 dark:text-slate-200 hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300">%s</a>|html} (player_href id) (escape_html id))
         |> String.concat " "
       in
       Printf.sprintf
@@ -1218,7 +1218,7 @@ let transactions_page
         ""
     in
     Printf.sprintf
-      {html|<div class="space-y-6 animate-fade-in">
+      {html|<div class="space-y-6 animate-fade-in">%s
   <div class="flex flex-col gap-2">
 	    <h2 class="text-2xl font-black text-slate-900 dark:text-slate-200">드래프트 / 이적</h2>
     <div class="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">%s</div>
@@ -1228,6 +1228,7 @@ let transactions_page
   %s
   %s
 </div>|html}
+      (breadcrumb [("홈", "/"); ("드래프트 / 이적", "")])
       intro_html
 	      (tab_link "draft" "드래프트")
 	      (tab_link "trade" "이적")
@@ -1315,7 +1316,7 @@ function resetRules() {
   let results_table = fantasy_results_table scores in
 	  let content =
 	    Printf.sprintf
-	      {html|<div class="space-y-6 animate-fade-in">
+	      {html|<div class="space-y-6 animate-fade-in">%s
 	  <div class="flex flex-col gap-2">
 	    <h2 class="text-2xl font-black text-slate-900 dark:text-slate-200">판타지 계산기</h2>
 	    <div class="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">
@@ -1334,6 +1335,7 @@ function resetRules() {
     %s
   </div>
 </div>|html}
+      (breadcrumb [("홈", "/"); ("판타지 계산기", "")])
       season_options
       rules_form
       results_table
@@ -1788,7 +1790,7 @@ let game_flow_page ?(lang=I18n.Ko) ~(game: Domain.game_info) (flow_points: Domai
         ~lang
         ~title
         ~content:(Printf.sprintf
-          {html|<div class="space-y-6 animate-fade-in">
+          {html|<div class="space-y-6 animate-fade-in">%s
             <div class="text-center">
               <h1 class="text-2xl font-black text-slate-900 dark:text-slate-200">%s 대 %s</h1>
               <div class="text-slate-500 dark:text-slate-400 text-sm mt-1">%s</div>
@@ -1802,6 +1804,7 @@ let game_flow_page ?(lang=I18n.Ko) ~(game: Domain.game_info) (flow_points: Domai
               <a href="/boxscore/%s/pbp" class="px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-200 hover:border-slate-500 transition">문자중계 →</a>
             </div>
           </div>|html}
+          (breadcrumb [("홈", "/"); ("경기 흐름", "")])
           (escape_html game.gi_home_team_name)
           (escape_html game.gi_away_team_name)
           (escape_html game.gi_game_date)
@@ -1815,7 +1818,7 @@ let game_flow_page ?(lang=I18n.Ko) ~(game: Domain.game_info) (flow_points: Domai
         ~lang
         ~title
         ~content:(Printf.sprintf
-          {html|<div class="space-y-6 animate-fade-in">
+          {html|<div class="space-y-6 animate-fade-in">%s
             <div class="text-center">
               <h1 class="text-2xl font-black text-slate-900 dark:text-slate-200">%s 대 %s</h1>
               <div class="text-slate-500 dark:text-slate-400 text-sm mt-1">%s</div>
@@ -1829,6 +1832,7 @@ let game_flow_page ?(lang=I18n.Ko) ~(game: Domain.game_info) (flow_points: Domai
               <a href="/boxscore/%s/pbp" class="px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-200 hover:border-slate-500 transition">문자중계 →</a>
             </div>
           </div>|html}
+          (breadcrumb [("홈", "/"); ("경기 흐름", "")])
           (escape_html game.gi_home_team_name)
           (escape_html game.gi_away_team_name)
           (escape_html game.gi_game_date)
@@ -1923,7 +1927,7 @@ let game_flow_page ?(lang=I18n.Ko) ~(game: Domain.game_info) (flow_points: Domai
         ~lang
         ~title
         ~content:(Printf.sprintf
-          {html|<div class="space-y-6 animate-fade-in">
+          {html|<div class="space-y-6 animate-fade-in">%s
             <div class="text-center">
               <h1 class="text-2xl font-black text-slate-900 dark:text-slate-200">%s 대 %s</h1>
               <div class="text-slate-500 dark:text-slate-400 text-sm mt-1">%s</div>
@@ -1936,6 +1940,7 @@ let game_flow_page ?(lang=I18n.Ko) ~(game: Domain.game_info) (flow_points: Domai
               <a href="/boxscore/%s/pbp" class="px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-200 hover:border-slate-500 transition">문자중계 →</a>
             </div>
           </div>|html}
+          (breadcrumb [("홈", "/"); ("경기 흐름", "")])
           (escape_html game.gi_home_team_name)
           (escape_html game.gi_away_team_name)
           (escape_html game.gi_game_date)
@@ -1952,9 +1957,10 @@ let game_flow_page ?(lang=I18n.Ko) ~(game: Domain.game_info) (flow_points: Domai
 (** Render a single lineup row *)
 let render_lineup_row (lineup: Domain.lineup_stats) (rank: int) : string =
   let players_html = lineup.ls_players
-    |> List.map (fun p ->
-        Printf.sprintf {html|<span class="inline-block px-2 py-1 text-xs bg-slate-100 dark:bg-slate-800 rounded mr-1 mb-1">%s</span>|html}
-          (escape_html p.Domain.lp_player_name))
+    |> List.map (fun (p: Domain.lineup_player) ->
+        Printf.sprintf {html|<a href="/player/%s" class="inline-block px-2 py-1 text-xs bg-slate-100 dark:bg-slate-800 rounded mr-1 mb-1 hover:bg-sky-100 dark:hover:bg-sky-900/40 hover:text-sky-700 dark:hover:text-sky-400 transition-colors">%s</a>|html}
+          (Uri.pct_encode p.lp_player_id)
+          (escape_html p.lp_player_name))
     |> String.concat "" in
   let pm_class = if lineup.ls_plus_minus >= 0
     then "text-green-600 dark:text-green-400"
@@ -1991,15 +1997,17 @@ let render_synergy_row (syn: Domain.lineup_synergy) (rank: int) : string =
   Printf.sprintf
     {html|<tr class="border-b border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900/50">
       <td class="px-3 py-2 text-center font-mono text-sm">%d</td>
-      <td class="px-3 py-2 text-sm">%s</td>
-      <td class="px-3 py-2 text-sm">%s</td>
+      <td class="px-3 py-2 text-sm"><a href="/player/%s" class="text-sky-600 dark:text-sky-400 hover:underline">%s</a></td>
+      <td class="px-3 py-2 text-sm"><a href="/player/%s" class="text-sky-600 dark:text-sky-400 hover:underline">%s</a></td>
       <td class="px-3 py-2 text-center font-mono text-sm">%d</td>
       <td class="px-3 py-2 text-center font-mono text-sm">%.1f</td>
       <td class="px-3 py-2 text-center font-mono text-sm %s">%+.2f</td>
       <td class="px-3 py-2 text-center font-mono text-sm font-bold %s">%.2f</td>
     </tr>|html}
     rank
+    (Uri.pct_encode syn.syn_player1_id)
     (escape_html syn.syn_player1_name)
+    (Uri.pct_encode syn.syn_player2_id)
     (escape_html syn.syn_player2_name)
     syn.syn_games_together
     syn.syn_total_minutes
@@ -2144,11 +2152,15 @@ let lineup_chemistry_page
   let synergy_table = render_synergy_table chemistry.lc_synergies in
 
 	  layout ~lang ~title:"라인업 궁합 | WKBL"
+      ~canonical_path:"/lineups"
+      ~description:"WKBL 여자프로농구 라인업 궁합 분석 - 5인 조합별 +/- 및 시너지"
 	    ~content:(Printf.sprintf
-	      {html|<div class="space-y-6 animate-fade-in">
-	        <div class="flex items-center justify-between">
+	      {html|<div class="space-y-6 animate-fade-in">%s
+	        <div class="flex items-center justify-between flex-wrap gap-3">
 	          <h1 class="text-2xl font-black text-slate-900 dark:text-slate-200">라인업 궁합</h1>
-	          <span class="text-sm text-slate-500 dark:text-slate-400">5인 라인업 분석</span>
+	          <div class="flex items-center gap-3">
+	            <a href="/on-off?season=%s" class="text-sm text-sky-600 dark:text-sky-400 hover:underline">온/오프 영향력 →</a>
+	          </div>
 	        </div>
 	        %s
 	        <div id="lineup-content" class="space-y-6" data-skeleton="cards" data-skeleton-count="3">
@@ -2157,6 +2169,8 @@ let lineup_chemistry_page
           %s
         </div>
       </div>|html}
+      (breadcrumb [("홈", "/"); ("라인업 궁합", "")])
+      (escape_html selected_season)
       filter_form
       frequent_table
       top_table
@@ -2212,7 +2226,7 @@ let on_off_impact_table (impacts: Domain.on_off_impact list) : string =
       {html|<tr class="border-b border-slate-200/50 dark:border-slate-800/50 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
         <td class="py-2 px-4 text-center">%s</td>
         <td class="py-2 px-4">
-          <a href="/player/%s" class="font-semibold text-sky-600 dark:text-sky-400 hover:underline">%s</a>
+          <a href="%s" class="font-semibold text-sky-600 dark:text-sky-400 hover:underline">%s</a>
           <div class="text-xs text-slate-500 dark:text-slate-400">%s</div>
         </td>
         <td class="py-2 px-4 text-center font-mono tabular-nums">%d</td>
@@ -2222,7 +2236,7 @@ let on_off_impact_table (impacts: Domain.on_off_impact list) : string =
         <td class="py-2 px-4 text-center font-mono tabular-nums">%d</td>
       </tr>|html}
       rank_badge
-      impact.ooi_player_id
+      (player_href impact.ooi_player_id)
       (escape_html impact.ooi_player_name)
       (team_badge ~max_width:"max-w-[100px]" impact.ooi_team_name)
       impact.ooi_games_played
@@ -2336,17 +2350,21 @@ let on_off_impact_page
     total_players
     (format_plus_minus avg_pm)
     (match best_player with
-     | Some p -> Printf.sprintf {html|<a href="/player/%s" class="text-sky-600 dark:text-sky-400 hover:underline">%s</a>|html}
-         p.ooi_player_id (escape_html p.ooi_player_name)
+     | Some p -> Printf.sprintf {html|<a href="%s" class="text-sky-600 dark:text-sky-400 hover:underline">%s</a>|html}
+         (player_href p.ooi_player_id) (escape_html p.ooi_player_name)
      | None -> "-")
   in
 
   layout ~lang ~title:"온/오프 영향력 | WKBL"
+    ~canonical_path:"/on-off-impact"
+    ~description:"WKBL 여자프로농구 온/오프 영향력 - 선수별 +/- 분석"
     ~content:(Printf.sprintf
-      {html|<div class="space-y-6 animate-fade-in">
-        <div class="flex items-center justify-between">
+      {html|<div class="space-y-6 animate-fade-in">%s
+        <div class="flex items-center justify-between flex-wrap gap-3">
           <h1 class="text-2xl font-black text-slate-900 dark:text-slate-200">온/오프 영향력</h1>
-          <span class="text-sm text-slate-500 dark:text-slate-400">선수 +/- 분석</span>
+          <div class="flex items-center gap-3">
+            <a href="/lineups?season=%s" class="text-sm text-sky-600 dark:text-sky-400 hover:underline">← 라인업 궁합</a>
+          </div>
         </div>
         %s
         %s
@@ -2356,6 +2374,8 @@ let on_off_impact_page
           <p class="mt-1"><strong>참고:</strong> +/- 데이터는 공식 기록 제공 범위에 따라 일부 경기에서만 제공됩니다.</p>
         </div>
       </div>|html}
+      (breadcrumb [("홈", "/"); ("온/오프 영향력", "")])
+      (escape_html season)
       filter_form summary_cards content) ()
 
 (* ============================================= *)
@@ -2432,7 +2452,7 @@ let qa_anomalies_page
   <td class="px-3 py-2 text-xs font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap">%s</td>
   <td class="px-3 py-2 text-xs font-mono text-slate-900 dark:text-slate-200 whitespace-nowrap"><a href="/boxscore/%s" class="hover:underline">%s</a></td>
   <td class="px-3 py-2 text-xs text-slate-900 dark:text-slate-200 whitespace-nowrap"><a href="/team/%s" class="hover:underline">%s</a></td>
-  <td class="px-3 py-2 text-xs text-slate-900 dark:text-slate-200 whitespace-nowrap"><a href="/player/%s" class="hover:underline">%s</a><span class="ml-2 text-[10px] font-mono text-slate-400">#%s</span></td>
+  <td class="px-3 py-2 text-xs text-slate-900 dark:text-slate-200 whitespace-nowrap"><a href="%s" class="hover:underline">%s</a><span class="ml-2 text-[10px] font-mono text-slate-400">#%s</span></td>
   <td class="px-3 py-2 text-xs font-mono text-right tabular-nums">%s</td>
   <td class="px-3 py-2 text-xs font-mono text-right tabular-nums">%d</td>
   <td class="px-3 py-2 text-xs text-slate-700 dark:text-slate-300 whitespace-nowrap">%s <span class="ml-2 text-[10px] font-mono text-slate-400">(GP %d)</span></td>
@@ -2451,7 +2471,7 @@ let qa_anomalies_page
         (escape_html r.qsa_game_id)
         (Uri.pct_encode r.qsa_team_name)
         (escape_html r.qsa_team_name)
-        (escape_html r.qsa_player_id)
+        (player_href r.qsa_player_id)
         (escape_html r.qsa_player_name)
         (escape_html r.qsa_player_id)
         (escape_html (format_mmss r.qsa_min_seconds))
@@ -2474,7 +2494,7 @@ let qa_anomalies_page
   <td class="px-3 py-2 text-xs font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap">%s</td>
   <td class="px-3 py-2 text-xs font-mono text-slate-900 dark:text-slate-200 whitespace-nowrap"><a href="/boxscore/%s" class="hover:underline">%s</a></td>
   <td class="px-3 py-2 text-xs text-slate-900 dark:text-slate-200 whitespace-nowrap"><a href="/team/%s" class="hover:underline">%s</a></td>
-  <td class="px-3 py-2 text-xs text-slate-900 dark:text-slate-200 whitespace-nowrap"><a href="/player/%s" class="hover:underline">%s</a><span class="ml-2 text-[10px] font-mono text-slate-400">#%s</span></td>
+  <td class="px-3 py-2 text-xs text-slate-900 dark:text-slate-200 whitespace-nowrap"><a href="%s" class="hover:underline">%s</a><span class="ml-2 text-[10px] font-mono text-slate-400">#%s</span></td>
   <td class="px-3 py-2 text-xs font-mono text-right tabular-nums">%s</td>
   <td class="px-3 py-2 text-xs font-mono text-right tabular-nums">%d</td>
   <td class="px-3 py-2 text-xs text-slate-700 dark:text-slate-300">%s</td>
@@ -2493,7 +2513,7 @@ let qa_anomalies_page
         (escape_html r.qse_game_id)
         (Uri.pct_encode r.qse_team_name)
         (escape_html r.qse_team_name)
-        (escape_html r.qse_player_id)
+        (player_href r.qse_player_id)
         (escape_html r.qse_player_name)
         (escape_html r.qse_player_id)
         (escape_html (format_mmss r.qse_min_seconds))

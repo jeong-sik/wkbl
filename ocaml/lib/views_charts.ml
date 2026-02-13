@@ -558,7 +558,7 @@ let zone_shot_chart_page ?(lang=I18n.Ko) (chart: player_shot_chart) ~seasons ~cu
       name
   ) |> String.concat "\n" in
   let content = Printf.sprintf {html|
-<div class="space-y-6">
+<div class="space-y-6">%s
   <!-- Header -->
   <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
     <div>
@@ -614,15 +614,16 @@ let zone_shot_chart_page ?(lang=I18n.Ko) (chart: player_shot_chart) ~seasons ~cu
 
   <!-- Back link -->
   <div class="text-center">
-    <a href="/player/%s" class="text-orange-500 hover:text-orange-600 transition text-sm">
+    <a href="%s" class="text-orange-500 hover:text-orange-600 transition text-sm">
       ← 선수 프로필로 돌아가기
     </a>
   </div>
 </div>
   |html}
+    (breadcrumb [("홈", "/"); (chart.psc_player_name, Printf.sprintf "/player/%s" (Uri.pct_encode chart.psc_player_id)); ("슛 차트", "")])
     chart.psc_player_name
     chart.psc_team_name
-    chart.psc_player_id
+    (player_href chart.psc_player_id)
     (if current_season = "ALL" then " selected" else "")
     season_options
     (zone_shot_chart_svg chart)
@@ -964,15 +965,14 @@ let player_trend_chart ?(num_games=10) ~title ~get_value ~color (games: player_g
       else "➖"
     in
 
-    (* Generate path and points *)
+    (* Generate path and points — zip values+recent to avoid O(n²) List.nth *)
     let path_points : (int * float * float * player_game_stat * float) list =
-      List.mapi (fun i v ->
-        let g = List.nth recent i in
+      List.combine values recent
+      |> List.mapi (fun i (v, g) ->
         let x = padding_left +. (float_of_int i *. x_step) in
         let normalized = (v -. min_val) /. range in
         let y = padding_top +. plot_height -. (normalized *. plot_height) in
-        (i, x, y, g, v)
-      ) values
+        (i, x, y, g, v))
     in
 
     let path_d = path_points

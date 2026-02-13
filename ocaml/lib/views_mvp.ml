@@ -147,7 +147,7 @@ let mvp_race_page ?(lang=I18n.Ko) ~season ~seasons (candidates: mvp_candidate li
   layout ~lang ~title:"MVP 레이스 | WKBL" ~canonical_path:"/mvp-race"
     ~description:"WKBL 여자농구 MVP 레이스 - 시즌 MVP 후보 순위와 점수를 확인하세요."
     ~content:(Printf.sprintf
-      {html|<div class="space-y-6">
+      {html|<div class="space-y-6">%s
         <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-200">MVP 레이스</h1>
@@ -162,6 +162,7 @@ let mvp_race_page ?(lang=I18n.Ko) ~season ~seasons (candidates: mvp_candidate li
         %s
         <div id="mvp-table" data-skeleton="table" data-skeleton-count="10" data-skeleton-cols="6">%s</div>
       </div>|html}
+      (breadcrumb [("홈", "/"); ("MVP 레이스", "")])
       season_options
       formula_section
       table) ()

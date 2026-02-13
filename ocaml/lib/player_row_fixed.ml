@@ -30,7 +30,7 @@ let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2") ?(include_
         <div class="flex items-center gap-3 min-w-0">
           %s
           <div class="flex items-center gap-2 min-w-0">
-            <a href="/player/%s" class="player-name hover:text-orange-600 dark:text-orange-400 transition-colors truncate break-keep min-w-0">%s</a>
+            <a href="%s" class="player-name hover:text-orange-600 dark:text-orange-400 transition-colors truncate break-keep min-w-0">%s</a>
             <span class="%s">%s</span>
           </div>
         </div>
@@ -41,7 +41,7 @@ let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2") ?(include_
     </tr>|html}
     rank
     (player_img_tag ~class_name:"w-8 h-8 shrink-0" p.player_id p.name)
-    p.player_id
+    (player_href p.player_id)
     (escape_html display_name)
     (if show_player_id then "inline-flex" else "hidden")
     id_badge
