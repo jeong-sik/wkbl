@@ -921,7 +921,8 @@ module Types = struct
       let (fg_pct, rest) = rest in
       let (fg3_pct, rest) = rest in
       let (ft_pct, rest) = rest in
-      let (ts, efg) = rest in
+      let (ts, rest) = rest in
+      let (efg, usg) = rest in
       Ok {
         ss_season_code = season_code;
         ss_season_name = season_name;
@@ -941,11 +942,12 @@ module Types = struct
         ss_ft_pct = ft_pct;
         ss_ts_pct = ts;
         ss_efg_pct = efg;
+        ss_usg_pct = usg;
       }
     in
     let t = t2 in
     custom ~encode ~decode
-      (t string (t string (t string (t int (t float (t float (t float (t float (t float (t float (t float (t float (t float (t float (t float (t float (t float float)))))))))))))))))
+      (t string (t string (t string (t int (t float (t float (t float (t float (t float (t float (t float (t float (t float (t float (t float (t float (t float (t float float))))))))))))))))))
 
   let player_game_stat =
     let encode _ = Error "Encode not supported: read-only type" in
@@ -3716,7 +3718,10 @@ module Queries = struct
         ELSE 0.0 END as ts_pct,
       CASE WHEN SUM(COALESCE(s.fg_2p_a, 0) + COALESCE(s.fg_3p_a, 0)) > 0
         THEN (CAST(SUM(COALESCE(s.fg_2p_m, 0) + COALESCE(s.fg_3p_m, 0)) AS REAL) + 0.5 * SUM(COALESCE(s.fg_3p_m, 0))) / SUM(COALESCE(s.fg_2p_a, 0) + COALESCE(s.fg_3p_a, 0))
-        ELSE 0.0 END as efg_pct
+        ELSE 0.0 END as efg_pct,
+      CASE WHEN SUM(s.min_seconds) > 0
+        THEN (SUM(COALESCE(s.fg_2p_a, 0) + COALESCE(s.fg_3p_a, 0)) + 0.44 * SUM(COALESCE(s.ft_a, 0)) + SUM(COALESCE(s.tov, 0))) * 2160.0 / SUM(s.min_seconds)
+        ELSE 0.0 END as usg_pct
     FROM game_stats_clean s
     JOIN player_identities pi ON pi.player_id = s.player_id
     JOIN games_calc_v3 g ON s.game_id = g.game_id

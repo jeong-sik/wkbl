@@ -395,6 +395,7 @@ type season_stats = {
   ss_ft_pct: float;
   ss_ts_pct: float;
   ss_efg_pct: float;
+  ss_usg_pct: float;
 }
 
 type player_game_stat = {
