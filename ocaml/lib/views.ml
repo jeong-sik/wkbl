@@ -319,10 +319,9 @@ let players_page ?(lang=I18n.Ko) ?(player_info_map=None) ~season ~seasons ~searc
 
 let team_stat_row ~season (row: team_stats) =
  let team_href =
-  if season = "ALL" then
-   Printf.sprintf "/team/%s" (Uri.pct_encode row.team)
-  else
-   Printf.sprintf "/team/%s?season=%s" (Uri.pct_encode row.team) (Uri.pct_encode season)
+  let base = team_href row.team in
+  if season = "ALL" then base
+  else base ^ "?season=" ^ Uri.pct_encode season
  in
  let margin_color = if row.margin >= 0.0 then "text-sky-600 dark:text-sky-400 font-bold" else "text-rose-600 dark:text-rose-400 font-bold" in
  let margin_str = if row.margin > 0.0 then Printf.sprintf "+%.1f" row.margin else format_float row.margin in
@@ -363,8 +362,9 @@ let teams_table ?(lang=I18n.Ko) ~season ~scope (stats: Domain.team_stats list) =
   let title_pace = tr { ko = "Pace: 40분 기준 공격 횟수 추정"; en = "Est. possessions per 40 min" } in
   let title_ts = tr { ko = "TS%: True Shooting %"; en = "True Shooting %" } in
   let team_link (s: Domain.team_stats) =
-    if season = "ALL" then Printf.sprintf "/team/%s" (Uri.pct_encode s.team)
-    else Printf.sprintf "/team/%s?season=%s" (Uri.pct_encode s.team) (Uri.pct_encode season)
+    let base = team_href s.team in
+    if season = "ALL" then base
+    else base ^ "?season=" ^ Uri.pct_encode season
   in
   let margin_color v =
     if v > 0.0 then "text-sky-600 dark:text-sky-400 font-bold"
@@ -477,11 +477,10 @@ let standings_table ?(lang=I18n.Ko) ~season (standings : team_standing list) =
       let win_pct_fmt = Printf.sprintf "%.3f" s.win_pct in
       let gb_fmt = if s.gb = 0.0 then "-" else Printf.sprintf "%.1f" s.gb in
       let team_href =
-       if season = "ALL" then
-        Printf.sprintf "/team/%s" (Uri.pct_encode s.team_name)
-	       else
-	        Printf.sprintf "/team/%s?season=%s" (Uri.pct_encode s.team_name) (Uri.pct_encode season)
-	      in
+        let base = team_href s.team_name in
+        if season = "ALL" then base
+        else base ^ "?season=" ^ Uri.pct_encode season
+      in
 		      let team_cell =
 		        Printf.sprintf
 		          {html|<a href="%s" class="team-link team-name flex w-full items-center gap-2 min-w-0 hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 transition-colors cursor-pointer -mx-3 -my-2 px-3 py-2" style="white-space: nowrap; word-break: keep-all;">%s<span class="truncate">%s</span></a>|html}
@@ -634,8 +633,8 @@ onkeydown="if(event.key==='Enter'||event.key===' ') { event.preventDefault(); wi
 	   </div>
 	     <div class="flex items-center justify-between gap-3">
 	    <div class="flex flex-col gap-1 min-w-0">
-		     <a href="/team/%s" class="team-link flex items-center gap-2 text-sm font-medium group-hover:text-orange-600 dark:text-orange-400 dark:group-hover:text-orange-300 transition-colors truncate">%s<span class="truncate">%s</span></a>
-		     <a href="/team/%s" class="team-link flex items-center gap-2 text-sm font-medium group-hover:text-orange-600 dark:text-orange-400 dark:group-hover:text-orange-300 transition-colors truncate">%s<span class="truncate">%s</span></a>
+		     <a href="%s" class="team-link flex items-center gap-2 text-sm font-medium group-hover:text-orange-600 dark:text-orange-400 dark:group-hover:text-orange-300 transition-colors truncate">%s<span class="truncate">%s</span></a>
+		     <a href="%s" class="team-link flex items-center gap-2 text-sm font-medium group-hover:text-orange-600 dark:text-orange-400 dark:group-hover:text-orange-300 transition-colors truncate">%s<span class="truncate">%s</span></a>
 		    </div>
 			    <div class="text-right font-mono text-sm %s whitespace-nowrap group-hover:scale-110 transition-transform">%s</div>
 			   </div>
@@ -644,10 +643,10 @@ onkeydown="if(event.key==='Enter'||event.key===' ') { event.preventDefault(); wi
          card_class
 		       (escape_html g.game_date)
 		       action_html
-	       (Uri.pct_encode g.home_team)
+	       (team_href g.home_team)
 		       (team_logo_tag ~class_name:"w-4 h-4" g.home_team)
 	       (escape_html g.home_team)
-	       (Uri.pct_encode g.away_team)
+	       (team_href g.away_team)
 	       (team_logo_tag ~class_name:"w-4 h-4" g.away_team)
 	       (escape_html g.away_team)
 	       status_class
@@ -668,8 +667,8 @@ onkeydown="if(event.key==='Enter'||event.key===' ') { event.preventDefault(); wi
 	        
 		        let home_cell =
 		          Printf.sprintf
-		            {html|<a href="/team/%s" class="team-link team-name inline-flex items-center justify-end gap-2 whitespace-nowrap group-hover:text-orange-600 dark:text-orange-400 dark:group-hover:text-orange-300 transition-colors" style="white-space: nowrap;">%s<span>%s</span></a>|html}
-		            (Uri.pct_encode g.home_team)
+		            {html|<a href="%s" class="team-link team-name inline-flex items-center justify-end gap-2 whitespace-nowrap group-hover:text-orange-600 dark:text-orange-400 dark:group-hover:text-orange-300 transition-colors" style="white-space: nowrap;">%s<span>%s</span></a>|html}
+		            (team_href g.home_team)
 		            (team_logo_tag ~class_name:"w-4 h-4 shrink-0" g.home_team)
 		            (escape_html g.home_team)
 		        in
@@ -686,8 +685,8 @@ onkeydown="if(event.key==='Enter'||event.key===' ') { event.preventDefault(); wi
 	        in
 		        let away_cell =
 		          Printf.sprintf
-		            {html|<a href="/team/%s" class="team-link team-name inline-flex items-center gap-2 whitespace-nowrap group-hover:text-orange-600 dark:text-orange-400 dark:group-hover:text-orange-300 transition-colors" style="white-space: nowrap;"><span>%s</span>%s</a>|html}
-		            (Uri.pct_encode g.away_team)
+		            {html|<a href="%s" class="team-link team-name inline-flex items-center gap-2 whitespace-nowrap group-hover:text-orange-600 dark:text-orange-400 dark:group-hover:text-orange-300 transition-colors" style="white-space: nowrap;"><span>%s</span>%s</a>|html}
+		            (team_href g.away_team)
 		            (escape_html g.away_team)
 		            (team_logo_tag ~class_name:"w-4 h-4 shrink-0" g.away_team)
 		        in
@@ -811,8 +810,8 @@ let boxscores_table ?(lang=I18n.Ko) (games : game_summary list) =
 	   </div>
    <div class="flex items-center justify-between gap-3">
     <div class="flex flex-col gap-1 min-w-0 w-full">
-     <div class="flex items-center gap-2 text-sm font-medium w-full">%s<a href="/team/%s" class="hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 transition-colors truncate">%s</a><span class="ml-auto font-mono text-slate-900 dark:text-slate-200">%d</span></div>
-     <div class="flex items-center gap-2 text-sm font-medium w-full">%s<a href="/team/%s" class="hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 transition-colors truncate">%s</a><span class="ml-auto font-mono text-slate-900 dark:text-slate-200">%d</span></div>
+     <div class="flex items-center gap-2 text-sm font-medium w-full">%s<a href="%s" class="hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 transition-colors truncate">%s</a><span class="ml-auto font-mono text-slate-900 dark:text-slate-200">%d</span></div>
+     <div class="flex items-center gap-2 text-sm font-medium w-full">%s<a href="%s" class="hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 transition-colors truncate">%s</a><span class="ml-auto font-mono text-slate-900 dark:text-slate-200">%d</span></div>
     </div>
 			    <a href="%s" class="text-[10px] bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-2 py-1 rounded text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition">%s</a>
 		   </div>
@@ -822,11 +821,11 @@ let boxscores_table ?(lang=I18n.Ko) (games : game_summary list) =
 	        (escape_html label_diff)
 	        margin_str
 	        (team_logo_tag ~class_name:"w-4 h-4" g.home_team)
-	        (Uri.pct_encode g.home_team)
+	        (team_href g.home_team)
 	        (escape_html g.home_team)
 	        score_a
 	        (team_logo_tag ~class_name:"w-4 h-4" g.away_team)
-	        (Uri.pct_encode g.away_team)
+	        (team_href g.away_team)
 	        (escape_html g.away_team)
 		        score_b
 		        (boxscore_href g.game_id)
@@ -843,8 +842,8 @@ let boxscores_table ?(lang=I18n.Ko) (games : game_summary list) =
       let margin_str = if margin > 0 then Printf.sprintf "+%.0d" margin else if margin < 0 then Printf.sprintf "%+.0d" margin else "0" in
       let margin_color = if margin > 0 then "text-sky-600 dark:text-sky-400 font-bold" else if margin < 0 then "text-rose-600 dark:text-rose-400 font-bold" else "text-slate-600 dark:text-slate-400 font-bold" in
       
-      let home_cell = Printf.sprintf {html|<span class="inline-flex items-center gap-2">%s<a href="/team/%s">%s</a></span>|html} (team_logo_tag ~class_name:"w-4 h-4" g.home_team) (Uri.pct_encode g.home_team) (escape_html g.home_team) in
-      let away_cell = Printf.sprintf {html|<span class="inline-flex items-center gap-2"><a href="/team/%s">%s</a>%s</span>|html} (Uri.pct_encode g.away_team) (escape_html g.away_team) (team_logo_tag ~class_name:"w-4 h-4" g.away_team) in
+      let home_cell = Printf.sprintf {html|<span class="inline-flex items-center gap-2">%s<a href="%s">%s</a></span>|html} (team_logo_tag ~class_name:"w-4 h-4" g.home_team) (team_href g.home_team) (escape_html g.home_team) in
+      let away_cell = Printf.sprintf {html|<span class="inline-flex items-center gap-2"><a href="%s">%s</a>%s</span>|html} (team_href g.away_team) (escape_html g.away_team) (team_logo_tag ~class_name:"w-4 h-4" g.away_team) in
       let link_cell =
         Printf.sprintf
           {html|<a href="%s" class="text-[10px] sm:text-xs bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-2 py-1 rounded text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition whitespace-nowrap">%s</a>|html}
@@ -1280,10 +1279,10 @@ let boxscore_page ?(lang=I18n.Ko) (bs: game_boxscore) =
 	 let away_score_display = if has_scores then string_of_int gi.gi_away_score else "-" in
 	 layout ~lang ~title:(Printf.sprintf "박스스코어: %s vs %s" gi.gi_home_team_name gi.gi_away_team_name)
 	  ~content:(Printf.sprintf
-	   {html|<div class="space-y-8 animate-fade-in">%s<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-2xl"><div class="flex flex-col items-center gap-6"><div class="text-slate-600 dark:text-slate-400 font-mono text-sm uppercase tracking-widest">%s</div><div class="flex items-center justify-between w-full max-w-2xl gap-2 sm:gap-6"><div class="flex flex-col items-center gap-2 sm:gap-3 flex-shrink-0"><div class="text-sm sm:text-2xl font-black text-slate-900 dark:text-slate-200 flex items-center gap-1 sm:gap-3">%s<a href="/team/%s" class="hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 transition-colors whitespace-nowrap">%s</a></div><div class="text-[10px] sm:text-sm text-slate-600 dark:text-slate-400">%s</div></div><div class="flex items-center gap-2 sm:gap-8"><div class="text-3xl sm:text-5xl font-black text-slate-900 dark:text-slate-200">%s</div><div class="flex flex-col items-center gap-1 sm:gap-2"><div class="text-base sm:text-2xl text-slate-700 dark:text-slate-300 font-light">vs</div><div class="flex flex-wrap items-center justify-center gap-1 sm:gap-2">%s%s%s%s</div></div><div class="text-3xl sm:text-5xl font-black text-slate-900 dark:text-slate-200">%s</div></div><div class="flex flex-col items-center gap-2 sm:gap-3 flex-shrink-0"><div class="text-sm sm:text-2xl font-black text-slate-900 dark:text-slate-200 flex items-center gap-1 sm:gap-3"><a href="/team/%s" class="hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 transition-colors whitespace-nowrap">%s</a>%s</div><div class="text-[10px] sm:text-sm text-slate-600 dark:text-slate-400">%s</div></div></div></div></div>%s%s%s<div class="grid grid-cols-1 gap-8">%s%s</div><div class="flex justify-center"><a href="/games" class="text-slate-600 dark:text-slate-400 hover:text-orange-500 transition text-sm">← 경기 목록</a></div></div>|html}
+	   {html|<div class="space-y-8 animate-fade-in">%s<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-2xl"><div class="flex flex-col items-center gap-6"><div class="text-slate-600 dark:text-slate-400 font-mono text-sm uppercase tracking-widest">%s</div><div class="flex items-center justify-between w-full max-w-2xl gap-2 sm:gap-6"><div class="flex flex-col items-center gap-2 sm:gap-3 flex-shrink-0"><div class="text-sm sm:text-2xl font-black text-slate-900 dark:text-slate-200 flex items-center gap-1 sm:gap-3">%s<a href="%s" class="hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 transition-colors whitespace-nowrap">%s</a></div><div class="text-[10px] sm:text-sm text-slate-600 dark:text-slate-400">%s</div></div><div class="flex items-center gap-2 sm:gap-8"><div class="text-3xl sm:text-5xl font-black text-slate-900 dark:text-slate-200">%s</div><div class="flex flex-col items-center gap-1 sm:gap-2"><div class="text-base sm:text-2xl text-slate-700 dark:text-slate-300 font-light">vs</div><div class="flex flex-wrap items-center justify-center gap-1 sm:gap-2">%s%s%s%s</div></div><div class="text-3xl sm:text-5xl font-black text-slate-900 dark:text-slate-200">%s</div></div><div class="flex flex-col items-center gap-2 sm:gap-3 flex-shrink-0"><div class="text-sm sm:text-2xl font-black text-slate-900 dark:text-slate-200 flex items-center gap-1 sm:gap-3"><a href="%s" class="hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 transition-colors whitespace-nowrap">%s</a>%s</div><div class="text-[10px] sm:text-sm text-slate-600 dark:text-slate-400">%s</div></div></div></div></div>%s%s%s<div class="grid grid-cols-1 gap-8">%s%s</div><div class="flex justify-center"><a href="/games" class="text-slate-600 dark:text-slate-400 hover:text-orange-500 transition text-sm">← 경기 목록</a></div></div>|html}
    (breadcrumb [("홈", "/"); ("경기", "/games"); (Printf.sprintf "%s vs %s" gi.gi_home_team_name gi.gi_away_team_name, "")])
    (escape_html gi.gi_game_date)
-   (team_logo_tag ~class_name:"w-10 h-10 sm:w-16 sm:h-16" gi.gi_home_team_name) (Uri.pct_encode gi.gi_home_team_name) (escape_html gi.gi_home_team_name)
+   (team_logo_tag ~class_name:"w-10 h-10 sm:w-16 sm:h-16" gi.gi_home_team_name) (team_href gi.gi_home_team_name) (escape_html gi.gi_home_team_name)
    (escape_html label_home)
    (escape_html home_score_display)
    margin_badge
@@ -1291,7 +1290,7 @@ let boxscore_page ?(lang=I18n.Ko) (bs: game_boxscore) =
    pbp_link
    flow_link
    (escape_html away_score_display)
-   (Uri.pct_encode gi.gi_away_team_name) (escape_html gi.gi_away_team_name) (team_logo_tag ~class_name:"w-10 h-10 sm:w-16 sm:h-16" gi.gi_away_team_name)
+   (team_href gi.gi_away_team_name) (escape_html gi.gi_away_team_name) (team_logo_tag ~class_name:"w-10 h-10 sm:w-16 sm:h-16" gi.gi_away_team_name)
    (escape_html label_away)
    ai_summary_section
    quarter_section
@@ -2207,7 +2206,7 @@ let compare_seasons_page
     </a>
    </div>
   </div>|html}
-  (breadcrumb [("홈", "/"); (player_name, Printf.sprintf "/player/%s" (Uri.pct_encode player_id)); ("시즌 비교", "")])
+  (breadcrumb [("홈", "/"); (player_name, player_href player_id); ("시즌 비교", "")])
   (player_href player_id)
   (player_href player_id)
   (escape_html player_name)

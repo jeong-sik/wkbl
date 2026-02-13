@@ -30,7 +30,7 @@ let streak_card (streak: player_streak) =
         <div class="flex items-center gap-2">
           %s
           <div>
-            <a href="/player/%s" class="font-medium text-slate-900 dark:text-slate-200 hover:text-orange-600 dark:hover:text-orange-400">%s</a>
+            <a href="%s" class="font-medium text-slate-900 dark:text-slate-200 hover:text-orange-600 dark:hover:text-orange-400">%s</a>
             <div class="text-xs text-slate-500 dark:text-slate-400">%s</div>
           </div>
         </div>
@@ -45,7 +45,7 @@ let streak_card (streak: player_streak) =
       </div>
     </div>|html}
     (team_logo ~size:"w-8 h-8" streak.ps_team_name)
-    (Uri.pct_encode streak.ps_player_id)
+    (player_href streak.ps_player_id)
     (escape_html streak.ps_player_name)
     (escape_html streak.ps_team_name)
     badge
@@ -63,7 +63,7 @@ let team_streak_card (streak: team_streak) =
         <div class="flex items-center gap-2">
           %s
           <div>
-            <a href="/team/%s" class="font-medium text-slate-900 dark:text-slate-200 hover:text-orange-600 dark:hover:text-orange-400">%s</a>
+            <a href="%s" class="font-medium text-slate-900 dark:text-slate-200 hover:text-orange-600 dark:hover:text-orange-400">%s</a>
           </div>
         </div>
         %s
@@ -77,7 +77,7 @@ let team_streak_card (streak: team_streak) =
       </div>
     </div>|html}
     (team_logo ~size:"w-8 h-8" streak.ts_team_name)
-    (Uri.pct_encode streak.ts_team_name)
+    (team_href streak.ts_team_name)
     (escape_html streak.ts_team_name)
     badge
     (escape_html (streak_type_to_label streak.ts_streak_type))
@@ -92,21 +92,21 @@ let streak_record_row (record: streak_record) =
         Printf.sprintf {html|<td class="px-3 py-2 font-medium text-slate-900 dark:text-slate-200 whitespace-nowrap">
           <div class="flex items-center gap-2">
             %s
-            <a href="/player/%s" class="hover:text-orange-600 dark:hover:text-orange-400">%s</a>
+            <a href="%s" class="hover:text-orange-600 dark:hover:text-orange-400">%s</a>
           </div>
         </td>|html}
           (team_logo ~size:"w-5 h-5" (Option.value ~default:"" record.sr_team_name))
-          (Uri.pct_encode pid)
+          (player_href pid)
           (escape_html record.sr_holder_name)
     | None ->
         Printf.sprintf {html|<td class="px-3 py-2 font-medium text-slate-900 dark:text-slate-200 whitespace-nowrap">
           <div class="flex items-center gap-2">
             %s
-            <a href="/team/%s" class="hover:text-orange-600 dark:hover:text-orange-400">%s</a>
+            <a href="%s" class="hover:text-orange-600 dark:hover:text-orange-400">%s</a>
           </div>
         </td>|html}
           (team_logo ~size:"w-5 h-5" (Option.value ~default:"" record.sr_team_name))
-          (Uri.pct_encode (Option.value ~default:"" record.sr_team_name))
+          (team_href (Option.value ~default:"" record.sr_team_name))
           (escape_html record.sr_holder_name)
   in
   Printf.sprintf

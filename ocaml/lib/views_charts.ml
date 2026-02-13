@@ -620,7 +620,7 @@ let zone_shot_chart_page ?(lang=I18n.Ko) (chart: player_shot_chart) ~seasons ~cu
   </div>
 </div>
   |html}
-    (breadcrumb [("홈", "/"); (chart.psc_player_name, Printf.sprintf "/player/%s" (Uri.pct_encode chart.psc_player_id)); ("슛 차트", "")])
+    (breadcrumb [("홈", "/"); (chart.psc_player_name, player_href chart.psc_player_id); ("슛 차트", "")])
     chart.psc_player_name
     chart.psc_team_name
     (player_href chart.psc_player_id)

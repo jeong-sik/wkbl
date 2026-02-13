@@ -635,7 +635,7 @@ let qa_pbp_missing_page
   let missing_rows =
     report.qpmr_missing_sample
     |> List.map (fun (g: Db.qa_pbp_missing_game) ->
-        let game_id_url = Uri.pct_encode g.qpmg_game_id in
+        let game_id_url = g.qpmg_game_id in
         let matchup = Printf.sprintf "%s vs %s" g.qpmg_home_team g.qpmg_away_team in
         Printf.sprintf
           {html|<tr class="border-t border-slate-200 dark:border-slate-800">
@@ -1047,14 +1047,14 @@ let transactions_page
                 {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors">
   <td class="px-3 py-2 text-slate-500 dark:text-slate-400 font-mono whitespace-nowrap">%s</td>
   <td class="px-3 py-2 text-slate-700 dark:text-slate-300 font-mono whitespace-nowrap">%s</td>
-  <td class="px-3 py-2 min-w-0"><a class="text-slate-900 dark:text-slate-200 hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 font-bold truncate block" href="/player/%s">%s</a><div class="mt-1 text-[11px] text-slate-500 dark:text-slate-400 font-mono">%s</div></td>
+  <td class="px-3 py-2 min-w-0"><a class="text-slate-900 dark:text-slate-200 hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 font-bold truncate block" href="%s">%s</a><div class="mt-1 text-[11px] text-slate-500 dark:text-slate-400 font-mono">%s</div></td>
   <td class="px-3 py-2">%s</td>
   <td class="px-3 py-2 text-[11px] text-slate-700 dark:text-slate-300 font-mono whitespace-pre-line break-words">%s</td>
   <td class="px-3 py-2 text-[11px]"><a class="text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:text-slate-300 underline font-mono" href="%s" target="_blank" rel="noreferrer">출처</a></td>
 </tr>|html}
                 (escape_html y)
                 (escape_html (pick_label r))
-                (Uri.pct_encode r.dpr_player_id)
+                (player_href r.dpr_player_id)
                 (escape_html (normalize_name r.dpr_player_name))
                 (escape_html r.dpr_player_id)
                 team_html
@@ -1358,7 +1358,7 @@ and fantasy_results_table (scores: fantasy_player_score list) =
           {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/30 transition-colors">
   <td class="px-3 py-2 %s tabular-nums">%d</td>
   <td class="px-3 py-2">
-    <a href="/player/%s" class="text-slate-900 dark:text-slate-200 hover:text-orange-600 dark:hover:text-orange-400 font-bold">%s</a>
+    <a href="%s" class="text-slate-900 dark:text-slate-200 hover:text-orange-600 dark:hover:text-orange-400 font-bold">%s</a>
   </td>
   <td class="px-3 py-2">%s</td>
   <td class="px-3 py-2 text-right font-mono tabular-nums text-slate-500 dark:text-slate-400">%d</td>
@@ -1372,7 +1372,7 @@ and fantasy_results_table (scores: fantasy_player_score list) =
   <td class="px-3 py-2 text-right font-mono tabular-nums text-[11px] text-red-500 dark:text-red-400">%.1f</td>
 </tr>|html}
           rank_class rank
-          (Uri.pct_encode s.fps_player_id)
+          (player_href s.fps_player_id)
           (escape_html (normalize_name s.fps_player_name))
           (team_badge s.fps_team_name)
           s.fps_games_played
@@ -1958,8 +1958,8 @@ let game_flow_page ?(lang=I18n.Ko) ~(game: Domain.game_info) (flow_points: Domai
 let render_lineup_row (lineup: Domain.lineup_stats) (rank: int) : string =
   let players_html = lineup.ls_players
     |> List.map (fun (p: Domain.lineup_player) ->
-        Printf.sprintf {html|<a href="/player/%s" class="inline-block px-2 py-1 text-xs bg-slate-100 dark:bg-slate-800 rounded mr-1 mb-1 hover:bg-sky-100 dark:hover:bg-sky-900/40 hover:text-sky-700 dark:hover:text-sky-400 transition-colors">%s</a>|html}
-          (Uri.pct_encode p.lp_player_id)
+        Printf.sprintf {html|<a href="%s" class="inline-block px-2 py-1 text-xs bg-slate-100 dark:bg-slate-800 rounded mr-1 mb-1 hover:bg-sky-100 dark:hover:bg-sky-900/40 hover:text-sky-700 dark:hover:text-sky-400 transition-colors">%s</a>|html}
+          (player_href p.lp_player_id)
           (escape_html p.lp_player_name))
     |> String.concat "" in
   let pm_class = if lineup.ls_plus_minus >= 0
@@ -1997,17 +1997,17 @@ let render_synergy_row (syn: Domain.lineup_synergy) (rank: int) : string =
   Printf.sprintf
     {html|<tr class="border-b border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900/50">
       <td class="px-3 py-2 text-center font-mono text-sm">%d</td>
-      <td class="px-3 py-2 text-sm"><a href="/player/%s" class="text-sky-600 dark:text-sky-400 hover:underline">%s</a></td>
-      <td class="px-3 py-2 text-sm"><a href="/player/%s" class="text-sky-600 dark:text-sky-400 hover:underline">%s</a></td>
+      <td class="px-3 py-2 text-sm"><a href="%s" class="text-sky-600 dark:text-sky-400 hover:underline">%s</a></td>
+      <td class="px-3 py-2 text-sm"><a href="%s" class="text-sky-600 dark:text-sky-400 hover:underline">%s</a></td>
       <td class="px-3 py-2 text-center font-mono text-sm">%d</td>
       <td class="px-3 py-2 text-center font-mono text-sm">%.1f</td>
       <td class="px-3 py-2 text-center font-mono text-sm %s">%+.2f</td>
       <td class="px-3 py-2 text-center font-mono text-sm font-bold %s">%.2f</td>
     </tr>|html}
     rank
-    (Uri.pct_encode syn.syn_player1_id)
+    (player_href syn.syn_player1_id)
     (escape_html syn.syn_player1_name)
-    (Uri.pct_encode syn.syn_player2_id)
+    (player_href syn.syn_player2_id)
     (escape_html syn.syn_player2_name)
     syn.syn_games_together
     syn.syn_total_minutes
@@ -2451,7 +2451,7 @@ let qa_anomalies_page
         {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors">
   <td class="px-3 py-2 text-xs font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap">%s</td>
   <td class="px-3 py-2 text-xs font-mono text-slate-900 dark:text-slate-200 whitespace-nowrap"><a href="%s" class="hover:underline">%s</a></td>
-  <td class="px-3 py-2 text-xs text-slate-900 dark:text-slate-200 whitespace-nowrap"><a href="/team/%s" class="hover:underline">%s</a></td>
+  <td class="px-3 py-2 text-xs text-slate-900 dark:text-slate-200 whitespace-nowrap"><a href="%s" class="hover:underline">%s</a></td>
   <td class="px-3 py-2 text-xs text-slate-900 dark:text-slate-200 whitespace-nowrap"><a href="%s" class="hover:underline">%s</a><span class="ml-2 text-[10px] font-mono text-slate-400">#%s</span></td>
   <td class="px-3 py-2 text-xs font-mono text-right tabular-nums">%s</td>
   <td class="px-3 py-2 text-xs font-mono text-right tabular-nums">%d</td>
@@ -2469,7 +2469,7 @@ let qa_anomalies_page
         (escape_html r.qsa_game_date)
         (boxscore_href r.qsa_game_id)
         (escape_html r.qsa_game_id)
-        (Uri.pct_encode r.qsa_team_name)
+        (team_href r.qsa_team_name)
         (escape_html r.qsa_team_name)
         (player_href r.qsa_player_id)
         (escape_html r.qsa_player_name)
@@ -2493,7 +2493,7 @@ let qa_anomalies_page
         {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors">
   <td class="px-3 py-2 text-xs font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap">%s</td>
   <td class="px-3 py-2 text-xs font-mono text-slate-900 dark:text-slate-200 whitespace-nowrap"><a href="%s" class="hover:underline">%s</a></td>
-  <td class="px-3 py-2 text-xs text-slate-900 dark:text-slate-200 whitespace-nowrap"><a href="/team/%s" class="hover:underline">%s</a></td>
+  <td class="px-3 py-2 text-xs text-slate-900 dark:text-slate-200 whitespace-nowrap"><a href="%s" class="hover:underline">%s</a></td>
   <td class="px-3 py-2 text-xs text-slate-900 dark:text-slate-200 whitespace-nowrap"><a href="%s" class="hover:underline">%s</a><span class="ml-2 text-[10px] font-mono text-slate-400">#%s</span></td>
   <td class="px-3 py-2 text-xs font-mono text-right tabular-nums">%s</td>
   <td class="px-3 py-2 text-xs font-mono text-right tabular-nums">%d</td>
@@ -2511,7 +2511,7 @@ let qa_anomalies_page
         (escape_html r.qse_game_date)
         (boxscore_href r.qse_game_id)
         (escape_html r.qse_game_id)
-        (Uri.pct_encode r.qse_team_name)
+        (team_href r.qse_team_name)
         (escape_html r.qse_team_name)
         (player_href r.qse_player_id)
         (escape_html r.qse_player_name)

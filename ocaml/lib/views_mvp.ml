@@ -33,9 +33,9 @@ let mvp_cell ?(hide="") ?(color="text-slate-700 dark:text-slate-300") label valu
     hide color value label
 
 let mvp_candidate_row (candidate: mvp_candidate) =
-  let player_href = Printf.sprintf "/player/%s" (Uri.pct_encode candidate.mvp_player_id) in
+  let player_href = player_href candidate.mvp_player_id in
   let team_code = match candidate.mvp_team_code with Some c -> c | None -> "" in
-  let team_href = Printf.sprintf "/team/%s" (Uri.pct_encode team_code) in
+  let team_href = team_href team_code in
   let tooltip = score_breakdown_tooltip ~base_score:candidate.mvp_base_score ~win_bonus:candidate.mvp_win_bonus in
   Printf.sprintf
     {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
