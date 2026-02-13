@@ -116,9 +116,15 @@ let calculate_per ~total_minutes ~efficiency : float =
     (* Clamp to reasonable range *)
     max 0.0 (min 40.0 normalized)
 
-(** Calculate PER from player aggregate data *)
+(** Calculate PER from player aggregate data.
+    Note: p.efficiency is AVG(game_score) i.e. per-game average,
+    while p.total_minutes is career total. We must use per-game minutes
+    to match the per-game efficiency unit. *)
 let per_of_player_aggregate (p : Domain.player_aggregate) : float =
-  calculate_per ~total_minutes:p.total_minutes ~efficiency:p.efficiency
+  if p.games_played <= 0 then 0.0
+  else
+    let avg_minutes = p.total_minutes /. float_of_int p.games_played in
+    calculate_per ~total_minutes:avg_minutes ~efficiency:p.efficiency
 
 (** Four Factors - Team Performance Metrics (Dean Oliver)
 

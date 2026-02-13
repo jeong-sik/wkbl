@@ -20,6 +20,12 @@ type player_aggregate = {
   avg_blocks: float;
   avg_turnovers: float;
   efficiency: float;
+  total_fg_made: int;
+  total_fg_att: int;
+  total_fg3_made: int;
+  total_fg3_att: int;
+  total_ft_made: int;
+  total_ft_att: int;
 }
 
 type player_sort =
@@ -1522,14 +1528,18 @@ type zone_stats = {
   zs_pct: float;
 }
 
-(** Player shot chart data *)
+(** Player shot chart data
+    Note: WKBL PBP data only tags paint zone on successful shots.
+    Missed paint shots appear as generic "2점슛시도", indistinguishable
+    from mid-range misses. Therefore we combine all 2PT shots into one zone
+    and report paint_made as supplementary info. *)
 type player_shot_chart = {
   psc_player_id: string;
   psc_player_name: string;
   psc_team_name: string;
-  psc_paint: zone_stats;
-  psc_mid: zone_stats;
-  psc_three: zone_stats;
+  psc_two_pt: zone_stats;    (** All 2-point shots combined (paint + mid-range) *)
+  psc_three: zone_stats;     (** 3-point shots *)
+  psc_paint_made: int;       (** Paint zone successes only — misses not tracked *)
   psc_total_made: int;
   psc_total_attempts: int;
   psc_total_pct: float;
