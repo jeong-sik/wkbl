@@ -396,7 +396,7 @@ let player_profile_page ?(lang=I18n.Ko) ?(leaderboards=None) ?(show_ops=false) (
         in
         let quality_badge = score_quality_badge ~lang ~compact:true g.score_quality in
         let opponent_label = if g.is_home then "vs " ^ g.opponent else "@ " ^ g.opponent in
-        let opponent_href = "/team/" ^ Uri.pct_encode g.opponent in
+        let opponent_href = team_href g.opponent in
         Printf.sprintf
           {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/30 transition-colors"><td class="px-3 py-2 text-slate-600 dark:text-slate-400 text-sm font-mono whitespace-nowrap w-[90px] sm:w-[110px]"><a href="%s" class="hover:text-orange-600 dark:hover:text-orange-400 transition-colors">%s</a></td><td class="px-3 py-2 text-slate-900 dark:text-white"><div class="flex flex-wrap items-center gap-x-3 gap-y-2"><a href="%s" class="player-name min-w-0 flex-1 hover:text-orange-600 dark:hover:text-orange-400 transition-colors">%s</a><div class="flex items-center gap-2 shrink-0">%s%s</div></div></td><td class="px-3 py-2 text-right font-mono text-slate-600 dark:text-slate-400 w-[60px] sm:w-[72px] whitespace-nowrap">%.1f</td><td class="px-3 py-2 text-right font-bold %s w-[60px] sm:w-[72px] whitespace-nowrap">%d</td><td class="px-3 py-2 text-right font-mono w-[60px] sm:w-[72px] whitespace-nowrap %s">%s</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[60px] sm:w-[72px] whitespace-nowrap">%d</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[60px] sm:w-[72px] hidden sm:table-cell">%d</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[60px] sm:w-[72px] hidden sm:table-cell">%d</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[60px] sm:w-[72px] hidden sm:table-cell">%d</td></tr>|html}
           (boxscore_href g.game_id)
@@ -591,11 +591,11 @@ let player_profile_page ?(lang=I18n.Ko) ?(leaderboards=None) ?(show_ops=false) (
   in
   let recent_games_header_html =
     Printf.sprintf
-      {html|<div class="flex items-start justify-between gap-3"><h3 class="text-xl font-bold text-slate-900 dark:text-white">최근 경기</h3><div class="flex flex-wrap items-center justify-end gap-2 shrink-0">%s<a href="/player/%s/splits" class="text-xs bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-3 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all shadow-sm whitespace-nowrap border border-slate-200 dark:border-slate-700">스플릿</a><a href="/player/%s/games" class="text-xs bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-3 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all shadow-sm whitespace-nowrap border border-slate-200 dark:border-slate-700">전체 경기</a><a href="/player/%s/shots" class="text-xs bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-3 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all shadow-sm whitespace-nowrap border border-slate-200 dark:border-slate-700">샷 차트</a></div></div><p class="text-[11px] text-slate-500 dark:text-slate-500 mt-1">개인 <span class="font-mono text-slate-700 dark:text-slate-300">+/-</span>는 문자중계가 있는 경기에서만 계산할 수 있어요. 문자중계가 없으면 이 항목이 비어 있을 수 있습니다.</p>|html}
+      {html|<div class="flex items-start justify-between gap-3"><h3 class="text-xl font-bold text-slate-900 dark:text-white">최근 경기</h3><div class="flex flex-wrap items-center justify-end gap-2 shrink-0">%s<a href="%s/splits" class="text-xs bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-3 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all shadow-sm whitespace-nowrap border border-slate-200 dark:border-slate-700">스플릿</a><a href="%s/games" class="text-xs bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-3 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all shadow-sm whitespace-nowrap border border-slate-200 dark:border-slate-700">전체 경기</a><a href="%s/shots" class="text-xs bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-3 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all shadow-sm whitespace-nowrap border border-slate-200 dark:border-slate-700">샷 차트</a></div></div><p class="text-[11px] text-slate-500 dark:text-slate-500 mt-1">개인 <span class="font-mono text-slate-700 dark:text-slate-300">+/-</span>는 문자중계가 있는 경기에서만 계산할 수 있어요. 문자중계가 없으면 이 항목이 비어 있을 수 있습니다.</p>|html}
       recent_wl_summary_html
-      (Uri.pct_encode p.id)
-      (Uri.pct_encode p.id)
-      (Uri.pct_encode p.id)
+      (player_href p.id)
+      (player_href p.id)
+      (player_href p.id)
   in
   let all_star_section_html =
     if profile.all_star_games = [] then
@@ -1024,7 +1024,7 @@ let player_profile_page ?(lang=I18n.Ko) ?(leaderboards=None) ?(show_ops=false) (
 
   let display_name = normalize_name p.name in
   let og_card_url = Printf.sprintf "https://wkbl.win/card/player/png/%s" p.id in
-  let canonical = Printf.sprintf "/player/%s" (Uri.pct_encode p.id) in
+  let canonical = player_href p.id in
   let seo_desc = Printf.sprintf "%s (%s) - PPG %.1f, RPG %.1f, APG %.1f, EFF %.1f | WKBL 여자농구 선수 통계"
     display_name current_team avg.avg_points avg.avg_rebounds avg.avg_assists avg.efficiency in
   (* JSON-LD structured data for Person schema *)
@@ -1153,7 +1153,7 @@ let player_profile_page ?(lang=I18n.Ko) ?(leaderboards=None) ?(show_ops=false) (
           all_star_section_html
           team_movement_html
           leaderboards_html
-          (Printf.sprintf {html|<div hx-get="/player/%s/shot-chart" hx-trigger="load" hx-swap="innerHTML" class="htmx-indicator-wrapper"><div class="text-center py-4"><span class="htmx-indicator inline-flex items-center gap-2 text-slate-400"><span class="w-4 h-4 border-2 border-slate-300 border-t-orange-500 rounded-full animate-spin" aria-hidden="true"></span><span>슛 차트 로딩 중...</span></span></div></div>|html} (Uri.pct_encode p.id))
+          (Printf.sprintf {html|<div hx-get="%s/shot-chart" hx-trigger="load" hx-swap="innerHTML" class="htmx-indicator-wrapper"><div class="text-center py-4"><span class="htmx-indicator inline-flex items-center gap-2 text-slate-400"><span class="w-4 h-4 border-2 border-slate-300 border-t-orange-500 rounded-full animate-spin" aria-hidden="true"></span><span>슛 차트 로딩 중...</span></span></div></div>|html} (player_href p.id))
           trends_panel_html
           (advanced_stats_card profile.averages)
           (career_highs_card profile.career_highs)
@@ -1292,14 +1292,14 @@ let player_game_logs_page ?(lang=I18n.Ko) (profile: player_profile) ~(season: st
             g.tov)
       |> String.concat "\n"
   in
-  let canonical = Printf.sprintf "/player/%s/games" p.id in
+  let canonical = player_href p.id ^ "/games" in
   let seo_desc = Printf.sprintf "%s 경기별 기록 - %d경기 출전, WKBL 여자농구 선수 게임 로그"
     display_name (List.length games) in
   layout ~lang ~title:(display_name ^ " | 경기 로그")
     ~canonical_path:canonical
     ~description:seo_desc
     ~content:(Printf.sprintf
-      {html|<div class="space-y-8 animate-fade-in">%s<div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4"><div class="flex items-center gap-4"><div class="shrink-0">%s</div><div class="min-w-0"><div class="text-sm text-slate-600 dark:text-slate-400"><a href="/player/%s" class="hover:text-slate-900 dark:hover:text-white dark:text-slate-200 transition">← 프로필</a></div><h2 class="text-3xl font-black text-slate-900 dark:text-slate-200 truncate">%s <span class="text-slate-600 dark:text-slate-400 text-lg font-mono">경기 로그</span></h2><div class="mt-1 text-slate-600 dark:text-slate-400 text-sm">총 %d경기</div></div></div><div class="flex flex-col items-start sm:items-end gap-3"><form action="/player/%s/games" method="get" class="flex flex-wrap items-center justify-end gap-2"><select name="season" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none" onchange="this.form.submit()">%s</select><label class="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 whitespace-nowrap"><input type="checkbox" name="include_mismatch" value="1" %s class="h-4 w-4 rounded border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 accent-orange-500" onchange="this.form.submit()"><span>불일치 포함</span></label></form><a href="/player/%s/splits?season=%s" class="text-xs bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-3 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all shadow-sm whitespace-nowrap border border-slate-200 dark:border-slate-700">스플릿 분석</a><a href="/player/%s/shots?season=%s" class="text-xs bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-3 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all shadow-sm whitespace-nowrap border border-slate-200 dark:border-slate-700">샷 차트</a>%s</div></div><p class="text-[11px] text-slate-600 dark:text-slate-400">개인 <span class="font-mono text-slate-700 dark:text-slate-300">+/-</span>는 문자중계 기반입니다. 문자중계가 없으면 <span class="font-mono text-slate-700 dark:text-slate-300">M</span>으로 팀 득실마진(경기 최종 점수)을 대신 표시합니다. (데이터가 없거나 품질 문제면 <span class="font-mono text-slate-700 dark:text-slate-300">-</span>)</p><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-lg"><table class="min-w-[680px] sm:min-w-[920px] w-full text-sm font-mono table-fixed tabular-nums" aria-label="선수별 게임 로그">
+      {html|<div class="space-y-8 animate-fade-in">%s<div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4"><div class="flex items-center gap-4"><div class="shrink-0">%s</div><div class="min-w-0"><div class="text-sm text-slate-600 dark:text-slate-400"><a href="%s" class="hover:text-slate-900 dark:hover:text-white dark:text-slate-200 transition">← 프로필</a></div><h2 class="text-3xl font-black text-slate-900 dark:text-slate-200 truncate">%s <span class="text-slate-600 dark:text-slate-400 text-lg font-mono">경기 로그</span></h2><div class="mt-1 text-slate-600 dark:text-slate-400 text-sm">총 %d경기</div></div></div><div class="flex flex-col items-start sm:items-end gap-3"><form action="%s/games" method="get" class="flex flex-wrap items-center justify-end gap-2"><select name="season" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none" onchange="this.form.submit()">%s</select><label class="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 whitespace-nowrap"><input type="checkbox" name="include_mismatch" value="1" %s class="h-4 w-4 rounded border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 accent-orange-500" onchange="this.form.submit()"><span>불일치 포함</span></label></form><a href="%s/splits?season=%s" class="text-xs bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-3 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all shadow-sm whitespace-nowrap border border-slate-200 dark:border-slate-700">스플릿 분석</a><a href="%s/shots?season=%s" class="text-xs bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-3 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all shadow-sm whitespace-nowrap border border-slate-200 dark:border-slate-700">샷 차트</a>%s</div></div><p class="text-[11px] text-slate-600 dark:text-slate-400">개인 <span class="font-mono text-slate-700 dark:text-slate-300">+/-</span>는 문자중계 기반입니다. 문자중계가 없으면 <span class="font-mono text-slate-700 dark:text-slate-300">M</span>으로 팀 득실마진(경기 최종 점수)을 대신 표시합니다. (데이터가 없거나 품질 문제면 <span class="font-mono text-slate-700 dark:text-slate-300">-</span>)</p><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-lg"><table class="min-w-[680px] sm:min-w-[920px] w-full text-sm font-mono table-fixed tabular-nums" aria-label="선수별 게임 로그">
           <colgroup>
             <col style="width: 110px;"> <!-- Date -->
             <col style="width: auto;">  <!-- Opponent -->
@@ -1316,17 +1316,17 @@ let player_game_logs_page ?(lang=I18n.Ko) (profile: player_profile) ~(season: st
             <col class="hidden sm:table-column" style="width: 72px;"> <!-- TOV -->
           </colgroup>
           <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-600 dark:text-slate-400 uppercase tracking-wider text-xs"><tr><th scope="col" class="px-3 py-2 text-left font-sans whitespace-nowrap">날짜</th><th scope="col" class="px-3 py-2 text-left font-sans">상대</th><th scope="col" class="px-3 py-2 text-right hidden sm:table-cell" title="출전시간">MIN</th><th scope="col" class="px-3 py-2 text-right hidden md:table-cell" title="야투">FG</th><th scope="col" class="px-3 py-2 text-right hidden md:table-cell" title="3점슛">3P</th><th scope="col" class="px-3 py-2 text-right hidden md:table-cell" title="자유투">FT</th><th scope="col" class="px-3 py-2 text-right text-orange-600 dark:text-orange-400" title="득점">PTS</th><th scope="col" class="px-3 py-2 text-right" title="+/-">+/-</th><th scope="col" class="px-3 py-2 text-right" title="리바운드">REB</th><th scope="col" class="px-3 py-2 text-right hidden sm:table-cell" title="어시스트">AST</th><th scope="col" class="px-3 py-2 text-right hidden sm:table-cell" title="스틸">STL</th><th scope="col" class="px-3 py-2 text-right hidden sm:table-cell" title="블록">BLK</th><th scope="col" class="px-3 py-2 text-right hidden sm:table-cell" title="턴오버">TOV</th></tr></thead><tbody>%s</tbody>%s</table></div>|html></div>|html}
-      (breadcrumb [("홈", "/"); ("선수", "/players"); (display_name, "/player/" ^ Uri.pct_encode p.id); ("경기 로그", "")])
+      (breadcrumb [("홈", "/"); ("선수", "/players"); (display_name, player_href p.id); ("경기 로그", "")])
       (player_img_tag ~class_name:"w-14 h-14 border border-slate-300 dark:border-slate-700 shadow-lg" p.id p.name)
-      (Uri.pct_encode p.id)
+      (player_href p.id)
       (escape_html display_name)
       (List.length games)
-      (Uri.pct_encode p.id)
+      (player_href p.id)
       season_options
       include_checked
-      (Uri.pct_encode p.id)
+      (player_href p.id)
       season
-      (Uri.pct_encode p.id)
+      (player_href p.id)
       season
       quality_chips
       rows
@@ -1435,7 +1435,7 @@ let player_splits_page ?(lang=I18n.Ko) (profile: player_profile) ~(season: strin
   let page_title = Printf.sprintf "%s 스플릿 | WKBL" (escape_html display_name) in
   let page_desc = Printf.sprintf "%s 선수의 %s 시즌 홈/원정, 상대팀별, 월별 성적 분석" (escape_html display_name) (escape_html season_name) in
   layout ~lang ~title:page_title
-    ~canonical_path:(Printf.sprintf "/player/%s/splits" (Uri.pct_encode p.id))
+    ~canonical_path:(player_href p.id ^ "/splits")
     ~description:page_desc
     ~content:(Printf.sprintf
       {html|<div class="space-y-6 animate-fade-in">
@@ -1445,7 +1445,7 @@ let player_splits_page ?(lang=I18n.Ko) (profile: player_profile) ~(season: strin
             <div class="shrink-0">%s</div>
             <div class="min-w-0">
               <div class="text-sm text-slate-600 dark:text-slate-400">
-                <a href="/player/%s" class="hover:text-slate-900 dark:hover:text-white dark:text-slate-200 transition">← 프로필</a>
+                <a href="%s" class="hover:text-slate-900 dark:hover:text-white dark:text-slate-200 transition">← 프로필</a>
               </div>
               <h2 class="text-3xl font-black text-slate-900 dark:text-slate-200 truncate">%s
                 <span class="text-slate-600 dark:text-slate-400 text-lg font-mono">스플릿</span>
@@ -1454,9 +1454,9 @@ let player_splits_page ?(lang=I18n.Ko) (profile: player_profile) ~(season: strin
             </div>
           </div>
           <div class="flex items-center gap-2">
-            <a href="/player/%s/games?season=%s" class="text-xs bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-3 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all shadow-sm whitespace-nowrap border border-slate-200 dark:border-slate-700">경기 로그</a>
-            <a href="/player/%s/shots?season=%s" class="text-xs bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-3 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all shadow-sm whitespace-nowrap border border-slate-200 dark:border-slate-700">샷 차트</a>
-            <form action="/player/%s/splits" method="get" class="flex items-center gap-2">
+            <a href="%s/games?season=%s" class="text-xs bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-3 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all shadow-sm whitespace-nowrap border border-slate-200 dark:border-slate-700">경기 로그</a>
+            <a href="%s/shots?season=%s" class="text-xs bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-3 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all shadow-sm whitespace-nowrap border border-slate-200 dark:border-slate-700">샷 차트</a>
+            <form action="%s/splits" method="get" class="flex items-center gap-2">
               <select name="season" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none" onchange="this.form.submit()">
                 %s
               </select>
@@ -1467,17 +1467,17 @@ let player_splits_page ?(lang=I18n.Ko) (profile: player_profile) ~(season: strin
         %s
         %s
       </div>|html}
-      (breadcrumb [("홈", "/"); ("선수", "/players"); (display_name, "/player/" ^ Uri.pct_encode p.id); ("스플릿", "")])
+      (breadcrumb [("홈", "/"); ("선수", "/players"); (display_name, player_href p.id); ("스플릿", "")])
       (player_img_tag ~class_name:"w-14 h-14 border border-slate-300 dark:border-slate-700 shadow-lg" p.id p.name)
-      (Uri.pct_encode p.id)
+      (player_href p.id)
       (escape_html display_name)
       (escape_html season_name)
       (List.length games)
-      (Uri.pct_encode p.id)
+      (player_href p.id)
       season
-      (Uri.pct_encode p.id)
+      (player_href p.id)
       season
-      (Uri.pct_encode p.id)
+      (player_href p.id)
       season_options
       home_away_html
       opponent_html
@@ -1580,7 +1580,7 @@ let player_shot_chart_page ?(lang=I18n.Ko) (profile: player_profile) ~(season: s
   let page_title = Printf.sprintf "%s 샷 차트 | WKBL" (escape_html display_name) in
   let page_desc = Printf.sprintf "%s 선수의 %s 시즌 슈팅 존별 야투 성공률 분석" (escape_html display_name) (escape_html season_name) in
   layout ~lang ~title:page_title
-    ~canonical_path:(Printf.sprintf "/player/%s/shot-chart" (Uri.pct_encode p.id))
+    ~canonical_path:(player_href p.id ^ "/shot-chart")
     ~description:page_desc
     ~content:(Printf.sprintf
       {html|<div class="space-y-6 animate-fade-in">
@@ -1590,7 +1590,7 @@ let player_shot_chart_page ?(lang=I18n.Ko) (profile: player_profile) ~(season: s
             <div class="shrink-0">%s</div>
             <div class="min-w-0">
               <div class="text-sm text-slate-600 dark:text-slate-400">
-                <a href="/player/%s" class="hover:text-slate-900 dark:hover:text-white dark:text-slate-200 transition">← 프로필</a>
+                <a href="%s" class="hover:text-slate-900 dark:hover:text-white dark:text-slate-200 transition">← 프로필</a>
               </div>
               <h2 class="text-3xl font-black text-slate-900 dark:text-slate-200 truncate">%s
                 <span class="text-slate-600 dark:text-slate-400 text-lg font-mono">샷 차트</span>
@@ -1599,9 +1599,9 @@ let player_shot_chart_page ?(lang=I18n.Ko) (profile: player_profile) ~(season: s
             </div>
           </div>
           <div class="flex items-center gap-2">
-            <a href="/player/%s/games?season=%s" class="text-xs bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-3 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all shadow-sm whitespace-nowrap border border-slate-200 dark:border-slate-700">경기 로그</a>
-            <a href="/player/%s/splits?season=%s" class="text-xs bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-3 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all shadow-sm whitespace-nowrap border border-slate-200 dark:border-slate-700">스플릿</a>
-            <form action="/player/%s/shots" method="get" class="flex items-center">
+            <a href="%s/games?season=%s" class="text-xs bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-3 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all shadow-sm whitespace-nowrap border border-slate-200 dark:border-slate-700">경기 로그</a>
+            <a href="%s/splits?season=%s" class="text-xs bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-3 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all shadow-sm whitespace-nowrap border border-slate-200 dark:border-slate-700">스플릿</a>
+            <form action="%s/shots" method="get" class="flex items-center">
               <select name="season" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none" onchange="this.form.submit()">
                 <option value="ALL" %s>전체 시즌</option>
                 %s
@@ -1613,16 +1613,16 @@ let player_shot_chart_page ?(lang=I18n.Ko) (profile: player_profile) ~(season: s
         %s
         <p class="text-[11px] text-slate-500 dark:text-slate-400 text-center">문자중계(PBP) 데이터 기반 집계입니다. PBP가 없는 경기는 포함되지 않습니다.</p>
       </div>|html}
-      (breadcrumb [("홈", "/"); ("선수", "/players"); (display_name, "/player/" ^ Uri.pct_encode p.id); ("샷 차트", "")])
+      (breadcrumb [("홈", "/"); ("선수", "/players"); (display_name, player_href p.id); ("샷 차트", "")])
       (player_img_tag ~class_name:"w-14 h-14 border border-slate-300 dark:border-slate-700 shadow-lg" p.id p.name)
-      (Uri.pct_encode p.id)
+      (player_href p.id)
       (escape_html display_name)
       (escape_html season_name)
-      (Uri.pct_encode p.id)
+      (player_href p.id)
       season
-      (Uri.pct_encode p.id)
+      (player_href p.id)
       season
-      (Uri.pct_encode p.id)
+      (player_href p.id)
       (if season = "ALL" then "selected" else "")
       season_options
       court_html
