@@ -643,16 +643,16 @@ let qa_pbp_missing_page
   <td class="px-3 py-2 text-sm text-slate-800 dark:text-slate-200">%s</td>
   <td class="px-3 py-2 text-sm font-mono text-slate-700 dark:text-slate-300 whitespace-nowrap">%d - %d</td>
   <td class="px-3 py-2 text-right whitespace-nowrap">
-    <a href="/boxscore/%s" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-700 hover:bg-slate-800 text-white">기록</a>
-    <a href="/boxscore/%s/pbp" class="ml-2 px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-200 hover:border-slate-500 transition">문자중계</a>
+    <a href="%s" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-700 hover:bg-slate-800 text-white">기록</a>
+    <a href="%s" class="ml-2 px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-200 hover:border-slate-500 transition">문자중계</a>
   </td>
 </tr>|html}
           (escape_html g.qpmg_game_date)
           (escape_html matchup)
           g.qpmg_home_score
           g.qpmg_away_score
-          (escape_html game_id_url)
-          (escape_html game_id_url))
+          (boxscore_href game_id_url)
+          (boxscore_pbp_href game_id_url))
     |> String.concat "\n"
   in
 
@@ -1800,8 +1800,8 @@ let game_flow_page ?(lang=I18n.Ko) ~(game: Domain.game_info) (flow_points: Domai
               문자중계가 없는 경기라 득점흐름을 만들 수 없어요.
             </div>
             <div class="flex justify-center gap-4">
-              <a href="/boxscore/%s" class="px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-200 hover:border-slate-500 transition">← 박스스코어</a>
-              <a href="/boxscore/%s/pbp" class="px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-200 hover:border-slate-500 transition">문자중계 →</a>
+              <a href="%s" class="px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-200 hover:border-slate-500 transition">← 박스스코어</a>
+              <a href="%s" class="px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-200 hover:border-slate-500 transition">문자중계 →</a>
             </div>
           </div>|html}
           (breadcrumb [("홈", "/"); ("경기 흐름", "")])
@@ -1810,8 +1810,8 @@ let game_flow_page ?(lang=I18n.Ko) ~(game: Domain.game_info) (flow_points: Domai
           (escape_html game.gi_game_date)
           game.gi_home_score
           game.gi_away_score
-          (escape_html game.gi_game_id)
-          (escape_html game.gi_game_id))
+          (boxscore_href game.gi_game_id)
+          (boxscore_pbp_href game.gi_game_id))
         ()
   | _ when not has_scoring ->
       layout
@@ -1828,8 +1828,8 @@ let game_flow_page ?(lang=I18n.Ko) ~(game: Domain.game_info) (flow_points: Domai
               득점흐름을 만들 기록이 없어요.
             </div>
             <div class="flex justify-center gap-4">
-              <a href="/boxscore/%s" class="px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-200 hover:border-slate-500 transition">← 박스스코어</a>
-              <a href="/boxscore/%s/pbp" class="px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-200 hover:border-slate-500 transition">문자중계 →</a>
+              <a href="%s" class="px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-200 hover:border-slate-500 transition">← 박스스코어</a>
+              <a href="%s" class="px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-200 hover:border-slate-500 transition">문자중계 →</a>
             </div>
           </div>|html}
           (breadcrumb [("홈", "/"); ("경기 흐름", "")])
@@ -1838,8 +1838,8 @@ let game_flow_page ?(lang=I18n.Ko) ~(game: Domain.game_info) (flow_points: Domai
           (escape_html game.gi_game_date)
           game.gi_home_score
           game.gi_away_score
-          (escape_html game.gi_game_id)
-          (escape_html game.gi_game_id))
+          (boxscore_href game.gi_game_id)
+          (boxscore_pbp_href game.gi_game_id))
         ()
   | _ ->
       let chart =
@@ -1936,8 +1936,8 @@ let game_flow_page ?(lang=I18n.Ko) ~(game: Domain.game_info) (flow_points: Domai
             %s
             %s
             <div class="flex justify-center gap-4">
-              <a href="/boxscore/%s" class="px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-200 hover:border-slate-500 transition">← 박스스코어</a>
-              <a href="/boxscore/%s/pbp" class="px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-200 hover:border-slate-500 transition">문자중계 →</a>
+              <a href="%s" class="px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-200 hover:border-slate-500 transition">← 박스스코어</a>
+              <a href="%s" class="px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-200 hover:border-slate-500 transition">문자중계 →</a>
             </div>
           </div>|html}
           (breadcrumb [("홈", "/"); ("경기 흐름", "")])
@@ -1948,8 +1948,8 @@ let game_flow_page ?(lang=I18n.Ko) ~(game: Domain.game_info) (flow_points: Domai
           game.gi_away_score
           chart
           stats_section
-          (escape_html game.gi_game_id)
-          (escape_html game.gi_game_id))
+          (boxscore_href game.gi_game_id)
+          (boxscore_pbp_href game.gi_game_id))
         ()
 
 (* ===== Lineup Chemistry Views ===== *)
@@ -2450,7 +2450,7 @@ let qa_anomalies_page
       Printf.sprintf
         {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors">
   <td class="px-3 py-2 text-xs font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap">%s</td>
-  <td class="px-3 py-2 text-xs font-mono text-slate-900 dark:text-slate-200 whitespace-nowrap"><a href="/boxscore/%s" class="hover:underline">%s</a></td>
+  <td class="px-3 py-2 text-xs font-mono text-slate-900 dark:text-slate-200 whitespace-nowrap"><a href="%s" class="hover:underline">%s</a></td>
   <td class="px-3 py-2 text-xs text-slate-900 dark:text-slate-200 whitespace-nowrap"><a href="/team/%s" class="hover:underline">%s</a></td>
   <td class="px-3 py-2 text-xs text-slate-900 dark:text-slate-200 whitespace-nowrap"><a href="%s" class="hover:underline">%s</a><span class="ml-2 text-[10px] font-mono text-slate-400">#%s</span></td>
   <td class="px-3 py-2 text-xs font-mono text-right tabular-nums">%s</td>
@@ -2467,7 +2467,7 @@ let qa_anomalies_page
   </td>
 </tr>|html}
         (escape_html r.qsa_game_date)
-        (escape_html r.qsa_game_id)
+        (boxscore_href r.qsa_game_id)
         (escape_html r.qsa_game_id)
         (Uri.pct_encode r.qsa_team_name)
         (escape_html r.qsa_team_name)
@@ -2492,7 +2492,7 @@ let qa_anomalies_page
       Printf.sprintf
         {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors">
   <td class="px-3 py-2 text-xs font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap">%s</td>
-  <td class="px-3 py-2 text-xs font-mono text-slate-900 dark:text-slate-200 whitespace-nowrap"><a href="/boxscore/%s" class="hover:underline">%s</a></td>
+  <td class="px-3 py-2 text-xs font-mono text-slate-900 dark:text-slate-200 whitespace-nowrap"><a href="%s" class="hover:underline">%s</a></td>
   <td class="px-3 py-2 text-xs text-slate-900 dark:text-slate-200 whitespace-nowrap"><a href="/team/%s" class="hover:underline">%s</a></td>
   <td class="px-3 py-2 text-xs text-slate-900 dark:text-slate-200 whitespace-nowrap"><a href="%s" class="hover:underline">%s</a><span class="ml-2 text-[10px] font-mono text-slate-400">#%s</span></td>
   <td class="px-3 py-2 text-xs font-mono text-right tabular-nums">%s</td>
@@ -2509,7 +2509,7 @@ let qa_anomalies_page
   </td>
 </tr>|html}
         (escape_html r.qse_game_date)
-        (escape_html r.qse_game_id)
+        (boxscore_href r.qse_game_id)
         (escape_html r.qse_game_id)
         (Uri.pct_encode r.qse_team_name)
         (escape_html r.qse_team_name)

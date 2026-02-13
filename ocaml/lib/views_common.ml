@@ -27,6 +27,15 @@ let player_href id = "/player/" ^ Uri.pct_encode id
 (** URL-safe href for team pages. Always pct-encodes the team name. *)
 let team_href name = "/team/" ^ Uri.pct_encode name
 
+(** URL-safe href for boxscore pages. Always pct-encodes the game id. *)
+let boxscore_href game_id = "/boxscore/" ^ Uri.pct_encode game_id
+
+(** URL-safe href for boxscore PBP pages. Always pct-encodes the game id. *)
+let boxscore_pbp_href game_id = "/boxscore/" ^ Uri.pct_encode game_id ^ "/pbp"
+
+(** URL-safe href for season pages. Always pct-encodes the season code. *)
+let season_href code = "/season/" ^ Uri.pct_encode code
+
 let escape_js_string s =
   (* Defensive escaping for inline <script> blocks. *)
   s

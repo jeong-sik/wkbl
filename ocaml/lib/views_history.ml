@@ -25,7 +25,7 @@ let history_page ?(lang=I18n.Ko) (seasons: historical_season list) =
     let scoring = match s.hs_scoring_leader with Some p -> escape_html p | None -> "-" in
     Printf.sprintf
       {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-50 dark:hover:bg-slate-800/30">
-        <td class="px-3 py-2 font-bold"><a href="/season/%s" class="text-orange-600 dark:text-orange-400 hover:underline">%s</a></td>
+        <td class="px-3 py-2 font-bold"><a href="%s" class="text-orange-600 dark:text-orange-400 hover:underline">%s</a></td>
         <td class="px-3 py-2 font-medium">%s</td>
         <td class="px-3 py-2">%s</td>
         <td class="px-3 py-2">%s</td>
@@ -33,20 +33,20 @@ let history_page ?(lang=I18n.Ko) (seasons: historical_season list) =
         <td class="px-3 py-2">%s</td>
         <td class="px-3 py-2">%s</td>
       </tr>|html}
-      (escape_html s.hs_season_id) (escape_html s.hs_season_name) champion runner_up mvp finals_mvp roy scoring
+      (season_href s.hs_season_id) (escape_html s.hs_season_name) champion runner_up mvp finals_mvp roy scoring
   ) |> String.concat "\n" in
   let mobile_cards = seasons |> List.map (fun (s: historical_season) ->
     let champion = match s.hs_champion_team with Some t -> team_badge ~max_width:"max-w-[100px]" t | None -> "-" in
     let mvp = match s.hs_regular_mvp with Some p -> escape_html p | None -> "-" in
     Printf.sprintf
       {html|<div class="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-lg p-4 space-y-2">
-        <a href="/season/%s" class="font-bold text-orange-600 dark:text-orange-400 text-lg hover:underline block">%s</a>
+        <a href="%s" class="font-bold text-orange-600 dark:text-orange-400 text-lg hover:underline block">%s</a>
         <div class="grid grid-cols-2 gap-2 text-sm">
           <div><span class="text-slate-500 dark:text-slate-400">우승:</span> <span class="font-medium">%s</span></div>
           <div><span class="text-slate-500 dark:text-slate-400">MVP:</span> <span class="font-medium">%s</span></div>
         </div>
       </div>|html}
-      (escape_html s.hs_season_id) (escape_html s.hs_season_name) champion mvp
+      (season_href s.hs_season_id) (escape_html s.hs_season_name) champion mvp
   ) |> String.concat "\n" in
   layout ~lang ~title:"역대 기록 | WKBL" ~content:(Printf.sprintf
     {html|<div class="space-y-6">%s
