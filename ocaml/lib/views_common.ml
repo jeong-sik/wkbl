@@ -94,10 +94,15 @@ type col_spec = {
   title : string option;
   highlight : bool;
   sticky : bool;  (** Sticky left column — stays fixed on horizontal scroll *)
+  numeric : bool;  (** Numeric column — applies tabular-nums font-mono *)
 }
 
-let col ?(w=None) ?(align=`Left) ?(resp=`Always) ?sort ?title ?(highlight=false) ?(sticky=false) header =
-  { header; width = w; align; resp; sort; title; highlight; sticky }
+let col ?(w=None) ?(align=`Left) ?(resp=`Always) ?sort ?title ?(highlight=false) ?(sticky=false) ?numeric header =
+  let numeric = match numeric with
+    | Some v -> v
+    | None -> align = `Right  (* Right-aligned columns default to numeric *)
+  in
+  { header; width = w; align; resp; sort; title; highlight; sticky; numeric }
 
 let px w = Some w
 
@@ -109,7 +114,7 @@ let px w = Some w
     - [striped]: alternate row backgrounds (default: false).
     - [foot_data]: rows for <tfoot> (same column layout as body rows).
 *)
-let render_fixed_table ?(table_attrs="") ?(aria_label="Data Table") ?(striped=false) ?(foot_data=[]) ~id ~min_width ~(cols : col_spec list) (rows_data : string list list) =
+let render_fixed_table ?(table_attrs="") ?(aria_label="Data Table") ?(striped=true) ?(foot_data=[]) ~id ~min_width ~(cols : col_spec list) (rows_data : string list list) =
   let resp_class = function
     | `Always -> ""
     | `Hidden_sm -> "hidden sm:table-cell"
@@ -176,7 +181,8 @@ let render_fixed_table ?(table_attrs="") ?(aria_label="Data Table") ?(striped=fa
               "sticky left-0 z-10 bg-white dark:bg-slate-900 group-hover:bg-slate-100 dark:group-hover:bg-slate-800/50"
             else ""
           in
-          let full_cls = String.concat " " [base_cls; align_cls; resp_cls; color_cls; sticky_cls] in
+          let numeric_cls = if c.numeric then "tabular-nums font-mono" else "" in
+          let full_cls = String.concat " " [base_cls; align_cls; resp_cls; color_cls; sticky_cls; numeric_cls] in
           Printf.sprintf {html|<td class="%s" style="%s">%s</td>|html} full_cls width_style data
         ) cols row
         |> String.concat ""
@@ -370,7 +376,7 @@ let margin_cell ?(extra_classes="") ?(width_style="") value =
     else "text-slate-700 dark:text-slate-300 font-bold"
   in
   let value_str = if value > 0.0 then Printf.sprintf "+%.1f" value else format_float value in
-  let classes = String.concat " " ["px-3 py-2 text-right font-mono"; extra_classes; cls] in
+  let classes = String.concat " " ["px-3 py-2 text-right font-mono tabular-nums"; extra_classes; cls] in
   Printf.sprintf {html|<td class="%s" style="%s">%s</td>|html} classes width_style (escape_html value_str)
 
 let stat_cell ?(highlight=false) ?(extra_classes="") ?(width_style="") value =
@@ -978,7 +984,7 @@ let player_summary_comparison (seasons: season_stats list) =
     let career_mpg = total_min /. gp_f in
     let fmt v = Printf.sprintf "%.1f" v in
     let fmt_pct v = if v > 0.0 then Printf.sprintf "%.1f" (v *. 100.0) else "-" in
-    let stat_cell cls v = Printf.sprintf {html|<td class="px-2 py-1.5 text-right font-mono %s">%s</td>|html} cls v in
+    let stat_cell cls v = Printf.sprintf {html|<td class="px-2 py-1.5 text-right font-mono tabular-nums %s">%s</td>|html} cls v in
     let hdr cls lbl title = Printf.sprintf
       {html|<th class="px-2 py-1.5 text-right text-[10px] uppercase tracking-wider %s" title="%s">%s</th>|html} cls title lbl in
     (* Render a single season row *)
@@ -1004,7 +1010,8 @@ let player_summary_comparison (seasons: season_stats list) =
         (stat_cell "hidden md:table-cell" (fmt_pct s.ss_efg_pct))
         (stat_cell "" (fmt s.ss_efficiency))
     in
-    let current_row = season_row ~label:current.ss_season_name ~border:true current in
+    let current_label = Printf.sprintf {|<a href="%s" class="hover:underline">%s</a>|} (season_href current.ss_season_code) (escape_html current.ss_season_name) in
+    let current_row = season_row ~label:current_label ~border:true current in
     (* Peak season: highest PPG among seasons with 10+ GP, different from current *)
     let peak_row =
       let eligible = seasons_desc |> List.filter (fun s -> s.ss_games_played >= 10) in
@@ -1015,7 +1022,7 @@ let player_summary_comparison (seasons: season_stats list) =
       ) None in
       match peak_opt with
       | Some peak when peak.ss_season_code <> current.ss_season_code ->
-          let label = Printf.sprintf "<span class=\"text-amber-600 dark:text-amber-400\">★</span> %s" peak.ss_season_name in
+          let label = Printf.sprintf {|<span class="text-amber-600 dark:text-amber-400">★</span> <a href="%s" class="hover:underline">%s</a>|} (season_href peak.ss_season_code) (escape_html peak.ss_season_name) in
           season_row ~label ~border:true peak
       | _ -> ""
     in
@@ -1139,15 +1146,15 @@ let player_season_stats_component ~(player_id: string) ~scope (seasons: season_s
           in
           Printf.sprintf
             {html|<tr class="%s">%s%s
-              <td class="px-3 py-2 text-right font-mono">%d</td>
-              <td class="px-3 py-2 text-right font-mono">%.1f</td>
-              <td class="px-3 py-2 text-right font-mono">%.1f</td>
-              <td class="px-3 py-2 text-right font-mono">%.1f</td>
-              <td class="px-3 py-2 text-right font-mono">%s</td>
-              <td class="px-3 py-2 text-right font-mono text-emerald-600 dark:text-emerald-400 font-semibold">%s</td>
-              <td class="px-3 py-2 text-right font-mono text-emerald-600 dark:text-emerald-400 font-semibold">%s</td>
-              <td class="px-3 py-2 text-right font-mono hidden md:table-cell">%.1f</td>
-              <td class="px-3 py-2 text-right font-mono %s font-semibold">%+.1f</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums">%d</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums">%s</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums text-emerald-600 dark:text-emerald-400 font-semibold">%s</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums text-emerald-600 dark:text-emerald-400 font-semibold">%s</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums hidden md:table-cell">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums %s font-semibold">%+.1f</td>
             </tr>|html}
             tr_cls season_td team_td
             s.ss_games_played mpg
@@ -1157,20 +1164,20 @@ let player_season_stats_component ~(player_id: string) ~scope (seasons: season_s
         else
           Printf.sprintf
             {html|<tr class="%s">%s%s
-              <td class="px-3 py-2 text-right font-mono">%d</td>
-              <td class="px-3 py-2 text-right font-mono">%.1f</td>
-              <td class="px-3 py-2 text-right font-mono text-orange-600 dark:text-orange-400 font-semibold">%.1f</td>
-              <td class="px-3 py-2 text-right font-mono">%.1f</td>
-              <td class="px-3 py-2 text-right font-mono">%.1f</td>
-              <td class="px-3 py-2 text-right font-mono hidden md:table-cell">%.1f</td>
-              <td class="px-3 py-2 text-right font-mono hidden md:table-cell">%.1f</td>
-              <td class="px-3 py-2 text-right font-mono hidden lg:table-cell">%s</td>
-              <td class="px-3 py-2 text-right font-mono hidden lg:table-cell">%s</td>
-              <td class="px-3 py-2 text-right font-mono hidden lg:table-cell">%s</td>
-              <td class="px-3 py-2 text-right font-mono hidden xl:table-cell">%s</td>
-              <td class="px-3 py-2 text-right font-mono hidden xl:table-cell">%s</td>
-              <td class="px-3 py-2 text-right font-mono">%.1f</td>
-              <td class="px-3 py-2 text-right font-mono %s">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums">%d</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums text-orange-600 dark:text-orange-400 font-semibold">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums hidden md:table-cell">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums hidden md:table-cell">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums hidden lg:table-cell">%s</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums hidden lg:table-cell">%s</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums hidden lg:table-cell">%s</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums hidden xl:table-cell">%s</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums hidden xl:table-cell">%s</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums %s">%.1f</td>
             </tr>|html}
             tr_cls season_td team_td
             s.ss_games_played mpg
@@ -1217,15 +1224,15 @@ let player_season_stats_component ~(player_id: string) ~scope (seasons: season_s
             {html|<tfoot class="%s"><tr>
               <td class="px-3 py-2 text-left font-sans">Career (%d시즌)</td>
               <td class="px-3 py-2 hidden sm:table-cell"></td>
-              <td class="px-3 py-2 text-right font-mono">%d</td>
-              <td class="px-3 py-2 text-right font-mono">%.1f</td>
-              <td class="px-3 py-2 text-right font-mono">%.1f</td>
-              <td class="px-3 py-2 text-right font-mono">%.1f</td>
-              <td class="px-3 py-2 text-right font-mono">%s</td>
-              <td class="px-3 py-2 text-right font-mono text-emerald-600 dark:text-emerald-400">%s</td>
-              <td class="px-3 py-2 text-right font-mono text-emerald-600 dark:text-emerald-400">%s</td>
-              <td class="px-3 py-2 text-right font-mono hidden md:table-cell">%.1f</td>
-              <td class="px-3 py-2 text-right font-mono %s">%+.1f</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums">%d</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums">%s</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums text-emerald-600 dark:text-emerald-400">%s</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums text-emerald-600 dark:text-emerald-400">%s</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums hidden md:table-cell">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums %s">%+.1f</td>
             </tr></tfoot>|html}
             tfoot_cls n total_gp career_mpg career_ppg career_tov career_ast_tov
             (fmt_pct_f career_ts) (fmt_pct_f career_efg)
@@ -1235,20 +1242,20 @@ let player_season_stats_component ~(player_id: string) ~scope (seasons: season_s
             {html|<tfoot class="%s"><tr>
               <td class="px-3 py-2 text-left font-sans">Career (%d시즌)</td>
               <td class="px-3 py-2 hidden sm:table-cell"></td>
-              <td class="px-3 py-2 text-right font-mono">%d</td>
-              <td class="px-3 py-2 text-right font-mono">%.1f</td>
-              <td class="px-3 py-2 text-right font-mono text-orange-600 dark:text-orange-400">%.1f</td>
-              <td class="px-3 py-2 text-right font-mono">%.1f</td>
-              <td class="px-3 py-2 text-right font-mono">%.1f</td>
-              <td class="px-3 py-2 text-right font-mono hidden md:table-cell">%.1f</td>
-              <td class="px-3 py-2 text-right font-mono hidden md:table-cell">%.1f</td>
-              <td class="px-3 py-2 text-right font-mono hidden lg:table-cell">%s</td>
-              <td class="px-3 py-2 text-right font-mono hidden lg:table-cell">%s</td>
-              <td class="px-3 py-2 text-right font-mono hidden lg:table-cell">%s</td>
-              <td class="px-3 py-2 text-right font-mono hidden xl:table-cell">%s</td>
-              <td class="px-3 py-2 text-right font-mono hidden xl:table-cell">%s</td>
-              <td class="px-3 py-2 text-right font-mono">%.1f</td>
-              <td class="px-3 py-2 text-right font-mono %s">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums">%d</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums text-orange-600 dark:text-orange-400">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums hidden md:table-cell">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums hidden md:table-cell">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums hidden lg:table-cell">%s</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums hidden lg:table-cell">%s</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums hidden lg:table-cell">%s</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums hidden xl:table-cell">%s</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums hidden xl:table-cell">%s</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums %s">%.1f</td>
             </tr></tfoot>|html}
             tfoot_cls n total_gp career_mpg career_ppg career_rpg career_apg
             career_spg career_bpg

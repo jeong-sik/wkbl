@@ -935,7 +935,7 @@ let player_profile_page ?(lang=I18n.Ko) ?(leaderboards=None) ?(show_ops=false) (
         in
 	        Printf.sprintf
 		          {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 sm:p-6 shadow-lg"><div class="flex items-start justify-between gap-4 mb-4"><div class="min-w-0"><h3 class="text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-xs flex items-center gap-2"><span class="text-lg">🏅</span> 리더보드</h3><div class="mt-1 text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed"><span class="font-mono text-slate-700 dark:text-slate-300">%s</span> · <span class="font-mono text-slate-700 dark:text-slate-300">%s</span> · 상위 5</div></div><a href="%s" class="text-[11px] text-slate-600 dark:text-slate-400 hover:text-slate-700 dark:text-slate-300 underline font-mono shrink-0 whitespace-nowrap">리더</a></div>%s</div>|html}
-	          (escape_html lb_season_name)
+	          (Printf.sprintf {|<a href="%s" class="hover:underline">%s</a>|} (season_href lb_season_code) (escape_html lb_season_name))
 	          (escape_html scope_label)
 	          (escape_html leaders_href)
 	          rows_html

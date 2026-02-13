@@ -2122,7 +2122,7 @@ let compare_seasons_page
   Printf.sprintf
 	   {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 border-t-4 %s">
 	    <div class="flex items-center justify-between mb-3">
-	     <span class="text-lg font-bold text-slate-900 dark:text-slate-200">%s</span>
+	     <a href="%s" class="text-lg font-bold text-slate-900 dark:text-slate-200 hover:underline">%s</a>
 	     <span class="text-2xl">%s</span>
 	    </div>
 	    <div class="grid grid-cols-2 gap-2 text-sm">
@@ -2139,6 +2139,7 @@ let compare_seasons_page
     </div>
    </div>|html}
    accent
+   (season_href s.ss_season_code)
    (escape_html s.ss_season_name)
    (trend_indicator s)
    s.ss_games_played
