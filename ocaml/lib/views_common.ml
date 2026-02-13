@@ -617,7 +617,7 @@ let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json
         </a>
       </div>
       <div class="text-[11px] text-slate-400 dark:text-slate-600 font-mono">
-        &copy; 2026 WKBL Moneyball Lab.
+        &copy; 2026 WKBL.win
       </div>
     </div>
   </footer>

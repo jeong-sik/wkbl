@@ -179,7 +179,8 @@ let advanced_stats_card (avg: player_aggregate) (seasons: season_stats list) =
     let per = Stats.per_of_player_aggregate avg in
     let rpg = avg.avg_rebounds in
     let apg = avg.avg_assists in
-    let eff_per_game = avg.efficiency /. float_of_int avg.games_played in
+    (* efficiency is already AVG(game_score), i.e. per-game average *)
+    let eff_per_game = avg.efficiency in
     (* Compute career TS% and eFG% from season breakdown via weighted averages *)
     let career_ts_pct, career_efg_pct =
       let total_gp = List.fold_left (fun acc (s: season_stats) -> acc + s.ss_games_played) 0 seasons in
@@ -444,7 +445,7 @@ let player_profile_page ?(lang=I18n.Ko) ?(leaderboards=None) ?(show_ops=false) (
               made att pct_cls pct
         in
         Printf.sprintf
-          {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/30 transition-colors"><td class="px-3 py-2 text-slate-600 dark:text-slate-400 text-sm font-mono whitespace-nowrap w-[90px] sm:w-[110px]"><a href="%s" class="hover:text-orange-600 dark:hover:text-orange-400 transition-colors">%s</a></td><td class="px-3 py-2 text-slate-900 dark:text-white"><div class="flex flex-wrap items-center gap-x-3 gap-y-2"><span class="text-[10px] text-slate-500 dark:text-slate-500 font-sans w-3">%s</span>%s<a href="%s" class="player-name min-w-0 flex-1 hover:text-orange-600 dark:hover:text-orange-400 transition-colors">%s</a><div class="flex items-center gap-2 shrink-0">%s%s</div></div></td><td class="px-3 py-2 text-right font-mono text-slate-600 dark:text-slate-400 w-[60px] sm:w-[72px] whitespace-nowrap">%.1f</td><td class="px-3 py-2 text-right font-bold %s w-[60px] sm:w-[72px] whitespace-nowrap">%d</td>%s%s%s<td class="px-3 py-2 text-right font-mono w-[60px] sm:w-[72px] whitespace-nowrap %s">%s</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[60px] sm:w-[72px] whitespace-nowrap">%d</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[60px] sm:w-[72px] hidden sm:table-cell">%d</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[60px] sm:w-[72px] hidden sm:table-cell">%d</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[60px] sm:w-[72px] hidden sm:table-cell">%d</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[60px] sm:w-[72px] hidden sm:table-cell">%d</td></tr>|html}
+          {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/30 transition-colors"><td class="px-3 py-2 text-slate-600 dark:text-slate-400 text-sm font-mono whitespace-nowrap w-[90px] sm:w-[110px]"><a href="%s" class="hover:text-orange-600 dark:hover:text-orange-400 transition-colors">%s</a></td><td class="px-3 py-2 text-slate-900 dark:text-white"><div class="flex flex-wrap items-center gap-x-3 gap-y-2"><span class="text-[10px] text-slate-500 dark:text-slate-500 font-sans w-3">%s</span>%s<a href="%s" class="player-name min-w-0 flex-1 whitespace-nowrap hover:text-orange-600 dark:hover:text-orange-400 transition-colors">%s</a><div class="flex items-center gap-2 shrink-0">%s%s</div></div></td><td class="px-3 py-2 text-right font-mono text-slate-600 dark:text-slate-400 w-[60px] sm:w-[72px] whitespace-nowrap">%.1f</td><td class="px-3 py-2 text-right font-bold %s w-[60px] sm:w-[72px] whitespace-nowrap">%d</td>%s%s%s<td class="px-3 py-2 text-right font-mono w-[60px] sm:w-[72px] whitespace-nowrap %s">%s</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[60px] sm:w-[72px] whitespace-nowrap">%d</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[60px] sm:w-[72px] hidden sm:table-cell">%d</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[60px] sm:w-[72px] hidden sm:table-cell">%d</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[60px] sm:w-[72px] hidden sm:table-cell">%d</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[60px] sm:w-[72px] hidden sm:table-cell">%d</td></tr>|html}
           (boxscore_href g.game_id)
           (escape_html g.game_date)
           ha_prefix
@@ -698,7 +699,7 @@ let player_profile_page ?(lang=I18n.Ko) ?(leaderboards=None) ?(show_ops=false) (
         {html|<div class="space-y-4"><div class="flex flex-col gap-1"><h3 class="text-xl font-bold text-slate-900 dark:text-white">올스타전</h3><p class="text-[11px] text-slate-500 dark:text-slate-500">올스타전 기록은 시즌/커리어 테이블에서 제외하고, 여기에서만 보여줍니다.</p></div><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-lg"><table class="min-w-[680px] sm:min-w-[920px] w-full text-sm font-mono table-fixed" aria-label="올스타전 기록">
                 <colgroup>
                   <col style="width: 110px;"> <!-- Date -->
-                  <col style="width: auto;">  <!-- Opponent -->
+                  <col style="width: 200px;"> <!-- Opponent -->
                   <col style="width: 72px;">  <!-- MIN -->
                   <col style="width: 72px;">  <!-- PTS -->
                   <col style="width: 72px;">  <!-- +/- -->
@@ -1182,7 +1183,7 @@ let player_profile_page ?(lang=I18n.Ko) ?(leaderboards=None) ?(show_ops=false) (
               <table class="min-w-[680px] md:min-w-[1100px] w-full text-xs sm:text-sm font-mono table-fixed tabular-nums" aria-label="최근 경기 기록">
                 <colgroup>
                   <col style="width: 110px;"> <!-- Date -->
-                  <col style="width: auto;">  <!-- Opponent -->
+                  <col style="width: 200px;"> <!-- Opponent -->
                   <col style="width: 72px;">  <!-- MIN -->
                   <col style="width: 72px;">  <!-- PTS -->
                   <col class="hidden md:table-column" style="width: 72px;"> <!-- FG -->
@@ -1611,7 +1612,7 @@ let player_shot_chart_page ?(lang=I18n.Ko) (profile: player_profile) ~(season: s
     else if zs.zs_pct >= 30.0 then "bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400"
     else "bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400"
   in
-  (* The visual court: 3 concentric zones *)
+  (* The visual court: 2 zones (2PT combined + 3PT) + paint indicator *)
   let court_html = Printf.sprintf
     {html|<div class="flex justify-center">
       <div class="relative w-[340px] h-[280px] sm:w-[400px] sm:h-[320px]">
@@ -1621,25 +1622,20 @@ let player_shot_chart_page ?(lang=I18n.Ko) (profile: player_profile) ~(season: s
           <div class="text-[11px] font-medium mt-0.5">3점</div>
           <div class="text-[10px] opacity-70">%s</div>
         </div>
-        <!-- Mid-range (middle zone) -->
-        <div class="absolute left-[15%%] right-[15%%] top-[25%%] bottom-0 rounded-t-[120px] sm:rounded-t-[140px] border-2 border-slate-300 dark:border-slate-600 %s flex flex-col items-center justify-start pt-5 sm:pt-6 cursor-default transition-colors">
+        <!-- 2PT zone (paint + mid-range combined) -->
+        <div class="absolute left-[18%%] right-[18%%] top-[30%%] bottom-0 rounded-t-[110px] sm:rounded-t-[130px] border-2 border-slate-300 dark:border-slate-600 %s flex flex-col items-center justify-start pt-4 sm:pt-5 cursor-default transition-colors">
           <div class="text-2xl sm:text-3xl font-black">%s</div>
-          <div class="text-[11px] font-medium mt-0.5">미드레인지</div>
+          <div class="text-[11px] font-medium mt-0.5">2점</div>
           <div class="text-[10px] opacity-70">%s</div>
-        </div>
-        <!-- Paint zone (innermost) -->
-        <div class="absolute left-[30%%] right-[30%%] top-[50%%] bottom-0 rounded-t-xl border-2 border-slate-300 dark:border-slate-600 %s flex flex-col items-center justify-center cursor-default transition-colors">
-          <div class="text-2xl sm:text-3xl font-black">%s</div>
-          <div class="text-[11px] font-medium mt-0.5">페인트존</div>
-          <div class="text-[10px] opacity-70">%s</div>
+          <div class="text-[9px] opacity-50 mt-1">페인트존 %d성공</div>
         </div>
         <!-- Basket indicator -->
         <div class="absolute left-1/2 -translate-x-1/2 bottom-1 w-4 h-4 rounded-full border-2 border-orange-400 dark:border-orange-500 bg-orange-100 dark:bg-orange-900/40"></div>
       </div>
     </div>|html}
     (zone_color chart.psc_three) (zone_pct_str chart.psc_three) (zone_detail chart.psc_three)
-    (zone_color chart.psc_mid) (zone_pct_str chart.psc_mid) (zone_detail chart.psc_mid)
-    (zone_color chart.psc_paint) (zone_pct_str chart.psc_paint) (zone_detail chart.psc_paint)
+    (zone_color chart.psc_two_pt) (zone_pct_str chart.psc_two_pt) (zone_detail chart.psc_two_pt)
+    chart.psc_paint_made
   in
   (* Summary stats table *)
   let total_pct_str = if chart.psc_total_attempts = 0 then "-"
@@ -1655,13 +1651,13 @@ let player_shot_chart_page ?(lang=I18n.Ko) (profile: player_profile) ~(season: s
         </div>
         <div class="text-center">
           <div class="text-2xl font-black text-slate-900 dark:text-slate-100 tabular-nums font-mono">%s</div>
-          <div class="text-xs text-slate-500 dark:text-slate-400 mt-1">페인트존</div>
+          <div class="text-xs text-slate-500 dark:text-slate-400 mt-1">2점슛</div>
           <div class="text-[10px] text-slate-400 dark:text-slate-500">%s</div>
         </div>
         <div class="text-center">
-          <div class="text-2xl font-black text-slate-900 dark:text-slate-100 tabular-nums font-mono">%s</div>
-          <div class="text-xs text-slate-500 dark:text-slate-400 mt-1">미드레인지</div>
-          <div class="text-[10px] text-slate-400 dark:text-slate-500">%s</div>
+          <div class="text-2xl font-black text-emerald-600 dark:text-emerald-400 tabular-nums font-mono">%d</div>
+          <div class="text-xs text-slate-500 dark:text-slate-400 mt-1">페인트존 성공</div>
+          <div class="text-[10px] text-slate-400 dark:text-slate-500">미스 미집계</div>
         </div>
         <div class="text-center">
           <div class="text-2xl font-black text-slate-900 dark:text-slate-100 tabular-nums font-mono">%s</div>
@@ -1671,8 +1667,8 @@ let player_shot_chart_page ?(lang=I18n.Ko) (profile: player_profile) ~(season: s
       </div>
     </div>|html}
     total_pct_str chart.psc_total_made chart.psc_total_attempts
-    (zone_pct_str chart.psc_paint) (zone_detail chart.psc_paint)
-    (zone_pct_str chart.psc_mid) (zone_detail chart.psc_mid)
+    (zone_pct_str chart.psc_two_pt) (zone_detail chart.psc_two_pt)
+    chart.psc_paint_made
     (zone_pct_str chart.psc_three) (zone_detail chart.psc_three)
   in
   let page_title = Printf.sprintf "%s 샷 차트 | WKBL" (escape_html display_name) in

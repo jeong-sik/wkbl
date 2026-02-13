@@ -164,7 +164,7 @@ let prediction_card ~(home: string) ~(away: string) (output: Domain.prediction_o
   <text x="600" y="515" text-anchor="middle" fill="white" font-size="45" font-weight="900" font-family="sans-serif">%s 승리 예상</text>
   
   <!-- Footer -->
-  <text x="600" y="600" text-anchor="middle" fill="#94a3b8" font-size="20" font-family="monospace">WKBL.win | AI Moneyball Analysis</text>
+  <text x="600" y="600" text-anchor="middle" fill="#94a3b8" font-size="20" font-family="monospace">WKBL.win | 여자농구 통계</text>
 </svg>|}
   h_c1 home (res.prob_a *. 100.0)
   a_c1 away (res.prob_b *. 100.0)

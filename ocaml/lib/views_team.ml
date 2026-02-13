@@ -289,18 +289,206 @@ let team_profile_page ?(lang=I18n.Ko) ?(player_info_map=None) (detail: team_full
     <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px] sm:text-xs whitespace-nowrap"><tr><th scope="col" class="px-2 py-2 text-center font-sans">#</th><th scope="col" class="px-3 py-2 text-left font-sans">선수</th><th scope="col" class="px-3 py-2 text-right hidden sm:table-cell" title="경기 수">GP</th><th scope="col" class="px-3 py-2 text-right hidden md:table-cell" title="출전시간 합계">MIN</th><th scope="col" class="px-3 py-2 text-right text-orange-600 dark:text-orange-400" title="득점 합계">PTS</th><th scope="col" class="px-3 py-2 text-right" title="리바운드 합계">REB</th><th scope="col" class="px-3 py-2 text-right hidden md:table-cell" title="어시스트 합계">AST</th><th scope="col" class="px-3 py-2 text-right hidden lg:table-cell" title="스틸 합계">STL</th><th scope="col" class="px-3 py-2 text-right hidden lg:table-cell" title="블록 합계">BLK</th><th scope="col" class="px-3 py-2 text-right hidden lg:table-cell" title="턴오버 합계">TOV</th><th scope="col" class="px-3 py-2 text-right text-orange-600 dark:text-orange-400" title="EFF(기여도)">EFF</th></tr></thead><tbody>%s</tbody></table>|html}
    roster_totals_rows
  in
+ let roster_shooting_table =
+  let shooting_rows =
+   detail.tfd_roster
+   |> List.mapi (fun i (p: player_aggregate) ->
+    let key = normalize_name p.name in
+    let show_player_id =
+     match Hashtbl.find_opt roster_name_counts key with
+     | Some c when c > 1 -> true
+     | _ -> false
+    in
+    let id_badge = if show_player_id then player_id_badge p.player_id else "" in
+    let display_name = normalize_name p.name in
+    let pct made att =
+     if att > 0 then Printf.sprintf "%.1f" (float_of_int made /. float_of_int att *. 100.0)
+     else "-"
+    in
+    let fg_made = p.total_fg_made in
+    let fg_att = p.total_fg_att in
+    let fg3_made = p.total_fg3_made in
+    let fg3_att = p.total_fg3_att in
+    let ft_made = p.total_ft_made in
+    let ft_att = p.total_ft_att in
+    Printf.sprintf
+     {html|<tr class="group border-b border-slate-200 dark:border-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors font-mono tabular-nums">
+       <td class="px-2 py-2 text-slate-500 dark:text-slate-500 text-sm text-center font-bold" style="width: 50px;">%d</td>
+       <td class="px-3 py-2 font-medium text-slate-900 dark:text-white font-sans whitespace-nowrap" style="width: 180px;">
+         <div class="flex items-center gap-3 min-w-0">
+           %s
+           <div class="flex flex-col min-w-0">
+             <div class="flex items-center gap-2 min-w-0">
+               <a href="%s" class="player-name hover:text-orange-600 dark:text-orange-400 transition-colors truncate break-keep min-w-0">%s</a>
+               <span class="%s">%s</span>
+             </div>
+           </div>
+         </div>
+       </td>
+       <td class="px-3 py-2 text-right text-slate-500 dark:text-slate-400 hidden sm:table-cell" style="width: 50px;">%d</td>
+       <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300" style="width: 55px;">%d</td>
+       <td class="px-3 py-2 text-right text-slate-500 dark:text-slate-400" style="width: 55px;">%d</td>
+       <td class="px-3 py-2 text-right text-orange-600 dark:text-orange-400 font-bold" style="width: 65px;">%s</td>
+       <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300" style="width: 55px;">%d</td>
+       <td class="px-3 py-2 text-right text-slate-500 dark:text-slate-400" style="width: 55px;">%d</td>
+       <td class="px-3 py-2 text-right text-emerald-600 dark:text-emerald-400 font-bold" style="width: 65px;">%s</td>
+       <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300" style="width: 55px;">%d</td>
+       <td class="px-3 py-2 text-right text-slate-500 dark:text-slate-400" style="width: 55px;">%d</td>
+       <td class="px-3 py-2 text-right text-sky-600 dark:text-sky-400 font-bold" style="width: 65px;">%s</td>
+     </tr>|html}
+     (i + 1)
+     (player_img_tag ~class_name:"w-8 h-8 shrink-0" p.player_id p.name)
+     (player_href p.player_id)
+     (escape_html display_name)
+     (if show_player_id then "inline-flex" else "hidden")
+     id_badge
+     p.games_played
+     fg_made fg_att (pct fg_made fg_att)
+     fg3_made fg3_att (pct fg3_made fg3_att)
+     ft_made ft_att (pct ft_made ft_att))
+   |> String.concat "\n"
+  in
+  Printf.sprintf
+   {html|<table class="roster-table min-w-[850px] w-full text-xs sm:text-sm font-mono table-fixed tabular-nums" aria-label="팀 로스터 (슈팅)">
+    <colgroup>
+      <col style="width: 50px;">
+      <col style="width: 180px;">
+      <col class="hidden sm:table-column" style="width: 50px;">
+      <col style="width: 55px;">
+      <col style="width: 55px;">
+      <col style="width: 65px;">
+      <col style="width: 55px;">
+      <col style="width: 55px;">
+      <col style="width: 65px;">
+      <col style="width: 55px;">
+      <col style="width: 55px;">
+      <col style="width: 65px;">
+    </colgroup>
+    <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px] sm:text-xs whitespace-nowrap">
+      <tr>
+        <th scope="col" class="px-2 py-2 text-center font-sans">#</th>
+        <th scope="col" class="px-3 py-2 text-left font-sans">선수</th>
+        <th scope="col" class="px-3 py-2 text-right hidden sm:table-cell" title="경기 수">GP</th>
+        <th scope="col" class="px-3 py-2 text-right" title="야투 성공">FGM</th>
+        <th scope="col" class="px-3 py-2 text-right" title="야투 시도">FGA</th>
+        <th scope="col" class="px-3 py-2 text-right text-orange-600 dark:text-orange-400" title="야투 성공률">FG%%</th>
+        <th scope="col" class="px-3 py-2 text-right" title="3점 성공">3PM</th>
+        <th scope="col" class="px-3 py-2 text-right" title="3점 시도">3PA</th>
+        <th scope="col" class="px-3 py-2 text-right text-emerald-600 dark:text-emerald-400" title="3점 성공률">3P%%</th>
+        <th scope="col" class="px-3 py-2 text-right" title="자유투 성공">FTM</th>
+        <th scope="col" class="px-3 py-2 text-right" title="자유투 시도">FTA</th>
+        <th scope="col" class="px-3 py-2 text-right text-sky-600 dark:text-sky-400" title="자유투 성공률">FT%%</th>
+      </tr>
+    </thead>
+    <tbody>%s</tbody>
+   </table>|html}
+   shooting_rows
+ in
+ let roster_advanced_table =
+  let team_totals = detail.tfd_team_totals in
+  let advanced_rows =
+   detail.tfd_roster
+   |> List.mapi (fun i (p: player_aggregate) ->
+    let key = normalize_name p.name in
+    let show_player_id =
+     match Hashtbl.find_opt roster_name_counts key with
+     | Some c when c > 1 -> true | _ -> false
+    in
+    let id_badge = if show_player_id then player_id_badge p.player_id else "" in
+    let display_name = normalize_name p.name in
+    let fga = p.total_fg_att in
+    let fta = p.total_ft_att in
+    let ts = Stats.true_shooting_pct ~pts:p.total_points ~fga ~fta in
+    let efg = Stats.effective_fg_pct ~fg_made:p.total_fg_made ~fg3_made:p.total_fg3_made ~fga in
+    let per = Stats.calculate_per ~total_minutes:p.total_minutes ~efficiency:p.efficiency in
+    let usg =
+     match team_totals with
+     | Some tt ->
+       let team_fga = tt.fg2_a + tt.fg3_a in
+       let team_poss = Stats.estimate_team_possessions
+         ~team_fga ~team_fta:tt.ft_a ~team_tov:tt.turnovers ~team_oreb:tt.reb_off in
+       let games_ratio = float_of_int p.games_played /. float_of_int (max 1 tt.gp) in
+       let player_poss = float_of_int fga +. 0.44 *. float_of_int fta +. float_of_int p.total_turnovers in
+       let scaled = team_poss *. games_ratio in
+       if scaled <= 0.0 then 0.0 else player_poss /. scaled *. 100.0
+     | None -> 0.0
+    in
+    let mpg = if p.games_played = 0 then 0.0 else p.total_minutes /. float_of_int p.games_played in
+    Printf.sprintf
+     {html|<tr class="group border-b border-slate-200 dark:border-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors font-mono tabular-nums">
+       <td class="px-2 py-2 text-slate-500 dark:text-slate-500 text-sm text-center font-bold" style="width: 50px;">%d</td>
+       <td class="px-3 py-2 font-medium text-slate-900 dark:text-white font-sans whitespace-nowrap" style="width: 180px;">
+         <div class="flex items-center gap-3 min-w-0">
+           %s
+           <div class="flex flex-col min-w-0">
+             <div class="flex items-center gap-2 min-w-0">
+               <a href="%s" class="player-name hover:text-orange-600 dark:text-orange-400 transition-colors truncate break-keep min-w-0">%s</a>
+               <span class="%s">%s</span>
+             </div>
+           </div>
+         </div>
+       </td>
+       <td class="px-3 py-2 text-right text-slate-500 dark:text-slate-400 hidden sm:table-cell" style="width: 50px;">%d</td>
+       <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300" style="width: 70px;">%.1f</td>
+       <td class="px-3 py-2 text-right text-orange-600 dark:text-orange-400 font-bold" style="width: 70px;">%.1f</td>
+       <td class="px-3 py-2 text-right text-emerald-600 dark:text-emerald-400 font-bold" style="width: 70px;">%.1f</td>
+       <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300" style="width: 70px;">%.1f</td>
+       <td class="px-3 py-2 text-right text-sky-600 dark:text-sky-400 font-bold" style="width: 70px;">%.1f</td>
+     </tr>|html}
+     (i + 1)
+     (player_img_tag ~class_name:"w-8 h-8 shrink-0" p.player_id p.name)
+     (player_href p.player_id)
+     (escape_html display_name)
+     (if show_player_id then "inline-flex" else "hidden")
+     id_badge
+     p.games_played mpg
+     ts efg usg per)
+   |> String.concat "\n"
+  in
+  Printf.sprintf
+   {html|<table class="roster-table min-w-[700px] w-full text-xs sm:text-sm font-mono table-fixed tabular-nums" aria-label="팀 로스터 (어드밴스드)">
+    <colgroup>
+      <col style="width: 50px;">
+      <col style="width: 180px;">
+      <col class="hidden sm:table-column" style="width: 50px;">
+      <col style="width: 70px;">
+      <col style="width: 70px;">
+      <col style="width: 70px;">
+      <col style="width: 70px;">
+      <col style="width: 70px;">
+    </colgroup>
+    <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px] sm:text-xs whitespace-nowrap">
+      <tr>
+        <th scope="col" class="px-2 py-2 text-center font-sans">#</th>
+        <th scope="col" class="px-3 py-2 text-left font-sans">선수</th>
+        <th scope="col" class="px-3 py-2 text-right hidden sm:table-cell" title="경기 수">GP</th>
+        <th scope="col" class="px-3 py-2 text-right" title="경기당 출전시간">MPG</th>
+        <th scope="col" class="px-3 py-2 text-right text-orange-600 dark:text-orange-400" title="True Shooting %%">TS%%</th>
+        <th scope="col" class="px-3 py-2 text-right text-emerald-600 dark:text-emerald-400" title="Effective FG %%">eFG%%</th>
+        <th scope="col" class="px-3 py-2 text-right" title="Usage Rate %%">USG%%</th>
+        <th scope="col" class="px-3 py-2 text-right" title="Player Efficiency Rating">PER</th>
+      </tr>
+    </thead>
+    <tbody>%s</tbody>
+   </table>|html}
+   advanced_rows
+ in
  let roster_desktop_section =
   Printf.sprintf
    {html|<div class="space-y-3">
     <div class="flex gap-1 bg-slate-100 dark:bg-slate-800/60 rounded-lg p-1 w-fit">
      <button onclick="switchRosterTab('pergame')" id="tab-pergame" class="px-4 py-1.5 rounded-md text-sm font-bold transition-colors bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-200 shadow-sm">경기당</button>
      <button onclick="switchRosterTab('totals')" id="tab-totals" class="px-4 py-1.5 rounded-md text-sm font-bold transition-colors text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300">합계</button>
+     <button onclick="switchRosterTab('shooting')" id="tab-shooting" class="px-4 py-1.5 rounded-md text-sm font-bold transition-colors text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300">슈팅</button>
+     <button onclick="switchRosterTab('advanced')" id="tab-advanced" class="px-4 py-1.5 rounded-md text-sm font-bold transition-colors text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300">어드밴스드</button>
     </div>
     <div id="panel-pergame" class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-lg">%s</div>
     <div id="panel-totals" class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-lg hidden">%s</div>
+    <div id="panel-shooting" class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-lg hidden">%s</div>
+    <div id="panel-advanced" class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-lg hidden">%s</div>
     <script>
     function switchRosterTab(tab) {
-     var tabs = ['pergame', 'totals'];
+     var tabs = ['pergame', 'totals', 'shooting', 'advanced'];
      tabs.forEach(function(t) {
       var panel = document.getElementById('panel-' + t);
       var btn = document.getElementById('tab-' + t);
@@ -317,6 +505,8 @@ let team_profile_page ?(lang=I18n.Ko) ?(player_info_map=None) (detail: team_full
    </div>|html}
    roster_table_inner
    roster_totals_table
+   roster_shooting_table
+   roster_advanced_table
  in
 	 let season_label =
 		  if season = "ALL" then
