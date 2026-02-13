@@ -45,7 +45,7 @@ let leader_card ~title ~icon (leaders: Db.leader_base list) ~extract ~format_val
     Printf.sprintf
       {html|<div class="flex items-center gap-3 py-2 %s">
         %s
-        <a href="/player/%s" class="flex-1 min-w-0">
+        <a href="%s" class="flex-1 min-w-0">
           <div class="font-medium text-sm text-slate-900 dark:text-slate-200 truncate">%s</div>
           <div class="text-xs text-slate-500 dark:text-slate-400">%s</div>
         </a>
@@ -53,7 +53,7 @@ let leader_card ~title ~icon (leaders: Db.leader_base list) ~extract ~format_val
       </div>|html}
       (if i < List.length top3 - 1 then "border-b border-slate-100 dark:border-slate-800/60" else "")
       rank_badge
-      (Uri.pct_encode b.lb_player_id)
+      (player_href b.lb_player_id)
       (escape_html b.lb_player_name)
       (escape_html (normalize_name b.lb_team_name))
       (format_val (extract b))

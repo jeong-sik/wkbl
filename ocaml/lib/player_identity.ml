@@ -12,8 +12,8 @@ let redirect_location ~(requested_id : string) ~(canonical_id : string) ?suffix 
     let qs = Uri.encoded_of_query (Uri.query uri) in
     let base =
       match suffix with
-      | None -> Printf.sprintf "/player/%s" (Uri.pct_encode canonical_id)
-      | Some s -> Printf.sprintf "/player/%s/%s" (Uri.pct_encode canonical_id) s
+      | None -> Views_common.player_href canonical_id
+      | Some s -> Views_common.player_href canonical_id ^ "/" ^ s
     in
     Some (if qs = "" then base else base ^ "?" ^ qs)
 
