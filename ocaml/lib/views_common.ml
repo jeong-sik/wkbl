@@ -206,20 +206,33 @@ let render_fixed_table ?(table_attrs="") ?(aria_label="Data Table") ?(striped=fa
       |> String.concat "\n"
       |> fun s -> Printf.sprintf {html|<tfoot>%s</tfoot>|html} s
   in
+  let has_sortable = List.exists (fun c -> c.sort <> None) cols in
   let extra_table_attrs =
     let t = String.trim table_attrs in
-    if t = "" then "" else " " ^ t
+    let sortable_attr = if has_sortable then "data-sortable" else "" in
+    let parts = List.filter (fun s -> s <> "") [t; sortable_attr] in
+    match parts with
+    | [] -> ""
+    | _ -> " " ^ (String.concat " " parts)
+  in
+  (* CSV export button *)
+  let csv_btn =
+    Printf.sprintf
+      {html|<div class="flex justify-end px-2 py-1">
+  <button class="csv-export-btn text-xs text-slate-500 hover:text-orange-500 cursor-pointer transition-colors" data-table-id="%s" aria-label="Download CSV">CSV</button>
+</div>|html} id
   in
   (* Assemble *)
   Printf.sprintf
     {html|<div class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto overflow-y-hidden shadow-2xl">
+  %s
   <table id="%s"%s class="w-full %s text-xs sm:text-sm font-mono tabular-nums table-fixed" style="border-collapse: separate; border-spacing: 0;" aria-label="%s">
     %s
     %s
     %s
   </table>
 </div>|html}
-    id extra_table_attrs min_width (escape_html aria_label) thead tbody tfoot
+    csv_btn id extra_table_attrs min_width (escape_html aria_label) thead tbody tfoot
 
 let normalize_name s = Domain.normalize_label s
 let format_float ?(digits=1) value = Printf.sprintf "%.*f" digits value
@@ -767,6 +780,7 @@ let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json
 			  <script src="/static/js/page-transitions.js"></script>
 			  <script src="/static/js/scroll-shadow.js"></script>
 			  <script src="/static/js/table-sort.js"></script>
+			  <script src="/static/js/table-export.js"></script>
 			  <script src="/static/js/table-row-link.js"></script>
 			  <script src="/static/js/number-format.js"></script>
 			  <script src="/static/js/a11y-utils.js"></script>
