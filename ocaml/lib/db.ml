@@ -267,7 +267,13 @@ module Types = struct
       let (avg_assists, rest) = rest in
       let (avg_steals, rest) = rest in
       let (avg_blocks, rest) = rest in
-      let (avg_turnovers, efficiency) = rest in
+      let (avg_turnovers, rest) = rest in
+      let (efficiency, rest) = rest in
+      let (total_fg_made, rest) = rest in
+      let (total_fg_att, rest) = rest in
+      let (total_fg3_made, rest) = rest in
+      let (total_fg3_att, rest) = rest in
+      let (total_ft_made, total_ft_att) = rest in
       Ok {
         player_id;
         name;
@@ -288,6 +294,12 @@ module Types = struct
         avg_blocks;
         avg_turnovers;
         efficiency;
+        total_fg_made;
+        total_fg_att;
+        total_fg3_made;
+        total_fg3_att;
+        total_ft_made;
+        total_ft_att;
       }
     in
     let t = t2 in
@@ -307,9 +319,15 @@ module Types = struct
                               (t float
                                 (t float
                                   (t float
+                                    (t float
                                       (t float
                                         (t float
-                                          (t float float))))))))))))))))))
+                                          (t float
+                                            (t int
+                                              (t int
+                                                (t int
+                                                  (t int
+                                                    (t int int))))))))))))))))))))))))
 
   let player_base =
     let encode _ = Error "Encode not supported: read-only type" in
@@ -1283,7 +1301,7 @@ module Queries = struct
     ON CONFLICT (player_name) DO NOTHING
   |}
 
-  (* Seed historical/defunct teams so FK updates can use them. *)
+  (* Seed historical/defunct teams and All-Star/special event teams so FK updates can use them. *)
   let seed_historical_teams = (unit ->. unit) {|
     INSERT INTO teams (team_code, team_name_kr, team_name_en)
     VALUES
@@ -1291,7 +1309,14 @@ module Queries = struct
       ('04', '신세계', 'Shinsegae'),
       ('06', '현대', 'Hyundai'),
       ('12', 'LG', 'LG'),
-      ('13', '한화', 'Hanwha')
+      ('13', '한화', 'Hanwha'),
+      ('82', '올스타A', 'All-Star A'),
+      ('83', '한국 올스타', 'Korea All-Star'),
+      ('84', '일본 올스타', 'Japan All-Star'),
+      ('87', '핑크스타', 'Pink Star'),
+      ('88', '블루스타', 'Blue Star'),
+      ('91', '남부선발', 'South Select'),
+      ('92', '중부선발', 'Central Select')
     ON CONFLICT (team_code) DO NOTHING
   |}
 
@@ -1872,7 +1897,13 @@ module Queries = struct
       COALESCE(AVG(s.stl), 0),
       COALESCE(AVG(s.blk), 0),
       COALESCE(AVG(s.tov), 0),
-      COALESCE(AVG(s.game_score), 0)
+      COALESCE(AVG(s.game_score), 0),
+      COALESCE(SUM(s.fg_2p_m + s.fg_3p_m), 0),
+      COALESCE(SUM(s.fg_2p_a + s.fg_3p_a), 0),
+      COALESCE(SUM(s.fg_3p_m), 0),
+      COALESCE(SUM(s.fg_3p_a), 0),
+      COALESCE(SUM(s.ft_m), 0),
+      COALESCE(SUM(s.ft_a), 0)
 	    FROM game_stats_clean s
 	    JOIN games_calc_v3 g ON g.game_id = s.game_id
 	    JOIN player_identities pi ON pi.player_id = s.player_id
@@ -2021,7 +2052,13 @@ module Queries = struct
       COALESCE(AVG(s.stl), 0),
       COALESCE(AVG(s.blk), 0),
       COALESCE(AVG(s.tov), 0),
-      COALESCE(AVG(s.game_score), 0)
+      COALESCE(AVG(s.game_score), 0),
+      COALESCE(SUM(s.fg_2p_m + s.fg_3p_m), 0),
+      COALESCE(SUM(s.fg_2p_a + s.fg_3p_a), 0),
+      COALESCE(SUM(s.fg_3p_m), 0),
+      COALESCE(SUM(s.fg_3p_a), 0),
+      COALESCE(SUM(s.ft_m), 0),
+      COALESCE(SUM(s.ft_a), 0)
     FROM game_stats_clean s
     JOIN games_calc_v3 g ON g.game_id = s.game_id
     JOIN player_identities pi ON pi.player_id = s.player_id
@@ -2091,7 +2128,13 @@ module Queries = struct
       COALESCE(AVG(s.stl), 0),
       COALESCE(AVG(s.blk), 0),
       COALESCE(AVG(s.tov), 0),
-      COALESCE(AVG(s.game_score), 0)
+      COALESCE(AVG(s.game_score), 0),
+      COALESCE(SUM(s.fg_2p_m + s.fg_3p_m), 0),
+      COALESCE(SUM(s.fg_2p_a + s.fg_3p_a), 0),
+      COALESCE(SUM(s.fg_3p_m), 0),
+      COALESCE(SUM(s.fg_3p_a), 0),
+      COALESCE(SUM(s.ft_m), 0),
+      COALESCE(SUM(s.ft_a), 0)
     FROM game_stats_clean s
     JOIN games_calc_v3 g ON g.game_id = s.game_id
     JOIN player_identities pi ON pi.player_id = s.player_id
@@ -3122,7 +3165,13 @@ module Queries = struct
       COALESCE(AVG(s.stl), 0),
       COALESCE(AVG(s.blk), 0),
       COALESCE(AVG(s.tov), 0),
-      COALESCE(AVG(s.game_score), 0)
+      COALESCE(AVG(s.game_score), 0),
+      COALESCE(SUM(s.fg_2p_m + s.fg_3p_m), 0),
+      COALESCE(SUM(s.fg_2p_a + s.fg_3p_a), 0),
+      COALESCE(SUM(s.fg_3p_m), 0),
+      COALESCE(SUM(s.fg_3p_a), 0),
+      COALESCE(SUM(s.ft_m), 0),
+      COALESCE(SUM(s.ft_a), 0)
     FROM game_stats_clean s
     JOIN games_calc_v3 g ON g.game_id = s.game_id
     JOIN players p ON s.player_id = p.player_id
@@ -3178,7 +3227,13 @@ module Queries = struct
       COALESCE(AVG(s.stl), 0),
       COALESCE(AVG(s.blk), 0),
       COALESCE(AVG(s.tov), 0),
-      COALESCE(AVG(s.game_score), 0)
+      COALESCE(AVG(s.game_score), 0),
+      COALESCE(SUM(s.fg_2p_m + s.fg_3p_m), 0),
+      COALESCE(SUM(s.fg_2p_a + s.fg_3p_a), 0),
+      COALESCE(SUM(s.fg_3p_m), 0),
+      COALESCE(SUM(s.fg_3p_a), 0),
+      COALESCE(SUM(s.ft_m), 0),
+      COALESCE(SUM(s.ft_a), 0)
 	    FROM game_stats_clean s
 	    JOIN games_calc_v3 g ON g.game_id = s.game_id
 	    JOIN player_identities pi ON pi.player_id = s.player_id
@@ -4264,7 +4319,13 @@ module Queries = struct
 	      COALESCE(AVG(s.stl), 0),
 	      COALESCE(AVG(s.blk), 0),
 	      COALESCE(AVG(s.tov), 0),
-	      COALESCE(AVG(s.game_score), 0)
+	      COALESCE(AVG(s.game_score), 0),
+	      COALESCE(SUM(s.fg_2p_m + s.fg_3p_m), 0),
+	      COALESCE(SUM(s.fg_2p_a + s.fg_3p_a), 0),
+	      COALESCE(SUM(s.fg_3p_m), 0),
+	      COALESCE(SUM(s.fg_3p_a), 0),
+	      COALESCE(SUM(s.ft_m), 0),
+	      COALESCE(SUM(s.ft_a), 0)
 	    FROM game_stats_clean s
 	    JOIN players p ON s.player_id = p.player_id
 	    JOIN teams t ON s.team_code = t.team_code
@@ -5025,33 +5086,52 @@ end
     let (let*) = Result.bind in
     let* zone_rows = Db.collect_list Queries.player_shot_stats (player_id, s) in
     let* player_info = Db.find_opt Queries.player_shot_info player_id in
-    let (pid, pname, tname) = match player_info with
-      | Some (id, name, team) -> (id, name, team)
-      | None -> (player_id, "Unknown", "Unknown")
+    let pid, pname, tname = match player_info with
+      | Some (id, name, team) -> id, name, team
+      | None -> player_id, "Unknown", "Unknown"
     in
-    (* Parse zone rows into stats *)
-    let empty_zone zone = { zs_zone = zone; zs_made = 0; zs_attempts = 0; zs_pct = 0.0 } in
-    let paint_stats = ref (empty_zone Paint) in
-    let mid_stats = ref (empty_zone MidRange) in
-    let three_stats = ref (empty_zone ThreePoint) in
-    List.iter (fun (zone_str, made, attempts, pct) ->
-      let stats = { zs_zone = Paint; zs_made = made; zs_attempts = attempts; zs_pct = pct } in
+    (* Parse zone rows into raw stats.
+       PBP data quirk: "페인트존" only appears on successful shots.
+       Missed paint shots are tagged as generic "2점슛시도", so we cannot
+       compute paint FG%. We merge paint + mid into a single 2PT zone. *)
+    let paint_made = ref 0 in
+    let mid_made = ref 0 in
+    let mid_attempts = ref 0 in
+    let three_made = ref 0 in
+    let three_attempts = ref 0 in
+    List.iter (fun (zone_str, made, attempts, _pct) ->
       match zone_str with
-      | "paint" -> paint_stats := { stats with zs_zone = Paint }
-      | "mid" -> mid_stats := { stats with zs_zone = MidRange }
-      | "three" -> three_stats := { stats with zs_zone = ThreePoint }
+      | "paint" ->
+          (* All paint records are successes — attempts = made *)
+          paint_made := made
+      | "mid" ->
+          (* "mid" includes paint zone misses disguised as "2점슛시도" *)
+          mid_made := made;
+          mid_attempts := attempts
+      | "three" ->
+          three_made := made;
+          three_attempts := attempts
       | _ -> ()
     ) zone_rows;
-    let total_made = !paint_stats.zs_made + !mid_stats.zs_made + !three_stats.zs_made in
-    let total_attempts = !paint_stats.zs_attempts + !mid_stats.zs_attempts + !three_stats.zs_attempts in
+    (* Combine: 2PT = paint successes + mid successes / paint attempts(=made) + mid attempts *)
+    let two_pt_made = !paint_made + !mid_made in
+    let two_pt_attempts = !paint_made + !mid_attempts in
+    let two_pt_pct = if two_pt_attempts > 0 then
+      float_of_int two_pt_made /. float_of_int two_pt_attempts *. 100.0
+    else 0.0 in
+    let three_pct = if !three_attempts > 0 then
+      float_of_int !three_made /. float_of_int !three_attempts *. 100.0
+    else 0.0 in
+    let total_made = two_pt_made + !three_made in
+    let total_attempts = two_pt_attempts + !three_attempts in
     let total_pct = if total_attempts > 0 then (float_of_int total_made /. float_of_int total_attempts) *. 100.0 else 0.0 in
     Ok {
       psc_player_id = pid;
       psc_player_name = pname;
       psc_team_name = tname;
-      psc_paint = !paint_stats;
-      psc_mid = !mid_stats;
-      psc_three = !three_stats;
+      psc_two_pt = { zs_zone = MidRange; zs_made = two_pt_made; zs_attempts = two_pt_attempts; zs_pct = two_pt_pct };
+      psc_three = { zs_zone = ThreePoint; zs_made = !three_made; zs_attempts = !three_attempts; zs_pct = three_pct };
+      psc_paint_made = !paint_made;
       psc_total_made = total_made;
       psc_total_attempts = total_attempts;
       psc_total_pct = total_pct;
@@ -5364,7 +5444,7 @@ end
 				        let* ch_assists = Db.find_opt Queries.career_high_assists_game player_id in
 				        let* ch_steals = Db.find_opt Queries.career_high_steals_game player_id in
 				        let* ch_blocks = Db.find_opt Queries.career_high_blocks_game player_id in
-				        let dummy_avg = { player_id = p.id; name = p.name; team_name = ""; games_played = 0; total_minutes = 0.0; total_points = 0; total_rebounds = 0; total_assists = 0; total_steals = 0; total_blocks = 0; total_turnovers = 0; avg_points = 0.0; avg_margin = 0.0; avg_rebounds = 0.0; avg_assists = 0.0; avg_steals = 0.0; avg_blocks = 0.0; avg_turnovers = 0.0; efficiency = 0.0; } in 
+				        let dummy_avg = { player_id = p.id; name = p.name; team_name = ""; games_played = 0; total_minutes = 0.0; total_points = 0; total_rebounds = 0; total_assists = 0; total_steals = 0; total_blocks = 0; total_turnovers = 0; avg_points = 0.0; avg_margin = 0.0; avg_rebounds = 0.0; avg_assists = 0.0; avg_steals = 0.0; avg_blocks = 0.0; avg_turnovers = 0.0; efficiency = 0.0; total_fg_made = 0; total_fg_att = 0; total_fg3_made = 0; total_fg3_att = 0; total_ft_made = 0; total_ft_att = 0; } in 
 (* All values already unwrapped by let* - use them directly *)
 			            let add_opt opt mk acc = match opt with | None -> acc | Some v -> mk v :: acc in
 			            let items =
@@ -5585,6 +5665,12 @@ let player_base_to_aggregate (b: player_base) =
     avg_blocks = b.pb_avg_blk;
     avg_turnovers = b.pb_avg_tov;
     efficiency = b.pb_eff;
+    total_fg_made = 0;
+    total_fg_att = 0;
+    total_fg3_made = 0;
+    total_fg3_att = 0;
+    total_ft_made = 0;
+    total_ft_att = 0;
   }
 
 (* Some seasons can contain multiple (player_id, team) aggregates for the same player_id:
@@ -5779,6 +5865,40 @@ let get_stat_anomaly_candidates ~season () =
   with_db (fun db -> Repo.qa_stat_anomaly_candidates ~season db)
 let get_all_teams () =
   cached teams_cache "all" (fun () -> with_db (fun db -> Repo.get_teams db))
+
+(** Resolve a team name (possibly with sub-name like "우리은행 위비") to the
+    canonical team_name_kr stored in the teams table (e.g. "우리은행").
+    Returns the input unchanged if no match is found. *)
+let resolve_team_name name =
+  match get_all_teams () with
+  | Error _ -> name
+  | Ok teams ->
+    (* 1. Exact match on team_name_kr *)
+    if List.exists (fun (t: Domain.team_info) -> t.team_name = name) teams then name
+    else
+      let str_contains haystack needle =
+        let nlen = String.length needle in
+        let hlen = String.length haystack in
+        if nlen = 0 || hlen < nlen then false
+        else
+          let rec loop i =
+            if i + nlen > hlen then false
+            else if String.sub haystack i nlen = needle then true
+            else loop (i + 1)
+          in
+          loop 0
+      in
+      (* 2. Find the longest team name that appears as substring of input.
+         Longest-match prevents "LG" matching when "삼성생명" is the real team. *)
+      let candidates = List.filter (fun (t: Domain.team_info) ->
+        String.length t.team_name >= 4 && str_contains name t.team_name
+      ) teams in
+      match List.sort (fun a b ->
+        compare (String.length (b: Domain.team_info).team_name) (String.length a.team_name)
+      ) candidates with
+      | best :: _ -> best.team_name
+      | [] -> name
+
 let get_seasons () =
   cached seasons_cache "all" (fun () -> with_db (fun db -> Repo.get_seasons db))
 let get_all_player_info () =
@@ -6104,6 +6224,7 @@ let get_batch_player_game_logs ~player_ids ?(season="ALL") () =
   Ok tbl
 
 let get_team_full_detail ~team_name ?(season="ALL") () =
+  let team_name = resolve_team_name team_name in
   let key = Printf.sprintf "team=%s|season=%s" (cache_key_text team_name) season in
   cached team_detail_cache key (fun () ->
     let (let*) = Result.bind in

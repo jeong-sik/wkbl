@@ -236,8 +236,10 @@ let home_page ?(lang=I18n.Ko) ?(player_info_map=None) ?(live_games=Live.get_curr
  in
    let table = players_table ~lang ~player_info_map players in
  let live_widget = live_scores_widget ~lang live_games in
+ let home_json_ld = {|{"@context":"https://schema.org","@type":"WebSite","name":"WKBL.win","url":"https://wkbl.win","potentialAction":{"@type":"SearchAction","target":{"@type":"EntryPoint","urlTemplate":"https://wkbl.win/players?search={search_term_string}"},"query-input":"required name=search_term_string"}}|} in
  layout ~lang ~title:(tr { ko = "WKBL 통계"; en = "WKBL Stats" }) ~canonical_path:"/"
   ~description:page_description
+  ~json_ld:home_json_ld
   ~content:(Printf.sprintf
 		   {html|<div class="space-y-6">
 		    <!-- Live Scores Widget -->

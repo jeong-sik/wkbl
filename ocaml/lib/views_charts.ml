@@ -175,7 +175,10 @@ let shot_chart_embedded ~fg2_pct ~fg2_made ~fg2_attempts
                         ~ft_pct ~ft_made ~ft_attempts =
   Printf.sprintf {|
 <div class="shot-chart-container bg-slate-800 rounded-xl p-4">
-  <h3 class="text-lg font-bold text-white mb-4">🎯 슛 분포</h3>
+  <div class="flex items-center justify-between mb-4">
+    <h3 class="text-lg font-bold text-white">🎯 슛 분포</h3>
+    <span class="text-[10px] text-slate-400 bg-slate-700/50 px-2 py-0.5 rounded">커리어 합산</span>
+  </div>
 
   <div class="grid grid-cols-3 gap-4">
     <!-- 3점 슛 -->
@@ -474,8 +477,7 @@ let zone_pct_color pct =
 
 (** Zone-based shot chart SVG with court outline *)
 let zone_shot_chart_svg (chart: player_shot_chart) =
-  let paint = chart.psc_paint in
-  let mid = chart.psc_mid in
+  let two_pt = chart.psc_two_pt in
   let three = chart.psc_three in
   Printf.sprintf {html|
 <svg viewBox="0 0 470 500" class="w-full max-w-md mx-auto">
@@ -491,7 +493,7 @@ let zone_shot_chart_svg (chart: player_shot_chart) =
   <!-- Free throw circle (top half) -->
   <ellipse cx="235" cy="330" rx="60" ry="60" fill="none" stroke="#475569" stroke-width="2" stroke-dasharray="5,5"/>
 
-  <!-- Restricted area (골밑) -->
+  <!-- Restricted area -->
   <ellipse cx="235" cy="420" rx="40" ry="30" fill="none" stroke="#475569" stroke-width="1.5"/>
 
   <!-- Basket -->
@@ -505,23 +507,16 @@ let zone_shot_chart_svg (chart: player_shot_chart) =
   <line x1="30" y1="450" x2="30" y2="380" stroke="#475569" stroke-width="2"/>
   <line x1="440" y1="450" x2="440" y2="380" stroke="#475569" stroke-width="2"/>
 
-  <!-- Zone: Paint (center-bottom) -->
-  <g transform="translate(235, 395)">
-    <circle cx="0" cy="0" r="45" fill="%s" fill-opacity="%s" class="transition-all"/>
-    <text x="0" y="-18" text-anchor="middle" fill="white" font-size="11" font-weight="bold">페인트존</text>
+  <!-- Zone: 2PT (inside arc — paint + mid-range combined) -->
+  <g transform="translate(235, 340)">
+    <circle cx="0" cy="0" r="55" fill="%s" fill-opacity="%s" class="transition-all"/>
+    <text x="0" y="-22" text-anchor="middle" fill="white" font-size="11" font-weight="bold">2점</text>
     <text x="0" y="2" text-anchor="middle" fill="white" font-size="16" font-weight="bold">%d/%d</text>
     <text x="0" y="20" text-anchor="middle" fill="white" font-size="14">%.1f%%</text>
+    <text x="0" y="38" text-anchor="middle" fill="#94a3b8" font-size="9">페인트존 %d성공</text>
   </g>
 
-  <!-- Zone: Mid-range (center-middle) -->
-  <g transform="translate(235, 270)">
-    <circle cx="0" cy="0" r="50" fill="%s" fill-opacity="%s" class="transition-all"/>
-    <text x="0" y="-22" text-anchor="middle" fill="white" font-size="11" font-weight="bold">미드레인지</text>
-    <text x="0" y="2" text-anchor="middle" fill="white" font-size="16" font-weight="bold">%d/%d</text>
-    <text x="0" y="22" text-anchor="middle" fill="white" font-size="14">%.1f%%</text>
-  </g>
-
-  <!-- Zone: Three-point (center-top) -->
+  <!-- Zone: Three-point (above arc) -->
   <g transform="translate(235, 100)">
     <circle cx="0" cy="0" r="55" fill="%s" fill-opacity="%s" class="transition-all"/>
     <text x="0" y="-25" text-anchor="middle" fill="white" font-size="11" font-weight="bold">3점</text>
@@ -537,12 +532,10 @@ let zone_shot_chart_svg (chart: player_shot_chart) =
   </g>
 </svg>
   |html}
-    (* Paint zone *)
-    (zone_pct_color paint.zs_pct) (if paint.zs_attempts > 0 then "0.7" else "0.3")
-    paint.zs_made paint.zs_attempts paint.zs_pct
-    (* Mid-range zone *)
-    (zone_pct_color mid.zs_pct) (if mid.zs_attempts > 0 then "0.7" else "0.3")
-    mid.zs_made mid.zs_attempts mid.zs_pct
+    (* 2PT zone *)
+    (zone_pct_color two_pt.zs_pct) (if two_pt.zs_attempts > 0 then "0.7" else "0.3")
+    two_pt.zs_made two_pt.zs_attempts two_pt.zs_pct
+    chart.psc_paint_made
     (* Three-point zone *)
     (zone_pct_color three.zs_pct) (if three.zs_attempts > 0 then "0.7" else "0.3")
     three.zs_made three.zs_attempts three.zs_pct
@@ -587,14 +580,14 @@ let zone_shot_chart_page ?(lang=I18n.Ko) (chart: player_shot_chart) ~seasons ~cu
     <!-- Stats breakdown cards -->
     <div class="mt-6 grid grid-cols-3 gap-4 text-center">
       <div class="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
+        <div class="text-sm text-slate-500 dark:text-slate-400">2점슛</div>
+        <div class="text-2xl font-bold" style="color: %s">%.1f%%</div>
+        <div class="text-xs text-slate-400">%d/%d</div>
+      </div>
+      <div class="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
         <div class="text-sm text-slate-500 dark:text-slate-400">페인트존</div>
         <div class="text-2xl font-bold text-emerald-500">%d</div>
         <div class="text-xs text-slate-400">성공 (미스 미집계)</div>
-      </div>
-      <div class="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
-        <div class="text-sm text-slate-500 dark:text-slate-400">미드레인지</div>
-        <div class="text-2xl font-bold" style="color: %s">%.1f%%</div>
-        <div class="text-xs text-slate-400">%d/%d</div>
       </div>
       <div class="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
         <div class="text-sm text-slate-500 dark:text-slate-400">3점</div>
@@ -627,21 +620,21 @@ let zone_shot_chart_page ?(lang=I18n.Ko) (chart: player_shot_chart) ~seasons ~cu
     (if current_season = "ALL" then " selected" else "")
     season_options
     (zone_shot_chart_svg chart)
-    (* Paint stats - only show makes since misses aren't tracked separately *)
-    chart.psc_paint.zs_made
-    (* Mid stats *)
-    (zone_pct_color chart.psc_mid.zs_pct) chart.psc_mid.zs_pct
-    chart.psc_mid.zs_made chart.psc_mid.zs_attempts
+    (* 2PT stats *)
+    (zone_pct_color chart.psc_two_pt.zs_pct) chart.psc_two_pt.zs_pct
+    chart.psc_two_pt.zs_made chart.psc_two_pt.zs_attempts
+    (* Paint — only successes tracked *)
+    chart.psc_paint_made
     (* Three stats *)
     (zone_pct_color chart.psc_three.zs_pct) chart.psc_three.zs_pct
     chart.psc_three.zs_made chart.psc_three.zs_attempts
-    chart.psc_player_id
+    (player_href chart.psc_player_id)
   in
   layout
     ~lang
     ~title:(Printf.sprintf "%s 슛 차트 | WKBL Analytics" chart.psc_player_name)
     ~canonical_path:(Printf.sprintf "/player/%s/shots" chart.psc_player_id)
-    ~description:(Printf.sprintf "%s(%s)의 존별 슛 분포 - 페인트존, 미드레인지, 3점 성공률" chart.psc_player_name chart.psc_team_name)
+    ~description:(Printf.sprintf "%s(%s)의 존별 슛 분포 - 2점, 3점 성공률" chart.psc_player_name chart.psc_team_name)
     ~content:content ()
 
 (** HTMX partial for zone shot chart (filter results) *)
@@ -652,14 +645,14 @@ let zone_shot_chart_partial (chart: player_shot_chart) =
 <!-- Stats breakdown cards -->
 <div class="mt-6 grid grid-cols-3 gap-4 text-center">
   <div class="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
+    <div class="text-sm text-slate-500 dark:text-slate-400">2점슛</div>
+    <div class="text-2xl font-bold" style="color: %s">%.1f%%</div>
+    <div class="text-xs text-slate-400">%d/%d</div>
+  </div>
+  <div class="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
     <div class="text-sm text-slate-500 dark:text-slate-400">페인트존</div>
     <div class="text-2xl font-bold text-emerald-500">%d</div>
     <div class="text-xs text-slate-400">성공 (미스 미집계)</div>
-  </div>
-  <div class="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
-    <div class="text-sm text-slate-500 dark:text-slate-400">미드레인지</div>
-    <div class="text-2xl font-bold" style="color: %s">%.1f%%</div>
-    <div class="text-xs text-slate-400">%d/%d</div>
   </div>
   <div class="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
     <div class="text-sm text-slate-500 dark:text-slate-400">3점</div>
@@ -677,9 +670,12 @@ let zone_shot_chart_partial (chart: player_shot_chart) =
 </div>
   |html}
     (zone_shot_chart_svg chart)
-    chart.psc_paint.zs_made
-    (zone_pct_color chart.psc_mid.zs_pct) chart.psc_mid.zs_pct
-    chart.psc_mid.zs_made chart.psc_mid.zs_attempts
+    (* 2PT stats *)
+    (zone_pct_color chart.psc_two_pt.zs_pct) chart.psc_two_pt.zs_pct
+    chart.psc_two_pt.zs_made chart.psc_two_pt.zs_attempts
+    (* Paint — only successes tracked *)
+    chart.psc_paint_made
+    (* Three stats *)
     (zone_pct_color chart.psc_three.zs_pct) chart.psc_three.zs_pct
     chart.psc_three.zs_made chart.psc_three.zs_attempts
 
@@ -1077,12 +1073,47 @@ let player_trends_panel (games: player_game_stat list) =
     ~color:"purple" games in
   Printf.sprintf
     {|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
-      <h3 class="text-lg font-bold text-slate-900 dark:text-slate-200 mb-4">📊 최근 경기 트렌드</h3>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div class="border border-slate-200 dark:border-slate-700 rounded-lg p-3">%s</div>
-        <div class="border border-slate-200 dark:border-slate-700 rounded-lg p-3">%s</div>
-        <div class="border border-slate-200 dark:border-slate-700 rounded-lg p-3">%s</div>
-        <div class="border border-slate-200 dark:border-slate-700 rounded-lg p-3">%s</div>
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-bold text-slate-900 dark:text-slate-200">📊 최근 경기 트렌드</h3>
+        <span class="text-[10px] text-slate-400">클릭하여 확대</span>
       </div>
-    </div>|}
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="trend-chart-cell border border-slate-200 dark:border-slate-700 rounded-lg p-3 cursor-pointer hover:border-sky-400 transition-colors" onclick="expandTrendChart(this)">%s</div>
+        <div class="trend-chart-cell border border-slate-200 dark:border-slate-700 rounded-lg p-3 cursor-pointer hover:border-sky-400 transition-colors" onclick="expandTrendChart(this)">%s</div>
+        <div class="trend-chart-cell border border-slate-200 dark:border-slate-700 rounded-lg p-3 cursor-pointer hover:border-sky-400 transition-colors" onclick="expandTrendChart(this)">%s</div>
+        <div class="trend-chart-cell border border-slate-200 dark:border-slate-700 rounded-lg p-3 cursor-pointer hover:border-sky-400 transition-colors" onclick="expandTrendChart(this)">%s</div>
+      </div>
+    </div>
+    <div id="trend-overlay" class="hidden fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onclick="closeTrendOverlay(event)">
+      <div class="bg-white dark:bg-slate-900 rounded-2xl p-6 max-w-3xl w-full border border-slate-200 dark:border-slate-700 shadow-2xl" onclick="event.stopPropagation()">
+        <div class="flex justify-between items-center mb-2">
+          <span class="text-sm text-slate-400">트렌드 상세</span>
+          <button onclick="closeTrendOverlay()" class="text-slate-400 hover:text-white text-xl leading-none">&times;</button>
+        </div>
+        <div id="trend-overlay-content" class="w-full"></div>
+      </div>
+    </div>
+    <script>
+    function expandTrendChart(el) {
+      var svg = el.querySelector('svg');
+      if (!svg) return;
+      var clone = svg.cloneNode(true);
+      clone.setAttribute('width', '100%%');
+      clone.setAttribute('height', '300');
+      clone.style.maxWidth = '100%%';
+      var container = document.getElementById('trend-overlay-content');
+      container.innerHTML = '';
+      container.appendChild(clone);
+      document.getElementById('trend-overlay').classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+    }
+    function closeTrendOverlay(e) {
+      if (e && e.target !== e.currentTarget) return;
+      document.getElementById('trend-overlay').classList.add('hidden');
+      document.body.style.overflow = '';
+    }
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') closeTrendOverlay();
+    });
+    </script>|}
     pts_chart reb_chart ast_chart eff_chart

@@ -26,91 +26,68 @@ let rank_badge rank =
     {html|<span class="flex items-center justify-center w-8 h-8 rounded-full %s %s font-bold text-sm">%d</span>|html}
     bg_class text_class rank
 
-(** MVP candidate row for the table *)
-(** Two-line stat cell for MVP table *)
-let mvp_cell ?(hide="") ?(color="text-slate-700 dark:text-slate-300") label value =
-  Printf.sprintf {html|<td class="px-3 py-2 text-right %s"><div class="flex flex-col items-end leading-tight"><span class="%s font-mono">%s</span><span class="text-slate-500 dark:text-slate-400 text-[10px] font-mono">%s</span></div></td>|html}
-    hide color value label
+(** Two-line stat cell inner HTML for MVP table (returns content, not <td>) *)
+let mvp_stat ?(color="") label value =
+  Printf.sprintf {html|<div class="flex flex-col items-end leading-tight"><span class="%s">%s</span><span class="text-slate-500 dark:text-slate-400 text-[10px]">%s</span></div>|html}
+    color value label
 
-let mvp_candidate_row (candidate: mvp_candidate) =
-  let player_href = player_href candidate.mvp_player_id in
+(** Convert MVP candidate to row data for render_fixed_table *)
+let mvp_candidate_data (candidate: mvp_candidate) =
+  let phref = player_href candidate.mvp_player_id in
   let team_code = match candidate.mvp_team_code with Some c -> c | None -> "" in
-  let team_href = team_href team_code in
+  let thref = team_href team_code in
   let tooltip = score_breakdown_tooltip ~base_score:candidate.mvp_base_score ~win_bonus:candidate.mvp_win_bonus in
-  Printf.sprintf
-    {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-      <td class="px-3 py-2 whitespace-nowrap">
-        <div class="flex items-center gap-3">
-          %s
-          <div>
-            <a href="%s" class="font-semibold text-slate-900 dark:text-slate-200 hover:text-orange-600 dark:hover:text-orange-400 transition-colors block truncate max-w-[140px]">%s</a>
-            <a href="%s" class="block text-xs text-slate-500 dark:text-slate-400 hover:text-orange-500 truncate">%s</a>
-          </div>
-        </div>
-      </td>
-      <td class="px-3 py-2 text-center whitespace-nowrap"><div class="flex flex-col items-center leading-tight"><span class="text-slate-600 dark:text-slate-400 font-mono">%d</span><span class="text-slate-500 dark:text-slate-400 text-[10px] font-mono">GP</span></div></td>
-      %s%s%s%s%s%s
-      <td class="px-3 py-2 text-center hidden sm:table-cell whitespace-nowrap"><div class="flex flex-col items-center leading-tight"><span class="text-xs text-slate-500 dark:text-slate-400 font-mono">%s</span><span class="text-slate-500 dark:text-slate-400 text-[10px] font-mono">전적</span></div></td>
-      <td class="px-3 py-2 text-right whitespace-nowrap" title="%s"><div class="flex flex-col items-end leading-tight"><span class="font-mono font-bold text-sky-600 dark:text-sky-400">%s</span><span class="text-slate-500 dark:text-slate-400 text-[10px] font-mono">점수</span></div></td>
-    </tr>|html}
+  let player_cell = Printf.sprintf
+    {html|<div class="flex items-center gap-3 font-sans">%s<div><a href="%s" class="font-semibold text-slate-900 dark:text-slate-200 hover:text-orange-600 dark:hover:text-orange-400 transition-colors block truncate max-w-[140px]">%s</a><a href="%s" class="block text-xs text-slate-500 dark:text-slate-400 hover:text-orange-500 truncate">%s</a></div></div>|html}
     (player_img_tag ~class_name:"w-10 h-10 rounded-full" candidate.mvp_player_id candidate.mvp_player_name)
-    (escape_html player_href)
+    (escape_html phref)
     (escape_html candidate.mvp_player_name)
-    (escape_html team_href)
+    (escape_html thref)
     (escape_html candidate.mvp_team_name)
+  in
+  let gp_cell = Printf.sprintf
+    {html|<div class="flex flex-col items-center leading-tight"><span>%d</span><span class="text-slate-500 dark:text-slate-400 text-[10px]">GP</span></div>|html}
     candidate.mvp_games_played
-    (mvp_cell "PPG" (format_float candidate.mvp_ppg))
-    (mvp_cell ~hide:"hidden md:table-cell" "RPG" (format_float candidate.mvp_rpg))
-    (mvp_cell ~hide:"hidden md:table-cell" "APG" (format_float candidate.mvp_apg))
-    (mvp_cell ~hide:"hidden lg:table-cell" "SPG" (format_float candidate.mvp_spg))
-    (mvp_cell ~hide:"hidden lg:table-cell" "BPG" (format_float candidate.mvp_bpg))
-    (mvp_cell ~hide:"hidden sm:table-cell" ~color:"text-orange-600 dark:text-orange-400 font-bold" "EFF" (format_float candidate.mvp_efficiency))
+  in
+  let record_cell = Printf.sprintf
+    {html|<div class="flex flex-col items-center leading-tight"><span class="text-xs text-slate-500 dark:text-slate-400">%s</span><span class="text-slate-500 dark:text-slate-400 text-[10px]">전적</span></div>|html}
     (format_record candidate.mvp_team_wins candidate.mvp_team_losses)
-    (escape_html tooltip)
-    (format_float candidate.mvp_final_score)
+  in
+  let score_cell = Printf.sprintf
+    {html|<div class="flex flex-col items-end leading-tight" title="%s"><span class="font-bold text-sky-600 dark:text-sky-400">%s</span><span class="text-slate-500 dark:text-slate-400 text-[10px]">점수</span></div>|html}
+    (escape_html tooltip) (format_float candidate.mvp_final_score)
+  in
+  [ player_cell; gp_cell;
+    mvp_stat "PPG" (format_float candidate.mvp_ppg);
+    mvp_stat "RPG" (format_float candidate.mvp_rpg);
+    mvp_stat "APG" (format_float candidate.mvp_apg);
+    mvp_stat "SPG" (format_float candidate.mvp_spg);
+    mvp_stat "BPG" (format_float candidate.mvp_bpg);
+    mvp_stat ~color:"text-orange-600 dark:text-orange-400 font-bold" "EFF" (format_float candidate.mvp_efficiency);
+    record_cell; score_cell ]
 
 (** MVP candidates table *)
 let mvp_race_table (candidates: mvp_candidate list) =
-  (* Handle empty state - important for early season or filtered results *)
   if candidates = [] then
     empty_state ~icon:BasketballIcon
       "MVP 데이터가 없습니다"
       "아직 시즌 데이터가 충분하지 않거나, 선택한 시즌에 경기가 없습니다. 다른 시즌을 선택해 보세요."
   else
-    let rows = candidates |> List.map mvp_candidate_row |> String.concat "\n" in
-    Printf.sprintf
-      {html|<div class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 scroll-shadow overflow-y-hidden shadow-xl">
-        <table class="w-full min-w-[820px] text-sm font-mono table-fixed tabular-nums" aria-label="MVP 레이스 순위">
-          <colgroup>
-            <col style="width: 200px;"> <!-- Player -->
-            <col style="width: 60px;">  <!-- GP -->
-            <col style="width: 60px;">  <!-- PPG -->
-            <col class="hidden md:table-column" style="width: 60px;"> <!-- RPG -->
-            <col class="hidden md:table-column" style="width: 60px;"> <!-- APG -->
-            <col class="hidden lg:table-column" style="width: 60px;"> <!-- SPG -->
-            <col class="hidden lg:table-column" style="width: 60px;"> <!-- BPG -->
-            <col class="hidden sm:table-column" style="width: 80px;"> <!-- EFF -->
-            <col class="hidden sm:table-column" style="width: 80px;"> <!-- REC -->
-            <col style="width: 80px;">  <!-- Score -->
-          </colgroup>
-          <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 text-[10px] sm:text-xs uppercase tracking-wider whitespace-nowrap">
-            <tr>
-              <th scope="col" class="px-3 py-2 text-left font-sans">선수</th>
-              <th scope="col" class="px-3 py-2 text-center" title="출전 경기">GP</th>
-              <th scope="col" class="px-3 py-2 text-right" title="경기당 득점">PPG</th>
-              <th scope="col" class="px-3 py-2 text-right hidden md:table-cell" title="경기당 리바운드">RPG</th>
-              <th scope="col" class="px-3 py-2 text-right hidden md:table-cell" title="경기당 어시스트">APG</th>
-              <th scope="col" class="px-3 py-2 text-right hidden lg:table-cell" title="경기당 스틸">SPG</th>
-              <th scope="col" class="px-3 py-2 text-right hidden lg:table-cell" title="경기당 블록">BPG</th>
-              <th scope="col" class="px-3 py-2 text-right hidden sm:table-cell text-orange-600 dark:text-orange-400" title="효율">EFF</th>
-              <th scope="col" class="px-3 py-2 text-center hidden sm:table-cell" title="팀 전적">팀 전적</th>
-              <th scope="col" class="px-3 py-2 text-right text-sky-600 dark:text-sky-400" title="MVP 점수 = 기본 + 승리 보너스">점수</th>
-            </tr>
-          </thead>
-          <tbody>%s</tbody>
-        </table>
-      </div>|html}
-      rows
+    let mvp_cols = [
+      col ~sticky:true ~w:(px 200) "선수";
+      col ~align:`Center ~w:(px 60) ~title:"출전 경기" "GP";
+      col ~align:`Right ~w:(px 60) ~title:"경기당 득점" "PPG";
+      col ~align:`Right ~resp:`Hidden_md ~w:(px 60) ~title:"경기당 리바운드" "RPG";
+      col ~align:`Right ~resp:`Hidden_md ~w:(px 60) ~title:"경기당 어시스트" "APG";
+      col ~align:`Right ~resp:`Hidden_lg ~w:(px 60) ~title:"경기당 스틸" "SPG";
+      col ~align:`Right ~resp:`Hidden_lg ~w:(px 60) ~title:"경기당 블록" "BPG";
+      col ~align:`Right ~resp:`Hidden_sm ~highlight:true ~w:(px 80) ~title:"효율" "EFF";
+      col ~align:`Center ~resp:`Hidden_sm ~w:(px 80) ~title:"팀 전적" "팀 전적";
+      col ~align:`Right ~w:(px 80) ~title:"MVP 점수 = 기본 + 승리 보너스" "점수";
+    ] in
+    let mvp_data = candidates |> List.map mvp_candidate_data in
+    render_fixed_table ~striped:true ~aria_label:"MVP 레이스 순위"
+      ~id:"mvp-race" ~min_width:"min-w-[820px]" ~cols:mvp_cols mvp_data
 
 (** MVP Race page *)
 let mvp_race_page ?(lang=I18n.Ko) ~season ~seasons (candidates: mvp_candidate list) =

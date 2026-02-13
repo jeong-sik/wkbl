@@ -2462,10 +2462,16 @@ Sitemap: https://wkbl.win/sitemap.xml
     Kirin.get "/season/:code" (fun request ->
       let lang = request_lang request in
       let season = Kirin.param "code" request |> Uri.pct_decode in
-      match Db.get_seasons (), Db.get_standings ~season (), Db.get_leaders_base ~season (), Db.get_historical_seasons () with
-      | Ok seasons, Ok standings, Ok leaders, Ok histories ->
-          Kirin.html (Views_season.season_summary_page ~lang ~season ~seasons ~standings ~leaders ~histories ())
-      | Error e, _, _, _ | _, Error e, _, _ | _, _, Error e, _ | _, _, _, Error e ->
+      match Db.get_seasons (), Db.get_standings ~season (),
+            Db.get_leaders_base ~season (), Db.get_historical_seasons (),
+            Db.get_team_stats ~season ~scope:PerGame (),
+            Db.get_team_stats ~season ~scope:Totals () with
+      | Ok seasons, Ok standings, Ok leaders, Ok histories, Ok tpg, Ok ttot ->
+          Kirin.html (Views_season.season_summary_page ~lang ~season ~seasons
+            ~standings ~leaders ~histories ~team_per_game:tpg ~team_totals:ttot ())
+      | Error e, _, _, _, _, _ | _, Error e, _, _, _, _
+      | _, _, Error e, _, _, _ | _, _, _, Error e, _, _
+      | _, _, _, _, Error e, _ | _, _, _, _, _, Error e ->
           Kirin.html (Views.error_page ~lang (Db.show_db_error e))
     );
     Kirin.get "/legends" (fun request ->

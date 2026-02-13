@@ -422,6 +422,12 @@ let test_fantasy_aggregate () =
     avg_blocks = 1.0;
     avg_turnovers = 3.0;
     efficiency = 25.0;
+    total_fg_made = 80;
+    total_fg_att = 160;
+    total_fg3_made = 20;
+    total_fg3_att = 50;
+    total_ft_made = 20;
+    total_ft_att = 25;
   } in
   let score = fantasy_score_of_aggregate ~rules player in
   (* Total: 200*1 + 100*1.2 + 50*1.5 + 20*2 + 10*2 + 30*(-1) = 200+120+75+40+20-30 = 425 *)
@@ -2613,6 +2619,12 @@ let test_ops_copy_hidden_by_default () =
     ; avg_blocks = 0.0
     ; avg_turnovers = 0.0
     ; efficiency = 0.0
+    ; total_fg_made = 0
+    ; total_fg_att = 0
+    ; total_fg3_made = 0
+    ; total_fg3_att = 0
+    ; total_ft_made = 0
+    ; total_ft_att = 0
     }
   in
   let profile : Wkbl.Domain.player_profile =
@@ -2687,6 +2699,12 @@ let test_totals_tooltip_is_season () =
     ; avg_blocks = 0.9
     ; avg_turnovers = 1.0
     ; efficiency = 15.0
+    ; total_fg_made = 0
+    ; total_fg_att = 0
+    ; total_fg3_made = 0
+    ; total_fg3_att = 0
+    ; total_ft_made = 0
+    ; total_ft_att = 0
     }
   in
   let html = Wkbl.Views.players_table [ p ] in
