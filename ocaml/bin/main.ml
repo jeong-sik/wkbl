@@ -284,6 +284,39 @@ let utf8_middleware : Kirin.middleware = fun next_handler request ->
       Kirin.with_header "Content-Type" "text/html; charset=utf-8" response
   | _ -> response)
 
+(* Cache-Control middleware for HTML page responses.
+   Adds cache headers based on route pattern when none are already set.
+   - /api/* routes: 60s (frequently polled)
+   - /season/* with past season codes: 24h (historical data)
+   - Home and current-season pages: 5min (live scores, current stats)
+*)
+let cache_control_middleware : Kirin.middleware = fun next_handler request ->
+  let response = next_handler request in
+  (* Skip if Cache-Control already set by route handler *)
+  match Kirin.response_header "Cache-Control" response with
+  | Some _ -> response
+  | None ->
+    let path = Kirin.Request.uri request |> Uri.path in
+    let max_age =
+      if String.starts_with ~prefix:"/api/" path then
+        Some 60
+      else if String.starts_with ~prefix:"/season/" path then
+        (* Past seasons are immutable; current season changes frequently.
+           Heuristic: season codes < "046" are past seasons (2025-2026 = 046). *)
+        let code = String.sub path 8 (min 3 (String.length path - 8)) in
+        let current = Scraper.current_season_code_auto () |> Scraper.main_to_datalab in
+        if code < current then Some 86400 else Some 300
+      else
+        match Kirin.response_header "Content-Type" response with
+        | Some ct when String.starts_with ~prefix:"text/html" (String.lowercase_ascii ct) ->
+          Some 120
+        | _ -> None
+    in
+    (match max_age with
+    | Some s ->
+      Kirin.with_header "Cache-Control" (Printf.sprintf "public, max-age=%d" s) response
+    | None -> response)
+
 let woman_win_redirect_middleware : Kirin.middleware = fun next_handler request ->
   match Kirin.header "Host" request with
   | Some host when Canonical_host.should_redirect_to_wkbl host ->
@@ -570,6 +603,7 @@ let () =
   Kirin.run ~config:{ Kirin.default_config with port } ~sw ~env
   @@ Kirin.logger
   @@ woman_win_redirect_middleware
+  @@ cache_control_middleware
   @@ utf8_middleware
   @@ Kirin.static "/static" ~dir:static_path
   @@ Kirin.router [
