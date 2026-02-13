@@ -283,7 +283,7 @@ let team_profile_page ?(lang=I18n.Ko) ?(player_info_map=None) (detail: team_full
     ~foot_data:totals_foot
     ~id:"roster-totals" ~min_width:"min-w-[900px]" ~cols:totals_cols roster_totals_data
  in
- let roster_shooting_table =
+ let _roster_shooting_table =
   let pct made att =
    if att > 0 then Printf.sprintf "%.1f" (float_of_int made /. float_of_int att *. 100.0)
    else "-"
@@ -344,7 +344,7 @@ let team_profile_page ?(lang=I18n.Ko) ?(player_info_map=None) (detail: team_full
     ~foot_data:shooting_foot
     ~id:"roster-shooting" ~min_width:"min-w-[850px]" ~cols:shooting_cols shooting_data
  in
- let roster_advanced_table =
+ let _roster_advanced_table =
   let team_totals = detail.tfd_team_totals in
   let colored_stat color v =
     Printf.sprintf {html|<span class="%s font-bold">%.1f</span>|html} color v

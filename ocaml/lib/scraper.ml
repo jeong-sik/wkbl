@@ -484,6 +484,7 @@ let insert_drafts_to_db entries =
 
 (** Award category type *)
 type award_category =
+  (* Statistical awards *)
   | Scoring          (* 득점상 *)
   | ThreePointScoring (* 3점 득점상 *)
   | ThreePointPct    (* 3점 야투상 *)
@@ -493,9 +494,24 @@ type award_category =
   | Assists          (* 어시스트상 *)
   | Steals           (* 스틸상 *)
   | Blocks           (* 블록상 *)
-  | MVP              (* MVP/윤덕주상 *)
+  | YoonDeokjoo      (* 윤덕주상 *)
   | Best5            (* BEST5 *)
-  | Rookie           (* 신인상 *)
+  (* Voting awards - Table 1 *)
+  | MVP              (* 정규리그 MVP *)
+  | ChampionMVP      (* 챔피언전 MVP *)
+  | AsianQuarter     (* 아시아쿼터 선수상 *)
+  | ForeignPlayer    (* 외국인 선수상 *)
+  | Rookie           (* 신인 선수상 *)
+  | DefensivePlayer  (* 우수수비 선수상 *)
+  | SixthWoman       (* 식스우먼상 *)
+  (* Voting awards - Table 2 *)
+  | Sportsmanship    (* 모범 선수상 *)
+  | CoachOfYear      (* 지도상 *)
+  | MIP              (* 포카리스웨트 MIP *)
+  | BestReferee      (* 최우수 심판상 *)
+  | MediaStar        (* 미디어 스타상 *)
+  | Photogenic       (* 포토제닉상 *)
+  | ExcellentPlayer  (* 우수선수상 *)
 
 (** Statistical award entry *)
 type stat_award = {
@@ -521,9 +537,49 @@ let award_category_to_string = function
   | Assists -> "assists"
   | Steals -> "steals"
   | Blocks -> "blocks"
-  | MVP -> "mvp"
+  | YoonDeokjoo -> "yoon_deokjoo"
   | Best5 -> "best5"
+  | MVP -> "mvp"
+  | ChampionMVP -> "champion_mvp"
+  | AsianQuarter -> "asian_quarter"
+  | ForeignPlayer -> "foreign_player"
   | Rookie -> "rookie"
+  | DefensivePlayer -> "defensive_player"
+  | SixthWoman -> "sixth_woman"
+  | Sportsmanship -> "sportsmanship"
+  | CoachOfYear -> "coach_of_year"
+  | MIP -> "mip"
+  | BestReferee -> "best_referee"
+  | MediaStar -> "media_star"
+  | Photogenic -> "photogenic"
+  | ExcellentPlayer -> "excellent_player"
+
+let award_category_to_korean = function
+  | Scoring -> "득점상"
+  | ThreePointScoring -> "3점 득점상"
+  | ThreePointPct -> "3점 야투상"
+  | TwoPointPct -> "2점 야투상"
+  | FreeThrowPct -> "자유투상"
+  | Rebounding -> "리바운드상"
+  | Assists -> "어시스트상"
+  | Steals -> "스틸상"
+  | Blocks -> "블록상"
+  | YoonDeokjoo -> "윤덕주상"
+  | Best5 -> "BEST5"
+  | MVP -> "정규리그 MVP"
+  | ChampionMVP -> "챔피언전 MVP"
+  | AsianQuarter -> "아시아쿼터 선수상"
+  | ForeignPlayer -> "외국인 선수상"
+  | Rookie -> "신인 선수상"
+  | DefensivePlayer -> "우수수비 선수상"
+  | SixthWoman -> "식스우먼상"
+  | Sportsmanship -> "모범 선수상"
+  | CoachOfYear -> "지도상"
+  | MIP -> "MIP"
+  | BestReferee -> "최우수 심판상"
+  | MediaStar -> "미디어 스타상"
+  | Photogenic -> "포토제닉상"
+  | ExcellentPlayer -> "우수선수상"
 
 (** Get all text content from a node (handles <br> tags) *)
 let get_all_text node =
@@ -557,7 +613,7 @@ let parse_stat_awards_html html =
   let rows = soup |> Soup.select ".info_table01 tbody tr" |> Soup.to_list in
   let categories = [|
     Scoring; ThreePointScoring; ThreePointPct; TwoPointPct;
-    FreeThrowPct; Rebounding; Assists; Steals; Blocks; MVP
+    FreeThrowPct; Rebounding; Assists; Steals; Blocks; YoonDeokjoo
   |] in
   rows |> List.concat_map (fun row ->
     let cells = row |> Soup.select "td" |> Soup.to_list in
@@ -639,6 +695,109 @@ let print_best5_csv entries =
     e.players |> List.iteri (fun i player ->
       Printf.printf "%s,%d,%s\n" e.b5_season_name (i + 1) player
     )
+  )
+
+(* ======== VOTING AWARDS SCRAPER ======== *)
+
+(** Voting award entry - parsed from awards_vote.asp *)
+type vote_award = {
+  va_season_name: string;
+  va_category: award_category;
+  va_player_name: string;
+  va_votes: string option;  (* e.g., "116표/116표" *)
+}
+
+(** Parse vote text like "김단비 (116표/116표)" into name and vote string *)
+let parse_vote_cell text =
+  let text = String.trim text in
+  if text = "-" || text = "" then ("", None)
+  else
+    match String.index_opt text '(' with
+    | Some idx when idx > 0 ->
+        let name = String.trim (String.sub text 0 idx) in
+        let rest = String.sub text (idx + 1) (String.length text - idx - 1) in
+        let votes =
+          match String.index_opt rest ')' with
+          | Some end_idx -> Some (String.sub rest 0 end_idx)
+          | None -> Some rest
+        in
+        (name, votes)
+    | _ -> (text, None)
+
+(** Voting award categories for Table 1 (7 categories) *)
+let vote_categories_table1 = [|
+  MVP; ChampionMVP; AsianQuarter; ForeignPlayer;
+  Rookie; DefensivePlayer; SixthWoman
+|]
+
+(** Voting award categories for Table 2 (7 categories) *)
+let vote_categories_table2 = [|
+  Sportsmanship; CoachOfYear; MIP; BestReferee;
+  MediaStar; Photogenic; ExcellentPlayer
+|]
+
+(** Parse a voting awards table given the column→category mapping *)
+let parse_vote_table_rows categories rows =
+  rows |> List.concat_map (fun row ->
+    let cells = row |> Soup.select "td" |> Soup.to_list in
+    match cells with
+    | season_cell :: award_cells when List.length award_cells >= Array.length categories ->
+        let season_name = get_all_text season_cell in
+        if String.length season_name > 0 then
+          award_cells |> List.mapi (fun i cell ->
+            if i < Array.length categories then
+              let text = get_all_text cell in
+              let (player_name, va_votes) = parse_vote_cell text in
+              if String.length player_name > 0 then
+                Some {
+                  va_season_name = season_name;
+                  va_category = categories.(i);
+                  va_player_name = player_name;
+                  va_votes;
+                }
+              else None
+            else None
+          ) |> List.filter_map Fun.id
+        else []
+    | _ -> []
+  )
+
+(** Parse the voting awards page HTML (two tables) *)
+let parse_vote_awards_html html =
+  let soup = Soup.parse html in
+  let tables = soup |> Soup.select ".info_table01" |> Soup.to_list in
+  match tables with
+  | [] -> []
+  | [t1] ->
+      (* Only first table found *)
+      let rows = t1 |> Soup.select "tbody tr" |> Soup.to_list in
+      parse_vote_table_rows vote_categories_table1 rows
+  | t1 :: t2 :: _ ->
+      let rows1 = t1 |> Soup.select "tbody tr" |> Soup.to_list in
+      let rows2 = t2 |> Soup.select "tbody tr" |> Soup.to_list in
+      let entries1 = parse_vote_table_rows vote_categories_table1 rows1 in
+      let entries2 = parse_vote_table_rows vote_categories_table2 rows2 in
+      entries1 @ entries2
+
+(** Fetch voting awards *)
+let fetch_vote_awards ~sw ~env =
+  let url = Printf.sprintf "%s/history/awards_vote.asp" base_url in
+  Printf.printf "Fetching voting awards...\n%!";
+  let html = fetch_url ~sw ~env url in
+  if String.length html = 0 then
+    []
+  else
+    parse_vote_awards_html html
+
+(** Print voting awards as CSV *)
+let print_vote_awards_csv entries =
+  Printf.printf "season_name,category,player_name,votes\n";
+  entries |> List.iter (fun e ->
+    Printf.printf "%s,%s,%s,%s\n"
+      e.va_season_name
+      (award_category_to_string e.va_category)
+      e.va_player_name
+      (Option.value ~default:"" e.va_votes)
   )
 
 (* ======== FA RESULTS SCRAPER ======== *)
@@ -2880,3 +3039,73 @@ let fetch_live_games ~sw ~env () =
   with e ->
     Printf.eprintf "[Scraper] Live fetch failed: %s\n%!" (Printexc.to_string e);
     []
+
+(* ======== AWARDS → DB PIPELINE ======== *)
+
+(** Sync all awards from WKBL website to the local awards DB table.
+    Returns (stat_count, best5_count, vote_count) or raises on DB error. *)
+let sync_awards_to_db ~sw ~env () =
+  (* 1. Fetch all three award categories from WKBL website *)
+  let stat_awards = fetch_stat_awards ~sw ~env in
+  let best5_awards = fetch_best5_awards ~sw ~env in
+  let vote_awards = fetch_vote_awards ~sw ~env in
+
+  Printf.printf "[Awards] Fetched: %d stat, %d best5 seasons, %d vote entries\n%!"
+    (List.length stat_awards) (List.length best5_awards) (List.length vote_awards);
+
+  (* 2. Save statistical awards *)
+  let stat_count = ref 0 in
+  stat_awards |> List.iter (fun (e : stat_award) ->
+    match Db.save_award
+      ~season_name:e.season_name
+      ~category:(award_category_to_string e.category)
+      ~award_type:"statistical"
+      ~player_name:e.player_name
+      ?stat_value:e.stat_value
+      ()
+    with
+    | Ok () -> incr stat_count
+    | Error err ->
+        Printf.eprintf "[Awards] Failed to save stat award %s/%s: %s\n%!"
+          e.season_name e.player_name (Db.show_db_error err)
+  );
+
+  (* 3. Save BEST5 awards — one row per player *)
+  let best5_count = ref 0 in
+  best5_awards |> List.iter (fun (e : best5_award) ->
+    e.players |> List.iter (fun player_name ->
+      match Db.save_award
+        ~season_name:e.b5_season_name
+        ~category:"best5"
+        ~award_type:"best5"
+        ~player_name
+        ()
+      with
+      | Ok () -> incr best5_count
+      | Error err ->
+          Printf.eprintf "[Awards] Failed to save BEST5 %s/%s: %s\n%!"
+            e.b5_season_name player_name (Db.show_db_error err)
+    )
+  );
+
+  (* 4. Save voting awards *)
+  let vote_count = ref 0 in
+  vote_awards |> List.iter (fun (e : vote_award) ->
+    match Db.save_award
+      ~season_name:e.va_season_name
+      ~category:(award_category_to_string e.va_category)
+      ~award_type:"voting"
+      ~player_name:e.va_player_name
+      ?votes:e.va_votes
+      ()
+    with
+    | Ok () -> incr vote_count
+    | Error err ->
+        Printf.eprintf "[Awards] Failed to save vote %s/%s: %s\n%!"
+          e.va_season_name e.va_player_name (Db.show_db_error err)
+  );
+
+  let (sc, b5c, vc) = (!stat_count, !best5_count, !vote_count) in
+  Printf.printf "[Awards] Saved: %d stat + %d best5 + %d vote = %d total\n%!"
+    sc b5c vc (sc + b5c + vc);
+  (sc, b5c, vc)

@@ -1229,10 +1229,26 @@ Sitemap: https://wkbl.win/sitemap.xml
             | None -> Ok []
             | Some prev_season -> Db.get_stat_mip_eff_delta ~season ~prev_season ~include_mismatch ()
           in
+          (* Official awards from DB *)
+          let season_name =
+            if season = "ALL" then None
+            else
+              seasons
+              |> List.find_opt (fun (s: season_info) -> s.code = season)
+              |> Option.map (fun (s: season_info) -> s.name)
+          in
+          let official_awards =
+            match season_name with
+            | Some sn ->
+                (match Db.get_awards_by_season ~season_name:sn () with
+                 | Ok awards -> awards
+                 | Error _ -> [])
+            | None -> []
+          in
           match mvp_res, mip_res with
           | Ok mvp, Ok mip ->
               let player_info_map = get_player_info_map () in
-              Kirin.html (Views.awards_page ~lang ~player_info_map ~season ~seasons ~include_mismatch ~prev_season_name ~mvp ~mip ())
+              Kirin.html (Views.awards_page ~lang ~player_info_map ~season ~seasons ~include_mismatch ~prev_season_name ~official_awards ~mvp ~mip ())
           | Error e, _ | _, Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
     );
 
@@ -2448,6 +2464,20 @@ Sitemap: https://wkbl.win/sitemap.xml
       (* In production, this would trigger actual push notifications *)
       Printf.printf "[Push] Test notification requested\n%!";
       Kirin.json_string {|{"status":"ok","message":"test notification sent"}|}
+    );
+
+    (* Admin: Sync Awards from WKBL website to DB *)
+    Kirin.post "/api/admin/sync-awards" (fun request ->
+      if not (is_admin request) then
+        Kirin.json_string ~status:`Forbidden {|{"error":"unauthorized"}|}
+      else begin
+        Printf.printf "[Admin] Starting awards sync...\n%!";
+        let (sc, b5c, vc) = Scraper.sync_awards_to_db ~sw ~env () in
+        let total = sc + b5c + vc in
+        Kirin.json_string (Printf.sprintf
+          {|{"status":"ok","stat":%d,"best5":%d,"vote":%d,"total":%d}|}
+          sc b5c vc total)
+      end
     );
 
     (* History & Legends *)
