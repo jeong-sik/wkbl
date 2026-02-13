@@ -1367,7 +1367,9 @@ let player_game_logs_page ?(lang=I18n.Ko) (profile: player_profile) ~(season: st
                 {html|<span class="inline-flex items-center px-2 py-0.5 rounded border border-slate-300 dark:border-slate-700/60 text-[10px] font-mono text-slate-600 dark:text-slate-400">-</span>|html}
           in
           let quality_badge = score_quality_badge ~lang ~compact:true g.score_quality in
-          let opponent_label = if g.is_home then "vs " ^ g.opponent else "@ " ^ g.opponent in
+          let ha_prefix = if g.is_home then "vs " else "@ " in
+          let opponent_html = Printf.sprintf "%s<a href=\"%s\" class=\"hover:text-orange-600 dark:hover:text-orange-400 transition-colors\">%s</a>"
+            (escape_html ha_prefix) (escape_html (team_href g.opponent)) (escape_html g.opponent) in
           let fg_str = Printf.sprintf "%d-%d" g.fg_made g.fg_att in
           let fg3_str = Printf.sprintf "%d-%d" g.fg3_made g.fg3_att in
           let ft_str = Printf.sprintf "%d-%d" g.ft_made g.ft_att in
@@ -1375,7 +1377,7 @@ let player_game_logs_page ?(lang=I18n.Ko) (profile: player_profile) ~(season: st
             {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors"><td class="px-3 py-2 text-slate-600 dark:text-slate-400 text-sm font-mono whitespace-nowrap w-[90px] sm:w-[110px]"><a href="%s" class="hover:text-orange-600 dark:text-orange-400 transition-colors">%s</a></td><td class="px-3 py-2 text-slate-900 dark:text-slate-200"><div class="flex items-center justify-between gap-3"><span class="player-name truncate">%s</span><div class="flex items-center gap-2 shrink-0">%s%s</div></div></td><td class="px-3 py-2 text-right font-mono text-slate-600 dark:text-slate-400 hidden sm:table-cell">%.1f</td><td class="px-3 py-2 text-right text-slate-600 dark:text-slate-400 hidden md:table-cell">%s</td><td class="px-3 py-2 text-right text-slate-600 dark:text-slate-400 hidden md:table-cell">%s</td><td class="px-3 py-2 text-right text-slate-600 dark:text-slate-400 hidden md:table-cell">%s</td><td class="px-3 py-2 text-right font-bold %s w-[60px] sm:w-[72px]">%d</td><td class="px-3 py-2 text-right font-mono w-[60px] sm:w-[72px] %s">%s</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[60px] sm:w-[72px]">%d</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 hidden sm:table-cell">%d</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 hidden sm:table-cell">%d</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 hidden sm:table-cell">%d</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 hidden sm:table-cell">%d</td></tr>|html}
             (boxscore_href g.game_id)
             (escape_html g.game_date)
-            (escape_html opponent_label)
+            opponent_html
             margin_badge
             quality_badge
             g.min
@@ -1394,9 +1396,32 @@ let player_game_logs_page ?(lang=I18n.Ko) (profile: player_profile) ~(season: st
   let canonical = player_href p.id ^ "/games" in
   let seo_desc = Printf.sprintf "%s 경기별 기록 - %d경기 출전, WKBL 여자농구 선수 게임 로그"
     display_name (List.length games) in
+  (* JSON-LD: ItemList of SportsEvent (max 20 for SEO) *)
+  let player_team =
+    match List.rev profile.team_stints with
+    | latest :: _ -> String.trim latest.pts_team_name
+    | [] -> String.trim profile.averages.team_name
+  in
+  let json_ld_data =
+    let top_games = if List.length games > 20 then List.filteri (fun i _ -> i < 20) games else games in
+    let items = top_games |> List.mapi (fun i (g: player_game_stat) ->
+      let home_team, away_team =
+        if g.is_home then (player_team, g.opponent)
+        else (g.opponent, player_team)
+      in
+      Printf.sprintf {|{"@type":"ListItem","position":%d,"item":{"@type":"SportsEvent","startDate":"%s","name":"%s vs %s","homeTeam":{"@type":"SportsTeam","name":"%s"},"awayTeam":{"@type":"SportsTeam","name":"%s"},"sport":"Basketball","location":{"@type":"Place","name":"WKBL"}}}|}
+        (i + 1) (escape_html g.game_date)
+        (escape_html home_team) (escape_html away_team)
+        (escape_html home_team) (escape_html away_team))
+    |> String.concat ","
+    in
+    Printf.sprintf {|{"@context":"https://schema.org","@type":"ItemList","name":"%s 경기 로그","numberOfItems":%d,"itemListElement":[%s]}|}
+      (escape_html display_name) (List.length top_games) items
+  in
   layout ~lang ~title:(display_name ^ " | 경기 로그")
     ~canonical_path:canonical
     ~description:seo_desc
+    ~json_ld:json_ld_data
     ~content:(Printf.sprintf
       {html|<div class="space-y-8 animate-fade-in">%s<div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4"><div class="flex items-center gap-4"><div class="shrink-0">%s</div><div class="min-w-0"><div class="text-sm text-slate-600 dark:text-slate-400"><a href="%s" class="hover:text-slate-900 dark:hover:text-white dark:text-slate-200 transition">← 프로필</a></div><h2 class="text-3xl font-black text-slate-900 dark:text-slate-200 truncate">%s <span class="text-slate-600 dark:text-slate-400 text-lg font-mono">경기 로그</span></h2><div class="mt-1 text-slate-600 dark:text-slate-400 text-sm">총 %d경기</div></div></div><div class="flex flex-col items-start sm:items-end gap-3"><form action="%s/games" method="get" class="flex flex-wrap items-center justify-end gap-2"><select name="season" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none" onchange="this.form.submit()">%s</select><label class="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 whitespace-nowrap"><input type="checkbox" name="include_mismatch" value="1" %s class="h-4 w-4 rounded border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 accent-orange-500" onchange="this.form.submit()"><span>불일치 포함</span></label></form><a href="%s/splits?season=%s" class="text-xs bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-3 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all shadow-sm whitespace-nowrap border border-slate-200 dark:border-slate-700">스플릿 분석</a><a href="%s/shots?season=%s" class="text-xs bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-3 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all shadow-sm whitespace-nowrap border border-slate-200 dark:border-slate-700">샷 차트</a>%s</div></div><p class="text-[11px] text-slate-600 dark:text-slate-400">개인 <span class="font-mono text-slate-700 dark:text-slate-300">+/-</span>는 문자중계 기반입니다. 문자중계가 없으면 <span class="font-mono text-slate-700 dark:text-slate-300">M</span>으로 팀 득실마진(경기 최종 점수)을 대신 표시합니다. (데이터가 없거나 품질 문제면 <span class="font-mono text-slate-700 dark:text-slate-300">-</span>)</p><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-lg"><table class="min-w-[680px] sm:min-w-[920px] w-full text-sm font-mono table-fixed tabular-nums" aria-label="선수별 게임 로그">
           <colgroup>
@@ -1460,13 +1485,20 @@ let player_splits_page ?(lang=I18n.Ko) (profile: player_profile) ~(season: strin
     col ~align:`Right ~resp:`Hidden_lg ~title:"3점슛 성공률" "3P%";
     col ~align:`Right ~resp:`Hidden_lg ~title:"자유투 성공률" "FT%";
   ] in
-  let split_to_row (s: split_aggregate) =
+  let split_to_row ?(linkify_label=false) (s: split_aggregate) =
     let gp = float_of_int (max 1 s.sa_games) in
     let wl =
       if s.sa_wins + s.sa_losses = 0 then "-"
       else Printf.sprintf "%d-%d" s.sa_wins s.sa_losses
     in
-    [ escape_html s.sa_label;
+    let label_html =
+      if linkify_label then
+        Printf.sprintf {|<a href="%s" class="hover:text-orange-600 dark:hover:text-orange-400 transition-colors">%s</a>|}
+          (escape_html (team_href s.sa_label)) (escape_html s.sa_label)
+      else
+        escape_html s.sa_label
+    in
+    [ label_html;
       string_of_int s.sa_games; wl;
       f (s.sa_min /. gp);
       f (float_of_int s.sa_pts /. gp);
@@ -1479,8 +1511,8 @@ let player_splits_page ?(lang=I18n.Ko) (profile: player_profile) ~(season: strin
       pct s.sa_fg3_made s.sa_fg3_att;
       pct s.sa_ft_made s.sa_ft_att ]
   in
-  let split_table ~title ~icon splits =
-    let rows = List.map split_to_row splits in
+  let split_table ?(linkify_label=false) ~title ~icon splits =
+    let rows = List.map (split_to_row ~linkify_label) splits in
     Printf.sprintf
       {html|<div>
         <h3 class="flex items-center gap-2 text-base font-bold text-slate-900 dark:text-slate-200 mb-2">
@@ -1498,7 +1530,7 @@ let player_splits_page ?(lang=I18n.Ko) (profile: player_profile) ~(season: strin
     split_table ~title:"홈/원정" ~icon:"🏠" home_away
   in
   let opponent_html =
-    split_table ~title:"상대팀별" ~icon:"⚔️" per_opponent
+    split_table ~linkify_label:true ~title:"상대팀별" ~icon:"⚔️" per_opponent
   in
   let month_html =
     split_table ~title:"월별" ~icon:"📅" per_month
