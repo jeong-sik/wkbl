@@ -93,15 +93,23 @@ type col_spec = {
   sort : string option;
   title : string option;
   highlight : bool;
+  sticky : bool;  (** Sticky left column — stays fixed on horizontal scroll *)
 }
 
-let col ?(w=None) ?(align=`Left) ?(resp=`Always) ?sort ?title ?(highlight=false) header =
-  { header; width = w; align; resp; sort; title; highlight }
+let col ?(w=None) ?(align=`Left) ?(resp=`Always) ?sort ?title ?(highlight=false) ?(sticky=false) header =
+  { header; width = w; align; resp; sort; title; highlight; sticky }
 
 let px w = Some w
 
-(** Render a fixed-layout table (Perfectly Aligned via th-style & Data-Oriented) *)
-let render_fixed_table ?(table_attrs="") ~id ~min_width ~(cols : col_spec list) (rows_data : string list list) =
+(** Render a fixed-layout table (Perfectly Aligned via th-style & Data-Oriented)
+
+    Optional parameters:
+    - [table_attrs]: extra HTML attributes on the <table> element.
+    - [aria_label]: override the default "Data Table" aria-label.
+    - [striped]: alternate row backgrounds (default: false).
+    - [foot_data]: rows for <tfoot> (same column layout as body rows).
+*)
+let render_fixed_table ?(table_attrs="") ?(aria_label="Data Table") ?(striped=false) ?(foot_data=[]) ~id ~min_width ~(cols : col_spec list) (rows_data : string list list) =
   let resp_class = function
     | `Always -> ""
     | `Hidden_sm -> "hidden sm:table-cell"
@@ -127,7 +135,8 @@ let render_fixed_table ?(table_attrs="") ~id ~min_width ~(cols : col_spec list) 
         let align_cls = align_class c.align in
         let resp_cls = resp_class c.resp in
         let highlight_cls = if c.highlight then "text-orange-600 dark:text-orange-400" else "" in
-        let full_cls = String.concat " " [base_cls; align_cls; resp_cls; highlight_cls] in
+        let sticky_cls = if c.sticky then "sticky left-0 z-20 bg-slate-100 dark:bg-slate-800/80" else "" in
+        let full_cls = String.concat " " [base_cls; align_cls; resp_cls; highlight_cls; sticky_cls] in
         let sort_attr =
           match c.sort with
           | Some k -> Printf.sprintf " data-sortable data-sort-key=\"%s\"" k
@@ -143,33 +152,59 @@ let render_fixed_table ?(table_attrs="") ~id ~min_width ~(cols : col_spec list) 
     |> String.concat "\n"
     |> fun s -> Printf.sprintf {html|<thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider whitespace-nowrap"><tr>%s</tr></thead>|html} s
   in
+  let render_row ~is_foot i row =
+    if List.length row <> List.length cols then
+      "<!-- Row column count mismatch -->"
+    else
+      let cells =
+        List.map2 (fun c data ->
+          let width_style =
+            match c.width with
+            | Some w -> Printf.sprintf "width: %dpx;" w
+            | None -> "width: auto;"
+          in
+          let base_cls = "px-3 py-2 whitespace-nowrap overflow-hidden truncate" in
+          let align_cls = align_class c.align in
+          let resp_cls = resp_class c.resp in
+          let color_cls =
+            if is_foot then "text-slate-900 dark:text-slate-100 font-bold"
+            else if c.highlight then "text-orange-600 dark:text-orange-400 font-bold"
+            else "text-slate-700 dark:text-slate-300"
+          in
+          let sticky_cls =
+            if c.sticky then
+              "sticky left-0 z-10 bg-white dark:bg-slate-900 group-hover:bg-slate-100 dark:group-hover:bg-slate-800/50"
+            else ""
+          in
+          let full_cls = String.concat " " [base_cls; align_cls; resp_cls; color_cls; sticky_cls] in
+          Printf.sprintf {html|<td class="%s" style="%s">%s</td>|html} full_cls width_style data
+        ) cols row
+        |> String.concat ""
+      in
+      let stripe_cls =
+        if is_foot then "bg-slate-50 dark:bg-slate-800/40 border-t-2 border-slate-300 dark:border-slate-700"
+        else if striped && i mod 2 = 1 then "bg-slate-50/50 dark:bg-slate-800/20"
+        else ""
+      in
+      Printf.sprintf {html|<tr class="%s border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors group">%s</tr>|html}
+        stripe_cls cells
+  in
   (* 2. Render <tbody> - Apply SAME width style to td to enforce alignment *)
   let tbody =
     rows_data
-    |> List.map (fun row ->
-        if List.length row <> List.length cols then
-          Printf.sprintf "<!-- Row column count mismatch -->"
-        else
-          let cells =
-            List.map2 (fun c data ->
-              let width_style =
-                match c.width with
-                | Some w -> Printf.sprintf "width: %dpx;" w
-                | None -> "width: auto;"
-              in
-              let base_cls = "px-3 py-2 whitespace-nowrap overflow-hidden truncate" in
-              let align_cls = align_class c.align in
-              let resp_cls = resp_class c.resp in
-              let color_cls = if c.highlight then "text-orange-600 dark:text-orange-400 font-bold" else "text-slate-700 dark:text-slate-300" in
-              let full_cls = String.concat " " [base_cls; align_cls; resp_cls; color_cls] in
-              Printf.sprintf {html|<td class="%s" style="%s">%s</td>|html} full_cls width_style data
-            ) cols row
-            |> String.concat ""
-          in
-          Printf.sprintf {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors group">%s</tr>|html} cells
-      )
+    |> List.mapi (fun i row -> render_row ~is_foot:false i row)
     |> String.concat "\n"
     |> fun s -> Printf.sprintf {html|<tbody>%s</tbody>|html} s
+  in
+  (* 3. Render optional <tfoot> *)
+  let tfoot =
+    match foot_data with
+    | [] -> ""
+    | rows ->
+      rows
+      |> List.mapi (fun i row -> render_row ~is_foot:true i row)
+      |> String.concat "\n"
+      |> fun s -> Printf.sprintf {html|<tfoot>%s</tfoot>|html} s
   in
   let extra_table_attrs =
     let t = String.trim table_attrs in
@@ -178,12 +213,13 @@ let render_fixed_table ?(table_attrs="") ~id ~min_width ~(cols : col_spec list) 
   (* Assemble *)
   Printf.sprintf
     {html|<div class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto overflow-y-hidden shadow-2xl">
-  <table id="%s"%s class="w-full %s text-xs sm:text-sm font-mono tabular-nums table-fixed" style="border-collapse: separate; border-spacing: 0;" aria-label="Data Table">
+  <table id="%s"%s class="w-full %s text-xs sm:text-sm font-mono tabular-nums table-fixed" style="border-collapse: separate; border-spacing: 0;" aria-label="%s">
+    %s
     %s
     %s
   </table>
 </div>|html}
-    id extra_table_attrs min_width thead tbody
+    id extra_table_attrs min_width (escape_html aria_label) thead tbody tfoot
 
 let normalize_name s = Domain.normalize_label s
 let format_float ?(digits=1) value = Printf.sprintf "%.*f" digits value
@@ -250,7 +286,17 @@ let breadcrumb (crumbs: (string * string) list) =
     else
       Printf.sprintf {html|%s<a href="%s" class="text-slate-500 dark:text-slate-500 hover:text-orange-600 dark:hover:text-orange-400 transition-colors">%s</a>|html} sep (escape_html href) (escape_html label)
   ) |> String.concat "" in
-  Printf.sprintf {html|<nav class="text-xs font-sans mb-4" aria-label="breadcrumb">%s</nav>|html} items
+  (* Schema.org BreadcrumbList JSON-LD *)
+  let ld_items = crumbs |> List.mapi (fun i (label, href) ->
+    let url = if href = "" then "https://wkbl.win" else "https://wkbl.win" ^ href in
+    Printf.sprintf {|{"@type":"ListItem","position":%d,"name":"%s","item":"%s"}|}
+      (i + 1) (escape_html label) (escape_html url)
+  ) |> String.concat "," in
+  let ld_script = Printf.sprintf
+    {|<script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[%s]}</script>|}
+    ld_items
+  in
+  Printf.sprintf {html|<nav class="text-xs font-sans mb-4" aria-label="breadcrumb">%s</nav>%s|html} items ld_script
 
 let team_badge ?(max_width="max-w-[130px]") team_name =
   let _ = max_width in
@@ -272,6 +318,19 @@ let player_id_badge player_id =
 
 let format_int_commas n = string_of_int n
 let format_int_compact n = if abs n < 1000 then string_of_int n else Printf.sprintf "%.1fK" (float_of_int n /. 1000.0)
+
+(** Player name cell content for render_fixed_table.
+    Returns inner HTML (no <td> wrapper) with image, name link, and optional ID badge. *)
+let player_name_cell ?(show_player_id=false) player_id name =
+  let id_badge = if show_player_id then player_id_badge player_id else "" in
+  let display_name = normalize_name name in
+  Printf.sprintf
+    {html|<div class="flex items-center gap-3 min-w-0 font-sans">%s<div class="flex flex-col min-w-0"><div class="flex items-center gap-2 min-w-0"><a href="%s" class="player-name hover:text-orange-600 dark:hover:text-orange-400 text-slate-900 dark:text-white font-medium transition-colors truncate break-keep min-w-0">%s</a><span class="%s">%s</span></div></div></div>|html}
+    (player_img_tag ~class_name:"w-8 h-8 shrink-0" player_id name)
+    (player_href player_id)
+    (escape_html display_name)
+    (if show_player_id then "inline-flex" else "hidden")
+    id_badge
 
 let points_total_cell ?(extra_classes="") ?(width_style="") avg total =
   let classes = String.concat " " ["px-3 py-2 text-right"; extra_classes] in

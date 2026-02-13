@@ -123,58 +123,25 @@ let team_profile_page ?(lang=I18n.Ko) ?(player_info_map=None) (detail: team_full
     player_row ~show_player_id ~include_team:false ~team_cell_class:"px-3 py-2" ~player_info (i + 1) p)
   |> String.concat "\n"
  in
- let roster_totals_rows =
+ let roster_totals_data =
   detail.tfd_roster
   |> List.mapi (fun i (p: player_aggregate) ->
    let key = normalize_name p.name in
    let show_player_id =
     match Hashtbl.find_opt roster_name_counts key with
-    | Some c when c > 1 -> true
-    | _ -> false
+    | Some c when c > 1 -> true | _ -> false
    in
-   let id_badge = if show_player_id then player_id_badge p.player_id else "" in
-   let display_name = normalize_name p.name in
-   let min_int = int_of_float p.total_minutes in
-   Printf.sprintf
-    {html|<tr class="group border-b border-slate-200 dark:border-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors font-mono tabular-nums">
-      <td class="px-2 py-2 text-slate-500 dark:text-slate-500 text-sm text-center font-bold" style="width: 50px;">%d</td>
-      <td class="px-3 py-2 font-medium text-slate-900 dark:text-white font-sans whitespace-nowrap" style="width: 200px;">
-        <div class="flex items-center gap-3 min-w-0">
-          %s
-          <div class="flex flex-col min-w-0">
-            <div class="flex items-center gap-2 min-w-0">
-              <a href="%s" class="player-name hover:text-orange-600 dark:text-orange-400 transition-colors truncate break-keep min-w-0">%s</a>
-              <span class="%s">%s</span>
-            </div>
-          </div>
-        </div>
-      </td>
-      <td class="px-3 py-2 text-right text-slate-500 dark:text-slate-400 hidden sm:table-cell" style="width: 60px;">%d</td>
-      <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 hidden md:table-cell" style="width: 80px;">%d</td>
-      <td class="px-3 py-2 text-right text-orange-600 dark:text-orange-400 font-bold" style="width: 80px;">%d</td>
-      <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300" style="width: 80px;">%d</td>
-      <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 hidden md:table-cell" style="width: 80px;">%d</td>
-      <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 hidden lg:table-cell" style="width: 70px;">%d</td>
-      <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 hidden lg:table-cell" style="width: 70px;">%d</td>
-      <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 hidden lg:table-cell" style="width: 70px;">%d</td>
-      <td class="px-3 py-2 text-right text-orange-600 dark:text-orange-400 font-bold" style="width: 80px;">%.1f</td>
-    </tr>|html}
-    (i + 1)
-    (player_img_tag ~class_name:"w-8 h-8 shrink-0" p.player_id p.name)
-    (player_href p.player_id)
-    (escape_html display_name)
-    (if show_player_id then "inline-flex" else "hidden")
-    id_badge
-    p.games_played
-    min_int
-    p.total_points
-    p.total_rebounds
-    p.total_assists
-    p.total_steals
-    p.total_blocks
-    p.total_turnovers
-    p.efficiency)
-  |> String.concat "\n"
+   [ string_of_int (i + 1);
+     player_name_cell ~show_player_id p.player_id p.name;
+     string_of_int p.games_played;
+     string_of_int (int_of_float p.total_minutes);
+     string_of_int p.total_points;
+     string_of_int p.total_rebounds;
+     string_of_int p.total_assists;
+     string_of_int p.total_steals;
+     string_of_int p.total_blocks;
+     string_of_int p.total_turnovers;
+     format_float p.efficiency ])
  in
  let roster_cards =
   let margin_chip v =
@@ -270,123 +237,76 @@ let team_profile_page ?(lang=I18n.Ko) ?(player_info_map=None) (detail: team_full
 	                       <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px] sm:text-xs whitespace-nowrap"><tr><th scope="col" class="px-2 py-2 text-center font-sans whitespace-nowrap">#</th><th scope="col" class="px-3 py-2 text-left font-sans whitespace-nowrap">선수</th><th scope="col" class="px-3 py-2 text-right hidden sm:table-cell whitespace-nowrap" title="경기 수">GP</th><th scope="col" class="px-3 py-2 text-right text-orange-600 dark:text-orange-400 whitespace-nowrap" title="득점(경기당)">PTS</th><th scope="col" class="px-3 py-2 text-right hidden md:table-cell whitespace-nowrap" title="득실마진(MG, 출전시간 가중)">MG</th><th scope="col" class="px-3 py-2 text-right whitespace-nowrap" title="리바운드(경기당)">REB</th><th scope="col" class="px-3 py-2 text-right hidden md:table-cell whitespace-nowrap" title="어시스트(경기당)">AST</th><th scope="col" class="px-3 py-2 text-right hidden lg:table-cell whitespace-nowrap" title="스틸(경기당)">STL</th><th scope="col" class="px-3 py-2 text-right hidden lg:table-cell whitespace-nowrap" title="블록(경기당)">BLK</th><th scope="col" class="px-3 py-2 text-right hidden lg:table-cell whitespace-nowrap" title="턴오버(경기당)">TO</th><th scope="col" class="px-3 py-2 text-right text-orange-600 dark:text-orange-400 whitespace-nowrap" title="EFF(기여도)">EFF</th><th scope="col" class="px-3 py-2 text-right hidden sm:table-cell whitespace-nowrap" title="PER">PER</th></tr></thead><tbody>%s</tbody></table>|html}
 	                      roster_rows
 	                    in
+ (* Compute team-level footer sums from roster *)
+ let team_sum_gp = List.fold_left (fun acc (p: player_aggregate) -> acc + p.games_played) 0 detail.tfd_roster in
+ let team_sum_min = List.fold_left (fun acc (p: player_aggregate) -> acc +. p.total_minutes) 0.0 detail.tfd_roster in
+ let team_sum_pts = List.fold_left (fun acc (p: player_aggregate) -> acc + p.total_points) 0 detail.tfd_roster in
+ let team_sum_reb = List.fold_left (fun acc (p: player_aggregate) -> acc + p.total_rebounds) 0 detail.tfd_roster in
+ let team_sum_ast = List.fold_left (fun acc (p: player_aggregate) -> acc + p.total_assists) 0 detail.tfd_roster in
+ let team_sum_stl = List.fold_left (fun acc (p: player_aggregate) -> acc + p.total_steals) 0 detail.tfd_roster in
+ let team_sum_blk = List.fold_left (fun acc (p: player_aggregate) -> acc + p.total_blocks) 0 detail.tfd_roster in
+ let team_sum_tov = List.fold_left (fun acc (p: player_aggregate) -> acc + p.total_turnovers) 0 detail.tfd_roster in
+ let team_sum_eff = List.fold_left (fun acc (p: player_aggregate) -> acc +. p.efficiency) 0.0 detail.tfd_roster in
+ let team_sum_fgm = List.fold_left (fun acc (p: player_aggregate) -> acc + p.total_fg_made) 0 detail.tfd_roster in
+ let team_sum_fga = List.fold_left (fun acc (p: player_aggregate) -> acc + p.total_fg_att) 0 detail.tfd_roster in
+ let team_sum_fg3m = List.fold_left (fun acc (p: player_aggregate) -> acc + p.total_fg3_made) 0 detail.tfd_roster in
+ let team_sum_fg3a = List.fold_left (fun acc (p: player_aggregate) -> acc + p.total_fg3_att) 0 detail.tfd_roster in
+ let team_sum_ftm = List.fold_left (fun acc (p: player_aggregate) -> acc + p.total_ft_made) 0 detail.tfd_roster in
+ let team_sum_fta = List.fold_left (fun acc (p: player_aggregate) -> acc + p.total_ft_att) 0 detail.tfd_roster in
  let roster_totals_table =
-  Printf.sprintf
-   {html|<table class="roster-table min-w-[900px] w-full text-xs sm:text-sm font-mono table-fixed tabular-nums" aria-label="팀 로스터 (합계)">
-    <colgroup>
-      <col style="width: 50px;">
-      <col style="width: 200px;">
-      <col class="hidden sm:table-column" style="width: 60px;">
-      <col class="hidden md:table-column" style="width: 80px;">
-      <col style="width: 80px;">
-      <col style="width: 80px;">
-      <col class="hidden md:table-column" style="width: 80px;">
-      <col class="hidden lg:table-column" style="width: 70px;">
-      <col class="hidden lg:table-column" style="width: 70px;">
-      <col class="hidden lg:table-column" style="width: 70px;">
-      <col style="width: 80px;">
-    </colgroup>
-    <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px] sm:text-xs whitespace-nowrap"><tr><th scope="col" class="px-2 py-2 text-center font-sans">#</th><th scope="col" class="px-3 py-2 text-left font-sans">선수</th><th scope="col" class="px-3 py-2 text-right hidden sm:table-cell" title="경기 수">GP</th><th scope="col" class="px-3 py-2 text-right hidden md:table-cell" title="출전시간 합계">MIN</th><th scope="col" class="px-3 py-2 text-right text-orange-600 dark:text-orange-400" title="득점 합계">PTS</th><th scope="col" class="px-3 py-2 text-right" title="리바운드 합계">REB</th><th scope="col" class="px-3 py-2 text-right hidden md:table-cell" title="어시스트 합계">AST</th><th scope="col" class="px-3 py-2 text-right hidden lg:table-cell" title="스틸 합계">STL</th><th scope="col" class="px-3 py-2 text-right hidden lg:table-cell" title="블록 합계">BLK</th><th scope="col" class="px-3 py-2 text-right hidden lg:table-cell" title="턴오버 합계">TOV</th><th scope="col" class="px-3 py-2 text-right text-orange-600 dark:text-orange-400" title="EFF(기여도)">EFF</th></tr></thead><tbody>%s</tbody></table>|html}
-   roster_totals_rows
+  let totals_cols = [
+    col ~align:`Center ~w:(px 50) "#";
+    col ~sticky:true ~w:(px 200) "선수";
+    col ~align:`Right ~resp:`Hidden_sm ~w:(px 60) ~title:"경기 수" "GP";
+    col ~align:`Right ~resp:`Hidden_md ~w:(px 80) ~title:"출전시간 합계" "MIN";
+    col ~align:`Right ~highlight:true ~w:(px 80) ~title:"득점 합계" "PTS";
+    col ~align:`Right ~w:(px 80) ~title:"리바운드 합계" "REB";
+    col ~align:`Right ~resp:`Hidden_md ~w:(px 80) ~title:"어시스트 합계" "AST";
+    col ~align:`Right ~resp:`Hidden_lg ~w:(px 70) ~title:"스틸 합계" "STL";
+    col ~align:`Right ~resp:`Hidden_lg ~w:(px 70) ~title:"블록 합계" "BLK";
+    col ~align:`Right ~resp:`Hidden_lg ~w:(px 70) ~title:"턴오버 합계" "TOV";
+    col ~align:`Right ~highlight:true ~w:(px 80) ~title:"EFF(기여도)" "EFF";
+  ] in
+  let totals_foot = [[
+    ""; {html|<span class="font-sans font-bold">팀 합계</span>|html};
+    string_of_int team_sum_gp;
+    string_of_int (int_of_float team_sum_min);
+    string_of_int team_sum_pts;
+    string_of_int team_sum_reb;
+    string_of_int team_sum_ast;
+    string_of_int team_sum_stl;
+    string_of_int team_sum_blk;
+    string_of_int team_sum_tov;
+    format_float team_sum_eff;
+  ]] in
+  render_fixed_table ~striped:true ~aria_label:"팀 로스터 (합계)"
+    ~foot_data:totals_foot
+    ~id:"roster-totals" ~min_width:"min-w-[900px]" ~cols:totals_cols roster_totals_data
  in
  let roster_shooting_table =
-  let shooting_rows =
-   detail.tfd_roster
-   |> List.mapi (fun i (p: player_aggregate) ->
-    let key = normalize_name p.name in
-    let show_player_id =
-     match Hashtbl.find_opt roster_name_counts key with
-     | Some c when c > 1 -> true
-     | _ -> false
-    in
-    let id_badge = if show_player_id then player_id_badge p.player_id else "" in
-    let display_name = normalize_name p.name in
-    let pct made att =
-     if att > 0 then Printf.sprintf "%.1f" (float_of_int made /. float_of_int att *. 100.0)
-     else "-"
-    in
-    let fg_made = p.total_fg_made in
-    let fg_att = p.total_fg_att in
-    let fg3_made = p.total_fg3_made in
-    let fg3_att = p.total_fg3_att in
-    let ft_made = p.total_ft_made in
-    let ft_att = p.total_ft_att in
-    Printf.sprintf
-     {html|<tr class="group border-b border-slate-200 dark:border-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors font-mono tabular-nums">
-       <td class="px-2 py-2 text-slate-500 dark:text-slate-500 text-sm text-center font-bold" style="width: 50px;">%d</td>
-       <td class="px-3 py-2 font-medium text-slate-900 dark:text-white font-sans whitespace-nowrap" style="width: 180px;">
-         <div class="flex items-center gap-3 min-w-0">
-           %s
-           <div class="flex flex-col min-w-0">
-             <div class="flex items-center gap-2 min-w-0">
-               <a href="%s" class="player-name hover:text-orange-600 dark:text-orange-400 transition-colors truncate break-keep min-w-0">%s</a>
-               <span class="%s">%s</span>
-             </div>
-           </div>
-         </div>
-       </td>
-       <td class="px-3 py-2 text-right text-slate-500 dark:text-slate-400 hidden sm:table-cell" style="width: 50px;">%d</td>
-       <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300" style="width: 55px;">%d</td>
-       <td class="px-3 py-2 text-right text-slate-500 dark:text-slate-400" style="width: 55px;">%d</td>
-       <td class="px-3 py-2 text-right text-orange-600 dark:text-orange-400 font-bold" style="width: 65px;">%s</td>
-       <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300" style="width: 55px;">%d</td>
-       <td class="px-3 py-2 text-right text-slate-500 dark:text-slate-400" style="width: 55px;">%d</td>
-       <td class="px-3 py-2 text-right text-emerald-600 dark:text-emerald-400 font-bold" style="width: 65px;">%s</td>
-       <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300" style="width: 55px;">%d</td>
-       <td class="px-3 py-2 text-right text-slate-500 dark:text-slate-400" style="width: 55px;">%d</td>
-       <td class="px-3 py-2 text-right text-sky-600 dark:text-sky-400 font-bold" style="width: 65px;">%s</td>
-     </tr>|html}
-     (i + 1)
-     (player_img_tag ~class_name:"w-8 h-8 shrink-0" p.player_id p.name)
-     (player_href p.player_id)
-     (escape_html display_name)
-     (if show_player_id then "inline-flex" else "hidden")
-     id_badge
-     p.games_played
-     fg_made fg_att (pct fg_made fg_att)
-     fg3_made fg3_att (pct fg3_made fg3_att)
-     ft_made ft_att (pct ft_made ft_att))
-   |> String.concat "\n"
+  let pct made att =
+   if att > 0 then Printf.sprintf "%.1f" (float_of_int made /. float_of_int att *. 100.0)
+   else "-"
   in
-  Printf.sprintf
-   {html|<table class="roster-table min-w-[850px] w-full text-xs sm:text-sm font-mono table-fixed tabular-nums" aria-label="팀 로스터 (슈팅)">
-    <colgroup>
-      <col style="width: 50px;">
-      <col style="width: 180px;">
-      <col class="hidden sm:table-column" style="width: 50px;">
-      <col style="width: 55px;">
-      <col style="width: 55px;">
-      <col style="width: 65px;">
-      <col style="width: 55px;">
-      <col style="width: 55px;">
-      <col style="width: 65px;">
-      <col style="width: 55px;">
-      <col style="width: 55px;">
-      <col style="width: 65px;">
-    </colgroup>
-    <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px] sm:text-xs whitespace-nowrap">
-      <tr>
-        <th scope="col" class="px-2 py-2 text-center font-sans">#</th>
-        <th scope="col" class="px-3 py-2 text-left font-sans">선수</th>
-        <th scope="col" class="px-3 py-2 text-right hidden sm:table-cell" title="경기 수">GP</th>
-        <th scope="col" class="px-3 py-2 text-right" title="야투 성공">FGM</th>
-        <th scope="col" class="px-3 py-2 text-right" title="야투 시도">FGA</th>
-        <th scope="col" class="px-3 py-2 text-right text-orange-600 dark:text-orange-400" title="야투 성공률">FG%%</th>
-        <th scope="col" class="px-3 py-2 text-right" title="3점 성공">3PM</th>
-        <th scope="col" class="px-3 py-2 text-right" title="3점 시도">3PA</th>
-        <th scope="col" class="px-3 py-2 text-right text-emerald-600 dark:text-emerald-400" title="3점 성공률">3P%%</th>
-        <th scope="col" class="px-3 py-2 text-right" title="자유투 성공">FTM</th>
-        <th scope="col" class="px-3 py-2 text-right" title="자유투 시도">FTA</th>
-        <th scope="col" class="px-3 py-2 text-right text-sky-600 dark:text-sky-400" title="자유투 성공률">FT%%</th>
-      </tr>
-    </thead>
-    <tbody>%s</tbody>
-   </table>|html}
-   shooting_rows
- in
- let roster_advanced_table =
-  let team_totals = detail.tfd_team_totals in
-  let advanced_rows =
+  let colored_pct color made att =
+    let v = pct made att in
+    Printf.sprintf {html|<span class="%s font-bold">%s</span>|html} color v
+  in
+  let shooting_cols = [
+    col ~align:`Center ~w:(px 50) "#";
+    col ~sticky:true ~w:(px 180) "선수";
+    col ~align:`Right ~resp:`Hidden_sm ~w:(px 50) ~title:"경기 수" "GP";
+    col ~align:`Right ~w:(px 55) ~title:"야투 성공" "FGM";
+    col ~align:`Right ~w:(px 55) ~title:"야투 시도" "FGA";
+    col ~align:`Right ~highlight:true ~w:(px 65) ~title:"야투 성공률" "FG%";
+    col ~align:`Right ~w:(px 55) ~title:"3점 성공" "3PM";
+    col ~align:`Right ~w:(px 55) ~title:"3점 시도" "3PA";
+    col ~align:`Right ~w:(px 65) ~title:"3점 성공률" "3P%";
+    col ~align:`Right ~w:(px 55) ~title:"자유투 성공" "FTM";
+    col ~align:`Right ~w:(px 55) ~title:"자유투 시도" "FTA";
+    col ~align:`Right ~w:(px 65) ~title:"자유투 성공률" "FT%";
+  ] in
+  let shooting_data =
    detail.tfd_roster
    |> List.mapi (fun i (p: player_aggregate) ->
     let key = normalize_name p.name in
@@ -394,8 +314,59 @@ let team_profile_page ?(lang=I18n.Ko) ?(player_info_map=None) (detail: team_full
      match Hashtbl.find_opt roster_name_counts key with
      | Some c when c > 1 -> true | _ -> false
     in
-    let id_badge = if show_player_id then player_id_badge p.player_id else "" in
-    let display_name = normalize_name p.name in
+    [ string_of_int (i + 1);
+      player_name_cell ~show_player_id p.player_id p.name;
+      string_of_int p.games_played;
+      string_of_int p.total_fg_made;
+      string_of_int p.total_fg_att;
+      colored_pct "text-orange-600 dark:text-orange-400" p.total_fg_made p.total_fg_att;
+      string_of_int p.total_fg3_made;
+      string_of_int p.total_fg3_att;
+      colored_pct "text-emerald-600 dark:text-emerald-400" p.total_fg3_made p.total_fg3_att;
+      string_of_int p.total_ft_made;
+      string_of_int p.total_ft_att;
+      colored_pct "text-sky-600 dark:text-sky-400" p.total_ft_made p.total_ft_att ])
+  in
+  let shooting_foot = [[
+    ""; {html|<span class="font-sans font-bold">팀 합계</span>|html};
+    string_of_int team_sum_gp;
+    string_of_int team_sum_fgm;
+    string_of_int team_sum_fga;
+    colored_pct "text-orange-600 dark:text-orange-400" team_sum_fgm team_sum_fga;
+    string_of_int team_sum_fg3m;
+    string_of_int team_sum_fg3a;
+    colored_pct "text-emerald-600 dark:text-emerald-400" team_sum_fg3m team_sum_fg3a;
+    string_of_int team_sum_ftm;
+    string_of_int team_sum_fta;
+    colored_pct "text-sky-600 dark:text-sky-400" team_sum_ftm team_sum_fta;
+  ]] in
+  render_fixed_table ~striped:true ~aria_label:"팀 로스터 (슈팅)"
+    ~foot_data:shooting_foot
+    ~id:"roster-shooting" ~min_width:"min-w-[850px]" ~cols:shooting_cols shooting_data
+ in
+ let roster_advanced_table =
+  let team_totals = detail.tfd_team_totals in
+  let colored_stat color v =
+    Printf.sprintf {html|<span class="%s font-bold">%.1f</span>|html} color v
+  in
+  let advanced_cols = [
+    col ~align:`Center ~w:(px 50) "#";
+    col ~sticky:true ~w:(px 180) "선수";
+    col ~align:`Right ~resp:`Hidden_sm ~w:(px 50) ~title:"경기 수" "GP";
+    col ~align:`Right ~w:(px 70) ~title:"경기당 출전시간" "MPG";
+    col ~align:`Right ~highlight:true ~w:(px 70) ~title:"True Shooting %%" "TS%%";
+    col ~align:`Right ~w:(px 70) ~title:"Effective FG %%" "eFG%%";
+    col ~align:`Right ~w:(px 70) ~title:"Usage Rate %%" "USG%%";
+    col ~align:`Right ~w:(px 70) ~title:"Player Efficiency Rating" "PER";
+  ] in
+  let advanced_data =
+   detail.tfd_roster
+   |> List.mapi (fun i (p: player_aggregate) ->
+    let key = normalize_name p.name in
+    let show_player_id =
+     match Hashtbl.find_opt roster_name_counts key with
+     | Some c when c > 1 -> true | _ -> false
+    in
     let fga = p.total_fg_att in
     let fta = p.total_ft_att in
     let ts = Stats.true_shooting_pct ~pts:p.total_points ~fga ~fta in
@@ -414,64 +385,35 @@ let team_profile_page ?(lang=I18n.Ko) ?(player_info_map=None) (detail: team_full
      | None -> 0.0
     in
     let mpg = if p.games_played = 0 then 0.0 else p.total_minutes /. float_of_int p.games_played in
-    Printf.sprintf
-     {html|<tr class="group border-b border-slate-200 dark:border-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors font-mono tabular-nums">
-       <td class="px-2 py-2 text-slate-500 dark:text-slate-500 text-sm text-center font-bold" style="width: 50px;">%d</td>
-       <td class="px-3 py-2 font-medium text-slate-900 dark:text-white font-sans whitespace-nowrap" style="width: 180px;">
-         <div class="flex items-center gap-3 min-w-0">
-           %s
-           <div class="flex flex-col min-w-0">
-             <div class="flex items-center gap-2 min-w-0">
-               <a href="%s" class="player-name hover:text-orange-600 dark:text-orange-400 transition-colors truncate break-keep min-w-0">%s</a>
-               <span class="%s">%s</span>
-             </div>
-           </div>
-         </div>
-       </td>
-       <td class="px-3 py-2 text-right text-slate-500 dark:text-slate-400 hidden sm:table-cell" style="width: 50px;">%d</td>
-       <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300" style="width: 70px;">%.1f</td>
-       <td class="px-3 py-2 text-right text-orange-600 dark:text-orange-400 font-bold" style="width: 70px;">%.1f</td>
-       <td class="px-3 py-2 text-right text-emerald-600 dark:text-emerald-400 font-bold" style="width: 70px;">%.1f</td>
-       <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300" style="width: 70px;">%.1f</td>
-       <td class="px-3 py-2 text-right text-sky-600 dark:text-sky-400 font-bold" style="width: 70px;">%.1f</td>
-     </tr>|html}
-     (i + 1)
-     (player_img_tag ~class_name:"w-8 h-8 shrink-0" p.player_id p.name)
-     (player_href p.player_id)
-     (escape_html display_name)
-     (if show_player_id then "inline-flex" else "hidden")
-     id_badge
-     p.games_played mpg
-     ts efg usg per)
-   |> String.concat "\n"
+    [ string_of_int (i + 1);
+      player_name_cell ~show_player_id p.player_id p.name;
+      string_of_int p.games_played;
+      Printf.sprintf "%.1f" mpg;
+      colored_stat "text-orange-600 dark:text-orange-400" ts;
+      colored_stat "text-emerald-600 dark:text-emerald-400" efg;
+      Printf.sprintf "%.1f" usg;
+      colored_stat "text-sky-600 dark:text-sky-400" per ])
   in
-  Printf.sprintf
-   {html|<table class="roster-table min-w-[700px] w-full text-xs sm:text-sm font-mono table-fixed tabular-nums" aria-label="팀 로스터 (어드밴스드)">
-    <colgroup>
-      <col style="width: 50px;">
-      <col style="width: 180px;">
-      <col class="hidden sm:table-column" style="width: 50px;">
-      <col style="width: 70px;">
-      <col style="width: 70px;">
-      <col style="width: 70px;">
-      <col style="width: 70px;">
-      <col style="width: 70px;">
-    </colgroup>
-    <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px] sm:text-xs whitespace-nowrap">
-      <tr>
-        <th scope="col" class="px-2 py-2 text-center font-sans">#</th>
-        <th scope="col" class="px-3 py-2 text-left font-sans">선수</th>
-        <th scope="col" class="px-3 py-2 text-right hidden sm:table-cell" title="경기 수">GP</th>
-        <th scope="col" class="px-3 py-2 text-right" title="경기당 출전시간">MPG</th>
-        <th scope="col" class="px-3 py-2 text-right text-orange-600 dark:text-orange-400" title="True Shooting %%">TS%%</th>
-        <th scope="col" class="px-3 py-2 text-right text-emerald-600 dark:text-emerald-400" title="Effective FG %%">eFG%%</th>
-        <th scope="col" class="px-3 py-2 text-right" title="Usage Rate %%">USG%%</th>
-        <th scope="col" class="px-3 py-2 text-right" title="Player Efficiency Rating">PER</th>
-      </tr>
-    </thead>
-    <tbody>%s</tbody>
-   </table>|html}
-   advanced_rows
+  (* Team-level advanced stats for footer *)
+  let team_ts = Stats.true_shooting_pct ~pts:team_sum_pts ~fga:team_sum_fga ~fta:team_sum_fta in
+  let team_efg = Stats.effective_fg_pct ~fg_made:team_sum_fgm ~fg3_made:team_sum_fg3m ~fga:team_sum_fga in
+  let team_per = Stats.calculate_per ~total_minutes:team_sum_min ~efficiency:team_sum_eff in
+  let team_mpg =
+    let gp = match detail.tfd_team_totals with Some tt -> tt.gp | None -> 1 in
+    if gp > 0 then team_sum_min /. float_of_int gp else 0.0
+  in
+  let advanced_foot = [[
+    ""; {html|<span class="font-sans font-bold">팀 평균</span>|html};
+    "";
+    Printf.sprintf "%.1f" team_mpg;
+    colored_stat "text-orange-600 dark:text-orange-400" team_ts;
+    colored_stat "text-emerald-600 dark:text-emerald-400" team_efg;
+    "—";
+    colored_stat "text-sky-600 dark:text-sky-400" team_per;
+  ]] in
+  render_fixed_table ~striped:true ~aria_label:"팀 로스터 (어드밴스드)"
+    ~foot_data:advanced_foot
+    ~id:"roster-advanced" ~min_width:"min-w-[700px]" ~cols:advanced_cols advanced_data
  in
  let roster_desktop_section =
   Printf.sprintf

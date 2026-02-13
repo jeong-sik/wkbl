@@ -1444,88 +1444,64 @@ let player_splits_page ?(lang=I18n.Ko) (profile: player_profile) ~(season: strin
   in
   let (home_away, per_opponent, per_month) = compute_splits games in
   let pct a b = if b = 0 then "-" else Printf.sprintf ".%03d" (a * 1000 / b) in
-  let split_row (s: split_aggregate) =
+  let f = format_float in
+  let split_cols = [
+    col ~sticky:true ~w:(px 120) "구분";
+    col ~align:`Center ~title:"경기수" "G";
+    col ~align:`Center ~resp:`Hidden_sm ~title:"승-패" "W-L";
+    col ~align:`Right ~title:"평균 출전시간" "MPG";
+    col ~align:`Right ~highlight:true ~title:"평균 득점" "PPG";
+    col ~align:`Right ~title:"평균 리바운드" "RPG";
+    col ~align:`Right ~title:"평균 어시스트" "APG";
+    col ~align:`Right ~resp:`Hidden_md ~title:"평균 스틸" "SPG";
+    col ~align:`Right ~resp:`Hidden_md ~title:"평균 블록" "BPG";
+    col ~align:`Right ~resp:`Hidden_md ~title:"평균 턴오버" "TOV";
+    col ~align:`Right ~resp:`Hidden_lg ~title:"야투 성공률" "FG%";
+    col ~align:`Right ~resp:`Hidden_lg ~title:"3점슛 성공률" "3P%";
+    col ~align:`Right ~resp:`Hidden_lg ~title:"자유투 성공률" "FT%";
+  ] in
+  let split_to_row (s: split_aggregate) =
     let gp = float_of_int (max 1 s.sa_games) in
     let wl =
       if s.sa_wins + s.sa_losses = 0 then "-"
       else Printf.sprintf "%d-%d" s.sa_wins s.sa_losses
     in
-    let row_class = "border-b border-slate-100 dark:border-slate-800/40 hover:bg-slate-50 dark:hover:bg-slate-800/30" in
-    Printf.sprintf
-      {html|<tr class="%s">
-        <td class="px-3 py-2 text-left font-sans font-medium text-slate-900 dark:text-slate-200 whitespace-nowrap">%s</td>
-        <td class="px-3 py-2 text-center">%d</td>
-        <td class="px-3 py-2 text-center hidden sm:table-cell">%s</td>
-        <td class="px-3 py-2 text-right">%.1f</td>
-        <td class="px-3 py-2 text-right text-orange-600 dark:text-orange-400 font-bold">%.1f</td>
-        <td class="px-3 py-2 text-right">%.1f</td>
-        <td class="px-3 py-2 text-right">%.1f</td>
-        <td class="px-3 py-2 text-right hidden md:table-cell">%.1f</td>
-        <td class="px-3 py-2 text-right hidden md:table-cell">%.1f</td>
-        <td class="px-3 py-2 text-right hidden md:table-cell">%.1f</td>
-        <td class="px-3 py-2 text-right hidden lg:table-cell">%s</td>
-        <td class="px-3 py-2 text-right hidden lg:table-cell">%s</td>
-        <td class="px-3 py-2 text-right hidden lg:table-cell">%s</td>
-      </tr>|html}
-      row_class
-      (escape_html s.sa_label)
-      s.sa_games wl
-      (s.sa_min /. gp)
-      (float_of_int s.sa_pts /. gp)
-      (float_of_int s.sa_reb /. gp)
-      (float_of_int s.sa_ast /. gp)
-      (float_of_int s.sa_stl /. gp)
-      (float_of_int s.sa_blk /. gp)
-      (float_of_int s.sa_tov /. gp)
-      (pct s.sa_fg_made s.sa_fg_att)
-      (pct s.sa_fg3_made s.sa_fg3_att)
-      (pct s.sa_ft_made s.sa_ft_att)
+    [ escape_html s.sa_label;
+      string_of_int s.sa_games; wl;
+      f (s.sa_min /. gp);
+      f (float_of_int s.sa_pts /. gp);
+      f (float_of_int s.sa_reb /. gp);
+      f (float_of_int s.sa_ast /. gp);
+      f (float_of_int s.sa_stl /. gp);
+      f (float_of_int s.sa_blk /. gp);
+      f (float_of_int s.sa_tov /. gp);
+      pct s.sa_fg_made s.sa_fg_att;
+      pct s.sa_fg3_made s.sa_fg3_att;
+      pct s.sa_ft_made s.sa_ft_att ]
   in
-  let thead =
-    {html|<thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-600 dark:text-slate-400 uppercase tracking-wider text-xs">
-      <tr>
-        <th scope="col" class="px-3 py-2 text-left font-sans">구분</th>
-        <th scope="col" class="px-3 py-2 text-center" title="경기수">G</th>
-        <th scope="col" class="px-3 py-2 text-center hidden sm:table-cell" title="승-패">W-L</th>
-        <th scope="col" class="px-3 py-2 text-right" title="평균 출전시간">MPG</th>
-        <th scope="col" class="px-3 py-2 text-right text-orange-600 dark:text-orange-400" title="평균 득점">PPG</th>
-        <th scope="col" class="px-3 py-2 text-right" title="평균 리바운드">RPG</th>
-        <th scope="col" class="px-3 py-2 text-right" title="평균 어시스트">APG</th>
-        <th scope="col" class="px-3 py-2 text-right hidden md:table-cell" title="평균 스틸">SPG</th>
-        <th scope="col" class="px-3 py-2 text-right hidden md:table-cell" title="평균 블록">BPG</th>
-        <th scope="col" class="px-3 py-2 text-right hidden md:table-cell" title="평균 턴오버">TOV</th>
-        <th scope="col" class="px-3 py-2 text-right hidden lg:table-cell" title="야투 성공률">FG%%</th>
-        <th scope="col" class="px-3 py-2 text-right hidden lg:table-cell" title="3점슛 성공률">3P%%</th>
-        <th scope="col" class="px-3 py-2 text-right hidden lg:table-cell" title="자유투 성공률">FT%%</th>
-      </tr>
-    </thead>|html}
-  in
-  let split_table ~title ~icon rows =
+  let split_table ~title ~icon splits =
+    let rows = List.map split_to_row splits in
     Printf.sprintf
       {html|<div>
         <h3 class="flex items-center gap-2 text-base font-bold text-slate-900 dark:text-slate-200 mb-2">
           <span>%s</span> %s
         </h3>
-        <div class="bg-white dark:bg-slate-900/80 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-sm">
-          <table class="w-full text-sm font-mono tabular-nums" aria-label="%s">
-            %s
-            <tbody>%s</tbody>
-          </table>
-        </div>
+        %s
       </div>|html}
-      icon (escape_html title) (escape_html title) thead rows
+      icon (escape_html title)
+      (render_fixed_table ~striped:true
+        ~aria_label:title
+        ~id:("split-" ^ String.lowercase_ascii (String.map (fun c -> if c = '/' then '-' else c) title))
+        ~min_width:"min-w-[700px]" ~cols:split_cols rows)
   in
   let home_away_html =
-    split_table ~title:"홈/원정" ~icon:"🏠"
-      (home_away |> List.map split_row |> String.concat "\n")
+    split_table ~title:"홈/원정" ~icon:"🏠" home_away
   in
   let opponent_html =
-    split_table ~title:"상대팀별" ~icon:"⚔️"
-      (per_opponent |> List.map split_row |> String.concat "\n")
+    split_table ~title:"상대팀별" ~icon:"⚔️" per_opponent
   in
   let month_html =
-    split_table ~title:"월별" ~icon:"📅"
-      (per_month |> List.map split_row |> String.concat "\n")
+    split_table ~title:"월별" ~icon:"📅" per_month
   in
   let season_name =
     match List.find_opt (fun (s: season_info) -> s.code = season) seasons with
