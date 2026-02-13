@@ -29,3 +29,6 @@ ocaml/static/images/originals/
 # Git worktrees (managed separately)
 .worktree/
 .worktrees/
+
+# OCaml opam switch (top-level)
+_opam/
