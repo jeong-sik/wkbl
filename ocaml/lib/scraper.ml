@@ -1027,7 +1027,8 @@ let team_name_to_code = [
   ("농협", "08");      (* 2003-2004 briefly *)
   ("LG", "12");        (* 1998-2001 *)
   ("한화", "13");      (* 1998-2000 *)
-  (* All-star / special events (teams table has 83/84/87/88/91/92) *)
+  (* All-star / special events *)
+  ("올스타A", "82"); ("올스타 A", "82");
   ("한국 올스타", "83"); ("한국올스타", "83");
   ("일본 올스타", "84"); ("일본올스타", "84");
   ("핑크스타", "87");
@@ -1074,6 +1075,7 @@ let numeric_code_of_domain_team_code = function
   | "GH" -> Some "02"
   | "SG" -> Some "04"
   | "HD" -> Some "06"
+  | "AS" -> Some "83"  (* All-Star fallback *)
   | _ -> None
 
 (** Convert team name to code for database sync *)

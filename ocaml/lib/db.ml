@@ -1301,7 +1301,7 @@ module Queries = struct
     ON CONFLICT (player_name) DO NOTHING
   |}
 
-  (* Seed historical/defunct teams so FK updates can use them. *)
+  (* Seed historical/defunct teams and All-Star/special event teams so FK updates can use them. *)
   let seed_historical_teams = (unit ->. unit) {|
     INSERT INTO teams (team_code, team_name_kr, team_name_en)
     VALUES
@@ -1309,7 +1309,14 @@ module Queries = struct
       ('04', '신세계', 'Shinsegae'),
       ('06', '현대', 'Hyundai'),
       ('12', 'LG', 'LG'),
-      ('13', '한화', 'Hanwha')
+      ('13', '한화', 'Hanwha'),
+      ('82', '올스타A', 'All-Star A'),
+      ('83', '한국 올스타', 'Korea All-Star'),
+      ('84', '일본 올스타', 'Japan All-Star'),
+      ('87', '핑크스타', 'Pink Star'),
+      ('88', '블루스타', 'Blue Star'),
+      ('91', '남부선발', 'South Select'),
+      ('92', '중부선발', 'Central Select')
     ON CONFLICT (team_code) DO NOTHING
   |}
 
