@@ -679,10 +679,14 @@ Sitemap: https://wkbl.win/sitemap.xml
       | Ok seasons, Ok teams ->
           let today = Unix.time () |> Unix.gmtime in
           let lastmod = Printf.sprintf "%04d-%02d-%02d" (today.Unix.tm_year + 1900) (today.Unix.tm_mon + 1) today.Unix.tm_mday in
-          let static_pages = ["/"; "/players"; "/teams"; "/standings"; "/boxscores"; "/games"; "/leaders"; "/awards"; "/compare"; "/predict"; "/transactions"] in
+          let static_pages = ["/"; "/players"; "/teams"; "/standings"; "/boxscores"; "/games"; "/leaders"; "/awards"; "/compare"; "/predict"; "/transactions"; "/history"; "/legends"; "/coaches"; "/streaks"; "/mvp-race"; "/fantasy"; "/lineups"; "/clutch"; "/live"; "/on-off"; "/draft"; "/trade"] in
+          let low_priority_pages = ["/history"; "/legends"; "/coaches"; "/draft"; "/trade"] in
           let static_urls = static_pages |> List.map (fun path ->
+            let priority = if path = "/" then "1.0"
+              else if List.mem path low_priority_pages then "0.5"
+              else "0.8" in
             Printf.sprintf {|  <url><loc>https://wkbl.win%s</loc><lastmod>%s</lastmod><changefreq>daily</changefreq><priority>%s</priority></url>|}
-              path lastmod (if path = "/" then "1.0" else "0.8")) |> String.concat "\n" in
+              path lastmod priority) |> String.concat "\n" in
           let team_urls = teams |> List.map (fun (t: team_info) ->
             Printf.sprintf {|  <url><loc>https://wkbl.win/team/%s</loc><lastmod>%s</lastmod><changefreq>weekly</changefreq><priority>0.7</priority></url>|}
               t.team_code lastmod) |> String.concat "\n" in
@@ -940,7 +944,7 @@ Sitemap: https://wkbl.win/sitemap.xml
 	      let period_opt = query_nonempty request "period" in
 	      match Db.get_game_info ~game_id () with
 	      | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
-	      | Ok None -> Kirin.html (Views.error_page ~lang "Game not found")
+	      | Ok None -> Kirin.html ~status:`Not_found (Views.not_found_page ~lang ~what:"경기" ())
 	      | Ok (Some game) ->
 	          let today_kst = Live.today_str () in
 	          let periods_res =
@@ -1052,7 +1056,7 @@ Sitemap: https://wkbl.win/sitemap.xml
 	      let game_id = Kirin.param "id" request in
 	      match Db.get_game_info ~game_id () with
 	      | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
-	      | Ok None -> Kirin.html (Views.error_page ~lang "Game not found")
+	      | Ok None -> Kirin.html ~status:`Not_found (Views.not_found_page ~lang ~what:"경기" ())
 	      | Ok (Some game) ->
 	          let today_kst = Live.today_str () in
 	          let periods_res =
@@ -1456,7 +1460,7 @@ Sitemap: https://wkbl.win/sitemap.xml
             (* Get player profile to get name *)
             (match Db.get_player_profile ~player_id () with
             | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
-            | Ok None -> Kirin.html (Views.error_page ~lang "Player not found")
+            | Ok None -> Kirin.html ~status:`Not_found (Views.not_found_page ~lang ~what:"선수" ())
             | Ok (Some profile) ->
                 let player_name = profile.player.name in
                 (* Get all seasons for this player *)
@@ -1886,7 +1890,7 @@ Sitemap: https://wkbl.win/sitemap.xml
               Kirin.html
                 (Views_player.player_profile_page ~lang ~leaderboards ~show_ops final_profile ~scope
                    ~seasons_catalog))
-      | Ok None -> Kirin.html (Views.error_page ~lang "Player not found")
+      | Ok None -> Kirin.html ~status:`Not_found (Views.not_found_page ~lang ~what:"선수" ())
       | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
     );
 
@@ -1896,7 +1900,7 @@ Sitemap: https://wkbl.win/sitemap.xml
 	      let player_id = Kirin.param "id" request in
 	      let include_mismatch = query_bool request "include_mismatch" in
 	      match Db.get_player_profile ~player_id (), Db.get_seasons () with
-	      | Ok None, _ -> Kirin.html (Views.error_page ~lang "Player not found")
+	      | Ok None, _ -> Kirin.html ~status:`Not_found (Views.not_found_page ~lang ~what:"선수" ())
       | Error e, _ | _, Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
       | Ok (Some profile), Ok seasons ->
           let canon_id = profile.player.id in
@@ -1920,7 +1924,7 @@ Sitemap: https://wkbl.win/sitemap.xml
 	      let lang = request_lang request in
 	      let player_id = Kirin.param "id" request in
 	      match Db.get_player_profile ~player_id (), Db.get_seasons () with
-	      | Ok None, _ -> Kirin.html (Views.error_page ~lang "Player not found")
+	      | Ok None, _ -> Kirin.html ~status:`Not_found (Views.not_found_page ~lang ~what:"선수" ())
 	      | Error e, _ | _, Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
 	      | Ok (Some profile), Ok seasons ->
 	          let canon_id = profile.player.id in
@@ -1973,7 +1977,7 @@ Sitemap: https://wkbl.win/sitemap.xml
 	            (match Db.get_player_profile ~player_id (), Db.get_seasons () with
 	            | Ok (Some profile), Ok seasons ->
 	                Kirin.html (Views_player.player_shot_chart_page ~lang profile ~season ~seasons chart)
-	            | Ok None, _ -> Kirin.html (Views.error_page ~lang "Player not found")
+	            | Ok None, _ -> Kirin.html ~status:`Not_found (Views.not_found_page ~lang ~what:"선수" ())
 	            | Error e, _ | _, Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e)))
 	      | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
 	    );

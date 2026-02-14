@@ -3480,6 +3480,34 @@ let error_page ?(lang=I18n.Ko) message =
          (escape_html back))
     ()
 
+let not_found_page ?(lang=I18n.Ko) ?(what="페이지") () =
+  let tr = I18n.t lang in
+  let title = tr { ko = "찾을 수 없음"; en = "Not Found" } in
+  let heading = tr { ko = Printf.sprintf "%s를 찾을 수 없습니다" what;
+                     en = Printf.sprintf "%s not found" what } in
+  let body = tr { ko = "요청하신 항목이 존재하지 않거나 삭제되었을 수 있습니다.";
+                  en = "The requested item may not exist or has been removed." } in
+  let back = tr { ko = "홈으로"; en = "Back to home" } in
+  layout
+    ~lang
+    ~title
+    ~description:(Printf.sprintf "WKBL - %s" title)
+    ~content:
+      (Printf.sprintf
+         {html|<div class="flex flex-col items-center justify-center py-20 text-center">
+           <div class="text-6xl mb-4" aria-hidden="true">🏀</div>
+           <h2 class="text-xl font-bold text-slate-900 dark:text-slate-200 mb-2">%s</h2>
+           <p class="text-slate-600 dark:text-slate-400 mb-6">%s</p>
+           <a href="/" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-orange-500 text-white hover:bg-orange-600 transition">
+             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+             %s
+           </a>
+         </div>|html}
+         (escape_html heading)
+         (escape_html body)
+         (escape_html back))
+    ()
+
 (* Re-export common functions for external access *)
 let players_table = players_table
 
