@@ -151,7 +151,6 @@ const ConfettiModule = (() => {
   const burst = (options = {}) => {
     if (prefersReducedMotion()) {
       // Show a simple visual feedback for reduced motion users
-      console.log('[Confetti] Animation skipped (prefers-reduced-motion)');
       return;
     }
 
@@ -212,7 +211,6 @@ const ConfettiModule = (() => {
   // Sad effect for losses (fewer, slower particles falling down)
   const sadEffect = (options = {}) => {
     if (prefersReducedMotion()) {
-      console.log('[Confetti] Sad animation skipped (prefers-reduced-motion)');
       return;
     }
 

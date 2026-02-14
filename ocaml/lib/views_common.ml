@@ -793,6 +793,7 @@ let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json
 			  <script src="/static/js/skeleton-loader.js"></script>
 			  <script src="/static/js/data-freshness.js"></script>
 			  <script src="/static/js/search-modal.js"></script>
+			  <script>if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js')}</script>
 				</body>
 			</html>|html}
 	    (escape_html html_lang)

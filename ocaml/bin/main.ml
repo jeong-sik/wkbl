@@ -298,7 +298,10 @@ let cache_control_middleware : Kirin.middleware = fun next_handler request ->
   | None ->
     let path = Kirin.Request.uri request |> Uri.path in
     let max_age =
-      if String.starts_with ~prefix:"/api/" path then
+      if String.starts_with ~prefix:"/static/" path then
+        (* Static assets: 1 day (filenames are not content-hashed) *)
+        Some 86400
+      else if String.starts_with ~prefix:"/api/" path then
         Some 60
       else if String.starts_with ~prefix:"/season/" path then
         (* Past seasons are immutable; current season changes frequently.
