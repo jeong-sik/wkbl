@@ -139,7 +139,7 @@ let render_fixed_table ?(table_attrs="") ?(aria_label="Data Table") ?(striped=tr
         let base_cls = "px-3 py-2 font-sans whitespace-nowrap" in
         let align_cls = align_class c.align in
         let resp_cls = resp_class c.resp in
-        let highlight_cls = if c.highlight then "text-orange-600 dark:text-orange-400" else "" in
+        let highlight_cls = if c.highlight then "text-orange-700 dark:text-orange-400" else "" in
         let sticky_cls = if c.sticky then "sticky left-0 z-20 bg-slate-100 dark:bg-slate-800/80" else "" in
         let full_cls = String.concat " " [base_cls; align_cls; resp_cls; highlight_cls; sticky_cls] in
         let sort_attr =
@@ -152,7 +152,7 @@ let render_fixed_table ?(table_attrs="") ?(aria_label="Data Table") ?(striped=tr
           | Some t -> Printf.sprintf " title=\"%s\"" (escape_html t)
           | None -> ""
         in
-        Printf.sprintf {html|<th class="%s" style="%s"%s%s>%s</th>|html}
+        Printf.sprintf {html|<th scope="col" class="%s" style="%s"%s%s>%s</th>|html}
           full_cls width_style sort_attr title_attr (escape_html c.header))
     |> String.concat "\n"
     |> fun s -> Printf.sprintf {html|<thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider whitespace-nowrap"><tr>%s</tr></thead>|html} s
@@ -173,7 +173,7 @@ let render_fixed_table ?(table_attrs="") ?(aria_label="Data Table") ?(striped=tr
           let resp_cls = resp_class c.resp in
           let color_cls =
             if is_foot then "text-slate-900 dark:text-slate-100 font-bold"
-            else if c.highlight then "text-orange-600 dark:text-orange-400 font-bold"
+            else if c.highlight then "text-orange-700 dark:text-orange-400 font-bold"
             else "text-slate-700 dark:text-slate-300"
           in
           let sticky_cls =
@@ -292,7 +292,7 @@ let player_disambiguation_line ~team_name ~player_id (info_opt: player_info opti
 let team_logo_tag ?(class_name="w-8 h-8") team_name =
   let logo_file = match Domain.team_code_of_string team_name with | Some code -> Domain.team_code_to_logo code | None -> None in
   match logo_file with
-  | Some f -> Printf.sprintf {html|<img src="/static/images/%s" alt="" class="%s object-contain" loading="lazy">|html} f class_name
+  | Some f -> Printf.sprintf {html|<img src="/static/images/%s" alt="%s 로고" class="%s object-contain" loading="lazy">|html} f (escape_html team_name) class_name
   | None -> Printf.sprintf {html|<div class="%s bg-slate-100 dark:bg-slate-800 rounded flex items-center justify-center text-xs">🏀</div>|html} class_name
 
 let breadcrumb (crumbs: (string * string) list) =
@@ -354,7 +354,7 @@ let player_name_cell ?(show_player_id=false) player_id name =
 let points_total_cell ?(extra_classes="") ?(width_style="") avg total =
   let classes = String.concat " " ["px-3 py-2 text-right"; extra_classes] in
   Printf.sprintf
-    {html|<td class="%s" style="%s"><div class="flex flex-col items-end leading-tight"><span class="text-orange-600 dark:text-orange-400 font-bold font-mono">%.1f</span><span class="text-slate-400 dark:text-slate-500 text-[9px] font-mono whitespace-nowrap" title="누적">누적%s</span></div></td>|html}
+    {html|<td class="%s" style="%s"><div class="flex flex-col items-end leading-tight"><span class="text-orange-700 dark:text-orange-400 font-bold font-mono">%.1f</span><span class="text-slate-400 dark:text-slate-500 text-[9px] font-mono whitespace-nowrap" title="누적">누적%s</span></div></td>|html}
     classes
     width_style
     avg
@@ -381,7 +381,7 @@ let margin_cell ?(extra_classes="") ?(width_style="") value =
 
 let stat_cell ?(highlight=false) ?(extra_classes="") ?(width_style="") value =
   let color_cls =
-    if highlight then "text-orange-600 dark:text-orange-400 font-bold"
+    if highlight then "text-orange-700 dark:text-orange-400 font-bold"
     else "text-slate-700 dark:text-slate-300"
   in
   let classes = String.concat " " ["px-3 py-2 text-right font-mono tabular-nums"; extra_classes; color_cls] in
@@ -691,7 +691,7 @@ let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json
   <header class="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-40">
 	    <nav class="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
 		      <div class="flex items-center gap-4">
-	        <a href="/" class="flex items-center gap-2 font-bold text-lg text-orange-600 dark:text-orange-400">
+	        <a href="/" class="flex items-center gap-2 font-bold text-lg text-orange-700 dark:text-orange-400">
 	          <span>🏀</span>
 	          <span>WKBL</span>
 	        </a>
@@ -892,7 +892,7 @@ let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json
 	    (escape_js_string sr_menu_close)
 
 let eff_badge ?(show_label=false) eff =
-  let color_cls = if eff >= 20.0 then "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/30"
+  let color_cls = if eff >= 20.0 then "bg-orange-500/10 text-orange-700 dark:text-orange-400 border-orange-500/30"
                   else "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-300 dark:border-slate-700" in
   let label = if show_label then "EFF " else "" in
   Printf.sprintf {html|<span class="px-2 py-0.5 rounded border text-[10px] font-mono font-bold %s">%s%.1f</span>|html} color_cls label eff
@@ -1055,7 +1055,7 @@ let player_summary_comparison (seasons: season_stats list) =
     let fmt_pct v = if v > 0.0 then Printf.sprintf "%.1f" (v *. 100.0) else "-" in
     let stat_cell cls v = Printf.sprintf {html|<td class="px-2 py-1.5 text-right font-mono tabular-nums %s">%s</td>|html} cls v in
     let hdr cls lbl title = Printf.sprintf
-      {html|<th class="px-2 py-1.5 text-right text-[10px] uppercase tracking-wider %s" title="%s">%s</th>|html} cls title lbl in
+      {html|<th scope="col" class="px-2 py-1.5 text-right text-[10px] uppercase tracking-wider %s" title="%s">%s</th>|html} cls title lbl in
     (* Render a single season row *)
     let season_row ~label ~border (s: season_stats) =
       let mpg = if s.ss_games_played > 0
@@ -1070,7 +1070,7 @@ let player_summary_comparison (seasons: season_stats list) =
         label
         (stat_cell "" (string_of_int s.ss_games_played))
         (stat_cell "" (fmt mpg))
-        (stat_cell "text-orange-600 dark:text-orange-400 font-bold" (fmt s.ss_avg_points))
+        (stat_cell "text-orange-700 dark:text-orange-400 font-bold" (fmt s.ss_avg_points))
         (stat_cell "" (fmt s.ss_avg_rebounds))
         (stat_cell "" (fmt s.ss_avg_assists))
         (stat_cell "hidden sm:table-cell" (fmt s.ss_avg_steals))
@@ -1104,7 +1104,7 @@ let player_summary_comparison (seasons: season_stats list) =
         </tr>|html}
         (stat_cell "" (Printf.sprintf "%d <span class=\"text-[10px] text-slate-500\">(%d시즌)</span>" total_gp n))
         (stat_cell "" (fmt career_mpg))
-        (stat_cell "text-orange-600 dark:text-orange-400 font-bold" (fmt (wavg (fun s -> s.ss_avg_points))))
+        (stat_cell "text-orange-700 dark:text-orange-400 font-bold" (fmt (wavg (fun s -> s.ss_avg_points))))
         (stat_cell "" (fmt (wavg (fun s -> s.ss_avg_rebounds))))
         (stat_cell "" (fmt (wavg (fun s -> s.ss_avg_assists))))
         (stat_cell "hidden sm:table-cell" (fmt (wavg (fun s -> s.ss_avg_steals))))
@@ -1115,12 +1115,12 @@ let player_summary_comparison (seasons: season_stats list) =
     in
     Printf.sprintf
       {html|<div class="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-lg">
-        <h3 class="font-bold text-slate-900 dark:text-slate-200 text-sm mb-3">시즌 요약</h3>
+        <h2 class="font-bold text-slate-900 dark:text-slate-200 text-sm mb-3">시즌 요약</h2>
         <div class="overflow-x-auto">
           <table class="w-full text-xs tabular-nums">
             <thead class="text-slate-500 dark:text-slate-500">
               <tr>
-                <th class="px-2 py-1.5 text-left text-[10px] uppercase tracking-wider font-sans w-24"></th>
+                <th scope="col" class="px-2 py-1.5 text-left text-[10px] uppercase tracking-wider font-sans w-24"></th>
                 %s %s %s %s %s %s %s %s %s %s
               </tr>
             </thead>
@@ -1133,7 +1133,7 @@ let player_summary_comparison (seasons: season_stats list) =
       (* headers *)
       (hdr "" "GP" "경기수")
       (hdr "" "MPG" "평균 출전시간")
-      (hdr "text-orange-600 dark:text-orange-400" "PPG" "평균 득점")
+      (hdr "text-orange-700 dark:text-orange-400" "PPG" "평균 득점")
       (hdr "" "RPG" "평균 리바운드")
       (hdr "" "APG" "평균 어시스트")
       (hdr "hidden sm:table-cell" "SPG" "평균 스틸")
@@ -1155,7 +1155,7 @@ let player_season_stats_component ~(player_id: string) ~scope (seasons: season_s
         scopes |> List.map (fun (s, label) ->
           let active = (s = scope) in
           let cls = if active
-            then "px-3 py-1.5 text-sm font-semibold text-orange-600 dark:text-orange-400 border-b-2 border-orange-500"
+            then "px-3 py-1.5 text-sm font-semibold text-orange-700 dark:text-orange-400 border-b-2 border-orange-500"
             else "px-3 py-1.5 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 border-b-2 border-transparent cursor-pointer"
           in
           Printf.sprintf
@@ -1235,7 +1235,7 @@ let player_season_stats_component ~(player_id: string) ~scope (seasons: season_s
             {html|<tr class="%s">%s%s
               <td class="px-3 py-2 text-right font-mono tabular-nums">%d</td>
               <td class="px-3 py-2 text-right font-mono tabular-nums">%.1f</td>
-              <td class="px-3 py-2 text-right font-mono tabular-nums text-orange-600 dark:text-orange-400 font-semibold">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums text-orange-700 dark:text-orange-400 font-semibold">%.1f</td>
               <td class="px-3 py-2 text-right font-mono tabular-nums">%.1f</td>
               <td class="px-3 py-2 text-right font-mono tabular-nums">%.1f</td>
               <td class="px-3 py-2 text-right font-mono tabular-nums hidden md:table-cell">%.1f</td>
@@ -1313,7 +1313,7 @@ let player_season_stats_component ~(player_id: string) ~scope (seasons: season_s
               <td class="px-3 py-2 hidden sm:table-cell"></td>
               <td class="px-3 py-2 text-right font-mono tabular-nums">%d</td>
               <td class="px-3 py-2 text-right font-mono tabular-nums">%.1f</td>
-              <td class="px-3 py-2 text-right font-mono tabular-nums text-orange-600 dark:text-orange-400">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums text-orange-700 dark:text-orange-400">%.1f</td>
               <td class="px-3 py-2 text-right font-mono tabular-nums">%.1f</td>
               <td class="px-3 py-2 text-right font-mono tabular-nums">%.1f</td>
               <td class="px-3 py-2 text-right font-mono tabular-nums hidden md:table-cell">%.1f</td>
@@ -1389,7 +1389,7 @@ let player_season_stats_component ~(player_id: string) ~scope (seasons: season_s
               <th scope="col" class="px-3 py-2 text-left font-sans hidden sm:table-cell">팀</th>
               <th scope="col" class="px-3 py-2 text-right">GP</th>
               <th scope="col" class="px-3 py-2 text-right" title="출전시간">%s</th>
-              <th scope="col" class="px-3 py-2 text-right text-orange-600 dark:text-orange-400" title="득점">%s</th>
+              <th scope="col" class="px-3 py-2 text-right text-orange-700 dark:text-orange-400" title="득점">%s</th>
               <th scope="col" class="px-3 py-2 text-right" title="리바운드">REB</th>
               <th scope="col" class="px-3 py-2 text-right" title="어시스트">AST</th>
               <th scope="col" class="px-3 py-2 text-right hidden md:table-cell" title="스틸">STL</th>
@@ -1542,7 +1542,7 @@ let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2") ?(include_
           %s
           <div class="flex flex-col min-w-0">
             <div class="flex items-center gap-2 min-w-0">
-              <a href="%s" class="player-name hover:text-orange-600 dark:text-orange-400 transition-colors truncate break-keep min-w-0">%s</a>
+              <a href="%s" class="player-name hover:text-orange-700 dark:text-orange-400 transition-colors truncate break-keep min-w-0">%s</a>
               <span class="%s">%s</span>
             </div>
             %s
