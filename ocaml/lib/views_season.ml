@@ -241,9 +241,11 @@ let season_summary_page ?(lang=I18n.Ko) ~season ~seasons
       ~extract:(per_game_f (fun b -> b.lb_ast)) ~format_val:fmt_f1 in
     let spg_card = leader_card ~title:"스틸" ~icon:"🛡️" leaders
       ~extract:(per_game_f (fun b -> b.lb_stl)) ~format_val:fmt_f1 in
+    let bpg_card = leader_card ~title:"블록" ~icon:"🚫" leaders
+      ~extract:(per_game_f (fun b -> b.lb_blk)) ~format_val:fmt_f1 in
     Printf.sprintf
-      {html|<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">%s%s%s%s</div>|html}
-      ppg_card rpg_card apg_card spg_card
+      {html|<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">%s%s%s%s%s</div>|html}
+      ppg_card rpg_card apg_card spg_card bpg_card
   in
 
   let page_title = Printf.sprintf "%s 시즌 요약 | WKBL" (escape_html season_name) in
