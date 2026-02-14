@@ -17,7 +17,7 @@ let team_profile_page ?(lang=I18n.Ko) ?(player_info_map=None) (detail: team_full
   in
   Printf.sprintf {html|<option value="ALL" %s>전체 시즌</option>%s|html} (if season = "ALL" then "selected" else "") base
  in
- let standing_info = match s with | Some st -> Printf.sprintf {html|<div class="flex gap-6 text-sm"><div class="flex flex-col"><span>승</span><span class="text-2xl font-black text-slate-900 dark:text-slate-200">%d</span></div><div class="flex flex-col"><span>패</span><span class="text-2xl font-black text-slate-900 dark:text-slate-200">%d</span></div><div class="flex flex-col"><span>승률</span><span class="text-2xl font-black text-orange-600 dark:text-orange-400">%.3f</span></div><div class="flex flex-col"><span>게임차</span><span class="text-2xl font-black text-slate-500 dark:text-slate-400">%.1f</span></div></div>|html} st.wins st.losses st.win_pct st.gb | None -> "" in
+ let standing_info = match s with | Some st -> Printf.sprintf {html|<div class="flex gap-6 text-sm"><div class="flex flex-col"><span>승</span><span class="text-2xl font-black text-slate-900 dark:text-slate-200">%d</span></div><div class="flex flex-col"><span>패</span><span class="text-2xl font-black text-slate-900 dark:text-slate-200">%d</span></div><div class="flex flex-col"><span>승률</span><span class="text-2xl font-black text-orange-700 dark:text-orange-400">%.3f</span></div><div class="flex flex-col"><span>게임차</span><span class="text-2xl font-black text-slate-500 dark:text-slate-400">%.1f</span></div></div>|html} st.wins st.losses st.win_pct st.gb | None -> "" in
  (* Prev/Next season navigation *)
  let season_nav =
   if season = "ALL" then ""
@@ -94,7 +94,7 @@ let team_profile_page ?(lang=I18n.Ko) ?(player_info_map=None) (detail: team_full
       %s%s%s%s%s
      </div>
     </div>|html}
-    (metric_card "PTS/G" (Printf.sprintf "%.1f" st.avg_pts) (rank_label pts_rank) "text-orange-600 dark:text-orange-400")
+    (metric_card "PTS/G" (Printf.sprintf "%.1f" st.avg_pts) (rank_label pts_rank) "text-orange-700 dark:text-orange-400")
     (metric_card "OPP" (Printf.sprintf "%.1f" st.avg_opp_pts) (rank_label opp_rank) "text-slate-700 dark:text-slate-300")
     (metric_card "DIFF" (Printf.sprintf "%+.1f" st.diff) "" diff_cls)
     (metric_card "eFG%%" efg_pct_str "" "text-emerald-600 dark:text-emerald-400")
@@ -179,7 +179,7 @@ let team_profile_page ?(lang=I18n.Ko) ?(player_info_map=None) (detail: team_full
 	        <div class="shrink-0">%s</div>
 	        <div class="min-w-0">
 	         <div class="text-sm font-bold text-slate-900 dark:text-slate-200 truncate">
-	          <a href="%s" class="player-name hover:text-orange-600 dark:text-orange-400 transition-colors">%s</a>
+	          <a href="%s" class="player-name hover:text-orange-700 dark:text-orange-400 transition-colors">%s</a>
 	         </div>
 	         %s
 	         <div class="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400 font-mono tabular-nums">경기 %d • 기여도 %.1f</div>
@@ -187,7 +187,7 @@ let team_profile_page ?(lang=I18n.Ko) ?(player_info_map=None) (detail: team_full
 	       </div>
 	       <div class="text-right shrink-0">
 	        <div class="text-[10px] text-slate-500 dark:text-slate-400 font-mono tracking-widest">득점</div>
-	        <div class="text-lg font-black text-orange-600 dark:text-orange-400 font-mono tabular-nums">%.1f</div>
+	        <div class="text-lg font-black text-orange-700 dark:text-orange-400 font-mono tabular-nums">%.1f</div>
 	       </div>
 	      </div>
 	      <div class="mt-3 grid grid-cols-3 gap-2 text-xs font-mono tabular-nums">
@@ -234,7 +234,7 @@ let team_profile_page ?(lang=I18n.Ko) ?(player_info_map=None) (detail: team_full
 	                         <col style="width: 80px;">  <!-- EFF -->
 	                         <col class="hidden sm:table-column" style="width: 80px;">  <!-- PER -->
 	                       </colgroup>
-	                       <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px] sm:text-xs whitespace-nowrap"><tr><th scope="col" class="px-2 py-2 text-center font-sans whitespace-nowrap">#</th><th scope="col" class="px-3 py-2 text-left font-sans whitespace-nowrap">선수</th><th scope="col" class="px-3 py-2 text-right hidden sm:table-cell whitespace-nowrap" title="경기 수">GP</th><th scope="col" class="px-3 py-2 text-right text-orange-600 dark:text-orange-400 whitespace-nowrap" title="득점(경기당)">PTS</th><th scope="col" class="px-3 py-2 text-right hidden md:table-cell whitespace-nowrap" title="득실마진(MG, 출전시간 가중)">MG</th><th scope="col" class="px-3 py-2 text-right whitespace-nowrap" title="리바운드(경기당)">REB</th><th scope="col" class="px-3 py-2 text-right hidden md:table-cell whitespace-nowrap" title="어시스트(경기당)">AST</th><th scope="col" class="px-3 py-2 text-right hidden lg:table-cell whitespace-nowrap" title="스틸(경기당)">STL</th><th scope="col" class="px-3 py-2 text-right hidden lg:table-cell whitespace-nowrap" title="블록(경기당)">BLK</th><th scope="col" class="px-3 py-2 text-right hidden lg:table-cell whitespace-nowrap" title="턴오버(경기당)">TO</th><th scope="col" class="px-3 py-2 text-right text-orange-600 dark:text-orange-400 whitespace-nowrap" title="EFF(기여도)">EFF</th><th scope="col" class="px-3 py-2 text-right hidden sm:table-cell whitespace-nowrap" title="PER">PER</th></tr></thead><tbody>%s</tbody></table>|html}
+	                       <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px] sm:text-xs whitespace-nowrap"><tr><th scope="col" class="px-2 py-2 text-center font-sans whitespace-nowrap">#</th><th scope="col" class="px-3 py-2 text-left font-sans whitespace-nowrap">선수</th><th scope="col" class="px-3 py-2 text-right hidden sm:table-cell whitespace-nowrap" title="경기 수">GP</th><th scope="col" class="px-3 py-2 text-right text-orange-700 dark:text-orange-400 whitespace-nowrap" title="득점(경기당)">PTS</th><th scope="col" class="px-3 py-2 text-right hidden md:table-cell whitespace-nowrap" title="득실마진(MG, 출전시간 가중)">MG</th><th scope="col" class="px-3 py-2 text-right whitespace-nowrap" title="리바운드(경기당)">REB</th><th scope="col" class="px-3 py-2 text-right hidden md:table-cell whitespace-nowrap" title="어시스트(경기당)">AST</th><th scope="col" class="px-3 py-2 text-right hidden lg:table-cell whitespace-nowrap" title="스틸(경기당)">STL</th><th scope="col" class="px-3 py-2 text-right hidden lg:table-cell whitespace-nowrap" title="블록(경기당)">BLK</th><th scope="col" class="px-3 py-2 text-right hidden lg:table-cell whitespace-nowrap" title="턴오버(경기당)">TO</th><th scope="col" class="px-3 py-2 text-right text-orange-700 dark:text-orange-400 whitespace-nowrap" title="EFF(기여도)">EFF</th><th scope="col" class="px-3 py-2 text-right hidden sm:table-cell whitespace-nowrap" title="PER">PER</th></tr></thead><tbody>%s</tbody></table>|html}
 	                      roster_rows
 	                    in
  (* Compute team-level footer sums from roster *)
@@ -319,7 +319,7 @@ let team_profile_page ?(lang=I18n.Ko) ?(player_info_map=None) (detail: team_full
       string_of_int p.games_played;
       string_of_int p.total_fg_made;
       string_of_int p.total_fg_att;
-      colored_pct "text-orange-600 dark:text-orange-400" p.total_fg_made p.total_fg_att;
+      colored_pct "text-orange-700 dark:text-orange-400" p.total_fg_made p.total_fg_att;
       string_of_int p.total_fg3_made;
       string_of_int p.total_fg3_att;
       colored_pct "text-emerald-600 dark:text-emerald-400" p.total_fg3_made p.total_fg3_att;
@@ -332,7 +332,7 @@ let team_profile_page ?(lang=I18n.Ko) ?(player_info_map=None) (detail: team_full
     string_of_int team_sum_gp;
     string_of_int team_sum_fgm;
     string_of_int team_sum_fga;
-    colored_pct "text-orange-600 dark:text-orange-400" team_sum_fgm team_sum_fga;
+    colored_pct "text-orange-700 dark:text-orange-400" team_sum_fgm team_sum_fga;
     string_of_int team_sum_fg3m;
     string_of_int team_sum_fg3a;
     colored_pct "text-emerald-600 dark:text-emerald-400" team_sum_fg3m team_sum_fg3a;
@@ -389,7 +389,7 @@ let team_profile_page ?(lang=I18n.Ko) ?(player_info_map=None) (detail: team_full
       player_name_cell ~show_player_id p.player_id p.name;
       string_of_int p.games_played;
       Printf.sprintf "%.1f" mpg;
-      colored_stat "text-orange-600 dark:text-orange-400" ts;
+      colored_stat "text-orange-700 dark:text-orange-400" ts;
       colored_stat "text-emerald-600 dark:text-emerald-400" efg;
       Printf.sprintf "%.1f" usg;
       colored_stat "text-sky-600 dark:text-sky-400" per ])
@@ -406,7 +406,7 @@ let team_profile_page ?(lang=I18n.Ko) ?(player_info_map=None) (detail: team_full
     ""; {html|<span class="font-sans font-bold">팀 평균</span>|html};
     "";
     Printf.sprintf "%.1f" team_mpg;
-    colored_stat "text-orange-600 dark:text-orange-400" team_ts;
+    colored_stat "text-orange-700 dark:text-orange-400" team_ts;
     colored_stat "text-emerald-600 dark:text-emerald-400" team_efg;
     "—";
     colored_stat "text-sky-600 dark:text-sky-400" team_per;
@@ -445,7 +445,7 @@ let team_profile_page ?(lang=I18n.Ko) ?(player_info_map=None) (detail: team_full
            %s
            <div class="flex flex-col min-w-0">
              <div class="flex items-center gap-2 min-w-0">
-               <a href="%s" class="player-name hover:text-orange-600 dark:text-orange-400 transition-colors truncate break-keep min-w-0">%s</a>
+               <a href="%s" class="player-name hover:text-orange-700 dark:text-orange-400 transition-colors truncate break-keep min-w-0">%s</a>
                <span class="%s">%s</span>
              </div>
            </div>
@@ -454,7 +454,7 @@ let team_profile_page ?(lang=I18n.Ko) ?(player_info_map=None) (detail: team_full
        <td class="px-3 py-2 text-right text-slate-500 dark:text-slate-400 hidden sm:table-cell" style="width: 50px;">%d</td>
        <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300" style="width: 55px;">%d</td>
        <td class="px-3 py-2 text-right text-slate-500 dark:text-slate-400" style="width: 55px;">%d</td>
-       <td class="px-3 py-2 text-right text-orange-600 dark:text-orange-400 font-bold" style="width: 65px;">%s</td>
+       <td class="px-3 py-2 text-right text-orange-700 dark:text-orange-400 font-bold" style="width: 65px;">%s</td>
        <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300" style="width: 55px;">%d</td>
        <td class="px-3 py-2 text-right text-slate-500 dark:text-slate-400" style="width: 55px;">%d</td>
        <td class="px-3 py-2 text-right text-emerald-600 dark:text-emerald-400 font-bold" style="width: 65px;">%s</td>
@@ -497,7 +497,7 @@ let team_profile_page ?(lang=I18n.Ko) ?(player_info_map=None) (detail: team_full
         <th scope="col" class="px-3 py-2 text-right hidden sm:table-cell" title="경기 수">GP</th>
         <th scope="col" class="px-3 py-2 text-right" title="야투 성공">FGM</th>
         <th scope="col" class="px-3 py-2 text-right" title="야투 시도">FGA</th>
-        <th scope="col" class="px-3 py-2 text-right text-orange-600 dark:text-orange-400" title="야투 성공률">FG%%</th>
+        <th scope="col" class="px-3 py-2 text-right text-orange-700 dark:text-orange-400" title="야투 성공률">FG%%</th>
         <th scope="col" class="px-3 py-2 text-right" title="3점 성공">3PM</th>
         <th scope="col" class="px-3 py-2 text-right" title="3점 시도">3PA</th>
         <th scope="col" class="px-3 py-2 text-right text-emerald-600 dark:text-emerald-400" title="3점 성공률">3P%%</th>
@@ -548,7 +548,7 @@ let team_profile_page ?(lang=I18n.Ko) ?(player_info_map=None) (detail: team_full
            %s
            <div class="flex flex-col min-w-0">
              <div class="flex items-center gap-2 min-w-0">
-               <a href="%s" class="player-name hover:text-orange-600 dark:text-orange-400 transition-colors truncate break-keep min-w-0">%s</a>
+               <a href="%s" class="player-name hover:text-orange-700 dark:text-orange-400 transition-colors truncate break-keep min-w-0">%s</a>
                <span class="%s">%s</span>
              </div>
            </div>
@@ -556,7 +556,7 @@ let team_profile_page ?(lang=I18n.Ko) ?(player_info_map=None) (detail: team_full
        </td>
        <td class="px-3 py-2 text-right text-slate-500 dark:text-slate-400 hidden sm:table-cell" style="width: 50px;">%d</td>
        <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300" style="width: 70px;">%.1f</td>
-       <td class="px-3 py-2 text-right text-orange-600 dark:text-orange-400 font-bold" style="width: 70px;">%.1f</td>
+       <td class="px-3 py-2 text-right text-orange-700 dark:text-orange-400 font-bold" style="width: 70px;">%.1f</td>
        <td class="px-3 py-2 text-right text-emerald-600 dark:text-emerald-400 font-bold" style="width: 70px;">%.1f</td>
        <td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300" style="width: 70px;">%.1f</td>
        <td class="px-3 py-2 text-right text-sky-600 dark:text-sky-400 font-bold" style="width: 70px;">%.1f</td>
@@ -589,7 +589,7 @@ let team_profile_page ?(lang=I18n.Ko) ?(player_info_map=None) (detail: team_full
         <th scope="col" class="px-3 py-2 text-left font-sans">선수</th>
         <th scope="col" class="px-3 py-2 text-right hidden sm:table-cell" title="경기 수">GP</th>
         <th scope="col" class="px-3 py-2 text-right" title="경기당 출전시간">MPG</th>
-        <th scope="col" class="px-3 py-2 text-right text-orange-600 dark:text-orange-400" title="True Shooting %%">TS%%</th>
+        <th scope="col" class="px-3 py-2 text-right text-orange-700 dark:text-orange-400" title="True Shooting %%">TS%%</th>
         <th scope="col" class="px-3 py-2 text-right text-emerald-600 dark:text-emerald-400" title="Effective FG %%">eFG%%</th>
         <th scope="col" class="px-3 py-2 text-right" title="Usage Rate %%">USG%%</th>
         <th scope="col" class="px-3 py-2 text-right" title="Player Efficiency Rating">PER</th>
@@ -848,7 +848,7 @@ let team_profile_page ?(lang=I18n.Ko) ?(player_info_map=None) (detail: team_full
     in
     Printf.sprintf
      {html|<div class="space-y-4">
-      <h3 class="text-xl font-bold text-slate-900 dark:text-slate-200">Four Factors</h3>
+      <h2 class="text-xl font-bold text-slate-900 dark:text-slate-200">Four Factors</h2>
       <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-lg">
        <div class="grid grid-cols-2 gap-3">
         %s
@@ -864,7 +864,7 @@ let team_profile_page ?(lang=I18n.Ko) ?(player_info_map=None) (detail: team_full
      (stat_card "eFG%%" ff.efg_pct "슈팅 효율" "text-emerald-600 dark:text-emerald-400" (rank_badge efg_rank))
      (stat_card "TOV%%" ff.tov_pct "턴오버율 (낮을수록 좋음)" "text-rose-500 dark:text-rose-400" (rank_badge tov_rank))
      (stat_card "ORB%%" ff.orb_pct "공격 리바운드율" "text-sky-600 dark:text-sky-400" (rank_badge orb_rank))
-     (stat_card "FTR" ff.ftr "자유투 시도율" "text-orange-600 dark:text-orange-400" (rank_badge ftr_rank))
+     (stat_card "FTR" ff.ftr "자유투 시도율" "text-orange-700 dark:text-orange-400" (rank_badge ftr_rank))
  in
  (* JSON-LD structured data for SportsTeam schema *)
  let json_ld_data =
@@ -879,7 +879,7 @@ let team_profile_page ?(lang=I18n.Ko) ?(player_info_map=None) (detail: team_full
 				  ~canonical_path:(team_href t)
 				  ~description:(Printf.sprintf "%s WKBL 여자농구 팀 프로필 - 로스터, 경기 결과, 시즌 기록" (escape_html t))
 				  ~json_ld:json_ld_data
-				  ~content:(Printf.sprintf {html|<div class="space-y-6 sm:space-y-8 animate-fade-in">%s<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 sm:p-8 shadow-2xl flex flex-col md:flex-row items-center md:items-start gap-6 sm:gap-8"><div class="w-24 h-24 sm:w-32 sm:h-32 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center p-3 sm:p-4 border-2 border-slate-300 dark:border-slate-700 shadow-inner">%s</div><div class="text-center md:text-left space-y-4 w-full"><div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3"><h1 class="text-3xl sm:text-4xl font-black text-slate-900 dark:text-slate-200">%s</h1><form action="%s" method="get" class="flex flex-col sm:flex-row items-stretch sm:items-center justify-center sm:justify-end gap-2 w-full sm:w-auto"><span class="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-widest font-bold">시즌</span><select name="season" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none w-full sm:w-48" onchange="this.form.submit()">%s</select></form></div>%s</div></div>%s%s<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8"><div class="space-y-4 lg:col-span-2"><h3 class="text-xl font-bold text-slate-900 dark:text-slate-200">로스터</h3><div id="roster-cards" class="sm:hidden space-y-3">%s</div><details id="roster-table-details" class="sm:hidden bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 p-4" ontoggle="(function(d){var c=document.getElementById('roster-cards'); if(c) c.hidden = d.open;})(this)"><summary class="cursor-pointer font-bold text-slate-700 dark:text-slate-300 select-none">표로 보기</summary><div class="mt-3 overflow-x-auto">%s</div></details><div class="hidden sm:block">%s</div></div><div class="space-y-6 lg:col-span-1"><h3 class="text-xl font-bold text-slate-900 dark:text-slate-200">경기 결과</h3>%s%s<h3 class="text-xl font-bold text-slate-900 dark:text-slate-200">전체 경기</h3><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto max-h-[600px] overflow-y-auto shadow-lg"><table class="min-w-[480px] w-full text-xs sm:text-sm font-mono tabular-nums table-fixed" aria-label="시즌 전체 경기">
+				  ~content:(Printf.sprintf {html|<div class="space-y-6 sm:space-y-8 animate-fade-in">%s<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 sm:p-8 shadow-2xl flex flex-col md:flex-row items-center md:items-start gap-6 sm:gap-8"><div class="w-24 h-24 sm:w-32 sm:h-32 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center p-3 sm:p-4 border-2 border-slate-300 dark:border-slate-700 shadow-inner">%s</div><div class="text-center md:text-left space-y-4 w-full"><div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3"><h1 class="text-3xl sm:text-4xl font-black text-slate-900 dark:text-slate-200">%s</h1><form action="%s" method="get" class="flex flex-col sm:flex-row items-stretch sm:items-center justify-center sm:justify-end gap-2 w-full sm:w-auto"><span class="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-widest font-bold">시즌</span><select name="season" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none w-full sm:w-48" onchange="this.form.submit()">%s</select></form></div>%s</div></div>%s%s<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8"><div class="space-y-4 lg:col-span-2"><h2 class="text-xl font-bold text-slate-900 dark:text-slate-200">로스터</h2><div id="roster-cards" class="sm:hidden space-y-3">%s</div><details id="roster-table-details" class="sm:hidden bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 p-4" ontoggle="(function(d){var c=document.getElementById('roster-cards'); if(c) c.hidden = d.open;})(this)"><summary class="cursor-pointer font-bold text-slate-700 dark:text-slate-300 select-none">표로 보기</summary><div class="mt-3 overflow-x-auto">%s</div></details><div class="hidden sm:block">%s</div></div><div class="space-y-6 lg:col-span-1"><h2 class="text-xl font-bold text-slate-900 dark:text-slate-200">경기 결과</h2>%s%s<h2 class="text-xl font-bold text-slate-900 dark:text-slate-200">전체 경기</h2><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto max-h-[600px] overflow-y-auto shadow-lg"><table class="min-w-[480px] w-full text-xs sm:text-sm font-mono tabular-nums table-fixed" aria-label="시즌 전체 경기">
   	          <colgroup>
   	            <col style="width: 96px;"> <!-- Date -->
   	            <col style="width: auto;"> <!-- Opponent -->

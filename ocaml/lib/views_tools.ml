@@ -74,7 +74,7 @@ let qa_dashboard_page ?(lang=I18n.Ko) (report: Db.qa_db_report) ?(markdown=None)
       let home_delta = delta_or_dash row.qsm_home_score row.qsm_home_sum in
       let away_delta = delta_or_dash row.qsm_away_score row.qsm_away_sum in
       Printf.sprintf
-        {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors"><td class="px-3 py-2 text-slate-500 dark:text-slate-400 font-mono text-xs whitespace-nowrap">%s</td><td class="px-3 py-2 text-slate-900 dark:text-slate-200 font-mono text-xs"><a class="hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300" href="%s">%s</a></td><td class="px-3 py-2 text-slate-700 dark:text-slate-300 text-xs">%s</td><td class="px-3 py-2 text-right font-mono text-xs text-slate-900 dark:text-slate-200 tabular-nums">%s</td><td class="px-3 py-2 text-right font-mono text-xs text-slate-900 dark:text-slate-200 tabular-nums">%s</td><td class="px-3 py-2 text-right font-mono text-xs text-slate-500 dark:text-slate-400 tabular-nums">%s</td><td class="px-3 py-2 text-right font-mono text-xs text-slate-500 dark:text-slate-400 tabular-nums">%s</td></tr>|html}
+        {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors"><td class="px-3 py-2 text-slate-500 dark:text-slate-400 font-mono text-xs whitespace-nowrap">%s</td><td class="px-3 py-2 text-slate-900 dark:text-slate-200 font-mono text-xs"><a class="hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300" href="%s">%s</a></td><td class="px-3 py-2 text-slate-700 dark:text-slate-300 text-xs">%s</td><td class="px-3 py-2 text-right font-mono text-xs text-slate-900 dark:text-slate-200 tabular-nums">%s</td><td class="px-3 py-2 text-right font-mono text-xs text-slate-900 dark:text-slate-200 tabular-nums">%s</td><td class="px-3 py-2 text-right font-mono text-xs text-slate-500 dark:text-slate-400 tabular-nums">%s</td><td class="px-3 py-2 text-right font-mono text-xs text-slate-500 dark:text-slate-400 tabular-nums">%s</td></tr>|html}
         (escape_html row.qsm_game_date)
         (boxscore_href row.qsm_game_id)
         (escape_html row.qsm_game_id)
@@ -89,7 +89,7 @@ let qa_dashboard_page ?(lang=I18n.Ko) (report: Db.qa_db_report) ?(markdown=None)
     report.qdr_team_count_anomaly_sample
     |> List.map (fun (row: Db.qa_team_count_anomaly) ->
       Printf.sprintf
-        {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors"><td class="px-3 py-2 text-slate-900 dark:text-slate-200 font-mono text-xs"><a class="hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300" href="%s">%s</a></td><td class="px-3 py-2 text-right font-mono text-xs text-slate-900 dark:text-slate-200 tabular-nums">%d</td></tr>|html}
+        {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors"><td class="px-3 py-2 text-slate-900 dark:text-slate-200 font-mono text-xs"><a class="hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300" href="%s">%s</a></td><td class="px-3 py-2 text-right font-mono text-xs text-slate-900 dark:text-slate-200 tabular-nums">%d</td></tr>|html}
         (boxscore_href row.qtca_game_id)
         (escape_html row.qtca_game_id)
         row.qtca_team_count)
@@ -99,7 +99,7 @@ let qa_dashboard_page ?(lang=I18n.Ko) (report: Db.qa_db_report) ?(markdown=None)
     report.qdr_duplicate_player_row_sample
     |> List.map (fun (row: Db.qa_duplicate_player_row) ->
       Printf.sprintf
-        {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors"><td class="px-3 py-2 text-slate-900 dark:text-slate-200 font-mono text-xs"><a class="hover:text-orange-600 dark:text-orange-400" href="%s">%s</a></td><td class="px-3 py-2 text-xs">%s</td><td class="px-3 py-2 text-xs"><a class="hover:text-orange-600 dark:text-orange-400" href="%s">%s</a></td><td class="px-3 py-2 text-right font-mono text-xs text-slate-900 dark:text-slate-200 tabular-nums">%d</td></tr>|html}
+        {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors"><td class="px-3 py-2 text-slate-900 dark:text-slate-200 font-mono text-xs"><a class="hover:text-orange-700 dark:text-orange-400" href="%s">%s</a></td><td class="px-3 py-2 text-xs">%s</td><td class="px-3 py-2 text-xs"><a class="hover:text-orange-700 dark:text-orange-400" href="%s">%s</a></td><td class="px-3 py-2 text-right font-mono text-xs text-slate-900 dark:text-slate-200 tabular-nums">%d</td></tr>|html}
         (boxscore_href row.qdpr_game_id)
         (escape_html row.qdpr_game_id)
         (team_badge row.qdpr_team_name)
@@ -113,7 +113,7 @@ let qa_dashboard_page ?(lang=I18n.Ko) (report: Db.qa_db_report) ?(markdown=None)
     |> List.map (fun (row: Db.qa_duplicate_player_name) ->
       let ids =
         row.qdpn_player_ids
-        |> List.map (fun id -> Printf.sprintf {html|<a href="%s" class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700/60 text-[10px] font-mono text-slate-900 dark:text-slate-200 hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300">%s</a>|html} (player_href id) (escape_html id))
+        |> List.map (fun id -> Printf.sprintf {html|<a href="%s" class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700/60 text-[10px] font-mono text-slate-900 dark:text-slate-200 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300">%s</a>|html} (player_href id) (escape_html id))
         |> String.concat " "
       in
       Printf.sprintf
@@ -128,7 +128,7 @@ let qa_dashboard_page ?(lang=I18n.Ko) (report: Db.qa_db_report) ?(markdown=None)
     |> List.map (fun (row: Db.qa_duplicate_player_identity) ->
       let ids =
         row.qdpi_player_ids
-        |> List.map (fun id -> Printf.sprintf {html|<a href="%s" class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700/60 text-[10px] font-mono text-slate-900 dark:text-slate-200 hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300">%s</a>|html} (player_href id) (escape_html id))
+        |> List.map (fun id -> Printf.sprintf {html|<a href="%s" class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700/60 text-[10px] font-mono text-slate-900 dark:text-slate-200 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300">%s</a>|html} (player_href id) (escape_html id))
         |> String.concat " "
       in
       Printf.sprintf
@@ -155,7 +155,7 @@ let qa_dashboard_page ?(lang=I18n.Ko) (report: Db.qa_db_report) ?(markdown=None)
     |> List.map (fun (row: Db.qa_schedule_missing_stats) ->
       let matchup = row.qsms_home_team ^ matchup_sep ^ row.qsms_away_team in
       Printf.sprintf
-        {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors"><td class="px-3 py-2 text-slate-500 dark:text-slate-400 font-mono text-xs whitespace-nowrap">%s</td><td class="px-3 py-2 text-slate-900 dark:text-slate-200 font-mono text-xs"><a class="hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300" href="%s">%s</a></td><td class="px-3 py-2 text-xs">%s</td></tr>|html}
+        {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors"><td class="px-3 py-2 text-slate-500 dark:text-slate-400 font-mono text-xs whitespace-nowrap">%s</td><td class="px-3 py-2 text-slate-900 dark:text-slate-200 font-mono text-xs"><a class="hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300" href="%s">%s</a></td><td class="px-3 py-2 text-xs">%s</td></tr>|html}
         (escape_html row.qsms_game_date)
         (boxscore_href row.qsms_game_id)
         (escape_html row.qsms_game_id)
@@ -299,9 +299,9 @@ let qa_dashboard_page ?(lang=I18n.Ko) (report: Db.qa_db_report) ?(markdown=None)
       <summary class="cursor-pointer font-bold text-slate-700 dark:text-slate-300 select-none">%s</summary>
       <div class="mt-2 space-y-1 leading-relaxed">
         <div class="text-slate-500 dark:text-slate-400 font-bold">%s</div>
-        <div>• %s: <a href="https://www.wkbl.or.kr/game/result.asp" target="_blank" rel="noreferrer" class="text-orange-600 dark:text-orange-400 hover:underline">wkbl.or.kr/game/result.asp</a></div>
+        <div>• %s: <a href="https://www.wkbl.or.kr/game/result.asp" target="_blank" rel="noreferrer" class="text-orange-700 dark:text-orange-400 hover:underline">wkbl.or.kr/game/result.asp</a></div>
         <div>• %s: %s</div>
-        <div>• %s: <a href="https://www.wkbl.or.kr/live11/path_live_sms.asp" target="_blank" rel="noreferrer" class="text-orange-600 dark:text-orange-400 hover:underline">wkbl.or.kr/live11/path_live_sms.asp</a> (%s)</div>
+        <div>• %s: <a href="https://www.wkbl.or.kr/live11/path_live_sms.asp" target="_blank" rel="noreferrer" class="text-orange-700 dark:text-orange-400 hover:underline">wkbl.or.kr/live11/path_live_sms.asp</a> (%s)</div>
         <div class="pt-1 text-slate-500 dark:text-slate-400 font-bold">%s</div>
         <div>• <span class="font-mono text-slate-900 dark:text-slate-200">%s</span>: %s</div>
         <div>• <span class="font-mono text-slate-900 dark:text-slate-200">%s</span>: %s</div>
@@ -715,7 +715,7 @@ let qa_pbp_missing_page
       <div class="mt-1 text-sm text-slate-600 dark:text-slate-400">%s</div>
     </div>
     <form action="/qa/pbp-missing" method="get" class="flex items-center gap-2">
-      <select name="season" onchange="this.form.submit()" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/40 transition-colors">
+      <select name="season" aria-label="시즌 선택" onchange="this.form.submit()" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/40 transition-colors">
         %s
       </select>
     </form>
@@ -1053,7 +1053,7 @@ let transactions_page
                 {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors">
   <td class="px-3 py-2 text-slate-500 dark:text-slate-400 font-mono whitespace-nowrap">%s</td>
   <td class="px-3 py-2 text-slate-700 dark:text-slate-300 font-mono whitespace-nowrap">%s</td>
-  <td class="px-3 py-2 min-w-0"><a class="text-slate-900 dark:text-slate-200 hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 font-bold truncate block" href="%s">%s</a><div class="mt-1 text-[11px] text-slate-500 dark:text-slate-400 font-mono">%s</div></td>
+  <td class="px-3 py-2 min-w-0"><a class="text-slate-900 dark:text-slate-200 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300 font-bold truncate block" href="%s">%s</a><div class="mt-1 text-[11px] text-slate-500 dark:text-slate-400 font-mono">%s</div></td>
   <td class="px-3 py-2">%s</td>
   <td class="px-3 py-2 text-[11px] text-slate-700 dark:text-slate-300 font-mono whitespace-pre-line break-words">%s</td>
   <td class="px-3 py-2 text-[11px]"><a class="text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:text-slate-300 underline font-mono" href="%s" target="_blank" rel="noreferrer">출처</a></td>
@@ -1362,7 +1362,7 @@ and fantasy_results_table (scores: fantasy_player_score list) =
     |> List.mapi (fun i (s: fantasy_player_score) ->
         let rank = i + 1 in
         let rank_class =
-          if rank = 1 then "text-orange-600 dark:text-orange-400 font-black"
+          if rank = 1 then "text-orange-700 dark:text-orange-400 font-black"
           else if rank <= 3 then "text-slate-700 dark:text-slate-300 font-bold"
           else "text-slate-500 dark:text-slate-400"
         in
@@ -1375,7 +1375,7 @@ and fantasy_results_table (scores: fantasy_player_score list) =
   <td class="px-3 py-2">%s</td>
   <td class="px-3 py-2 text-right font-mono tabular-nums text-slate-500 dark:text-slate-400">%d</td>
   <td class="px-3 py-2 text-right font-mono tabular-nums text-slate-900 dark:text-slate-200 font-bold">%.1f</td>
-  <td class="px-3 py-2 text-right font-mono tabular-nums text-orange-600 dark:text-orange-400 font-bold">%.1f</td>
+  <td class="px-3 py-2 text-right font-mono tabular-nums text-orange-700 dark:text-orange-400 font-bold">%.1f</td>
   <td class="px-3 py-2 text-right font-mono tabular-nums text-[11px] text-slate-500 dark:text-slate-400">%.1f</td>
   <td class="px-3 py-2 text-right font-mono tabular-nums text-[11px] text-slate-500 dark:text-slate-400">%.1f</td>
   <td class="px-3 py-2 text-right font-mono tabular-nums text-[11px] text-slate-500 dark:text-slate-400">%.1f</td>
@@ -1919,13 +1919,13 @@ let game_flow_page ?(lang=I18n.Ko) ~(game: Domain.game_info) (flow_points: Domai
               <div class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider mt-1">%s 최대 리드</div>
             </div>
             <div class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-4 text-center">
-              <div class="text-2xl font-black text-orange-600 dark:text-orange-400 font-mono">+%d</div>
+              <div class="text-2xl font-black text-orange-700 dark:text-orange-400 font-mono">+%d</div>
               <div class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider mt-1">%s 최대 리드</div>
             </div>
             <div class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-4 text-center">
               <div class="text-lg font-bold text-slate-900 dark:text-slate-200 font-mono">
                 <span class="text-sky-600 dark:text-sky-400">%s</span> /
-                <span class="text-orange-600 dark:text-orange-400">%s</span>
+                <span class="text-orange-700 dark:text-orange-400">%s</span>
               </div>
               <div class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider mt-1">리드 시간</div>
             </div>
@@ -2139,14 +2139,14 @@ let lineup_chemistry_page
 	    {html|<form class="flex flex-wrap gap-4 items-end mb-6" hx-get="/lineups/table" hx-target="#lineup-content" hx-swap="innerHTML">
 	      <div>
 	        <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">팀</label>
-	        <select name="team" class="px-3 py-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-sm">
+	        <select name="team" aria-label="팀 선택" class="px-3 py-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-sm">
 	          <option value="ALL"%s>전체 팀</option>
 	          %s
 	        </select>
 	      </div>
 	      <div>
 	        <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">시즌</label>
-	        <select name="season" class="px-3 py-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-sm">
+	        <select name="season" aria-label="시즌 선택" class="px-3 py-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-sm">
 	          <option value="ALL"%s>전체 시즌</option>
 	          %s
 	        </select>
@@ -2314,7 +2314,7 @@ let on_off_impact_page
 	    {html|<form method="get" action="/on-off" class="flex flex-wrap items-end gap-4 p-4 bg-slate-100 dark:bg-slate-800/50 rounded-xl mb-6">
 	      <div>
 	        <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">시즌</label>
-	        <select name="season" class="px-3 py-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-sm">
+	        <select name="season" aria-label="시즌 선택" class="px-3 py-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-sm">
 	          <option value="ALL"%s>전체 시즌</option>
 	          %s
 	        </select>
@@ -2556,7 +2556,7 @@ let qa_anomalies_page
       <div class="mt-1 text-sm text-slate-600 dark:text-slate-400">%s</div>
     </div>
     <form action="/qa/anomalies" method="get" class="flex items-center gap-2">
-      <select name="season" onchange="this.form.submit()" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/40 transition-colors">
+      <select name="season" aria-label="시즌 선택" onchange="this.form.submit()" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/40 transition-colors">
         %s
       </select>
     </form>
