@@ -94,10 +94,15 @@ type col_spec = {
   title : string option;
   highlight : bool;
   sticky : bool;  (** Sticky left column — stays fixed on horizontal scroll *)
+  numeric : bool;  (** Numeric column — applies tabular-nums font-mono *)
 }
 
-let col ?(w=None) ?(align=`Left) ?(resp=`Always) ?sort ?title ?(highlight=false) ?(sticky=false) header =
-  { header; width = w; align; resp; sort; title; highlight; sticky }
+let col ?(w=None) ?(align=`Left) ?(resp=`Always) ?sort ?title ?(highlight=false) ?(sticky=false) ?numeric header =
+  let numeric = match numeric with
+    | Some v -> v
+    | None -> align = `Right  (* Right-aligned columns default to numeric *)
+  in
+  { header; width = w; align; resp; sort; title; highlight; sticky; numeric }
 
 let px w = Some w
 
@@ -109,7 +114,7 @@ let px w = Some w
     - [striped]: alternate row backgrounds (default: false).
     - [foot_data]: rows for <tfoot> (same column layout as body rows).
 *)
-let render_fixed_table ?(table_attrs="") ?(aria_label="Data Table") ?(striped=false) ?(foot_data=[]) ~id ~min_width ~(cols : col_spec list) (rows_data : string list list) =
+let render_fixed_table ?(table_attrs="") ?(aria_label="Data Table") ?(striped=true) ?(foot_data=[]) ~id ~min_width ~(cols : col_spec list) (rows_data : string list list) =
   let resp_class = function
     | `Always -> ""
     | `Hidden_sm -> "hidden sm:table-cell"
@@ -134,7 +139,7 @@ let render_fixed_table ?(table_attrs="") ?(aria_label="Data Table") ?(striped=fa
         let base_cls = "px-3 py-2 font-sans whitespace-nowrap" in
         let align_cls = align_class c.align in
         let resp_cls = resp_class c.resp in
-        let highlight_cls = if c.highlight then "text-orange-600 dark:text-orange-400" else "" in
+        let highlight_cls = if c.highlight then "text-orange-700 dark:text-orange-400" else "" in
         let sticky_cls = if c.sticky then "sticky left-0 z-20 bg-slate-100 dark:bg-slate-800/80" else "" in
         let full_cls = String.concat " " [base_cls; align_cls; resp_cls; highlight_cls; sticky_cls] in
         let sort_attr =
@@ -147,7 +152,7 @@ let render_fixed_table ?(table_attrs="") ?(aria_label="Data Table") ?(striped=fa
           | Some t -> Printf.sprintf " title=\"%s\"" (escape_html t)
           | None -> ""
         in
-        Printf.sprintf {html|<th class="%s" style="%s"%s%s>%s</th>|html}
+        Printf.sprintf {html|<th scope="col" class="%s" style="%s"%s%s>%s</th>|html}
           full_cls width_style sort_attr title_attr (escape_html c.header))
     |> String.concat "\n"
     |> fun s -> Printf.sprintf {html|<thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider whitespace-nowrap"><tr>%s</tr></thead>|html} s
@@ -168,7 +173,7 @@ let render_fixed_table ?(table_attrs="") ?(aria_label="Data Table") ?(striped=fa
           let resp_cls = resp_class c.resp in
           let color_cls =
             if is_foot then "text-slate-900 dark:text-slate-100 font-bold"
-            else if c.highlight then "text-orange-600 dark:text-orange-400 font-bold"
+            else if c.highlight then "text-orange-700 dark:text-orange-400 font-bold"
             else "text-slate-700 dark:text-slate-300"
           in
           let sticky_cls =
@@ -176,7 +181,8 @@ let render_fixed_table ?(table_attrs="") ?(aria_label="Data Table") ?(striped=fa
               "sticky left-0 z-10 bg-white dark:bg-slate-900 group-hover:bg-slate-100 dark:group-hover:bg-slate-800/50"
             else ""
           in
-          let full_cls = String.concat " " [base_cls; align_cls; resp_cls; color_cls; sticky_cls] in
+          let numeric_cls = if c.numeric then "tabular-nums font-mono" else "" in
+          let full_cls = String.concat " " [base_cls; align_cls; resp_cls; color_cls; sticky_cls; numeric_cls] in
           Printf.sprintf {html|<td class="%s" style="%s">%s</td>|html} full_cls width_style data
         ) cols row
         |> String.concat ""
@@ -286,7 +292,7 @@ let player_disambiguation_line ~team_name ~player_id (info_opt: player_info opti
 let team_logo_tag ?(class_name="w-8 h-8") team_name =
   let logo_file = match Domain.team_code_of_string team_name with | Some code -> Domain.team_code_to_logo code | None -> None in
   match logo_file with
-  | Some f -> Printf.sprintf {html|<img src="/static/images/%s" alt="" class="%s object-contain" loading="lazy">|html} f class_name
+  | Some f -> Printf.sprintf {html|<img src="/static/images/%s" alt="%s 로고" class="%s object-contain" loading="lazy">|html} f (escape_html team_name) class_name
   | None -> Printf.sprintf {html|<div class="%s bg-slate-100 dark:bg-slate-800 rounded flex items-center justify-center text-xs">🏀</div>|html} class_name
 
 let breadcrumb (crumbs: (string * string) list) =
@@ -348,7 +354,7 @@ let player_name_cell ?(show_player_id=false) player_id name =
 let points_total_cell ?(extra_classes="") ?(width_style="") avg total =
   let classes = String.concat " " ["px-3 py-2 text-right"; extra_classes] in
   Printf.sprintf
-    {html|<td class="%s" style="%s"><div class="flex flex-col items-end leading-tight"><span class="text-orange-600 dark:text-orange-400 font-bold font-mono">%.1f</span><span class="text-slate-400 dark:text-slate-500 text-[9px] font-mono whitespace-nowrap" title="누적">누적%s</span></div></td>|html}
+    {html|<td class="%s" style="%s"><div class="flex flex-col items-end leading-tight"><span class="text-orange-700 dark:text-orange-400 font-bold font-mono">%.1f</span><span class="text-slate-400 dark:text-slate-500 text-[9px] font-mono whitespace-nowrap" title="누적">누적%s</span></div></td>|html}
     classes
     width_style
     avg
@@ -370,12 +376,12 @@ let margin_cell ?(extra_classes="") ?(width_style="") value =
     else "text-slate-700 dark:text-slate-300 font-bold"
   in
   let value_str = if value > 0.0 then Printf.sprintf "+%.1f" value else format_float value in
-  let classes = String.concat " " ["px-3 py-2 text-right font-mono"; extra_classes; cls] in
+  let classes = String.concat " " ["px-3 py-2 text-right font-mono tabular-nums"; extra_classes; cls] in
   Printf.sprintf {html|<td class="%s" style="%s">%s</td>|html} classes width_style (escape_html value_str)
 
 let stat_cell ?(highlight=false) ?(extra_classes="") ?(width_style="") value =
   let color_cls =
-    if highlight then "text-orange-600 dark:text-orange-400 font-bold"
+    if highlight then "text-orange-700 dark:text-orange-400 font-bold"
     else "text-slate-700 dark:text-slate-300"
   in
   let classes = String.concat " " ["px-3 py-2 text-right font-mono tabular-nums"; extra_classes; color_cls] in
@@ -385,18 +391,70 @@ let empty_state ?icon title desc =
   let _ = icon in
   Printf.sprintf {html|<div class="text-center py-12 px-4"><div class="text-4xl mb-4">🏀</div><h3 class="text-lg font-bold text-slate-900 dark:text-slate-200">%s</h3><p class="text-slate-500 dark:text-slate-400">%s</p></div>|html} title desc
 
-let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json_ld="") ?og_title ?og_description ?og_image ?data_freshness ~content () =
-  let _ = og_title in let _ = og_description in
-  let _ = canonical_path in
-  let _ = description in
+(** Render visual breadcrumb nav.
+    [(label, url)] list — last item has url="" (current page, no link). *)
+let render_breadcrumbs ?(lang=I18n.Ko) crumbs =
+  let _ = lang in
+  if crumbs = [] then "" else
+  let sep = {|<svg class="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>|} in
+  let items = crumbs |> List.mapi (fun i (label, url) ->
+    let is_last = (i = List.length crumbs - 1) in
+    if is_last then
+      Printf.sprintf {|<span class="text-slate-900 dark:text-slate-200 font-medium" aria-current="page">%s</span>|} (escape_html label)
+    else
+      Printf.sprintf {|<a href="%s" class="text-slate-500 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors">%s</a>|}
+        (escape_html url) (escape_html label)
+  ) in
+  let inner = String.concat (Printf.sprintf {| <span class="mx-1">%s</span> |} sep) items in
+  Printf.sprintf {|<nav aria-label="Breadcrumb" class="text-sm mb-4 flex items-center flex-wrap gap-y-1">%s</nav>|} inner
 
+(** Generate BreadcrumbList JSON-LD for SEO. *)
+let breadcrumb_json_ld crumbs =
+  if crumbs = [] then "" else
+  let items = crumbs |> List.mapi (fun i (label, url) ->
+    let position = i + 1 in
+    let item_url = if url = "" then "\"\"" else Printf.sprintf {|"https://wkbl.win%s"|} url in
+    Printf.sprintf {|{"@type":"ListItem","position":%d,"name":"%s","item":%s}|}
+      position (escape_html label) item_url
+  ) in
+  Printf.sprintf {|{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[%s]}|}
+    (String.concat "," items)
+
+(** Combine multiple JSON-LD objects into an array *)
+let combine_json_ld parts =
+  let non_empty = List.filter (fun s -> s <> "") parts in
+  match non_empty with
+  | [] -> ""
+  | [single] -> single
+  | multiple -> "[" ^ String.concat "," multiple ^ "]"
+
+let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json_ld="") ?og_title ?og_description ?og_image ?data_freshness ~content () =
   let json_ld_html = if json_ld = "" then "" else
     Printf.sprintf {|<script type="application/ld+json">%s</script>|} json_ld
   in
 
   let tr = I18n.t lang in
   let html_lang = I18n.html_lang lang in
-  
+
+  (* SEO: canonical, description, OG tags *)
+  let seo_html =
+    let canonical = Printf.sprintf {|<link rel="canonical" href="https://wkbl.win%s">|} (escape_html canonical_path) in
+    let desc = if description = "" then "" else
+      Printf.sprintf {|<meta name="description" content="%s">|} (escape_html description) in
+    let og_t = match og_title with
+      | Some t -> Printf.sprintf {|<meta property="og:title" content="%s">|} (escape_html t)
+      | None -> Printf.sprintf {|<meta property="og:title" content="%s">|} (escape_html title) in
+    let og_d = match og_description with
+      | Some d -> Printf.sprintf {|<meta property="og:description" content="%s">|} (escape_html d)
+      | None -> if description = "" then "" else
+        Printf.sprintf {|<meta property="og:description" content="%s">|} (escape_html description) in
+    let og_url = Printf.sprintf {|<meta property="og:url" content="https://wkbl.win%s">|} (escape_html canonical_path) in
+    String.concat "\n  " [canonical; desc; og_t; og_d; og_url;
+      {|<meta property="og:type" content="website">|};
+      {|<meta property="og:site_name" content="WKBL Analytics">|};
+      {|<meta name="twitter:card" content="summary_large_image">|}]
+  in
+
   let og_img_html = match og_image with
     | Some url -> Printf.sprintf {html|<meta property="og:image" content="%s"><meta name="twitter:image" content="%s">|html} url url
     | None -> {html|<meta property="og:image" content="https://wkbl.win/static/images/og-main.png">|html}
@@ -480,6 +538,8 @@ let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json
   let sr_menu_open = tr { ko = "메뉴 열림"; en = "Menu opened" } in
   let sr_menu_close = tr { ko = "메뉴 닫힘"; en = "Menu closed" } in
 
+  let nav_search = tr { ko = "검색"; en = "Search" } in
+  let nav_search_placeholder = tr { ko = "검색..."; en = "Search..." } in
   let lang_label = tr { ko = "언어"; en = "Language" } in
   let lang_menu =
     let item_cls is_active =
@@ -509,6 +569,10 @@ let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>%s</title>
   %s
+  %s
+  <link rel="manifest" href="/manifest.json">
+  <link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
@@ -627,7 +691,7 @@ let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json
   <header class="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-40">
 	    <nav class="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
 		      <div class="flex items-center gap-4">
-	        <a href="/" class="flex items-center gap-2 font-bold text-lg text-orange-600 dark:text-orange-400">
+	        <a href="/" class="flex items-center gap-2 font-bold text-lg text-orange-700 dark:text-orange-400">
 	          <span>🏀</span>
 	          <span>WKBL</span>
 	        </a>
@@ -641,7 +705,12 @@ let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json
 	      </div>
       </div>
       <div class="flex items-center gap-2">
-        <button type="button" onclick="window.SearchModal&&SearchModal.open()" aria-label="Search (Cmd+K)" class="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors group">
+        <button type="button" onclick="window.SearchModal&&SearchModal.open()" aria-label="%s (Cmd+K)" class="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition-colors group text-sm">
+          <svg class="w-4 h-4 text-slate-400 group-hover:text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+          <span class="text-slate-400">%s</span>
+          <kbd class="ml-1 px-1.5 py-0.5 text-[10px] font-mono text-slate-400 bg-white dark:bg-slate-700 rounded border border-slate-200 dark:border-slate-600">⌘K</kbd>
+        </button>
+        <button type="button" onclick="window.SearchModal&&SearchModal.open()" aria-label="%s" class="md:hidden p-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors group">
           <svg class="w-5 h-5 text-slate-500 dark:text-slate-400 group-hover:text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
         </button>
         %s
@@ -666,7 +735,7 @@ let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json
 		        <a href="/predict" class="block py-3 px-4 rounded-lg text-base font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">%s</a>
 		        <button type="button" onclick="window.SearchModal&&SearchModal.open();document.getElementById('mobile-menu').classList.add('hidden')" class="w-full text-left py-3 px-4 rounded-lg text-base font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center gap-2">
 		          <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-		          Search
+		          %s
 		        </button>
 		      </div>
 		    </div>
@@ -787,10 +856,12 @@ let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json
 			  <script src="/static/js/skeleton-loader.js"></script>
 			  <script src="/static/js/data-freshness.js"></script>
 			  <script src="/static/js/search-modal.js"></script>
+			  <script>if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js')}</script>
 				</body>
 			</html>|html}
 	    (escape_html html_lang)
 	    title
+	    seo_html
 	    og_img_html
 	    (observability_html ^ json_ld_html)
 	    (escape_html skip_to_content)
@@ -800,6 +871,9 @@ let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json
 	    (escape_html nav_games)
 	    (escape_html nav_compare)
 		    (escape_html nav_predict)
+		    (escape_html nav_search)
+		    (escape_html nav_search_placeholder)
+		    (escape_html nav_search)
 		    freshness_html
 		    lang_menu
 		    (escape_html aria_toggle_theme)
@@ -810,6 +884,7 @@ let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json
 	    (escape_html nav_games)
 	    (escape_html nav_compare)
 	    (escape_html nav_predict)
+	    (escape_html nav_search)
 	    content
 	    (escape_js_string sr_dark_on)
 	    (escape_js_string sr_dark_off)
@@ -817,7 +892,7 @@ let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json
 	    (escape_js_string sr_menu_close)
 
 let eff_badge ?(show_label=false) eff =
-  let color_cls = if eff >= 20.0 then "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/30"
+  let color_cls = if eff >= 20.0 then "bg-orange-500/10 text-orange-700 dark:text-orange-400 border-orange-500/30"
                   else "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-300 dark:border-slate-700" in
   let label = if show_label then "EFF " else "" in
   Printf.sprintf {html|<span class="px-2 py-0.5 rounded border text-[10px] font-mono font-bold %s">%s%.1f</span>|html} color_cls label eff
@@ -978,9 +1053,9 @@ let player_summary_comparison (seasons: season_stats list) =
     let career_mpg = total_min /. gp_f in
     let fmt v = Printf.sprintf "%.1f" v in
     let fmt_pct v = if v > 0.0 then Printf.sprintf "%.1f" (v *. 100.0) else "-" in
-    let stat_cell cls v = Printf.sprintf {html|<td class="px-2 py-1.5 text-right font-mono %s">%s</td>|html} cls v in
+    let stat_cell cls v = Printf.sprintf {html|<td class="px-2 py-1.5 text-right font-mono tabular-nums %s">%s</td>|html} cls v in
     let hdr cls lbl title = Printf.sprintf
-      {html|<th class="px-2 py-1.5 text-right text-[10px] uppercase tracking-wider %s" title="%s">%s</th>|html} cls title lbl in
+      {html|<th scope="col" class="px-2 py-1.5 text-right text-[10px] uppercase tracking-wider %s" title="%s">%s</th>|html} cls title lbl in
     (* Render a single season row *)
     let season_row ~label ~border (s: season_stats) =
       let mpg = if s.ss_games_played > 0
@@ -995,7 +1070,7 @@ let player_summary_comparison (seasons: season_stats list) =
         label
         (stat_cell "" (string_of_int s.ss_games_played))
         (stat_cell "" (fmt mpg))
-        (stat_cell "text-orange-600 dark:text-orange-400 font-bold" (fmt s.ss_avg_points))
+        (stat_cell "text-orange-700 dark:text-orange-400 font-bold" (fmt s.ss_avg_points))
         (stat_cell "" (fmt s.ss_avg_rebounds))
         (stat_cell "" (fmt s.ss_avg_assists))
         (stat_cell "hidden sm:table-cell" (fmt s.ss_avg_steals))
@@ -1004,7 +1079,8 @@ let player_summary_comparison (seasons: season_stats list) =
         (stat_cell "hidden md:table-cell" (fmt_pct s.ss_efg_pct))
         (stat_cell "" (fmt s.ss_efficiency))
     in
-    let current_row = season_row ~label:current.ss_season_name ~border:true current in
+    let current_label = Printf.sprintf {|<a href="%s" class="hover:underline">%s</a>|} (season_href current.ss_season_code) (escape_html current.ss_season_name) in
+    let current_row = season_row ~label:current_label ~border:true current in
     (* Peak season: highest PPG among seasons with 10+ GP, different from current *)
     let peak_row =
       let eligible = seasons_desc |> List.filter (fun s -> s.ss_games_played >= 10) in
@@ -1015,7 +1091,7 @@ let player_summary_comparison (seasons: season_stats list) =
       ) None in
       match peak_opt with
       | Some peak when peak.ss_season_code <> current.ss_season_code ->
-          let label = Printf.sprintf "<span class=\"text-amber-600 dark:text-amber-400\">★</span> %s" peak.ss_season_name in
+          let label = Printf.sprintf {|<span class="text-amber-600 dark:text-amber-400">★</span> <a href="%s" class="hover:underline">%s</a>|} (season_href peak.ss_season_code) (escape_html peak.ss_season_name) in
           season_row ~label ~border:true peak
       | _ -> ""
     in
@@ -1028,7 +1104,7 @@ let player_summary_comparison (seasons: season_stats list) =
         </tr>|html}
         (stat_cell "" (Printf.sprintf "%d <span class=\"text-[10px] text-slate-500\">(%d시즌)</span>" total_gp n))
         (stat_cell "" (fmt career_mpg))
-        (stat_cell "text-orange-600 dark:text-orange-400 font-bold" (fmt (wavg (fun s -> s.ss_avg_points))))
+        (stat_cell "text-orange-700 dark:text-orange-400 font-bold" (fmt (wavg (fun s -> s.ss_avg_points))))
         (stat_cell "" (fmt (wavg (fun s -> s.ss_avg_rebounds))))
         (stat_cell "" (fmt (wavg (fun s -> s.ss_avg_assists))))
         (stat_cell "hidden sm:table-cell" (fmt (wavg (fun s -> s.ss_avg_steals))))
@@ -1039,12 +1115,12 @@ let player_summary_comparison (seasons: season_stats list) =
     in
     Printf.sprintf
       {html|<div class="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-lg">
-        <h3 class="font-bold text-slate-900 dark:text-slate-200 text-sm mb-3">시즌 요약</h3>
+        <h2 class="font-bold text-slate-900 dark:text-slate-200 text-sm mb-3">시즌 요약</h2>
         <div class="overflow-x-auto">
           <table class="w-full text-xs tabular-nums">
             <thead class="text-slate-500 dark:text-slate-500">
               <tr>
-                <th class="px-2 py-1.5 text-left text-[10px] uppercase tracking-wider font-sans w-24"></th>
+                <th scope="col" class="px-2 py-1.5 text-left text-[10px] uppercase tracking-wider font-sans w-24"></th>
                 %s %s %s %s %s %s %s %s %s %s
               </tr>
             </thead>
@@ -1057,7 +1133,7 @@ let player_summary_comparison (seasons: season_stats list) =
       (* headers *)
       (hdr "" "GP" "경기수")
       (hdr "" "MPG" "평균 출전시간")
-      (hdr "text-orange-600 dark:text-orange-400" "PPG" "평균 득점")
+      (hdr "text-orange-700 dark:text-orange-400" "PPG" "평균 득점")
       (hdr "" "RPG" "평균 리바운드")
       (hdr "" "APG" "평균 어시스트")
       (hdr "hidden sm:table-cell" "SPG" "평균 스틸")
@@ -1079,7 +1155,7 @@ let player_season_stats_component ~(player_id: string) ~scope (seasons: season_s
         scopes |> List.map (fun (s, label) ->
           let active = (s = scope) in
           let cls = if active
-            then "px-3 py-1.5 text-sm font-semibold text-orange-600 dark:text-orange-400 border-b-2 border-orange-500"
+            then "px-3 py-1.5 text-sm font-semibold text-orange-700 dark:text-orange-400 border-b-2 border-orange-500"
             else "px-3 py-1.5 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 border-b-2 border-transparent cursor-pointer"
           in
           Printf.sprintf
@@ -1139,15 +1215,15 @@ let player_season_stats_component ~(player_id: string) ~scope (seasons: season_s
           in
           Printf.sprintf
             {html|<tr class="%s">%s%s
-              <td class="px-3 py-2 text-right font-mono">%d</td>
-              <td class="px-3 py-2 text-right font-mono">%.1f</td>
-              <td class="px-3 py-2 text-right font-mono">%.1f</td>
-              <td class="px-3 py-2 text-right font-mono">%.1f</td>
-              <td class="px-3 py-2 text-right font-mono">%s</td>
-              <td class="px-3 py-2 text-right font-mono text-emerald-600 dark:text-emerald-400 font-semibold">%s</td>
-              <td class="px-3 py-2 text-right font-mono text-emerald-600 dark:text-emerald-400 font-semibold">%s</td>
-              <td class="px-3 py-2 text-right font-mono hidden md:table-cell">%.1f</td>
-              <td class="px-3 py-2 text-right font-mono %s font-semibold">%+.1f</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums">%d</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums">%s</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums text-emerald-600 dark:text-emerald-400 font-semibold">%s</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums text-emerald-600 dark:text-emerald-400 font-semibold">%s</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums hidden md:table-cell">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums %s font-semibold">%+.1f</td>
             </tr>|html}
             tr_cls season_td team_td
             s.ss_games_played mpg
@@ -1157,20 +1233,20 @@ let player_season_stats_component ~(player_id: string) ~scope (seasons: season_s
         else
           Printf.sprintf
             {html|<tr class="%s">%s%s
-              <td class="px-3 py-2 text-right font-mono">%d</td>
-              <td class="px-3 py-2 text-right font-mono">%.1f</td>
-              <td class="px-3 py-2 text-right font-mono text-orange-600 dark:text-orange-400 font-semibold">%.1f</td>
-              <td class="px-3 py-2 text-right font-mono">%.1f</td>
-              <td class="px-3 py-2 text-right font-mono">%.1f</td>
-              <td class="px-3 py-2 text-right font-mono hidden md:table-cell">%.1f</td>
-              <td class="px-3 py-2 text-right font-mono hidden md:table-cell">%.1f</td>
-              <td class="px-3 py-2 text-right font-mono hidden lg:table-cell">%s</td>
-              <td class="px-3 py-2 text-right font-mono hidden lg:table-cell">%s</td>
-              <td class="px-3 py-2 text-right font-mono hidden lg:table-cell">%s</td>
-              <td class="px-3 py-2 text-right font-mono hidden xl:table-cell">%s</td>
-              <td class="px-3 py-2 text-right font-mono hidden xl:table-cell">%s</td>
-              <td class="px-3 py-2 text-right font-mono">%.1f</td>
-              <td class="px-3 py-2 text-right font-mono %s">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums">%d</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums text-orange-700 dark:text-orange-400 font-semibold">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums hidden md:table-cell">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums hidden md:table-cell">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums hidden lg:table-cell">%s</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums hidden lg:table-cell">%s</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums hidden lg:table-cell">%s</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums hidden xl:table-cell">%s</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums hidden xl:table-cell">%s</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums %s">%.1f</td>
             </tr>|html}
             tr_cls season_td team_td
             s.ss_games_played mpg
@@ -1217,15 +1293,15 @@ let player_season_stats_component ~(player_id: string) ~scope (seasons: season_s
             {html|<tfoot class="%s"><tr>
               <td class="px-3 py-2 text-left font-sans">Career (%d시즌)</td>
               <td class="px-3 py-2 hidden sm:table-cell"></td>
-              <td class="px-3 py-2 text-right font-mono">%d</td>
-              <td class="px-3 py-2 text-right font-mono">%.1f</td>
-              <td class="px-3 py-2 text-right font-mono">%.1f</td>
-              <td class="px-3 py-2 text-right font-mono">%.1f</td>
-              <td class="px-3 py-2 text-right font-mono">%s</td>
-              <td class="px-3 py-2 text-right font-mono text-emerald-600 dark:text-emerald-400">%s</td>
-              <td class="px-3 py-2 text-right font-mono text-emerald-600 dark:text-emerald-400">%s</td>
-              <td class="px-3 py-2 text-right font-mono hidden md:table-cell">%.1f</td>
-              <td class="px-3 py-2 text-right font-mono %s">%+.1f</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums">%d</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums">%s</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums text-emerald-600 dark:text-emerald-400">%s</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums text-emerald-600 dark:text-emerald-400">%s</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums hidden md:table-cell">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums %s">%+.1f</td>
             </tr></tfoot>|html}
             tfoot_cls n total_gp career_mpg career_ppg career_tov career_ast_tov
             (fmt_pct_f career_ts) (fmt_pct_f career_efg)
@@ -1235,20 +1311,20 @@ let player_season_stats_component ~(player_id: string) ~scope (seasons: season_s
             {html|<tfoot class="%s"><tr>
               <td class="px-3 py-2 text-left font-sans">Career (%d시즌)</td>
               <td class="px-3 py-2 hidden sm:table-cell"></td>
-              <td class="px-3 py-2 text-right font-mono">%d</td>
-              <td class="px-3 py-2 text-right font-mono">%.1f</td>
-              <td class="px-3 py-2 text-right font-mono text-orange-600 dark:text-orange-400">%.1f</td>
-              <td class="px-3 py-2 text-right font-mono">%.1f</td>
-              <td class="px-3 py-2 text-right font-mono">%.1f</td>
-              <td class="px-3 py-2 text-right font-mono hidden md:table-cell">%.1f</td>
-              <td class="px-3 py-2 text-right font-mono hidden md:table-cell">%.1f</td>
-              <td class="px-3 py-2 text-right font-mono hidden lg:table-cell">%s</td>
-              <td class="px-3 py-2 text-right font-mono hidden lg:table-cell">%s</td>
-              <td class="px-3 py-2 text-right font-mono hidden lg:table-cell">%s</td>
-              <td class="px-3 py-2 text-right font-mono hidden xl:table-cell">%s</td>
-              <td class="px-3 py-2 text-right font-mono hidden xl:table-cell">%s</td>
-              <td class="px-3 py-2 text-right font-mono">%.1f</td>
-              <td class="px-3 py-2 text-right font-mono %s">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums">%d</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums text-orange-700 dark:text-orange-400">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums hidden md:table-cell">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums hidden md:table-cell">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums hidden lg:table-cell">%s</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums hidden lg:table-cell">%s</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums hidden lg:table-cell">%s</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums hidden xl:table-cell">%s</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums hidden xl:table-cell">%s</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums">%.1f</td>
+              <td class="px-3 py-2 text-right font-mono tabular-nums %s">%.1f</td>
             </tr></tfoot>|html}
             tfoot_cls n total_gp career_mpg career_ppg career_rpg career_apg
             career_spg career_bpg
@@ -1313,7 +1389,7 @@ let player_season_stats_component ~(player_id: string) ~scope (seasons: season_s
               <th scope="col" class="px-3 py-2 text-left font-sans hidden sm:table-cell">팀</th>
               <th scope="col" class="px-3 py-2 text-right">GP</th>
               <th scope="col" class="px-3 py-2 text-right" title="출전시간">%s</th>
-              <th scope="col" class="px-3 py-2 text-right text-orange-600 dark:text-orange-400" title="득점">%s</th>
+              <th scope="col" class="px-3 py-2 text-right text-orange-700 dark:text-orange-400" title="득점">%s</th>
               <th scope="col" class="px-3 py-2 text-right" title="리바운드">REB</th>
               <th scope="col" class="px-3 py-2 text-right" title="어시스트">AST</th>
               <th scope="col" class="px-3 py-2 text-right hidden md:table-cell" title="스틸">STL</th>
@@ -1466,7 +1542,7 @@ let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2") ?(include_
           %s
           <div class="flex flex-col min-w-0">
             <div class="flex items-center gap-2 min-w-0">
-              <a href="%s" class="player-name hover:text-orange-600 dark:text-orange-400 transition-colors truncate break-keep min-w-0">%s</a>
+              <a href="%s" class="player-name hover:text-orange-700 dark:text-orange-400 transition-colors truncate break-keep min-w-0">%s</a>
               <span class="%s">%s</span>
             </div>
             %s
@@ -1590,20 +1666,20 @@ let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2") ?(include_
            let date_short = String.sub game_date 5 5 in (* MM-DD *)
            Printf.sprintf
              {html|
-               <div class="flex items-center justify-between py-1 border-b border-slate-100 dark:border-slate-800 last:border-0 text-xs">
-                 <div class="flex items-center gap-2">
-                   <span class="text-slate-400 font-mono">%s</span>
+               <div class="flex items-center justify-between py-1.5 border-b border-slate-100 dark:border-slate-800 last:border-0 text-xs">
+                 <div class="flex items-center gap-2 min-w-0 flex-1">
+                   <span class="text-slate-400 font-mono shrink-0">%s</span>
                    %s
-                   <span class="text-slate-600 dark:text-slate-400 truncate w-24">vs %s</span>
+                   %s
                  </div>
-                 <div class="font-mono font-bold %s">
+                 <div class="font-mono font-bold shrink-0 ml-2 %s">
                    %d-%d
                  </div>
                </div>
              |html}
              date_short
              result_badge
-             (team_badge ~max_width:"max-w-[80px]" opponent)
+             (team_badge ~max_width:"max-w-[100px]" opponent)
              (if is_win then "text-slate-900 dark:text-white" else "text-slate-500")
              my_score opp_score
          )

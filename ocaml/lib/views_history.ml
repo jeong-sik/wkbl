@@ -52,7 +52,10 @@ let history_page ?(lang=I18n.Ko) (seasons: historical_season list) =
       </div>|html}
       (season_href s.hs_season_id) (escape_html s.hs_season_name) champion mvp
   ) |> String.concat "\n" in
-  layout ~lang ~title:"역대 기록 | WKBL" ~content:(Printf.sprintf
+  layout ~lang ~title:"역대 기록 | WKBL"
+    ~canonical_path:"/history"
+    ~description:"WKBL 역대 시즌 우승팀, MVP 수상자 등 1998년 이후 주요 기록"
+    ~content:(Printf.sprintf
     {html|<div class="space-y-6">%s
       <div><h2 class="text-2xl font-bold text-slate-900 dark:text-slate-200">WKBL 역대 기록</h2>
         <p class="text-slate-500 dark:text-slate-400 text-sm">1998년 이후 시즌 우승, MVP 등 주요 기록을 정리했습니다.</p></div>
@@ -129,7 +132,10 @@ let legends_page ?(lang=I18n.Ko) (legends: legend_player list) =
   ) in
   let legend_table = render_fixed_table ~striped:true ~aria_label:"WKBL 레전드 선수 목록"
     ~id:"legends" ~min_width:"min-w-[820px]" ~cols:legend_cols legend_data in
-  layout ~lang ~title:"레전드 | WKBL" ~content:(Printf.sprintf
+  layout ~lang ~title:"레전드 | WKBL"
+    ~canonical_path:"/legends"
+    ~description:"WKBL 명예의 전당 및 역대 최고 선수 기록"
+    ~content:(Printf.sprintf
     {html|<div class="space-y-6">%s
       <div><h2 class="text-2xl font-bold text-slate-900 dark:text-slate-200">WKBL 레전드</h2>
         <p class="text-slate-500 dark:text-slate-400 text-sm">명예의 전당 및 역대 최고 선수들</p></div>
@@ -207,7 +213,10 @@ let coaches_page ?(lang=I18n.Ko) (coaches: coach list) =
   ) in
   let coach_table = render_fixed_table ~striped:true ~aria_label:"WKBL 감독 기록"
     ~id:"coaches" ~min_width:"min-w-full" ~cols:coach_cols coach_data in
-  layout ~lang ~title:"감독 | WKBL" ~content:(Printf.sprintf
+  layout ~lang ~title:"감독 | WKBL"
+    ~canonical_path:"/coaches"
+    ~description:"WKBL 감독 경력, 정규시즌 및 플레이오프 승수 기록"
+    ~content:(Printf.sprintf
     {html|<div class="space-y-6">%s
       <div><h2 class="text-2xl font-bold text-slate-900 dark:text-slate-200">WKBL 감독</h2>
         <p class="text-slate-500 dark:text-slate-400 text-sm">감독 기록 및 업적</p></div>
@@ -242,7 +251,10 @@ let player_career_page ?(lang=I18n.Ko) ~player_name (entries: player_career_entr
   ) in
   let table = render_fixed_table ~striped:true ~aria_label:"선수 시즌별 기록"
     ~id:"player-career" ~min_width:"min-w-full" ~cols:career_cols career_data in
-  layout ~lang ~title:(Printf.sprintf "%s 시즌별 기록 | WKBL" (escape_html player_name)) ~content:(Printf.sprintf
+  layout ~lang ~title:(Printf.sprintf "%s 시즌별 기록 | WKBL" (escape_html player_name))
+    ~canonical_path:(Printf.sprintf "/legends/%s" (escape_html player_name))
+    ~description:(Printf.sprintf "%s 선수의 시즌별 출전, 득점, 리바운드, 어시스트 기록" (escape_html player_name))
+    ~content:(Printf.sprintf
     {html|<div class="space-y-6">%s
       <div><h2 class="text-2xl font-bold text-slate-900 dark:text-slate-200">%s</h2>
         <p class="text-slate-500 dark:text-slate-400 text-sm">시즌별 기록입니다.</p></div>
