@@ -1598,20 +1598,20 @@ let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2") ?(include_
            let date_short = String.sub game_date 5 5 in (* MM-DD *)
            Printf.sprintf
              {html|
-               <div class="flex items-center justify-between py-1 border-b border-slate-100 dark:border-slate-800 last:border-0 text-xs">
-                 <div class="flex items-center gap-2">
-                   <span class="text-slate-400 font-mono">%s</span>
+               <div class="flex items-center justify-between py-1.5 border-b border-slate-100 dark:border-slate-800 last:border-0 text-xs">
+                 <div class="flex items-center gap-2 min-w-0 flex-1">
+                   <span class="text-slate-400 font-mono shrink-0">%s</span>
                    %s
-                   <span class="text-slate-600 dark:text-slate-400 truncate w-24">vs %s</span>
+                   %s
                  </div>
-                 <div class="font-mono font-bold %s">
+                 <div class="font-mono font-bold shrink-0 ml-2 %s">
                    %d-%d
                  </div>
                </div>
              |html}
              date_short
              result_badge
-             (team_badge ~max_width:"max-w-[80px]" opponent)
+             (team_badge ~max_width:"max-w-[100px]" opponent)
              (if is_win then "text-slate-900 dark:text-white" else "text-slate-500")
              my_score opp_score
          )

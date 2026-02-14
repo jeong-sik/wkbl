@@ -500,7 +500,7 @@ let standings_table ?(lang=I18n.Ko) ~season (standings : team_standing list) =
       
       let diff_color = if s.diff >= 0.0 then "text-emerald-600 dark:text-emerald-400" else "text-rose-600 dark:text-rose-400" in
       let diff_str = if s.diff > 0.0 then Printf.sprintf "+%.1f" s.diff else Printf.sprintf "%.1f" s.diff in
-      let diff_cell = Printf.sprintf {html|<div class="flex flex-col items-end leading-tight"><span class="%s font-mono font-bold">%s</span><span class="text-slate-500 dark:text-slate-400 text-[10px] font-mono">%s</span></div>|html} diff_color diff_str (escape_html label_diff) in
+      let diff_cell = Printf.sprintf {html|<span class="%s font-mono font-bold">%s</span>|html} diff_color diff_str in
 
       [
         team_cell;
@@ -2370,33 +2370,33 @@ let prediction_result_card ~(home: string) ~(away: string) (output: prediction_o
     <p class="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">%s</p>
    </div>
    <div class="grid grid-cols-1 lg:grid-cols-4 gap-3 text-xs">
-    <div class="bg-slate-100 dark:bg-slate-800/40 border border-slate-300 dark:border-slate-700/50 rounded-lg p-3">
+    <div class="bg-slate-100 dark:bg-slate-800/40 border border-slate-300 dark:border-slate-700/50 rounded-lg p-3 border-t-2 border-t-violet-500">
 	     <div class="flex items-center justify-between">
-	      <div class="text-slate-600 dark:text-slate-400 font-mono uppercase tracking-widest">전력</div>
+	      <div class="text-slate-600 dark:text-slate-400 font-mono uppercase tracking-widest flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-violet-500"></span>전력</div>
 	      <div class="text-[10px] text-slate-600 dark:text-slate-400 font-mono">%d경기</div>
 	     </div>
      <div class="mt-2 flex items-center justify-between font-mono">
-      <div class="text-orange-700">%.0f</div>
-      <div class="text-sky-700">%.0f</div>
+      <div class="text-orange-700 dark:text-orange-400">%.0f</div>
+      <div class="text-sky-700 dark:text-sky-400">%.0f</div>
      </div>
      <div class="mt-1 flex items-center justify-between font-mono font-bold">
       <div class="text-orange-600 dark:text-orange-400">%.1f%%</div>
       <div class="text-sky-600 dark:text-sky-400">%.1f%%</div>
      </div>
     </div>
-	    <div class="bg-slate-100 dark:bg-slate-800/40 border border-slate-300 dark:border-slate-700/50 rounded-lg p-3">
-	     <div class="text-slate-600 dark:text-slate-400 font-mono uppercase tracking-widest">득실 기대</div>
+	    <div class="bg-slate-100 dark:bg-slate-800/40 border border-slate-300 dark:border-slate-700/50 rounded-lg p-3 border-t-2 border-t-emerald-500">
+	     <div class="text-slate-600 dark:text-slate-400 font-mono uppercase tracking-widest flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>득실 기대</div>
      <div class="mt-2 flex items-center justify-between font-mono">
-      <div class="text-orange-700">%.3f</div>
-      <div class="text-sky-700">%.3f</div>
+      <div class="text-orange-700 dark:text-orange-400">%.3f</div>
+      <div class="text-sky-700 dark:text-sky-400">%.3f</div>
      </div>
      <div class="mt-1 flex items-center justify-between font-mono font-bold">
       <div class="text-orange-600 dark:text-orange-400">%.1f%%</div>
       <div class="text-sky-600 dark:text-sky-400">%.1f%%</div>
      </div>
     </div>
-	    <div class="bg-slate-100 dark:bg-slate-800/40 border border-slate-300 dark:border-slate-700/50 rounded-lg p-3">
-	     <div class="text-slate-600 dark:text-slate-400 font-mono uppercase tracking-widest">기록</div>
+	    <div class="bg-slate-100 dark:bg-slate-800/40 border border-slate-300 dark:border-slate-700/50 rounded-lg p-3 border-t-2 border-t-amber-500">
+	     <div class="text-slate-600 dark:text-slate-400 font-mono uppercase tracking-widest flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>기록</div>
      <div class="mt-2 flex items-center justify-between font-mono font-bold">
       <div class="text-orange-600 dark:text-orange-400">%.1f%%</div>
       <div class="text-sky-600 dark:text-sky-400">%.1f%%</div>
@@ -2453,22 +2453,35 @@ let upcoming_games_section (upcoming: Domain.schedule_entry list) =
   let game_card (g: Domain.schedule_entry) =
    let home_name = Option.value g.sch_home_team_name ~default:g.sch_home_team_code in
    let away_name = Option.value g.sch_away_team_name ~default:g.sch_away_team_code in
+   let home_color = Domain.team_code_of_string home_name |> Option.map Domain.team_code_to_color |> Option.value ~default:"#666" in
+   let away_color = Domain.team_code_of_string away_name |> Option.map Domain.team_code_to_color |> Option.value ~default:"#666" in
    let time_str = match g.sch_game_time with
     | Some t -> Printf.sprintf " %s" t
     | None -> ""
    in
    Printf.sprintf
-    {html|<a href="/predict?home=%s&away=%s" class="block bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700 hover:border-orange-500/50 rounded-lg p-3 transition-all group">
-     <div class="text-xs text-slate-400 mb-1">%s%s</div>
-     <div class="flex items-center justify-between">
-      <span class="text-sm font-medium text-slate-200 group-hover:text-orange-400">%s</span>
-	      <span class="text-xs text-slate-500">대</span>
-	      <span class="text-sm font-medium text-slate-200 group-hover:text-orange-400">%s</span>
-	     </div>
-	    </a>|html}
+    {html|<a href="/predict?home=%s&away=%s" class="block bg-white dark:bg-slate-800/60 hover:bg-slate-50 dark:hover:bg-slate-700/60 border border-slate-200 dark:border-slate-700 hover:border-orange-500/50 rounded-lg p-3 transition-all group overflow-hidden relative">
+     <div class="absolute inset-y-0 left-0 w-1 rounded-l-lg" style="background: linear-gradient(%s, %s)"></div>
+     <div class="text-[10px] text-slate-500 dark:text-slate-400 font-mono mb-2 pl-2">%s%s</div>
+     <div class="flex items-center gap-2 pl-2">
+      <div class="flex items-center gap-1.5 flex-1 min-w-0">
+       %s
+       <span class="text-sm font-semibold text-slate-800 dark:text-slate-200 group-hover:text-orange-500 truncate">%s</span>
+      </div>
+      <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider shrink-0 px-1">vs</span>
+      <div class="flex items-center gap-1.5 flex-1 min-w-0 justify-end">
+       <span class="text-sm font-semibold text-slate-800 dark:text-slate-200 group-hover:text-orange-500 truncate">%s</span>
+       %s
+      </div>
+     </div>
+    </a>|html}
     (escape_html home_name) (escape_html away_name)
+    home_color away_color
     (escape_html g.sch_game_date) time_str
-    (escape_html home_name) (escape_html away_name)
+    (team_logo_tag ~class_name:"w-6 h-6 shrink-0" home_name)
+    (escape_html home_name)
+    (escape_html away_name)
+    (team_logo_tag ~class_name:"w-6 h-6 shrink-0" away_name)
   in
   let cards = upcoming |> List.map game_card |> String.concat "\n" in
 	  Printf.sprintf

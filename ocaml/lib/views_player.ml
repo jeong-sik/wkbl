@@ -794,7 +794,7 @@ let player_profile_page ?(lang=I18n.Ko) ?(leaderboards=None) ?(show_ops=false) (
 	        let trade_details_html =
 	          match profile.official_trade_events with
 	          | [] ->
-	              {html|<div class="mt-3 text-xs text-slate-600 dark:text-slate-400 leading-relaxed">이름 기반 매칭 결과가 없습니다. (동명이인/표기 차이/기간 외)</div>|html}
+	              {html|<div class="mt-3 text-xs text-slate-500 dark:text-slate-500 italic">공식 이적 기록 없음</div>|html}
 	          | events ->
 	              let items =
 	                events
