@@ -40,7 +40,7 @@ let leader_card ~title ~icon (leaders: Db.leader_base list) ~extract ~format_val
     let rank_badge = match i with
       | 0 -> {|<span class="w-6 h-6 flex items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 text-xs font-bold">1</span>|}
       | 1 -> {|<span class="w-6 h-6 flex items-center justify-center rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold">2</span>|}
-      | _ -> {|<span class="w-6 h-6 flex items-center justify-center rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 text-xs font-bold">3</span>|}
+      | _ -> {|<span class="w-6 h-6 flex items-center justify-center rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 text-xs font-bold">3</span>|}
     in
     Printf.sprintf
       {html|<div class="flex items-center gap-3 py-2 %s">

@@ -39,7 +39,7 @@ let streak_card (streak: player_streak) =
       <div class="flex items-center justify-between">
         <div>
           <div class="text-sm text-slate-500 dark:text-slate-400">%s</div>
-          <div class="text-3xl font-bold text-orange-600 dark:text-orange-400">%d<span class="text-lg ml-1">경기</span></div>
+          <div class="text-3xl font-bold text-orange-700 dark:text-orange-400">%d<span class="text-lg ml-1">경기</span></div>
         </div>
         <div class="text-right text-xs text-slate-400 dark:text-slate-500">%s</div>
       </div>
@@ -71,7 +71,7 @@ let team_streak_card (streak: team_streak) =
       <div class="flex items-center justify-between">
         <div>
           <div class="text-sm text-slate-500 dark:text-slate-400">%s</div>
-          <div class="text-3xl font-bold text-orange-600 dark:text-orange-400">%d<span class="text-lg ml-1">연승</span></div>
+          <div class="text-3xl font-bold text-orange-700 dark:text-orange-400">%d<span class="text-lg ml-1">연승</span></div>
         </div>
         <div class="text-right text-xs text-slate-400 dark:text-slate-500">%s</div>
       </div>
@@ -113,7 +113,7 @@ let streak_record_row (record: streak_record) =
     {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors">
       %s
       <td class="px-3 py-2 text-slate-600 dark:text-slate-400 whitespace-nowrap">%s</td>
-      <td class="px-3 py-2 text-right font-bold text-orange-600 dark:text-orange-400 font-mono whitespace-nowrap">%d</td>
+      <td class="px-3 py-2 text-right font-bold text-orange-700 dark:text-orange-400 font-mono whitespace-nowrap">%d</td>
       <td class="px-3 py-2 text-right text-slate-500 dark:text-slate-400 hidden sm:table-cell font-mono whitespace-nowrap">%s</td>
       <td class="px-3 py-2 text-right text-slate-500 dark:text-slate-400 hidden md:table-cell text-xs font-mono whitespace-nowrap">%s</td>
     </tr>|html}
