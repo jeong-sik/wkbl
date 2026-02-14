@@ -213,11 +213,11 @@ let svg_to_png svg_content =
 
   Fun.protect
     ~finally:(fun () ->
-      (try Sys.remove temp_svg with _ -> ());
-      (try Sys.remove temp_png with _ -> ()))
+      (try Sys.remove temp_svg with Sys_error _ -> ());
+      (try Sys.remove temp_png with Sys_error _ -> ()))
     (fun () ->
       try
         write_file temp_svg svg_content;
         if run_magick () then Some (read_file temp_png) else None
       with
-      | _ -> None)
+      | Sys_error _ | Failure _ -> None)

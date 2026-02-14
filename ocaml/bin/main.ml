@@ -320,6 +320,14 @@ let cache_control_middleware : Kirin.middleware = fun next_handler request ->
       Kirin.with_header "Cache-Control" (Printf.sprintf "public, max-age=%d" s) response
     | None -> response)
 
+let security_headers_middleware : Kirin.middleware = fun next_handler request ->
+  let response = next_handler request in
+  response
+  |> Kirin.with_header "X-Content-Type-Options" "nosniff"
+  |> Kirin.with_header "X-Frame-Options" "DENY"
+  |> Kirin.with_header "Referrer-Policy" "strict-origin-when-cross-origin"
+  |> Kirin.with_header "Permissions-Policy" "camera=(), microphone=(), geolocation=()"
+
 let woman_win_redirect_middleware : Kirin.middleware = fun next_handler request ->
   match Kirin.header "Host" request with
   | Some host when Canonical_host.should_redirect_to_wkbl host ->
@@ -605,6 +613,8 @@ let () =
 
   Kirin.run ~config:{ Kirin.default_config with port } ~sw ~env
   @@ Kirin.logger
+  @@ Kirin.compress
+  @@ security_headers_middleware
   @@ woman_win_redirect_middleware
   @@ cache_control_middleware
   @@ utf8_middleware
@@ -2285,7 +2295,7 @@ Sitemap: https://wkbl.win/sitemap.xml
             100.0 *. (float_of_int pq.pq_t2_home_count /. float_of_int pq.pq_total_pbp_games)
           else 0.0 in
           let threshold = match Kirin.query_opt "threshold" request with
-            | Some s -> (try float_of_string s with _ -> 50.0)
+            | Some s -> (try float_of_string s with Failure _ -> 50.0)
             | None -> 50.0
           in
           let ci_mode = Kirin.query_opt "ci" request |> Option.is_some in
@@ -2700,4 +2710,9 @@ Sitemap: https://wkbl.win/sitemap.xml
       let lang = request_lang request in
       Kirin.html (Views.live_page ~lang ())
     );
+
+    (* Catch-all 404 *)
+    Kirin.get "/*" (fun request ->
+      let lang = request_lang request in
+      Kirin.html ~status:`Not_found (Views.not_found_page ~lang ()));
   ]
