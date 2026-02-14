@@ -1,5 +1,8 @@
 open Domain
 
+(** Cache-busting version for static JS assets. Update on each deploy. *)
+let static_version = "20260214"
+
 let escape_html s =
   (* Fast path: return original string if no escaping needed (common case) *)
   let needs_escape = ref false in
@@ -846,16 +849,16 @@ let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json
 		    })();
 		  </script>
 		  <script src="/static/js/htmx-1.9.10.min.js"></script>
-			  <script src="/static/js/page-transitions.js"></script>
-			  <script src="/static/js/scroll-shadow.js"></script>
-			  <script src="/static/js/table-sort.js"></script>
-			  <script src="/static/js/table-export.js"></script>
-			  <script src="/static/js/table-row-link.js"></script>
-			  <script src="/static/js/number-format.js"></script>
-			  <script src="/static/js/a11y-utils.js"></script>
-			  <script src="/static/js/skeleton-loader.js"></script>
-			  <script src="/static/js/data-freshness.js"></script>
-			  <script src="/static/js/search-modal.js"></script>
+			  <script src="/static/js/page-transitions.js?v=20260214"></script>
+			  <script src="/static/js/scroll-shadow.js?v=20260214"></script>
+			  <script src="/static/js/table-sort.js?v=20260214"></script>
+			  <script src="/static/js/table-export.js?v=20260214"></script>
+			  <script src="/static/js/table-row-link.js?v=20260214"></script>
+			  <script src="/static/js/number-format.js?v=20260214"></script>
+			  <script src="/static/js/a11y-utils.js?v=20260214"></script>
+			  <script src="/static/js/skeleton-loader.js?v=20260214"></script>
+			  <script src="/static/js/data-freshness.js?v=20260214"></script>
+			  <script src="/static/js/search-modal.js?v=20260214"></script>
 			  <script>if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js')}</script>
 				</body>
 			</html>|html}
@@ -954,7 +957,7 @@ let wkbl_official_game_result_url ~(game_id : string) ~(game_date : string) =
 (** Responsive table wrapper - enables horizontal scroll on mobile *)
 let responsive_table_wrapper ?(class_extra="") content =
   Printf.sprintf {html|<div class="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 %s">%s</div>|html} class_extra content
-let extract_contract_years s = try Some (int_of_string (String.sub s 0 1)) with _ -> None
+let extract_contract_years s = try Some (int_of_string (String.sub s 0 1)) with Failure _ | Invalid_argument _ -> None
 
 let radar_chart ?(show_league_avg=false) ~labels ~values_a ~values_b ?(color_a="#f97316") ?(color_b="#0ea5e9") () =
   let _ = show_league_avg in
@@ -1165,7 +1168,7 @@ let player_season_stats_component ~(player_id: string) ~scope (seasons: season_s
       in
       let scope_label = match scope with "totals" -> "시즌별 합계" | "per_36" -> "36분당 환산" | "advanced" -> "고급 지표" | _ -> "시즌별 요약" in
       let is_advanced = (scope = "advanced") in
-      let season_code_int s = try int_of_string s with _ -> 0 in
+      let season_code_int s = try int_of_string s with Failure _ -> 0 in
       let seasons_desc =
         seasons
         |> List.sort (fun a b -> compare (season_code_int b.ss_season_code) (season_code_int a.ss_season_code))
@@ -1426,7 +1429,7 @@ let player_season_stats_component ~(player_id: string) ~scope (seasons: season_s
         scope_label tab_html min_w scope_label colgroup_html thead_html rows tfoot_html
 
 let career_trajectory_chart (seasons: season_stats list) =
-  let season_code_int s = try int_of_string s with _ -> 0 in
+  let season_code_int s = try int_of_string s with Failure _ -> 0 in
   let seasons_asc =
     seasons
     |> List.sort (fun a b -> compare (season_code_int a.ss_season_code) (season_code_int b.ss_season_code))
@@ -1645,7 +1648,7 @@ let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2") ?(include_
          let (_, date_a, _, _, _, _) = Db.extract_game_info a in
          let (_, date_b, _, _, _, _) = Db.extract_game_info b in
          String.compare date_b date_a) (* Descending date *)
-     |> (fun l -> try List.filteri (fun i _ -> i < limit) l with _ -> l)
+     |> (fun l -> try List.filteri (fun i _ -> i < limit) l with Invalid_argument _ -> l)
    in
 	   if relevant = [] then
 	     {html|<div class="text-slate-400 text-xs italic">최근 경기 없음</div>|html}
