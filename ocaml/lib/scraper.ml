@@ -2843,7 +2843,8 @@ let sync_current_season_schedule ~sw ~env () =
       last_sync_time := Some (Unix.time ());
     (!synced, !synced_games, !errors)
   with exn ->
-    Printf.eprintf "[Sync] Fatal error: %s\n%!" (Printexc.to_string exn);
+    Printf.eprintf "[Sync] Fatal error: %s\n%s\n%!"
+      (Printexc.to_string exn) (Printexc.get_backtrace ());
     (0, 0, 1)
 
 (** =========================== LIVE PLAY-BY-PLAY (PBP) ========================== *)
@@ -3037,7 +3038,8 @@ let fetch_live_games ~sw ~env () =
       | Error _ -> []
     else games
   with e ->
-    Printf.eprintf "[Scraper] Live fetch failed: %s\n%!" (Printexc.to_string e);
+    Printf.eprintf "[Scraper] Live fetch failed: %s\n%s\n%!"
+      (Printexc.to_string e) (Printexc.get_backtrace ());
     []
 
 (* ======== AWARDS → DB PIPELINE ======== *)
