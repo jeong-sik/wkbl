@@ -715,7 +715,7 @@ let qa_pbp_missing_page
       <div class="mt-1 text-sm text-slate-600 dark:text-slate-400">%s</div>
     </div>
     <form action="/qa/pbp-missing" method="get" class="flex items-center gap-2">
-      <select name="season" onchange="this.form.submit()" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/40 transition-colors">
+      <select name="season" aria-label="시즌 선택" onchange="this.form.submit()" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/40 transition-colors">
         %s
       </select>
     </form>
@@ -2139,14 +2139,14 @@ let lineup_chemistry_page
 	    {html|<form class="flex flex-wrap gap-4 items-end mb-6" hx-get="/lineups/table" hx-target="#lineup-content" hx-swap="innerHTML">
 	      <div>
 	        <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">팀</label>
-	        <select name="team" class="px-3 py-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-sm">
+	        <select name="team" aria-label="팀 선택" class="px-3 py-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-sm">
 	          <option value="ALL"%s>전체 팀</option>
 	          %s
 	        </select>
 	      </div>
 	      <div>
 	        <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">시즌</label>
-	        <select name="season" class="px-3 py-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-sm">
+	        <select name="season" aria-label="시즌 선택" class="px-3 py-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-sm">
 	          <option value="ALL"%s>전체 시즌</option>
 	          %s
 	        </select>
@@ -2314,7 +2314,7 @@ let on_off_impact_page
 	    {html|<form method="get" action="/on-off" class="flex flex-wrap items-end gap-4 p-4 bg-slate-100 dark:bg-slate-800/50 rounded-xl mb-6">
 	      <div>
 	        <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">시즌</label>
-	        <select name="season" class="px-3 py-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-sm">
+	        <select name="season" aria-label="시즌 선택" class="px-3 py-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-sm">
 	          <option value="ALL"%s>전체 시즌</option>
 	          %s
 	        </select>
@@ -2556,7 +2556,7 @@ let qa_anomalies_page
       <div class="mt-1 text-sm text-slate-600 dark:text-slate-400">%s</div>
     </div>
     <form action="/qa/anomalies" method="get" class="flex items-center gap-2">
-      <select name="season" onchange="this.form.submit()" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/40 transition-colors">
+      <select name="season" aria-label="시즌 선택" onchange="this.form.submit()" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/40 transition-colors">
         %s
       </select>
     </form>
