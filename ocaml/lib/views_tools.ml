@@ -549,6 +549,8 @@ let qa_dashboard_page ?(lang=I18n.Ko) (report: Db.qa_db_report) ?(markdown=None)
       dup_identity_rows
   in
 	  layout ~lang ~title:page_title
+	    ~canonical_path:"/tools/qa"
+	    ~description:"WKBL 데이터 품질 대시보드 - 선수, 경기 데이터 무결성 점검"
 	    ~content:(Printf.sprintf
 	      {html|<div class="space-y-6 animate-fade-in">%s%s<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">%s%s%s%s%s%s%s%s%s</div><div class="grid grid-cols-1 lg:grid-cols-4 gap-4">%s%s%s%s</div><div class="grid grid-cols-1 gap-4">%s%s%s%s%s%s%s</div>%s</div>|html}
 	      (Printf.sprintf
@@ -703,6 +705,8 @@ let qa_pbp_missing_page
   in
 
   layout ~lang ~title:page_title
+    ~canonical_path:"/tools/pbp-missing"
+    ~description:"WKBL 플레이바이플레이 데이터 누락 경기 목록"
     ~content:(Printf.sprintf
       {html|<div class="space-y-6 animate-fade-in">
   <div class="flex items-start justify-between gap-4">
@@ -889,6 +893,8 @@ let qa_schedule_missing_page ?(lang=I18n.Ko) (report: Db.qa_schedule_missing_rep
   in
   let s = report.qsmr_summary in
   layout ~lang ~title:page_title
+    ~canonical_path:"/tools/score-mismatch"
+    ~description:"WKBL 스코어 불일치 분석 - 박스스코어와 합산 점수 비교"
     ~content:(Printf.sprintf
       {html|<div class="space-y-6 animate-fade-in">
   <div class="flex flex-col gap-2">
@@ -1236,7 +1242,10 @@ let transactions_page
       section
       sync_build_block
   in
-	  layout ~lang ~title:"드래프트 / 이적 | WKBL" ~content ()
+	  layout ~lang ~title:"드래프트 / 이적 | WKBL"
+	    ~canonical_path:"/tools/draft"
+	    ~description:"WKBL 드래프트 및 이적 기록"
+	    ~content ()
 
 (* ===== Fantasy Calculator ===== *)
 
@@ -1340,7 +1349,10 @@ function resetRules() {
       rules_form
       results_table
   in
-  layout ~lang ~title:"판타지 계산기 | WKBL" ~content ()
+  layout ~lang ~title:"판타지 계산기 | WKBL"
+    ~canonical_path:"/tools/fantasy"
+    ~description:"WKBL 판타지 포인트 계산기 - 커스텀 가중치로 선수별 판타지 점수 산출"
+    ~content ()
 
 (** Fantasy results table partial (for HTMX updates) *)
 and fantasy_results_table (scores: fantasy_player_score list) =
@@ -1789,6 +1801,8 @@ let game_flow_page ?(lang=I18n.Ko) ~(game: Domain.game_info) (flow_points: Domai
       layout
         ~lang
         ~title
+        ~canonical_path:(Printf.sprintf "/games/%s/flow" game.gi_game_id)
+        ~description:(Printf.sprintf "%s 대 %s 경기 흐름 - %s" game.gi_home_team_name game.gi_away_team_name game.gi_game_date)
         ~content:(Printf.sprintf
           {html|<div class="space-y-6 animate-fade-in">%s
             <div class="text-center">
@@ -1817,6 +1831,8 @@ let game_flow_page ?(lang=I18n.Ko) ~(game: Domain.game_info) (flow_points: Domai
       layout
         ~lang
         ~title
+        ~canonical_path:(Printf.sprintf "/games/%s/flow" game.gi_game_id)
+        ~description:(Printf.sprintf "%s 대 %s 경기 흐름 - %s" game.gi_home_team_name game.gi_away_team_name game.gi_game_date)
         ~content:(Printf.sprintf
           {html|<div class="space-y-6 animate-fade-in">%s
             <div class="text-center">
@@ -1926,6 +1942,8 @@ let game_flow_page ?(lang=I18n.Ko) ~(game: Domain.game_info) (flow_points: Domai
       layout
         ~lang
         ~title
+        ~canonical_path:(Printf.sprintf "/games/%s/flow" game.gi_game_id)
+        ~description:(Printf.sprintf "%s 대 %s 경기 흐름 - %s" game.gi_home_team_name game.gi_away_team_name game.gi_game_date)
         ~content:(Printf.sprintf
           {html|<div class="space-y-6 animate-fade-in">%s
             <div class="text-center">
@@ -2528,6 +2546,8 @@ let qa_anomalies_page
   in
 
   layout ~lang ~title:page_title
+    ~canonical_path:"/tools/qa-anomalies"
+    ~description:"WKBL 데이터 이상치 탐지 - 통계적으로 비정상적인 경기 기록 분석"
     ~content:(Printf.sprintf
       {html|<div class="space-y-6 animate-fade-in">
   <div class="flex items-start justify-between gap-4">

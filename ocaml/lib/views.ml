@@ -758,6 +758,7 @@ onkeydown="if(event.key==='Enter'||event.key===' ') { event.preventDefault(); wi
 		  in
 
 		  layout ~lang ~title:page_title ~canonical_path:"/games"
+		    ~description:"WKBL 시즌별 경기 일정 및 결과"
 		    ~content:(Printf.sprintf {html|
 	      <div class="space-y-6">%s
 	        <div class="flex items-center justify-between">
@@ -1280,6 +1281,8 @@ let boxscore_page ?(lang=I18n.Ko) (bs: game_boxscore) =
 	 let home_score_display = if has_scores then string_of_int gi.gi_home_score else "-" in
 	 let away_score_display = if has_scores then string_of_int gi.gi_away_score else "-" in
 	 layout ~lang ~title:(Printf.sprintf "박스스코어: %s vs %s" gi.gi_home_team_name gi.gi_away_team_name)
+	  ~canonical_path:(Printf.sprintf "/boxscore/%s" gi.gi_game_id)
+	  ~description:(Printf.sprintf "%s vs %s 박스스코어 - %s" gi.gi_home_team_name gi.gi_away_team_name gi.gi_game_date)
 	  ~content:(Printf.sprintf
 	   {html|<div class="space-y-8 animate-fade-in">%s<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-2xl"><div class="flex flex-col items-center gap-6"><div class="text-slate-600 dark:text-slate-400 font-mono text-sm uppercase tracking-widest">%s</div><div class="flex items-center justify-between w-full max-w-2xl gap-2 sm:gap-6"><div class="flex flex-col items-center gap-2 sm:gap-3 flex-shrink-0"><div class="text-sm sm:text-2xl font-black text-slate-900 dark:text-slate-200 flex items-center gap-1 sm:gap-3">%s<a href="%s" class="hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 transition-colors whitespace-nowrap">%s</a></div><div class="text-[10px] sm:text-sm text-slate-600 dark:text-slate-400">%s</div></div><div class="flex items-center gap-2 sm:gap-8"><div class="text-3xl sm:text-5xl font-black text-slate-900 dark:text-slate-200">%s</div><div class="flex flex-col items-center gap-1 sm:gap-2"><div class="text-base sm:text-2xl text-slate-700 dark:text-slate-300 font-light">vs</div><div class="flex flex-wrap items-center justify-center gap-1 sm:gap-2">%s%s%s%s</div></div><div class="text-3xl sm:text-5xl font-black text-slate-900 dark:text-slate-200">%s</div></div><div class="flex flex-col items-center gap-2 sm:gap-3 flex-shrink-0"><div class="text-sm sm:text-2xl font-black text-slate-900 dark:text-slate-200 flex items-center gap-1 sm:gap-3"><a href="%s" class="hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 transition-colors whitespace-nowrap">%s</a>%s</div><div class="text-[10px] sm:text-sm text-slate-600 dark:text-slate-400">%s</div></div></div></div></div>%s%s%s<div class="grid grid-cols-1 gap-8">%s%s</div><div class="flex justify-center"><a href="/games" class="text-slate-600 dark:text-slate-400 hover:text-orange-500 transition text-sm">← 경기 목록</a></div></div>|html}
    (breadcrumb [("홈", "/"); ("경기", "/games"); (Printf.sprintf "%s vs %s" gi.gi_home_team_name gi.gi_away_team_name, "")])
@@ -1463,6 +1466,8 @@ let pbp_page ?(lang=I18n.Ko) ~(game: game_info) ~(periods: string list) ~(select
  layout
   ~lang
   ~title:title_page
+  ~canonical_path:"/players/compare"
+  ~description:(Printf.sprintf "%s 선수 비교 - 시즌 스탯 상세 대조" title_page)
   ~content:(Printf.sprintf
    {html|<div class="space-y-6 animate-fade-in">%s
     <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
@@ -3392,6 +3397,8 @@ let position_leaders_page ?(lang=I18n.Ko) ?(player_info_map=None) ~season ~seaso
     | _ -> "전체 포지션"
   in
   layout ~lang ~title:(position_label ^ " 리더보드 | WKBL")
+    ~canonical_path:"/leaders/positions"
+    ~description:(Printf.sprintf "%s 포지션별 득점, 리바운드, 어시스트 리더보드" position_label)
     ~content:(Printf.sprintf {html|<div class="space-y-6 animate-fade-in">%s
       <!-- Header -->
       <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-xl">

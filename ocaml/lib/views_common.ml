@@ -392,17 +392,32 @@ let empty_state ?icon title desc =
   Printf.sprintf {html|<div class="text-center py-12 px-4"><div class="text-4xl mb-4">🏀</div><h3 class="text-lg font-bold text-slate-900 dark:text-slate-200">%s</h3><p class="text-slate-500 dark:text-slate-400">%s</p></div>|html} title desc
 
 let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json_ld="") ?og_title ?og_description ?og_image ?data_freshness ~content () =
-  let _ = og_title in let _ = og_description in
-  let _ = canonical_path in
-  let _ = description in
-
   let json_ld_html = if json_ld = "" then "" else
     Printf.sprintf {|<script type="application/ld+json">%s</script>|} json_ld
   in
 
   let tr = I18n.t lang in
   let html_lang = I18n.html_lang lang in
-  
+
+  (* SEO: canonical, description, OG tags *)
+  let seo_html =
+    let canonical = Printf.sprintf {|<link rel="canonical" href="https://wkbl.win%s">|} (escape_html canonical_path) in
+    let desc = if description = "" then "" else
+      Printf.sprintf {|<meta name="description" content="%s">|} (escape_html description) in
+    let og_t = match og_title with
+      | Some t -> Printf.sprintf {|<meta property="og:title" content="%s">|} (escape_html t)
+      | None -> Printf.sprintf {|<meta property="og:title" content="%s">|} (escape_html title) in
+    let og_d = match og_description with
+      | Some d -> Printf.sprintf {|<meta property="og:description" content="%s">|} (escape_html d)
+      | None -> if description = "" then "" else
+        Printf.sprintf {|<meta property="og:description" content="%s">|} (escape_html description) in
+    let og_url = Printf.sprintf {|<meta property="og:url" content="https://wkbl.win%s">|} (escape_html canonical_path) in
+    String.concat "\n  " [canonical; desc; og_t; og_d; og_url;
+      {|<meta property="og:type" content="website">|};
+      {|<meta property="og:site_name" content="WKBL Analytics">|};
+      {|<meta name="twitter:card" content="summary_large_image">|}]
+  in
+
   let og_img_html = match og_image with
     | Some url -> Printf.sprintf {html|<meta property="og:image" content="%s"><meta name="twitter:image" content="%s">|html} url url
     | None -> {html|<meta property="og:image" content="https://wkbl.win/static/images/og-main.png">|html}
@@ -517,6 +532,8 @@ let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>%s</title>
   %s
+  %s
+  <link rel="manifest" href="/manifest.json">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
@@ -805,6 +822,7 @@ let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json
 			</html>|html}
 	    (escape_html html_lang)
 	    title
+	    seo_html
 	    og_img_html
 	    (observability_html ^ json_ld_html)
 	    (escape_html skip_to_content)
