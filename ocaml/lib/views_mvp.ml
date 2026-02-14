@@ -63,7 +63,7 @@ let mvp_candidate_data (candidate: mvp_candidate) =
     mvp_stat "APG" (format_float candidate.mvp_apg);
     mvp_stat "SPG" (format_float candidate.mvp_spg);
     mvp_stat "BPG" (format_float candidate.mvp_bpg);
-    mvp_stat ~color:"text-orange-600 dark:text-orange-400 font-bold" "EFF" (format_float candidate.mvp_efficiency);
+    mvp_stat ~color:"text-orange-700 dark:text-orange-400 font-bold" "EFF" (format_float candidate.mvp_efficiency);
     record_cell; score_cell ]
 
 (** MVP candidates table *)
@@ -107,7 +107,7 @@ let mvp_race_page ?(lang=I18n.Ko) ~season ~seasons (candidates: mvp_candidate li
       <summary class="cursor-pointer font-bold text-slate-700 dark:text-slate-300 select-none">MVP 점수 계산</summary>
       <div class="mt-3 space-y-2 leading-relaxed font-mono text-xs">
         <div class="bg-slate-50 dark:bg-slate-800/50 p-3 rounded">
-          <div class="text-orange-600 dark:text-orange-400 font-bold mb-2">기본 점수</div>
+          <div class="text-orange-700 dark:text-orange-400 font-bold mb-2">기본 점수</div>
           <code>= (PPG x 2.0) + (RPG x 1.2) + (APG x 1.5) + (SPG x 2.0) + (BPG x 2.0) + (EFF x 0.5)</code>
         </div>
         <div class="bg-slate-50 dark:bg-slate-800/50 p-3 rounded">

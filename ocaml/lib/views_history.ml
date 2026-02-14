@@ -27,7 +27,7 @@ let history_page ?(lang=I18n.Ko) (seasons: historical_season list) =
   ] in
   let history_data = seasons |> List.map (fun (s: historical_season) ->
     let season_link = Printf.sprintf
-      {html|<a href="%s" class="text-orange-600 dark:text-orange-400 hover:underline font-bold font-sans">%s</a>|html}
+      {html|<a href="%s" class="text-orange-700 dark:text-orange-400 hover:underline font-bold font-sans">%s</a>|html}
       (season_href s.hs_season_id) (escape_html s.hs_season_name) in
     let champion = match s.hs_champion_team with Some t -> team_badge ~max_width:"max-w-[100px]" t | None -> "-" in
     let runner_up = match s.hs_runner_up with Some t -> team_badge ~max_width:"max-w-[100px]" t | None -> "-" in
@@ -44,7 +44,7 @@ let history_page ?(lang=I18n.Ko) (seasons: historical_season list) =
     let mvp = match s.hs_regular_mvp with Some p -> escape_html p | None -> "-" in
     Printf.sprintf
       {html|<div class="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-lg p-4 space-y-2">
-        <a href="%s" class="font-bold text-orange-600 dark:text-orange-400 text-lg hover:underline block">%s</a>
+        <a href="%s" class="font-bold text-orange-700 dark:text-orange-400 text-lg hover:underline block">%s</a>
         <div class="grid grid-cols-2 gap-2 text-sm">
           <div><span class="text-slate-500 dark:text-slate-400">우승:</span> <span class="font-medium">%s</span></div>
           <div><span class="text-slate-500 dark:text-slate-400">MVP:</span> <span class="font-medium">%s</span></div>
@@ -82,15 +82,15 @@ let legends_page ?(lang=I18n.Ko) (legends: legend_player list) =
         <div class="text-sm text-slate-600 dark:text-slate-400 mb-3">%s</div>
         <div class="grid grid-cols-3 gap-3 text-center mb-3">
           <div class="bg-slate-100 dark:bg-slate-800 rounded p-2">
-            <div class="text-xl font-bold text-orange-600 dark:text-orange-400">%d</div>
+            <div class="text-xl font-bold text-orange-700 dark:text-orange-400">%d</div>
             <div class="text-[10px] text-slate-500 dark:text-slate-400">우승</div>
           </div>
           <div class="bg-slate-100 dark:bg-slate-800 rounded p-2">
-            <div class="text-xl font-bold text-orange-600 dark:text-orange-400">%d</div>
+            <div class="text-xl font-bold text-orange-700 dark:text-orange-400">%d</div>
             <div class="text-[10px] text-slate-500 dark:text-slate-400">MVP</div>
           </div>
           <div class="bg-slate-100 dark:bg-slate-800 rounded p-2">
-            <div class="text-xl font-bold text-orange-600 dark:text-orange-400">%d</div>
+            <div class="text-xl font-bold text-orange-700 dark:text-orange-400">%d</div>
             <div class="text-[10px] text-slate-500 dark:text-slate-400">올스타</div>
           </div>
         </div>
@@ -170,7 +170,7 @@ let coaches_page ?(lang=I18n.Ko) (coaches: coach list) =
         </div>
         <div class="grid grid-cols-3 gap-3 text-center">
           <div class="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-2">
-            <div class="text-xl font-bold text-orange-600 dark:text-orange-400">%d</div>
+            <div class="text-xl font-bold text-orange-700 dark:text-orange-400">%d</div>
             <div class="text-xs text-slate-500 dark:text-slate-400">우승</div>
           </div>
           <div class="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-2">
@@ -259,7 +259,7 @@ let player_career_page ?(lang=I18n.Ko) ~player_name (entries: player_career_entr
       <div><h2 class="text-2xl font-bold text-slate-900 dark:text-slate-200">%s</h2>
         <p class="text-slate-500 dark:text-slate-400 text-sm">시즌별 기록입니다.</p></div>
       %s
-      <div class="text-center"><a href="/legends" class="text-orange-500 hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 text-sm">← 레전드 목록</a></div>
+      <div class="text-center"><a href="/legends" class="text-orange-500 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300 text-sm">← 레전드 목록</a></div>
     </div>|html}
     (breadcrumb [("홈", "/"); ("레전드", "/legends"); (escape_html player_name, "")])
     (escape_html player_name) table) ()
