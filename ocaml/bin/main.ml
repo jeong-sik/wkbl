@@ -33,6 +33,17 @@ let request_lang request =
   Option.bind (Kirin.header "Cookie" request) I18n.lang_of_cookie_header
   |> Option.value ~default:I18n.Ko
 
+(* Runtime config from environment variables *)
+let poller_interval =
+  Sys.getenv_opt "POLLER_INTERVAL_SECS"
+  |> Option.map float_of_string
+  |> Option.value ~default:60.0
+
+let fetch_timeout =
+  Sys.getenv_opt "FETCH_TIMEOUT_SECS"
+  |> Option.map float_of_string
+  |> Option.value ~default:10.0
+
 module Pbp_backfill = struct
   (* Guardrails:
      - Never block HTTP responses on network scraping.
@@ -41,8 +52,8 @@ module Pbp_backfill = struct
   let inflight : (string, unit) Hashtbl.t = Hashtbl.create 256
   let last_attempt : (string, float) Hashtbl.t = Hashtbl.create 256
 
-  let cooldown_seconds = 60.0
-  let timeout_seconds = 10.0
+  let cooldown_seconds = poller_interval
+  let timeout_seconds = fetch_timeout
 
   let parse_game_id (id : string) : (string * string * int) option =
     match String.split_on_char '-' (String.trim id) with
@@ -606,8 +617,9 @@ let () =
            Live.broadcast_scores ()
         end
        with e ->
-        Printf.eprintf "[Poller] Error: %s\n%!" (Printexc.to_string e));
-      Eio.Time.sleep env#clock 60.0
+        Printf.eprintf "[Poller] Error: %s\n%s\n%!"
+          (Printexc.to_string e) (Printexc.get_backtrace ()));
+      Eio.Time.sleep env#clock poller_interval
     done
   );
 

@@ -3,6 +3,39 @@ open Domain
 (** Cache-busting version for static JS assets. Update on each deploy. *)
 let static_version = "20260214"
 
+(* Seed PRNG at module load for CSP nonce generation *)
+let () = Random.self_init ()
+
+(** Generate a per-request CSP nonce (32 hex chars = 128 bits). *)
+let generate_csp_nonce () =
+  let buf = Buffer.create 32 in
+  for _ = 1 to 16 do
+    Buffer.add_string buf (Printf.sprintf "%02x" (Random.int 256))
+  done;
+  Buffer.contents buf
+
+(** Replace all occurrences of [pattern] with [replacement] in [str].
+    Pure OCaml, no global state (Eio-safe). *)
+let replace_all_literal ~pattern ~replacement str =
+  let plen = String.length pattern in
+  if plen = 0 then str
+  else
+    let buf = Buffer.create (String.length str) in
+    let i = ref 0 in
+    let slen = String.length str in
+    while !i <= slen - plen do
+      if String.sub str !i plen = pattern then begin
+        Buffer.add_string buf replacement;
+        i := !i + plen
+      end else begin
+        Buffer.add_char buf (String.get str !i);
+        i := !i + 1
+      end
+    done;
+    if !i < slen then
+      Buffer.add_string buf (String.sub str !i (slen - !i));
+    Buffer.contents buf
+
 let escape_html s =
   (* Fast path: return original string if no escaping needed (common case) *)
   let needs_escape = ref false in
@@ -531,7 +564,7 @@ let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json
       (item_cls (lang = I18n.En))
   in
 
-  Printf.sprintf {html|<!DOCTYPE html>
+  let html = Printf.sprintf {html|<!DOCTYPE html>
 <html lang="%s">
 <head>
   <meta charset="UTF-8">
@@ -684,11 +717,11 @@ let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json
         </button>
         %s
         %s
-        <button id="theme-toggle" type="button" aria-label="%s" aria-pressed="false" class="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+        <button id="theme-toggle" type="button" aria-label="%s" aria-pressed="false" data-sr-on="%s" data-sr-off="%s" class="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
 	          <svg id="theme-icon-light" class="w-5 h-5 hidden dark:block text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"/></svg>
 	          <svg id="theme-icon-dark" class="w-5 h-5 block dark:hidden text-slate-600" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>
 	        </button>
-	        <button id="mobile-menu-toggle" type="button" aria-label="%s" class="md:hidden p-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+	        <button id="mobile-menu-toggle" type="button" aria-label="%s" data-sr-open="%s" data-sr-close="%s" class="md:hidden p-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
           <svg class="w-5 h-5 text-slate-600 dark:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
         </button>
       </div>
@@ -735,85 +768,7 @@ let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json
   <!-- Toast notification container -->
   <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2" aria-live="polite"></div>
 
-  <script>
-    // Toast notification system
-    window.showToast = function(message, type) {
-      type = type || 'info';
-      var container = document.getElementById('toast-container');
-      if (!container) return;
-      var colors = {
-        success: 'bg-emerald-500',
-        error: 'bg-rose-500',
-        warning: 'bg-amber-500',
-        info: 'bg-sky-500'
-	      };
-	      var toast = document.createElement('div');
-	      toast.className = colors[type] + ' text-white px-4 py-3 rounded-lg shadow-lg transform translate-x-full opacity-0 transition-transform transition-opacity duration-300 flex items-center gap-2 max-w-sm';
-	      toast.innerHTML = '<span class="break-words">' + message + '</span><button type="button" aria-label="닫기" onclick="this.parentElement.remove()" class="ml-2 hover:opacity-75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 rounded">×</button>';
-	      container.appendChild(toast);
-      requestAnimationFrame(function() {
-        toast.classList.remove('translate-x-full', 'opacity-0');
-      });
-      setTimeout(function() {
-        toast.classList.add('translate-x-full', 'opacity-0');
-        setTimeout(function() { toast.remove(); }, 300);
-      }, 4000);
-    };
-    window.hideAllToasts = function() {
-      var container = document.getElementById('toast-container');
-      if (container) container.innerHTML = '';
-    };
-  </script>
-
-  <script>
-    // Helper function to announce messages to screen readers
-    window.announceToScreenReader = function(message) {
-      const liveRegion = document.getElementById('aria-live');
-      if (liveRegion) {
-        liveRegion.textContent = message;
-        setTimeout(() => { liveRegion.textContent = ''; }, 1000);
-      }
-    };
-
-    // Dark mode toggle
-    (function() {
-      const toggle = document.getElementById('theme-toggle');
-      const html = document.documentElement;
-
-      // Initialize theme from localStorage or system preference
-      const stored = localStorage.getItem('wkbl-theme');
-      if (stored === 'dark' || (!stored && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-        html.classList.add('dark');
-      }
-
-      // Toggle handler
-      if (toggle) {
-        // Keep a11y state in sync with the current theme.
-        toggle.setAttribute('aria-pressed', html.classList.contains('dark') ? 'true' : 'false');
-        toggle.addEventListener('click', function() {
-		          html.classList.toggle('dark');
-		          const isDark = html.classList.contains('dark');
-		          toggle.setAttribute('aria-pressed', isDark ? 'true' : 'false');
-		          localStorage.setItem('wkbl-theme', isDark ? 'dark' : 'light');
-		          window.announceToScreenReader(isDark ? '%s' : '%s');
-		        });
-		      }
-		    })();
-
-    // Mobile menu toggle
-    (function() {
-      const menuToggle = document.getElementById('mobile-menu-toggle');
-      const mobileMenu = document.getElementById('mobile-menu');
-      if (menuToggle && mobileMenu) {
-        menuToggle.addEventListener('click', function() {
-	          mobileMenu.classList.toggle('hidden');
-	          const isOpen = !mobileMenu.classList.contains('hidden');
-	          menuToggle.setAttribute('aria-expanded', isOpen);
-	          window.announceToScreenReader(isOpen ? '%s' : '%s');
-	        });
-	      }
-		    })();
-		  </script>
+  <script src="/static/js/app-init.js?v=20260214"></script>
 		  <script src="/static/js/htmx-1.9.10.min.js"></script>
 			  <script src="/static/js/page-transitions.js?v=20260214"></script>
 			  <script src="/static/js/scroll-shadow.js?v=20260214"></script>
@@ -846,7 +801,11 @@ let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json
 		    freshness_html
 		    lang_menu
 		    (escape_html aria_toggle_theme)
+		    (escape_html sr_dark_on)
+		    (escape_html sr_dark_off)
 		    (escape_html aria_open_menu)
+		    (escape_html sr_menu_open)
+		    (escape_html sr_menu_close)
 		    (escape_html nav_players)
 		    (escape_html nav_teams)
 	    (escape_html nav_standings)
@@ -855,10 +814,31 @@ let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json
 	    (escape_html nav_predict)
 	    (escape_html nav_search)
 	    content
-	    (escape_js_string sr_dark_on)
-	    (escape_js_string sr_dark_off)
-	    (escape_js_string sr_menu_open)
-	    (escape_js_string sr_menu_close)
+  in
+  (* CSP nonce injection: generate per-request nonce, inject into all opening
+     <script tags, and prepend a CSP meta tag in <head>. *)
+  let nonce = generate_csp_nonce () in
+  let csp_policy = Printf.sprintf
+    "default-src 'self'; \
+     script-src 'self' 'nonce-%s' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://js.sentry-cdn.com https://www.clarity.ms; \
+     style-src 'self' 'unsafe-inline'; \
+     img-src 'self' data: https:; \
+     connect-src 'self' https://*.sentry.io https://www.clarity.ms; \
+     font-src 'self'"
+    nonce
+  in
+  let csp_meta = Printf.sprintf
+    {|<meta http-equiv="Content-Security-Policy" content="%s">|}
+    (escape_html csp_policy)
+  in
+  (* Inject nonce into opening <script> and <script  tags. Careful not to
+     touch </script> closing tags — only replace "<script>" and "<script ". *)
+  let html = replace_all_literal ~pattern:"<script>" ~replacement:(Printf.sprintf "<script nonce=\"%s\">" nonce) html in
+  let html = replace_all_literal ~pattern:"<script " ~replacement:(Printf.sprintf "<script nonce=\"%s\" " nonce) html in
+  (* Insert CSP meta tag right after <meta charset="UTF-8"> *)
+  replace_all_literal ~pattern:{|<meta charset="UTF-8">|}
+    ~replacement:(Printf.sprintf {|<meta charset="UTF-8">
+  %s|} csp_meta) html
 
 let eff_badge ?(show_label=false) eff =
   let color_cls = if eff >= 20.0 then "bg-orange-500/10 text-orange-700 dark:text-orange-400 border-orange-500/30"
