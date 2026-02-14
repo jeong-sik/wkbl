@@ -299,15 +299,18 @@ let team_logo_tag ?(class_name="w-8 h-8") team_name =
   | None -> Printf.sprintf {html|<div class="%s bg-slate-100 dark:bg-slate-800 rounded flex items-center justify-center text-xs">🏀</div>|html} class_name
 
 let breadcrumb (crumbs: (string * string) list) =
+  if crumbs = [] then "" else
+  let sep = {|<svg class="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>|} in
   let n = List.length crumbs in
   let items = crumbs |> List.mapi (fun i (label, href) ->
     let is_last = (i = n - 1) in
-    let sep = if i > 0 then {html|<span class="text-slate-400 dark:text-slate-600 mx-1">/</span>|html} else "" in
     if is_last then
-      Printf.sprintf {html|%s<span class="text-slate-600 dark:text-slate-400">%s</span>|html} sep (escape_html label)
+      Printf.sprintf {|<span class="text-slate-900 dark:text-slate-200 font-medium" aria-current="page">%s</span>|} (escape_html label)
     else
-      Printf.sprintf {html|%s<a href="%s" class="text-slate-500 dark:text-slate-500 hover:text-orange-600 dark:hover:text-orange-400 transition-colors">%s</a>|html} sep (escape_html href) (escape_html label)
-  ) |> String.concat "" in
+      Printf.sprintf {|<a href="%s" class="text-slate-500 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors">%s</a>|}
+        (escape_html href) (escape_html label)
+  ) in
+  let inner = String.concat (Printf.sprintf {| <span class="mx-1">%s</span> |} sep) items in
   (* Schema.org BreadcrumbList JSON-LD *)
   let ld_items = crumbs |> List.mapi (fun i (label, href) ->
     let url = if href = "" then "https://wkbl.win" else "https://wkbl.win" ^ href in
@@ -318,7 +321,7 @@ let breadcrumb (crumbs: (string * string) list) =
     {|<script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[%s]}</script>|}
     ld_items
   in
-  Printf.sprintf {html|<nav class="text-xs font-sans mb-4" aria-label="breadcrumb">%s</nav>%s|html} items ld_script
+  Printf.sprintf {|<nav aria-label="Breadcrumb" class="text-sm font-sans mb-4 flex items-center flex-wrap gap-y-1">%s</nav>%s|} inner ld_script
 
 let team_badge ?(max_width="max-w-[130px]") team_name =
   let _ = max_width in
@@ -393,43 +396,6 @@ let stat_cell ?(highlight=false) ?(extra_classes="") ?(width_style="") value =
 let empty_state ?icon title desc =
   let _ = icon in
   Printf.sprintf {html|<div class="text-center py-12 px-4"><div class="text-4xl mb-4">🏀</div><h3 class="text-lg font-bold text-slate-900 dark:text-slate-200">%s</h3><p class="text-slate-500 dark:text-slate-400">%s</p></div>|html} title desc
-
-(** Render visual breadcrumb nav.
-    [(label, url)] list — last item has url="" (current page, no link). *)
-let render_breadcrumbs ?(lang=I18n.Ko) crumbs =
-  let _ = lang in
-  if crumbs = [] then "" else
-  let sep = {|<svg class="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>|} in
-  let items = crumbs |> List.mapi (fun i (label, url) ->
-    let is_last = (i = List.length crumbs - 1) in
-    if is_last then
-      Printf.sprintf {|<span class="text-slate-900 dark:text-slate-200 font-medium" aria-current="page">%s</span>|} (escape_html label)
-    else
-      Printf.sprintf {|<a href="%s" class="text-slate-500 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors">%s</a>|}
-        (escape_html url) (escape_html label)
-  ) in
-  let inner = String.concat (Printf.sprintf {| <span class="mx-1">%s</span> |} sep) items in
-  Printf.sprintf {|<nav aria-label="Breadcrumb" class="text-sm mb-4 flex items-center flex-wrap gap-y-1">%s</nav>|} inner
-
-(** Generate BreadcrumbList JSON-LD for SEO. *)
-let breadcrumb_json_ld crumbs =
-  if crumbs = [] then "" else
-  let items = crumbs |> List.mapi (fun i (label, url) ->
-    let position = i + 1 in
-    let item_url = if url = "" then "\"\"" else Printf.sprintf {|"https://wkbl.win%s"|} url in
-    Printf.sprintf {|{"@type":"ListItem","position":%d,"name":"%s","item":%s}|}
-      position (escape_html label) item_url
-  ) in
-  Printf.sprintf {|{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[%s]}|}
-    (String.concat "," items)
-
-(** Combine multiple JSON-LD objects into an array *)
-let combine_json_ld parts =
-  let non_empty = List.filter (fun s -> s <> "") parts in
-  match non_empty with
-  | [] -> ""
-  | [single] -> single
-  | multiple -> "[" ^ String.concat "," multiple ^ "]"
 
 let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json_ld="") ?og_title ?og_description ?og_image ?data_freshness ~content () =
   let json_ld_html = if json_ld = "" then "" else
@@ -1066,7 +1032,7 @@ let player_summary_comparison (seasons: season_stats list) =
       let border_cls = if border then " border-b border-slate-200 dark:border-slate-700" else "" in
       Printf.sprintf
         {html|<tr class="%s">
-          <td class="px-2 py-1.5 text-left font-sans font-semibold text-slate-600 dark:text-slate-400">%s</td>
+          <td class="px-2 py-1.5 text-left font-sans font-semibold text-slate-600 dark:text-slate-400 whitespace-nowrap">%s</td>
           %s %s %s %s %s %s %s %s %s %s
         </tr>|html}
         border_cls
@@ -1123,7 +1089,7 @@ let player_summary_comparison (seasons: season_stats list) =
           <table class="w-full text-xs tabular-nums">
             <thead class="text-slate-500 dark:text-slate-500">
               <tr>
-                <th scope="col" class="px-2 py-1.5 text-left text-[10px] uppercase tracking-wider font-sans w-24"></th>
+                <th scope="col" class="px-2 py-1.5 text-left text-[10px] uppercase tracking-wider font-sans w-32"></th>
                 %s %s %s %s %s %s %s %s %s %s
               </tr>
             </thead>
