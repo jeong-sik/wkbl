@@ -391,6 +391,43 @@ let empty_state ?icon title desc =
   let _ = icon in
   Printf.sprintf {html|<div class="text-center py-12 px-4"><div class="text-4xl mb-4">🏀</div><h3 class="text-lg font-bold text-slate-900 dark:text-slate-200">%s</h3><p class="text-slate-500 dark:text-slate-400">%s</p></div>|html} title desc
 
+(** Render visual breadcrumb nav.
+    [(label, url)] list — last item has url="" (current page, no link). *)
+let render_breadcrumbs ?(lang=I18n.Ko) crumbs =
+  let _ = lang in
+  if crumbs = [] then "" else
+  let sep = {|<svg class="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>|} in
+  let items = crumbs |> List.mapi (fun i (label, url) ->
+    let is_last = (i = List.length crumbs - 1) in
+    if is_last then
+      Printf.sprintf {|<span class="text-slate-900 dark:text-slate-200 font-medium" aria-current="page">%s</span>|} (escape_html label)
+    else
+      Printf.sprintf {|<a href="%s" class="text-slate-500 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors">%s</a>|}
+        (escape_html url) (escape_html label)
+  ) in
+  let inner = String.concat (Printf.sprintf {| <span class="mx-1">%s</span> |} sep) items in
+  Printf.sprintf {|<nav aria-label="Breadcrumb" class="text-sm mb-4 flex items-center flex-wrap gap-y-1">%s</nav>|} inner
+
+(** Generate BreadcrumbList JSON-LD for SEO. *)
+let breadcrumb_json_ld crumbs =
+  if crumbs = [] then "" else
+  let items = crumbs |> List.mapi (fun i (label, url) ->
+    let position = i + 1 in
+    let item_url = if url = "" then "\"\"" else Printf.sprintf {|"https://wkbl.win%s"|} url in
+    Printf.sprintf {|{"@type":"ListItem","position":%d,"name":"%s","item":%s}|}
+      position (escape_html label) item_url
+  ) in
+  Printf.sprintf {|{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[%s]}|}
+    (String.concat "," items)
+
+(** Combine multiple JSON-LD objects into an array *)
+let combine_json_ld parts =
+  let non_empty = List.filter (fun s -> s <> "") parts in
+  match non_empty with
+  | [] -> ""
+  | [single] -> single
+  | multiple -> "[" ^ String.concat "," multiple ^ "]"
+
 let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json_ld="") ?og_title ?og_description ?og_image ?data_freshness ~content () =
   let json_ld_html = if json_ld = "" then "" else
     Printf.sprintf {|<script type="application/ld+json">%s</script>|} json_ld
@@ -534,6 +571,8 @@ let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json
   %s
   %s
   <link rel="manifest" href="/manifest.json">
+  <link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
