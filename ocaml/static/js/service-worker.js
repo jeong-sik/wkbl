@@ -41,13 +41,9 @@ const NETWORK_FIRST_PATHS = [
 
 // Install: Cache static assets
 self.addEventListener('install', (event) => {
-  console.log('[SW] Installing...');
   event.waitUntil(
     caches.open(STATIC_CACHE)
-      .then((cache) => {
-        console.log('[SW] Caching static assets');
-        return cache.addAll(STATIC_ASSETS);
-      })
+      .then((cache) => cache.addAll(STATIC_ASSETS))
       .then(() => self.skipWaiting())
       .catch((err) => console.error('[SW] Install failed:', err))
   );
@@ -55,16 +51,12 @@ self.addEventListener('install', (event) => {
 
 // Activate: Clean old caches
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activating...');
   event.waitUntil(
     caches.keys()
       .then((keys) => Promise.all(
         keys
           .filter((key) => key.startsWith('wkbl-') && key !== STATIC_CACHE && key !== DYNAMIC_CACHE)
-          .map((key) => {
-            console.log('[SW] Deleting old cache:', key);
-            return caches.delete(key);
-          })
+          .map((key) => caches.delete(key))
       ))
       .then(() => self.clients.claim())
   );
@@ -159,8 +151,6 @@ async function networkFirstWithFallback(request) {
 
 // Handle incoming push messages
 self.addEventListener('push', (event) => {
-  console.log('[SW] Push received');
-
   let data = { title: 'WKBL 알림', body: '새로운 소식이 있습니다.' };
 
   if (event.data) {
@@ -192,7 +182,6 @@ self.addEventListener('push', (event) => {
 
 // Handle notification click
 self.addEventListener('notificationclick', (event) => {
-  console.log('[SW] Notification clicked:', event.notification.tag);
   event.notification.close();
 
   const url = event.notification.data?.url || '/';
@@ -223,7 +212,7 @@ self.addEventListener('notificationclick', (event) => {
 
 // Handle notification close (optional analytics)
 self.addEventListener('notificationclose', (event) => {
-  console.log('[SW] Notification closed:', event.notification.tag);
+  // analytics hook placeholder
 });
 
 // ========== Offline Support ==========

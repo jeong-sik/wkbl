@@ -51,7 +51,6 @@ const WKBLNotifications = {
     // Re-check permission in case it was revoked
     const currentPermission = Notification.permission;
     if (currentPermission !== this.permission) {
-      console.log('[Notify] Permission changed:', this.permission, '->', currentPermission);
       this.permission = currentPermission;
       this.updateUI();
     }
@@ -71,13 +70,11 @@ const WKBLNotifications = {
     this.isSupported = 'Notification' in window && 'serviceWorker' in navigator;
 
     if (!this.isSupported) {
-      console.log('[Notify] Notifications not supported');
       return false;
     }
 
     this.permission = Notification.permission;
     this._permissionChecked = true;
-    console.log('[Notify] Permission:', this.permission);
 
     // Update UI based on permission
     this.updateUI();
@@ -109,8 +106,6 @@ const WKBLNotifications = {
       // Request permission
       const permission = await Notification.requestPermission();
       this.permission = permission;
-      console.log('[Notify] Permission result:', permission);
-
       if (permission === 'granted') {
         await this.subscribe();
         localStorage.setItem('wkbl-notifications', 'true');
@@ -170,7 +165,6 @@ const WKBLNotifications = {
         })
       }).catch(() => {});  // Ignore errors for MVP
 
-      console.log('[Notify] Subscribed');
       return true;
     } catch (err) {
       console.error('[Notify] Subscribe failed:', err);
@@ -189,7 +183,6 @@ const WKBLNotifications = {
         headers: { 'Content-Type': 'application/json' }
       }).catch(() => {});  // Ignore errors for MVP
 
-      console.log('[Notify] Unsubscribed');
       return true;
     } catch (err) {
       console.error('[Notify] Unsubscribe failed:', err);
@@ -250,8 +243,6 @@ const WKBLNotifications = {
     if (window.showToast) {
       window.showToast(message);
     } else {
-      console.log('[Notify]', message);
-
       // Simple toast fallback
       const toast = document.createElement('div');
       toast.className = 'fixed bottom-4 left-1/2 -translate-x-1/2 bg-slate-800 text-white px-4 py-2 rounded-lg shadow-lg text-sm z-50 animate-fade-in';

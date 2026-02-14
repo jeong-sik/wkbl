@@ -980,6 +980,8 @@ let team_h2h_page ?(lang=I18n.Ko) ~team1 ~team2 ~season ~seasons (games : Domain
     else ""
   in
   layout ~lang ~title:(Printf.sprintf "%s 대 %s | 팀 전적 비교" team1 team2)
+    ~canonical_path:(Printf.sprintf "/teams/h2h?team1=%s&team2=%s" (escape_html team1) (escape_html team2))
+    ~description:(Printf.sprintf "%s와 %s의 상대 전적, 경기별 결과 비교" (escape_html team1) (escape_html team2))
     ~content:(Printf.sprintf
       {html|<div class="space-y-6 animate-fade-in">%s
         <!-- Header with team selection -->

@@ -55,7 +55,7 @@ let leader_card ~title ~icon (leaders: Db.leader_base list) ~extract ~format_val
       rank_badge
       (player_href b.lb_player_id)
       (escape_html b.lb_player_name)
-      (escape_html (normalize_name b.lb_team_name))
+      (Printf.sprintf {|<a href="%s" class="hover:underline">%s</a>|} (team_href b.lb_team_name) (escape_html (normalize_name b.lb_team_name)))
       (format_val (extract b))
   ) |> String.concat "\n" in
   Printf.sprintf
@@ -292,7 +292,7 @@ let season_summary_page ?(lang=I18n.Ko) ~season ~seasons
         </div>
         %s
       </div>|html}
-      (breadcrumb [("홈", "/"); ("역대 기록", "/history"); (escape_html season_name, "")])
+      (breadcrumb [("홈", "/"); ("역대 기록", "/history"); (escape_html season_name, season_href season)])
       (escape_html season_name)
       nav_html
       (awards_hero hist)
