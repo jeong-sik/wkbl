@@ -1331,7 +1331,7 @@ let json_string_opt json key =
     | `String s -> Some s
     | `Null -> None
     | _ -> None
-  with _ -> None
+  with Yojson.Safe.Util.Type_error _ -> None
 
 let json_string json key =
   json_string_opt json key |> Option.value ~default:""
@@ -1342,7 +1342,7 @@ let json_int json key =
     | `Int i -> i
     | `String s -> int_of_string_opt s |> Option.value ~default:0
     | _ -> 0
-  with _ -> 0
+  with Yojson.Safe.Util.Type_error _ -> 0
 
 let json_float json key =
   try
@@ -1351,7 +1351,7 @@ let json_float json key =
     | `Int i -> float_of_int i
     | `String s -> float_of_string_opt s |> Option.value ~default:0.0
     | _ -> 0.0
-  with _ -> 0.0
+  with Yojson.Safe.Util.Type_error _ -> 0.0
 
 (** Extract JSON data from DataLab page HTML *)
 let extract_datalab_json html =
@@ -1409,7 +1409,7 @@ let parse_game_records json =
           else None
         )
     | _ -> []
-  with _ -> []
+  with Yojson.Safe.Util.Type_error _ -> []
 
 (** Extract home and away team names from DataLab JSON
     Returns (home_team_name, away_team_name) option
@@ -1428,7 +1428,7 @@ let extract_team_names json =
       Some (home_name, away_name)
     else
       None
-  with _ -> None
+  with Yojson.Safe.Util.Type_error _ -> None
 
 (** Parse team statistics from JSON *)
 let parse_team_stats ~season ~home_team ~away_team json =
@@ -1451,7 +1451,7 @@ let parse_team_stats ~season ~home_team ~away_team json =
             ft_pct = json_float obj "ftPct";
           }
       | _ -> None
-    with _ -> None
+    with Yojson.Safe.Util.Type_error _ -> None
   in
   let home_stats = parse_stat_obj "homeTeamStatistics" home_team away_team in
   let away_stats = parse_stat_obj "awayTeamStatistics" away_team home_team in
@@ -1477,7 +1477,7 @@ let parse_versus_records ~home_team ~away_team json =
           else None
         )
     | _ -> []
-  with _ -> []
+  with Yojson.Safe.Util.Type_error _ -> []
 
 (** Fetch DataLab team analysis page by matchup index
     URL format: teamAnalysis?id={season}01{index}1
@@ -2305,7 +2305,7 @@ let season_date_range season_name =
      (start_year + 1, 1); (start_year + 1, 2); (start_year + 1, 3)]
   else if String.length season_name >= 6 then
     let year_str = String.sub season_name 0 4 in
-    let year = try int_of_string year_str with _ -> 2000 in
+    let year = try int_of_string year_str with Failure _ -> 2000 in
     if String.length season_name > 4 then
       let suffix = String.sub season_name 4 (String.length season_name - 4) in
       if suffix = "여름" then
@@ -2402,11 +2402,11 @@ let parse_schedule_api_html ~season_code ~season_name:_ html =
       let away_score = try
         let s = team_div $ ".away .txt_score" |> R.leaf_text in
         if s = "" then None else Some (int_of_string s)
-      with _ -> None in
+      with Failure _ | Not_found -> None in
       let home_score = try
         let s = team_div $ ".home .txt_score" |> R.leaf_text in
         if s = "" then None else Some (int_of_string s)
-      with _ -> None in
+      with Failure _ | Not_found -> None in
 
       (* Extract venue - third td *)
       let tds = row $$ "td" |> to_list in
@@ -2441,7 +2441,7 @@ let parse_schedule_api_html ~season_code ~season_name:_ html =
         sch_away_score = away_score;
         sch_venue = venue;
       }
-    with _ -> None
+    with Failure _ | Not_found | Invalid_argument _ -> None
   )
 
 (** Deduplicate schedule entries by game_id (preferred) or date+teams *)
@@ -2519,7 +2519,7 @@ let normalize_schedule_date ~season_code date_str =
   in
   let base_year =
     if String.length season_name >= 4 then
-      try int_of_string (String.sub season_name 0 4) with _ -> current_year
+      try int_of_string (String.sub season_name 0 4) with Failure _ -> current_year
     else current_year
   in
   (* Parse "M/D(day)" format *)
@@ -2541,7 +2541,7 @@ let normalize_schedule_date ~season_code date_str =
         base_year
     in
     Printf.sprintf "%04d-%02d-%02d" year month day
-  with _ -> Printf.sprintf "%04d-01-01" base_year  (* fallback *)
+  with Failure _ | Invalid_argument _ -> Printf.sprintf "%04d-01-01" base_year  (* fallback *)
 
 (** Normalize DataLab game_date into YYYY-MM-DD
     Accepts formats like "20260123", "2026.01.23", "2026-01-23", or strings with extra text.
@@ -2984,8 +2984,8 @@ let fetch_live_games ~sw ~env () =
               let home_score, away_score =
                 match String.split_on_char ':' score_text with
                 | [h; a] -> 
-                    (try (int_of_string (String.trim h), int_of_string (String.trim a)) 
-                     with _ -> (0, 0))
+                    (try (int_of_string (String.trim h), int_of_string (String.trim a))
+                     with Failure _ -> (0, 0))
                 | _ -> (0, 0)
               in
 

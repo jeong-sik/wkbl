@@ -356,7 +356,7 @@ let team_radar_chart ?(selected_teams = []) (teams: team_stats list) =
 
     (* Filter teams if selection provided, otherwise use top 3 by EFF *)
     let display_teams = match selected_teams with
-      | [] -> List.sort (fun a b -> compare b.eff a.eff) teams |> (fun l -> try List.filteri (fun i _ -> i < 3) l with _ -> l)
+      | [] -> List.sort (fun a b -> compare b.eff a.eff) teams |> (fun l -> try List.filteri (fun i _ -> i < 3) l with Invalid_argument _ -> l)
       | names -> List.filter (fun t -> List.mem t.team names) teams
     in
 
