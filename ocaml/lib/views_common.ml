@@ -486,6 +486,8 @@ let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json
   let sr_menu_open = tr { ko = "메뉴 열림"; en = "Menu opened" } in
   let sr_menu_close = tr { ko = "메뉴 닫힘"; en = "Menu closed" } in
 
+  let nav_search = tr { ko = "검색"; en = "Search" } in
+  let nav_search_placeholder = tr { ko = "검색..."; en = "Search..." } in
   let lang_label = tr { ko = "언어"; en = "Language" } in
   let lang_menu =
     let item_cls is_active =
@@ -647,7 +649,12 @@ let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json
 	      </div>
       </div>
       <div class="flex items-center gap-2">
-        <button type="button" onclick="window.SearchModal&&SearchModal.open()" aria-label="Search (Cmd+K)" class="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors group">
+        <button type="button" onclick="window.SearchModal&&SearchModal.open()" aria-label="%s (Cmd+K)" class="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition-colors group text-sm">
+          <svg class="w-4 h-4 text-slate-400 group-hover:text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+          <span class="text-slate-400">%s</span>
+          <kbd class="ml-1 px-1.5 py-0.5 text-[10px] font-mono text-slate-400 bg-white dark:bg-slate-700 rounded border border-slate-200 dark:border-slate-600">⌘K</kbd>
+        </button>
+        <button type="button" onclick="window.SearchModal&&SearchModal.open()" aria-label="%s" class="md:hidden p-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors group">
           <svg class="w-5 h-5 text-slate-500 dark:text-slate-400 group-hover:text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
         </button>
         %s
@@ -672,7 +679,7 @@ let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json
 		        <a href="/predict" class="block py-3 px-4 rounded-lg text-base font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">%s</a>
 		        <button type="button" onclick="window.SearchModal&&SearchModal.open();document.getElementById('mobile-menu').classList.add('hidden')" class="w-full text-left py-3 px-4 rounded-lg text-base font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center gap-2">
 		          <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-		          Search
+		          %s
 		        </button>
 		      </div>
 		    </div>
@@ -807,6 +814,9 @@ let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json
 	    (escape_html nav_games)
 	    (escape_html nav_compare)
 		    (escape_html nav_predict)
+		    (escape_html nav_search)
+		    (escape_html nav_search_placeholder)
+		    (escape_html nav_search)
 		    freshness_html
 		    lang_menu
 		    (escape_html aria_toggle_theme)
@@ -817,6 +827,7 @@ let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json
 	    (escape_html nav_games)
 	    (escape_html nav_compare)
 	    (escape_html nav_predict)
+	    (escape_html nav_search)
 	    content
 	    (escape_js_string sr_dark_on)
 	    (escape_js_string sr_dark_off)
