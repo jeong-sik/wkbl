@@ -264,7 +264,7 @@ let parse_clock_to_seconds clock =
         let secs = int_of_string (String.trim sec_str) in
         mins * 60 + secs
     | _ -> 600 (* Default to 10 minutes if parse fails *)
-  with _ -> 600
+  with Failure _ -> 600
 
 (** Calculate total elapsed seconds from game start *)
 let calculate_elapsed_seconds ~period_code ~clock =
@@ -1253,7 +1253,7 @@ let parse_clock (clock: string) : int =
       let s = int_of_string (String.trim sec) in
       m * 60 + s
     | _ -> 0
-  with _ -> 0
+  with Failure _ -> 0
 
 (** Check if event is in clutch time
     Clutch time = Q4 + remaining <= 5 min + score diff <= 5 points *)

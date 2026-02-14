@@ -21,7 +21,7 @@ let parse_clock clock_str =
     match String.split_on_char ':' clock_str with
     | [m; s] -> (int_of_string m * 60) + int_of_string s
     | _ -> 0
-  with _ -> 0
+  with Failure _ -> 0
 
 let is_clutch_moment (event: pbp_event) (criteria: clutch_criteria) =
   let in_quarter = List.mem event.pe_period_code criteria.quarter in

@@ -347,7 +347,7 @@ let build_game_summary_prompt ?(quarters=[]) ?(lang=Ko) (bs: game_boxscore) =
     |> List.sort (fun a b ->
         let score p = float_of_int p.bs_pts +. (float_of_int (p.bs_reb + p.bs_ast)) *. 1.5 in
         compare (score b) (score a))
-    |> (fun l -> try [List.hd l] with _ -> [])
+    |> (fun l -> try [List.hd l] with Failure _ -> [])
   in
 
   let mvp_text = match mvp_candidates with
