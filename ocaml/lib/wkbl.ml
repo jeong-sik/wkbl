@@ -1,5 +1,7 @@
 (** WKBL Library Entry Point *)
 
+module Admin = Admin
+module Backfill = Backfill
 module Domain = Domain
 module Db = Db
 module Db_common = Db_common
@@ -9,6 +11,18 @@ module I18n = I18n
 module Canonical_host = Canonical_host
 module Player_identity = Player_identity
 module Request_params = Request_params
+module Route_helpers = Route_helpers
+module Routes_game = Routes_game
+module Routes_history = Routes_history
+module Routes_home = Routes_home
+module Routes_player = Routes_player
+module Routes_static = Routes_static
+module Routes_team = Routes_team
+module Routes_stats = Routes_stats
+module Routes_compare = Routes_compare
+module Routes_predict = Routes_predict
+module Routes_qa = Routes_qa
+module Routes_api = Routes_api
 module Views = Views
 module Views_common = Views_common
 module Views_player = Views_player
