@@ -3183,6 +3183,70 @@ let form_urlencoded_tests = [
 ]
 
 (* ============================================= *)
+(* tw_size_to_px Tests                           *)
+(* ============================================= *)
+
+let test_tw_size_to_px_basic () =
+  Alcotest.(check (option (pair int int))) "w-8 h-8 = 32x32"
+    (Some (32, 32))
+    (Wkbl.Views_common.tw_size_to_px "w-8 h-8")
+
+let test_tw_size_to_px_different_sizes () =
+  Alcotest.(check (option (pair int int))) "w-12 h-12 = 48x48"
+    (Some (48, 48))
+    (Wkbl.Views_common.tw_size_to_px "w-12 h-12")
+
+let test_tw_size_to_px_with_extra_classes () =
+  Alcotest.(check (option (pair int int))) "with extra classes"
+    (Some (20, 20))
+    (Wkbl.Views_common.tw_size_to_px "w-5 h-5 shrink-0")
+
+let test_tw_size_to_px_missing_height () =
+  Alcotest.(check (option (pair int int))) "no height"
+    None
+    (Wkbl.Views_common.tw_size_to_px "w-8")
+
+let test_tw_size_to_px_no_match () =
+  Alcotest.(check (option (pair int int))) "no w/h classes"
+    None
+    (Wkbl.Views_common.tw_size_to_px "flex items-center")
+
+let tw_size_to_px_tests = [
+  Alcotest.test_case "basic w-8 h-8" `Quick test_tw_size_to_px_basic;
+  Alcotest.test_case "w-12 h-12" `Quick test_tw_size_to_px_different_sizes;
+  Alcotest.test_case "extra classes" `Quick test_tw_size_to_px_with_extra_classes;
+  Alcotest.test_case "missing height" `Quick test_tw_size_to_px_missing_height;
+  Alcotest.test_case "no match" `Quick test_tw_size_to_px_no_match;
+]
+
+(* ============================================= *)
+(* format_int_commas Tests                       *)
+(* ============================================= *)
+
+let test_format_int_commas_zero () =
+  Alcotest.(check string) "0" "0" (Wkbl.Views_common.format_int_commas 0)
+
+let test_format_int_commas_small () =
+  Alcotest.(check string) "999" "999" (Wkbl.Views_common.format_int_commas 999)
+
+let test_format_int_commas_thousand () =
+  Alcotest.(check string) "1,000" "1,000" (Wkbl.Views_common.format_int_commas 1000)
+
+let test_format_int_commas_large () =
+  Alcotest.(check string) "1,234,567" "1,234,567" (Wkbl.Views_common.format_int_commas 1234567)
+
+let test_format_int_commas_negative () =
+  Alcotest.(check string) "-5,000" "-5,000" (Wkbl.Views_common.format_int_commas (-5000))
+
+let format_int_commas_tests = [
+  Alcotest.test_case "zero" `Quick test_format_int_commas_zero;
+  Alcotest.test_case "small" `Quick test_format_int_commas_small;
+  Alcotest.test_case "thousand" `Quick test_format_int_commas_thousand;
+  Alcotest.test_case "large" `Quick test_format_int_commas_large;
+  Alcotest.test_case "negative" `Quick test_format_int_commas_negative;
+]
+
+(* ============================================= *)
 (* Main Test Runner                              *)
 (* ============================================= *)
 
@@ -3226,4 +3290,6 @@ let () =
     "Team Page", team_page_tests;
     "Boxscores View", boxscores_view_tests;
     "Form URL-Encoded", form_urlencoded_tests;
+    "tw_size_to_px", tw_size_to_px_tests;
+    "format_int_commas", format_int_commas_tests;
   ]
