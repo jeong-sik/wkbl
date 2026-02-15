@@ -590,7 +590,9 @@ let () =
     if ok then (
       let season = Scraper.current_season_code_auto () |> Scraper.main_to_datalab in
       sync_missing_boxscores ~season ();
-      sync_missing_pbp ~season ()
+      sync_missing_pbp ~season ();
+      Db.clear_all_caches ();
+      Printf.printf "[Scheduler] Caches invalidated after sync\n%!"
     );
     (* Periodic sync *)
     while true do
@@ -600,7 +602,9 @@ let () =
       if ok then (
         let season = Scraper.current_season_code_auto () |> Scraper.main_to_datalab in
         sync_missing_boxscores ~season ();
-        sync_missing_pbp ~season ()
+        sync_missing_pbp ~season ();
+        Db.clear_all_caches ();
+        Printf.printf "[Scheduler] Caches invalidated after sync\n%!"
       )
     done
   );
@@ -614,7 +618,8 @@ let () =
         Live.update_games games;
         if List.length games > 0 then begin
            Printf.printf "[Poller] Live games updated: %d games\n%!" (List.length games);
-           Live.broadcast_scores ()
+           Live.broadcast_scores ();
+           Db.clear_all_caches ()
         end
        with e ->
         Printf.eprintf "[Poller] Error: %s\n%s\n%!"
@@ -2551,14 +2556,25 @@ Sitemap: https://wkbl.win/sitemap.xml
       | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
     );
 
-    (* Season summary page *)
+    (* Season summary page — 6 queries run in parallel via Eio.Fiber.all *)
     Kirin.get "/season/:code" (fun request ->
       let lang = request_lang request in
       let season = Kirin.param "code" request |> Uri.pct_decode in
-      match Db.get_seasons (), Db.get_standings ~season (),
-            Db.get_leaders_base ~season (), Db.get_historical_seasons (),
-            Db.get_team_stats ~season ~scope:PerGame (),
-            Db.get_team_stats ~season ~scope:Totals () with
+      let r_seasons = ref (Error (Db.ConnectionFailed "not computed")) in
+      let r_standings = ref (Error (Db.ConnectionFailed "not computed")) in
+      let r_leaders = ref (Error (Db.ConnectionFailed "not computed")) in
+      let r_histories = ref (Error (Db.ConnectionFailed "not computed")) in
+      let r_tpg = ref (Error (Db.ConnectionFailed "not computed")) in
+      let r_ttot = ref (Error (Db.ConnectionFailed "not computed")) in
+      Eio.Fiber.all [
+        (fun () -> r_seasons := Db.get_seasons ());
+        (fun () -> r_standings := Db.get_standings ~season ());
+        (fun () -> r_leaders := Db.get_leaders_base ~season ());
+        (fun () -> r_histories := Db.get_historical_seasons ());
+        (fun () -> r_tpg := Db.get_team_stats ~season ~scope:PerGame ());
+        (fun () -> r_ttot := Db.get_team_stats ~season ~scope:Totals ());
+      ];
+      match !r_seasons, !r_standings, !r_leaders, !r_histories, !r_tpg, !r_ttot with
       | Ok seasons, Ok standings, Ok leaders, Ok histories, Ok tpg, Ok ttot ->
           Kirin.html (Views_season.season_summary_page ~lang ~season ~seasons
             ~standings ~leaders ~histories ~team_per_game:tpg ~team_totals:ttot ())
