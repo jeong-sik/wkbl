@@ -266,7 +266,7 @@ let render_fixed_table ?(table_attrs="") ?(aria_label="Data Table") ?(striped=tr
   in
   (* Assemble *)
   Printf.sprintf
-    {html|<div class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto overflow-y-hidden shadow-2xl">
+    {html|<div class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto overflow-y-hidden shadow-2xl scroll-shadow">
   %s
   <table id="%s"%s class="w-full %s text-xs sm:text-sm font-mono tabular-nums table-fixed" style="border-collapse: separate; border-spacing: 0;" aria-label="%s">
     %s
@@ -398,7 +398,16 @@ let player_id_badge player_id =
     {html|<span class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800/50 border border-slate-300 dark:border-slate-700/50 text-[10px] font-mono text-slate-500">고유번호 %s</span>|html}
     (escape_html player_id)
 
-let format_int_commas n = string_of_int n
+let format_int_commas n =
+  let s = string_of_int (abs n) in
+  let len = String.length s in
+  let buf = Buffer.create (len + len / 3) in
+  if n < 0 then Buffer.add_char buf '-';
+  String.iteri (fun i c ->
+    if i > 0 && (len - i) mod 3 = 0 then Buffer.add_char buf ',';
+    Buffer.add_char buf c
+  ) s;
+  Buffer.contents buf
 let format_int_compact n = if abs n < 1000 then string_of_int n else Printf.sprintf "%.1fK" (float_of_int n /. 1000.0)
 
 (** Player name cell content for render_fixed_table.

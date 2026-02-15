@@ -3220,6 +3220,33 @@ let tw_size_to_px_tests = [
 ]
 
 (* ============================================= *)
+(* format_int_commas Tests                       *)
+(* ============================================= *)
+
+let test_format_int_commas_zero () =
+  Alcotest.(check string) "0" "0" (Wkbl.Views_common.format_int_commas 0)
+
+let test_format_int_commas_small () =
+  Alcotest.(check string) "999" "999" (Wkbl.Views_common.format_int_commas 999)
+
+let test_format_int_commas_thousand () =
+  Alcotest.(check string) "1,000" "1,000" (Wkbl.Views_common.format_int_commas 1000)
+
+let test_format_int_commas_large () =
+  Alcotest.(check string) "1,234,567" "1,234,567" (Wkbl.Views_common.format_int_commas 1234567)
+
+let test_format_int_commas_negative () =
+  Alcotest.(check string) "-5,000" "-5,000" (Wkbl.Views_common.format_int_commas (-5000))
+
+let format_int_commas_tests = [
+  Alcotest.test_case "zero" `Quick test_format_int_commas_zero;
+  Alcotest.test_case "small" `Quick test_format_int_commas_small;
+  Alcotest.test_case "thousand" `Quick test_format_int_commas_thousand;
+  Alcotest.test_case "large" `Quick test_format_int_commas_large;
+  Alcotest.test_case "negative" `Quick test_format_int_commas_negative;
+]
+
+(* ============================================= *)
 (* Main Test Runner                              *)
 (* ============================================= *)
 
@@ -3264,4 +3291,5 @@ let () =
     "Boxscores View", boxscores_view_tests;
     "Form URL-Encoded", form_urlencoded_tests;
     "tw_size_to_px", tw_size_to_px_tests;
+    "format_int_commas", format_int_commas_tests;
   ]

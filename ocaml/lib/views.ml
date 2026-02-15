@@ -78,11 +78,11 @@ let live_scores_widget ?(lang=I18n.Ko) (games: Domain.live_game list) =
       <div class="flex items-center justify-between">
        <div class="flex items-center gap-2">
         %s
-        <span class="font-bold text-slate-900 dark:text-white">%s</span>
+        <span class="font-bold text-slate-900 dark:text-white truncate min-w-0">%s</span>
        </div>
        %s
        <div class="flex items-center gap-2">
-        <span class="font-bold text-slate-900 dark:text-white text-right">%s</span>
+        <span class="font-bold text-slate-900 dark:text-white text-right truncate min-w-0">%s</span>
         %s
        </div>
       </div>
@@ -182,11 +182,11 @@ let players_table ?(lang=I18n.Ko) ?(player_info_map=None) (players: player_aggre
         
         (* Complex cells constructed as strings *)
         let pts_cell = 
-          Printf.sprintf {html|<div class="flex flex-col items-end leading-tight"><span class="text-orange-700 dark:text-orange-400 font-bold font-mono">%.1f</span><span class="text-slate-400 dark:text-slate-500 text-[9px] font-mono whitespace-nowrap" title="%s">%s%s</span></div>|html}
+          Printf.sprintf {html|<div class="flex flex-col items-end leading-tight"><span class="text-orange-700 dark:text-orange-400 font-bold font-mono">%.1f</span><span class="text-slate-400 dark:text-slate-500 text-[9px] font-mono whitespace-nowrap max-w-[60px] overflow-hidden text-ellipsis" title="%s">%s%s</span></div>|html}
           p.avg_points (escape_html label_total) (escape_html label_total) (format_int_compact p.total_points)
         in
         let stat_cell v total =
-          Printf.sprintf {html|<div class="flex flex-col items-end leading-tight"><span class="text-slate-700 dark:text-slate-300 font-mono">%.1f</span><span class="text-slate-400 dark:text-slate-500 text-[9px] font-mono whitespace-nowrap" title="%s">%s%s</span></div>|html}
+          Printf.sprintf {html|<div class="flex flex-col items-end leading-tight"><span class="text-slate-700 dark:text-slate-300 font-mono">%.1f</span><span class="text-slate-400 dark:text-slate-500 text-[9px] font-mono whitespace-nowrap max-w-[60px] overflow-hidden text-ellipsis" title="%s">%s%s</span></div>|html}
           v (escape_html label_total) (escape_html label_total) (format_int_compact total)
         in
         
