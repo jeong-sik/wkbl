@@ -86,6 +86,11 @@ let cached cache key f =
        | Error _ -> ());
       result
 
+(** Clear all entries from the cache *)
+let clear t =
+  Eio.Mutex.use_rw ~protect:true t.mutex (fun () ->
+    Hashtbl.clear t.store)
+
 (** Generate cache key from text (normalized, max 64 chars) *)
 let cache_key_text value =
   let trimmed = String.trim value in
