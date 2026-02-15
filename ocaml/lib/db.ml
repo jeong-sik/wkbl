@@ -5682,40 +5682,45 @@ let team_sort_key = function
   | TeamByFg3Pct -> "fg3"
   | TeamByMinutes -> "min"
 
+(* Cache TTL tiers:
+   - Hot data (standings, teams stats, players): 10 min, invalidated on sync
+   - Warm data (awards, boxscores, leaders): 15 min, invalidated on sync
+   - Cold data (seasons, history, legends): 6 hours, rarely changes
+   - Live data (schedule): 2 min, needs near-real-time *)
 let seasons_cache = Cache.create ~ttl:(60.0 *. 60.0 *. 6.0) ~max_entries:4
 let teams_cache = Cache.create ~ttl:(60.0 *. 60.0 *. 6.0) ~max_entries:4
-let data_freshness_cache = Cache.create ~ttl:300.0 ~max_entries:1  (* 5분 캐시 *)
-let standings_cache = Cache.create ~ttl:120.0 ~max_entries:16
-let games_cache = Cache.create ~ttl:120.0 ~max_entries:16
-let scored_games_cache = Cache.create ~ttl:120.0 ~max_entries:16
-let team_stats_cache = Cache.create ~ttl:120.0 ~max_entries:48
-let players_cache = Cache.create ~ttl:60.0 ~max_entries:128
-let players_base_cache = Cache.create ~ttl:120.0 ~max_entries:32
-let players_by_team_cache = Cache.create ~ttl:120.0 ~max_entries:128
+let data_freshness_cache = Cache.create ~ttl:300.0 ~max_entries:1
+let standings_cache = Cache.create ~ttl:600.0 ~max_entries:16
+let games_cache = Cache.create ~ttl:600.0 ~max_entries:16
+let scored_games_cache = Cache.create ~ttl:600.0 ~max_entries:16
+let team_stats_cache = Cache.create ~ttl:600.0 ~max_entries:48
+let players_cache = Cache.create ~ttl:600.0 ~max_entries:128
+let players_base_cache = Cache.create ~ttl:600.0 ~max_entries:32
+let players_by_team_cache = Cache.create ~ttl:600.0 ~max_entries:128
 let player_info_cache = Cache.create ~ttl:(60.0 *. 60.0 *. 6.0) ~max_entries:4
-let team_detail_cache = Cache.create ~ttl:120.0 ~max_entries:64
-let player_profile_cache = Cache.create ~ttl:120.0 ~max_entries:256
-let player_season_stats_cache = Cache.create ~ttl:120.0 ~max_entries:256
-let player_game_logs_cache = Cache.create ~ttl:120.0 ~max_entries:256
-let boxscore_cache = Cache.create ~ttl:120.0 ~max_entries:128
-let leaders_base_cache = Cache.create ~ttl:120.0 ~max_entries:16
-let leaders_cache = Cache.create ~ttl:120.0 ~max_entries:128
-let awards_cache = Cache.create ~ttl:300.0 ~max_entries:32
-let awards_db_cache = Cache.create ~ttl:300.0 ~max_entries:64
-let awards_count_cache = Cache.create ~ttl:300.0 ~max_entries:4
-let awards_leaders_cache = Cache.create ~ttl:300.0 ~max_entries:32
-let draft_years_cache = Cache.create ~ttl:300.0 ~max_entries:8
-let draft_picks_cache = Cache.create ~ttl:300.0 ~max_entries:32
-let trade_years_cache = Cache.create ~ttl:300.0 ~max_entries:8
-let trade_events_cache = Cache.create ~ttl:300.0 ~max_entries:32
+let team_detail_cache = Cache.create ~ttl:600.0 ~max_entries:64
+let player_profile_cache = Cache.create ~ttl:600.0 ~max_entries:256
+let player_season_stats_cache = Cache.create ~ttl:600.0 ~max_entries:256
+let player_game_logs_cache = Cache.create ~ttl:600.0 ~max_entries:256
+let boxscore_cache = Cache.create ~ttl:900.0 ~max_entries:128
+let leaders_base_cache = Cache.create ~ttl:600.0 ~max_entries:16
+let leaders_cache = Cache.create ~ttl:600.0 ~max_entries:128
+let awards_cache = Cache.create ~ttl:900.0 ~max_entries:32
+let awards_db_cache = Cache.create ~ttl:900.0 ~max_entries:64
+let awards_count_cache = Cache.create ~ttl:900.0 ~max_entries:4
+let awards_leaders_cache = Cache.create ~ttl:900.0 ~max_entries:32
+let draft_years_cache = Cache.create ~ttl:900.0 ~max_entries:8
+let draft_picks_cache = Cache.create ~ttl:900.0 ~max_entries:32
+let trade_years_cache = Cache.create ~ttl:900.0 ~max_entries:8
+let trade_events_cache = Cache.create ~ttl:900.0 ~max_entries:32
 let qa_report_cache = Cache.create ~ttl:300.0 ~max_entries:4
 let qa_schedule_missing_report_cache = Cache.create ~ttl:300.0 ~max_entries:4
 let qa_pbp_missing_report_cache = Cache.create ~ttl:300.0 ~max_entries:16
-let history_cache = Cache.create ~ttl:(60.0 *. 60.0 *. 6.0) ~max_entries:16  (* 6h TTL for history data *)
+let history_cache = Cache.create ~ttl:(60.0 *. 60.0 *. 6.0) ~max_entries:16
 let legends_cache = Cache.create ~ttl:(60.0 *. 60.0 *. 6.0) ~max_entries:16
 let coaches_cache = Cache.create ~ttl:(60.0 *. 60.0 *. 6.0) ~max_entries:16
-let player_career_cache = Cache.create ~ttl:300.0 ~max_entries:128
-let schedule_cache = Cache.create ~ttl:60.0 ~max_entries:16  (* 1 min TTL - schedule changes frequently *)
+let player_career_cache = Cache.create ~ttl:900.0 ~max_entries:128
+let schedule_cache = Cache.create ~ttl:120.0 ~max_entries:16
 
 let take n items =
   let rec loop acc count = function
@@ -6540,7 +6545,7 @@ let get_schedule_by_date_range ~start_date ~end_date ?(status="ALL") () =
 
 (* ===== MVP Race Public API ===== *)
 
-let mvp_race_cache = Cache.create ~ttl:120.0 ~max_entries:16
+let mvp_race_cache = Cache.create ~ttl:600.0 ~max_entries:16
 
 let get_mvp_race ?(season="ALL") ?(min_games=5) () =
   let key = Printf.sprintf "season=%s,min_games=%d" season min_games in
@@ -6631,7 +6636,7 @@ type lineup_game_data = {
   lgd_plus_minus: int option;
 }
 
-let lineup_cache = Cache.create ~ttl:300.0 ~max_entries:32
+let lineup_cache = Cache.create ~ttl:900.0 ~max_entries:32
 
 (** Get all player game stats for lineup analysis *)
 let get_lineup_data ~season ~team_name () =
@@ -6987,7 +6992,7 @@ let get_schedule_progress ~season_code () =
     Useful after admin overrides (exclude/restore) when we want the UI to
     reflect DB changes immediately rather than waiting for TTL expiry. *)
 let clear_all_caches () =
-  let clear_cache (type a) (c : a Cache.t) = Hashtbl.clear c.store in
+  let clear_cache (type a) (c : a Cache.t) = Cache.clear c in
   clear_cache seasons_cache;
   clear_cache teams_cache;
   clear_cache data_freshness_cache;
