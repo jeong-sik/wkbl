@@ -818,14 +818,24 @@ let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json
   (* CSP nonce injection: generate per-request nonce, inject into all opening
      <script tags, and prepend a CSP meta tag in <head>. *)
   let nonce = generate_csp_nonce () in
+  let has_sentry = env_nonempty "SENTRY_DSN" <> None in
+  let has_clarity = env_nonempty "CLARITY_PROJECT_ID" <> None in
+  let csp_script_extras =
+    (if has_sentry then " https://js.sentry-cdn.com" else "")
+    ^ (if has_clarity then " https://www.clarity.ms" else "")
+  in
+  let csp_connect_extras =
+    (if has_sentry then " https://*.sentry.io" else "")
+    ^ (if has_clarity then " https://www.clarity.ms" else "")
+  in
   let csp_policy = Printf.sprintf
     "default-src 'self'; \
-     script-src 'self' 'nonce-%s' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://js.sentry-cdn.com https://www.clarity.ms; \
+     script-src 'self' 'nonce-%s' https://cdn.tailwindcss.com https://cdn.jsdelivr.net%s; \
      style-src 'self' 'unsafe-inline'; \
      img-src 'self' data: https:; \
-     connect-src 'self' https://*.sentry.io https://www.clarity.ms; \
+     connect-src 'self'%s; \
      font-src 'self'"
-    nonce
+    nonce csp_script_extras csp_connect_extras
   in
   let csp_meta = Printf.sprintf
     {|<meta http-equiv="Content-Security-Policy" content="%s">|}
