@@ -377,7 +377,7 @@ let teams_table ?(lang=I18n.Ko) ~season ~scope (stats: Domain.team_stats list) =
   (* 1. Define Columns (Metadata only) *)
   let cols = [
     col "#" ~w:(px 40) ~align:`Center;
-    col label_team;
+    col ~w:(px 150) label_team;
     col "GP" ~w:(px 60) ~align:`Right ~sort:"gp";
     col min_label ~w:(px 80) ~align:`Right ~resp:`Hidden_md ~sort:"min";
     col "PTS" ~w:(px 60) ~align:`Right ~sort:"pts";
@@ -462,7 +462,7 @@ let standings_table ?(lang=I18n.Ko) ~season (standings : team_standing list) =
   let label_team = tr { ko = "팀"; en = "Team" } in
   let label_diff = tr { ko = "득실"; en = "Diff" } in
   let cols = [
-    col label_team;
+    col ~w:(px 150) label_team;
     col "GP" ~w:(px 60) ~align:`Right ~sort:"gp";
     col "W" ~w:(px 60) ~align:`Right ~sort:"w";
     col "L" ~w:(px 60) ~align:`Right ~sort:"l";
