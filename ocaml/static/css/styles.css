@@ -125,36 +125,6 @@ h2::before {
   box-shadow: 0 0 10px rgba(249, 115, 22, 0.4);
 }
 
-/* Enhanced Scroll Shadows */
-.scroll-shadow::before {
-  left: 0;
-  background: linear-gradient(90deg, rgba(255,255,255,0.98) 0%, transparent 100%);
-}
-
-.scroll-shadow::after {
-  right: 0;
-  background: linear-gradient(270deg, rgba(255,255,255,0.98) 0%, transparent 100%);
-}
-
-.dark .scroll-shadow::before {
-  background: linear-gradient(90deg, rgba(11,14,20,0.98) 0%, transparent 100%);
-}
-
-.dark .scroll-shadow::after {
-  background: linear-gradient(270deg, rgba(11,14,20,0.98) 0%, transparent 100%);
-}
-
-/* Add a subtle orange glow to shadows when scrollable */
-.scroll-shadow.can-scroll-left::before {
-  opacity: 1;
-  box-shadow: inset 10px 0 15px -10px rgba(249, 115, 22, 0.2);
-}
-
-.scroll-shadow.can-scroll-right::after {
-  opacity: 1;
-  box-shadow: inset -10px 0 15px -10px rgba(249, 115, 22, 0.2);
-}
-
 /* Prevent flash of unstyled content */
 html:not(.dark) body,
 html.dark body {

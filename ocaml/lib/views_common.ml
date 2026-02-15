@@ -180,7 +180,7 @@ let render_fixed_table ?(table_attrs="") ?(aria_label="Data Table") ?(striped=tr
         let full_cls = String.concat " " [base_cls; align_cls; resp_cls; highlight_cls; sticky_cls] in
         let sort_attr =
           match c.sort with
-          | Some k -> Printf.sprintf " data-sortable data-sort-key=\"%s\"" k
+          | Some k -> Printf.sprintf " data-sortable data-sort-key=\"%s\" role=\"button\" tabindex=\"0\"" k
           | None -> ""
         in
         let title_attr =
