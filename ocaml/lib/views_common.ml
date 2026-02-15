@@ -325,10 +325,30 @@ let player_disambiguation_line ~team_name ~player_id (info_opt: player_info opti
     (escape_html title_text)
     (escape_html text)
 
+(** Parse Tailwind "w-N h-N" classes to pixel dimensions (N * 4). *)
+let tw_size_to_px class_name =
+  let parts = String.split_on_char ' ' class_name in
+  let find prefix =
+    List.find_map (fun p ->
+      let plen = String.length prefix in
+      if String.length p > plen && String.sub p 0 plen = prefix then
+        int_of_string_opt (String.sub p plen (String.length p - plen))
+        |> Option.map (fun n -> n * 4)
+      else None
+    ) parts
+  in
+  match find "w-", find "h-" with
+  | Some w, Some h -> Some (w, h)
+  | _ -> None
+
 let team_logo_tag ?(class_name="w-8 h-8") team_name =
   let logo_file = match Domain.team_code_of_string team_name with | Some code -> Domain.team_code_to_logo code | None -> None in
+  let dims = match tw_size_to_px class_name with
+    | Some (w, h) -> Printf.sprintf " width=\"%d\" height=\"%d\"" w h
+    | None -> ""
+  in
   match logo_file with
-  | Some f -> Printf.sprintf {html|<img src="/static/images/%s" alt="%s 로고" class="%s object-contain" loading="lazy">|html} f (escape_html team_name) class_name
+  | Some f -> Printf.sprintf {html|<img src="/static/images/%s" alt="%s 로고" class="%s object-contain" loading="lazy"%s>|html} f (escape_html team_name) class_name dims
   | None -> Printf.sprintf {html|<div class="%s bg-slate-100 dark:bg-slate-800 rounded flex items-center justify-center text-xs">🏀</div>|html} class_name
 
 let breadcrumb (crumbs: (string * string) list) =
@@ -357,17 +377,21 @@ let breadcrumb (crumbs: (string * string) list) =
   Printf.sprintf {|<nav aria-label="Breadcrumb" class="text-sm font-sans mb-4 flex items-center flex-wrap gap-y-1">%s</nav>%s|} inner ld_script
 
 let team_badge ?(max_width="max-w-[130px]") team_name =
-  let _ = max_width in
   let display = normalize_name team_name in
   let color = Domain.team_code_of_string display |> Option.map Domain.team_code_to_color |> Option.value ~default:"#666" in
-  Printf.sprintf {html|<a href="%s" class="inline-flex min-w-0 items-center gap-1.5 px-1.5 py-0.5 rounded text-[11px] font-medium transition backdrop-blur-sm" style="background-color: %s20; color: %s; border: 1px solid %s40">%s<span class="truncate">%s</span></a>|html} (team_href team_name) color color color (team_logo_tag ~class_name:"w-5 h-5 shrink-0" display) (escape_html display)
+  Printf.sprintf {html|<a href="%s" class="%s inline-flex min-w-0 items-center gap-1.5 px-1.5 py-0.5 rounded text-[11px] font-medium transition backdrop-blur-sm" style="background-color: %s20; color: %s; border: 1px solid %s40">%s<span class="truncate">%s</span></a>|html} (team_href team_name) max_width color color color (team_logo_tag ~class_name:"w-5 h-5 shrink-0" display) (escape_html display)
 
 let player_img_tag ?(class_name="w-12 h-12") player_id name =
   let remote_src = Printf.sprintf "https://www.wkbl.or.kr/static/images/player/pimg/m_%s.jpg" player_id in
-  Printf.sprintf {html|<img src="%s" alt="%s" class="%s rounded-full object-cover bg-slate-100 border border-slate-300" loading="lazy" onerror="this.src='/static/images/player_placeholder.svg'">|html}
+  let dims = match tw_size_to_px class_name with
+    | Some (w, h) -> Printf.sprintf " width=\"%d\" height=\"%d\"" w h
+    | None -> ""
+  in
+  Printf.sprintf {html|<img src="%s" alt="%s" class="%s rounded-full object-cover bg-slate-100 border border-slate-300" loading="lazy" onerror="this.src='/static/images/player_placeholder.svg'"%s>|html}
     remote_src
     (escape_html name)
     class_name
+    dims
 
 let player_id_badge player_id =
   Printf.sprintf
