@@ -297,9 +297,18 @@ let utf8_middleware : Kirin.middleware = fun next_handler request ->
 
 (* Cache-Control middleware for HTML page responses.
    Adds cache headers based on route pattern when none are already set.
-   - /api/* routes: 60s (frequently polled)
-   - /season/* with past season codes: 24h (historical data)
-   - Home and current-season pages: 5min (live scores, current stats)
+
+   Two-tier TTL:
+   - max-age: browser cache (short, user sees fresh on refresh)
+   - s-maxage: CDN/edge cache (longer, Cloudflare serves from edge)
+   - stale-while-revalidate: serve stale while fetching fresh in background
+
+   Route tiers:
+   - /static/*: browser 1d, CDN 7d (assets rarely change)
+   - /api/*: browser 60s, CDN 120s (polling endpoints)
+   - /season/* past: browser 1d, CDN 7d (historical, immutable)
+   - /season/* current: browser 5min, CDN 15min (live scores possible)
+   - Other HTML: browser 2min, CDN 10min (general pages)
 *)
 let cache_control_middleware : Kirin.middleware = fun next_handler request ->
   let response = next_handler request in
@@ -308,27 +317,28 @@ let cache_control_middleware : Kirin.middleware = fun next_handler request ->
   | Some _ -> response
   | None ->
     let path = Kirin.Request.uri request |> Uri.path in
-    let max_age =
+    (* (max_age, s_maxage, stale_while_revalidate) *)
+    let cache_params =
       if String.starts_with ~prefix:"/static/" path then
-        (* Static assets: 1 day (filenames are not content-hashed) *)
-        Some 86400
+        Some (86400, 604800, 86400)
       else if String.starts_with ~prefix:"/api/" path then
-        Some 60
+        Some (60, 120, 30)
       else if String.starts_with ~prefix:"/season/" path then
-        (* Past seasons are immutable; current season changes frequently.
-           Heuristic: season codes < "046" are past seasons (2025-2026 = 046). *)
         let code = String.sub path 8 (min 3 (String.length path - 8)) in
         let current = Scraper.current_season_code_auto () |> Scraper.main_to_datalab in
-        if code < current then Some 86400 else Some 300
+        if code < current then Some (86400, 604800, 86400)
+        else Some (300, 900, 300)
       else
         match Kirin.response_header "Content-Type" response with
         | Some ct when String.starts_with ~prefix:"text/html" (String.lowercase_ascii ct) ->
-          Some 120
+          Some (120, 600, 120)
         | _ -> None
     in
-    (match max_age with
-    | Some s ->
-      Kirin.with_header "Cache-Control" (Printf.sprintf "public, max-age=%d" s) response
+    (match cache_params with
+    | Some (ma, sma, swr) ->
+      Kirin.with_header "Cache-Control"
+        (Printf.sprintf "public, max-age=%d, s-maxage=%d, stale-while-revalidate=%d" ma sma swr)
+        response
     | None -> response)
 
 let security_headers_middleware : Kirin.middleware = fun next_handler request ->
@@ -644,7 +654,7 @@ let () =
       if Sys.file_exists manifest_path then
         let content = In_channel.with_open_text manifest_path In_channel.input_all in
         Kirin.with_header "Content-Type" "application/manifest+json"
-        @@ Kirin.with_header "Cache-Control" "public, max-age=86400"
+        @@ Kirin.with_header "Cache-Control" "public, max-age=86400, s-maxage=604800"
         @@ Kirin.text content
       else
         Kirin.not_found ~body:"manifest.json not found" ());
@@ -670,7 +680,7 @@ let () =
           (match Cards.svg_to_png svg with
           | Some png ->
               Kirin.with_header "Content-Type" "image/png"
-              @@ Kirin.with_header "Cache-Control" "public, max-age=3600"
+              @@ Kirin.with_header "Cache-Control" "public, max-age=3600, s-maxage=86400"
               @@ Kirin.Response.make ~status:`OK (`String png)
           | None ->
               (* Fallback: return SVG if PNG conversion fails *)
@@ -685,7 +695,7 @@ let () =
       match Db.get_player_aggregate_by_id ~player_id () with
       | Ok (Some p) ->
           Kirin.with_header "Content-Type" "image/svg+xml"
-          @@ Kirin.with_header "Cache-Control" "public, max-age=3600"
+          @@ Kirin.with_header "Cache-Control" "public, max-age=3600, s-maxage=86400"
           @@ Kirin.text (Cards.player_card p)
       | Ok None -> Kirin.not_found ~body:"Player not found" ()
       | Error e -> Kirin.server_error ~body:(Db.show_db_error e) ());
@@ -2643,7 +2653,7 @@ Sitemap: https://wkbl.win/sitemap.xml
                   ]);
                 ] in
                 let json = Yojson.Basic.to_string json_obj in
-                Kirin.with_header "Cache-Control" "public, max-age=300"
+                Kirin.with_header "Cache-Control" "public, max-age=300, s-maxage=900"
                 @@ Kirin.json_string json
             | None, _, _, _ | _, None, _, _ ->
                 Kirin.with_status `Not_found
@@ -2682,7 +2692,7 @@ Sitemap: https://wkbl.win/sitemap.xml
               (match Cards.svg_to_png svg with
               | Some png -> 
                   Kirin.with_header "Content-Type" "image/png"
-                  @@ Kirin.with_header "Cache-Control" "public, max-age=3600"
+                  @@ Kirin.with_header "Cache-Control" "public, max-age=3600, s-maxage=86400"
                   @@ Kirin.Response.make ~status:`OK (`String png)
               | None -> Kirin.with_header "Content-Type" "image/svg+xml" @@ Kirin.text svg)
           | _ -> Kirin.not_found ~body:"Team data not found" ())
