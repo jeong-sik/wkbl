@@ -2,5 +2,5 @@
  (name wkbl)
  (public_name wkbl)
  (libraries kirin caqti caqti-driver-sqlite3 caqti-driver-postgresql caqti-eio caqti-eio.unix eio eio_main yojson unix cohttp-eio tls-eio ca-certs mirage-crypto-rng-eio lambdasoup str)
- (modules admin ai backfill canonical_host cards clutch db db_cache db_common domain form_urlencoded i18n live player_identity prediction qa request_params route_helpers routes_api routes_compare routes_game routes_history routes_home routes_player routes_predict routes_qa routes_static routes_stats routes_team seasons_catalog scraper db_sync stats streaks views views_charts views_common views_history views_mvp views_player views_season views_streaks views_team views_tools wkbl)
+ (modules admin ai backfill canonical_host cards clutch db db_cache db_common db_pool db_queries db_repo db_request db_types domain form_urlencoded i18n live player_identity prediction qa request_params route_helpers routes_api routes_compare routes_game routes_history routes_home routes_player routes_predict routes_qa routes_static routes_stats routes_team seasons_catalog scraper db_sync stats streaks views views_charts views_common views_history views_mvp views_player views_season views_streaks views_team views_tools wkbl)
  (preprocess (pps ppx_deriving.show ppx_deriving.eq ppx_deriving_yojson)))
