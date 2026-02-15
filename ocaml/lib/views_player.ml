@@ -445,7 +445,7 @@ let player_profile_page ?(lang=I18n.Ko) ?(leaderboards=None) ?(show_ops=false) (
               made att pct_cls pct
         in
         Printf.sprintf
-          {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/30 transition-colors"><td class="px-3 py-2 text-slate-600 dark:text-slate-400 text-sm font-mono whitespace-nowrap w-[90px] sm:w-[110px]"><a href="%s" class="hover:text-orange-600 dark:hover:text-orange-400 transition-colors">%s</a></td><td class="px-3 py-2 text-slate-900 dark:text-white"><div class="flex flex-wrap items-center gap-x-3 gap-y-2"><span class="text-[10px] text-slate-500 dark:text-slate-500 font-sans w-3">%s</span>%s<a href="%s" class="player-name min-w-0 flex-1 whitespace-nowrap hover:text-orange-600 dark:hover:text-orange-400 transition-colors">%s</a><div class="flex items-center gap-2 shrink-0">%s%s</div></div></td><td class="px-3 py-2 text-right font-mono text-slate-600 dark:text-slate-400 w-[60px] sm:w-[72px] whitespace-nowrap">%.1f</td><td class="px-3 py-2 text-right font-bold %s w-[60px] sm:w-[72px] whitespace-nowrap">%d</td>%s%s%s<td class="px-3 py-2 text-right font-mono w-[60px] sm:w-[72px] whitespace-nowrap %s">%s</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[60px] sm:w-[72px] whitespace-nowrap">%d</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[60px] sm:w-[72px] hidden sm:table-cell">%d</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[60px] sm:w-[72px] hidden sm:table-cell">%d</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[60px] sm:w-[72px] hidden sm:table-cell">%d</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[60px] sm:w-[72px] hidden sm:table-cell">%d</td></tr>|html}
+          {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/30 transition-colors"><td class="px-3 py-2 text-slate-600 dark:text-slate-400 text-sm font-mono whitespace-nowrap w-[90px] sm:w-[110px]"><a href="%s" class="hover:text-orange-600 dark:hover:text-orange-400 transition-colors">%s</a></td><td class="px-3 py-2 text-slate-900 dark:text-white"><div class="flex items-center gap-x-3"><span class="text-[10px] text-slate-500 dark:text-slate-500 font-sans w-3">%s</span>%s<a href="%s" class="player-name min-w-0 flex-1 truncate hover:text-orange-600 dark:hover:text-orange-400 transition-colors">%s</a><div class="flex items-center gap-2 shrink-0">%s%s</div></div></td><td class="px-3 py-2 text-right font-mono text-slate-600 dark:text-slate-400 w-[60px] sm:w-[72px] whitespace-nowrap">%.1f</td><td class="px-3 py-2 text-right font-bold %s w-[60px] sm:w-[72px] whitespace-nowrap">%d</td>%s%s%s<td class="px-3 py-2 text-right font-mono w-[60px] sm:w-[72px] whitespace-nowrap %s">%s</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[60px] sm:w-[72px] whitespace-nowrap">%d</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[60px] sm:w-[72px] hidden sm:table-cell">%d</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[60px] sm:w-[72px] hidden sm:table-cell">%d</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[60px] sm:w-[72px] hidden sm:table-cell">%d</td><td class="px-3 py-2 text-right text-slate-700 dark:text-slate-300 w-[60px] sm:w-[72px] hidden sm:table-cell">%d</td></tr>|html}
           (boxscore_href g.game_id)
           (escape_html g.game_date)
           ha_prefix
@@ -699,7 +699,7 @@ let player_profile_page ?(lang=I18n.Ko) ?(leaderboards=None) ?(show_ops=false) (
         {html|<div class="space-y-4"><div class="flex flex-col gap-1"><h2 class="text-xl font-bold text-slate-900 dark:text-white">올스타전</h2><p class="text-[11px] text-slate-500 dark:text-slate-500">올스타전 기록은 시즌/커리어 테이블에서 제외하고, 여기에서만 보여줍니다.</p></div><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-lg"><table class="min-w-[680px] sm:min-w-[920px] w-full text-sm font-mono table-fixed" aria-label="올스타전 기록">
                 <colgroup>
                   <col style="width: 110px;"> <!-- Date -->
-                  <col style="width: 200px;"> <!-- Opponent -->
+                  <col style="width: 240px;"> <!-- Opponent -->
                   <col style="width: 72px;">  <!-- MIN -->
                   <col style="width: 72px;">  <!-- PTS -->
                   <col style="width: 72px;">  <!-- +/- -->
@@ -1183,7 +1183,7 @@ let player_profile_page ?(lang=I18n.Ko) ?(leaderboards=None) ?(show_ops=false) (
               <table class="min-w-[680px] md:min-w-[1100px] w-full text-xs sm:text-sm font-mono table-fixed tabular-nums" aria-label="최근 경기 기록">
                 <colgroup>
                   <col style="width: 110px;"> <!-- Date -->
-                  <col style="width: 200px;"> <!-- Opponent -->
+                  <col style="width: 240px;"> <!-- Opponent -->
                   <col style="width: 72px;">  <!-- MIN -->
                   <col style="width: 72px;">  <!-- PTS -->
                   <col class="hidden md:table-column" style="width: 72px;"> <!-- FG -->

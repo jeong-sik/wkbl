@@ -1,8 +1,11 @@
 (** Common database utilities and types.
 
     Extracted from db.ml for modularity.
-    This module has no dependencies on Caqti or Domain.
+    Depends on Domain (for extract_game_info).
+    No Caqti dependency.
 *)
+
+open Domain
 
 (** Database error type - explicit, not string *)
 type db_error =
@@ -13,6 +16,10 @@ type db_error =
 
 (** Result type alias for convenience - Direct style with Eio *)
 type 'a db_result = ('a, db_error) result
+
+(** Helper to extract game info safely - solves record field shadowing issues in views *)
+let extract_game_info (g: game_summary) =
+  (g.game_id, g.game_date, g.home_team, g.away_team, g.home_score, g.away_score)
 
 (** QA (data quality) report types. *)
 type qa_score_mismatch = {
@@ -78,10 +85,33 @@ type qa_schedule_coverage = {
   qsc_games_missing_team: bool;
 }
 
+type qa_pbp_missing_game = {
+  qpmg_game_id: string;
+  qpmg_game_date: string;
+  qpmg_home_team: string;
+  qpmg_away_team: string;
+  qpmg_home_score: int;
+  qpmg_away_score: int;
+}
+
+type qa_pbp_missing_report = {
+  qpmr_generated_at: string;
+  qpmr_season_code: string;
+  qpmr_finished_games_total: int;
+  qpmr_pbp_games: int;
+  qpmr_missing_games: int;
+  qpmr_coverage_pct: float;
+  qpmr_missing_sample: qa_pbp_missing_game list;
+}
+
 type qa_db_report = {
   qdr_generated_at: string;
   qdr_games_total: int;
+  qdr_finished_games_total: int;
   qdr_games_with_stats: int;
+  qdr_pbp_games: int;
+  qdr_pbp_missing_games: int;
+  qdr_pbp_coverage_pct: float;
   qdr_plus_minus_games: int;
   qdr_plus_minus_coverage_pct: float;
   qdr_schedule_total: int;
@@ -103,6 +133,54 @@ type qa_db_report = {
   qdr_duplicate_player_name_sample: qa_duplicate_player_name list;
   qdr_duplicate_player_identity_count: int;
   qdr_duplicate_player_identity_sample: qa_duplicate_player_identity list;
+}
+
+type qa_schedule_missing_summary = {
+  qsms_missing_ingested: int;
+  qsms_missing_uningested: int;
+  qsms_missing_total: int;
+}
+
+type qa_schedule_missing_sample = {
+  qsmp_season_code: string;
+  qsmp_game_date: string;
+  qsmp_home_team_code: string;
+  qsmp_away_team_code: string;
+  qsmp_reason: string;
+  qsmp_games_on_date: int;
+  qsmp_games_info: string option;
+}
+
+type qa_schedule_missing_report = {
+  qsmr_generated_at: string;
+  qsmr_summary: qa_schedule_missing_summary;
+  qsmr_reason_counts: (string * int) list;
+  qsmr_samples: qa_schedule_missing_sample list;
+}
+
+type qa_stat_anomaly = {
+  qsa_game_id: string;
+  qsa_game_date: string;
+  qsa_team_name: string;
+  qsa_player_id: string;
+  qsa_player_name: string;
+  qsa_min_seconds: int;
+  qsa_pts: int;
+  qsa_primary_team_name: string;
+  qsa_primary_gp: int;
+  qsa_primary_min_seconds: int;
+}
+
+type qa_stat_exclusion = {
+  qse_game_id: string;
+  qse_game_date: string;
+  qse_team_name: string;
+  qse_player_id: string;
+  qse_player_name: string;
+  qse_min_seconds: int;
+  qse_pts: int;
+  qse_reason: string;
+  qse_created_at: string;
 }
 
 (** Leader base type for leaderboard queries *)
