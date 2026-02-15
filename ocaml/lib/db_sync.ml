@@ -9,7 +9,7 @@ type missing_boxscore_game = {
 }
 
 module BoxscoreSync = struct
-  open Caqti_request.Infix
+  open Db.Request_oneshot
   open Caqti_type
 
   let i = int
@@ -156,7 +156,7 @@ let get_game_teams ~game_id =
   Db.with_db (fun db -> BoxscoreSync.get_game_teams ~game_id db)
 
 module PlayerInfoSync = struct
-  open Caqti_request.Infix
+  open Db.Request_oneshot
   open Caqti_type
 
   let i = int
@@ -182,7 +182,7 @@ let upsert_player_info (info : Domain.player_info) =
   Db.with_db (fun db -> PlayerInfoSync.upsert_player_info info db)
 
 module PbpSync = struct
-  open Caqti_request.Infix
+  open Db.Request_oneshot
   open Caqti_type
 
   let i = int
