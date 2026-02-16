@@ -606,113 +606,15 @@ let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json
   %s
   %s
   <link rel="manifest" href="/manifest.json">
-  <link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin>
-  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/static/css/tailwind.css?v=20260216">
+  <link rel="stylesheet" href="/static/css/styles.css?v=20260216">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
-    tailwind.config = {
-      darkMode: 'class'
-    }
     // Global Chart.js defaults
     Chart.defaults.font.family = 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace';
     Chart.defaults.color = '#94a3b8';
     Chart.defaults.scale.grid.color = '#334155';
   </script>
-  <style>
-    /* Accessibility: Screen reader only utility */
-    .sr-only {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      padding: 0;
-      margin: -1px;
-      overflow: hidden;
-      clip: rect(0, 0, 0, 0);
-      white-space: nowrap;
-      border: 0;
-    }
-    /* Accessibility: Enhanced focus styles */
-    :focus-visible {
-      outline: 2px solid #f97316;
-      outline-offset: 2px;
-    }
-    /* Skip link styles */
-    .skip-link {
-      position: absolute;
-      top: -40px;
-      left: 0;
-      background: #f97316;
-      color: white;
-      padding: 8px 16px;
-      z-index: 100;
-      border-radius: 0 0 8px 0;
-      font-weight: bold;
-      transition: top 0.2s ease-in-out;
-    }
-    .skip-link:focus {
-      top: 0;
-    }
-    /* Remove default focus outline for non-keyboard users */
-    :focus:not(:focus-visible) {
-      outline: none;
-    }
-    /* Smooth transitions for interactive elements */
-    a, button, select, input {
-      transition: outline-offset 0.1s ease-in-out, box-shadow 0.15s ease-in-out;
-    }
-    a:focus-visible, button:focus-visible, select:focus-visible, input:focus-visible {
-      box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.3);
-    }
-    /* Reduced motion preference */
-    @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after {
-        animation-duration: 0.01ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: 0.01ms !important;
-      }
-    }
-    /* Spinner animation */
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .animate-spin { animation: spin 1s linear infinite; }
-    .border-3 { border-width: 3px; }
-    /* HTMX loading indicator */
-    .htmx-indicator { opacity: 0; transition: opacity 200ms ease-in; }
-    .htmx-request .htmx-indicator, .htmx-request.htmx-indicator { opacity: 1; }
-    /* Skeleton pulse animation */
-    @keyframes pulse {
-      from { opacity: 1; }
-      to { opacity: 0.5; }
-    }
-    .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
-
-    /* Live Badge Animations */
-    @keyframes live-pulse {
-      from { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-      to { transform: scale(1); box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
-    }
-    .live-dot {
-      display: inline-block;
-      width: 8px;
-      height: 8px;
-      background-color: #ef4444;
-      border-radius: 50%%;
-      margin-right: 6px;
-    }
-    .live-badge {
-      display: inline-flex;
-      items-center: center;
-      padding: 2px 8px;
-      background-color: rgba(239, 68, 68, 0.1);
-      color: #ef4444;
-      border: 1px solid rgba(239, 68, 68, 0.2);
-      border-radius: 9999px;
-      font-size: 10px;
-      font-weight: 800;
-      letter-spacing: 0.05em;
-      animation: live-pulse 2s infinite;
-    }
-	  </style>
 	  %s
 </head>
 <body class="bg-slate-50 dark:bg-[#0b0e14] text-slate-900 dark:text-slate-200">
@@ -863,7 +765,7 @@ let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json
   in
   let csp_policy = Printf.sprintf
     "default-src 'self'; \
-     script-src 'self' 'nonce-%s' https://cdn.tailwindcss.com https://cdn.jsdelivr.net%s; \
+     script-src 'self' 'nonce-%s' https://cdn.jsdelivr.net%s; \
      style-src 'self' 'unsafe-inline'; \
      img-src 'self' data: https:; \
      connect-src 'self'%s; \
