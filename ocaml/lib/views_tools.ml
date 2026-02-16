@@ -1527,7 +1527,7 @@ let h2h_avg_comparison ~p1_name ~p2_name (summary: Domain.h2h_summary) =
           %s
           %s
 	        </div>
-	        <div class="mt-3 text-center text-[10px] text-slate-400 dark:text-slate-500">
+	        <div class="mt-3 text-center text-[10px] text-slate-400 dark:text-slate-400">
 	          총 %d경기 기준
 	        </div>
 	      </div>|html}
@@ -1587,7 +1587,7 @@ let h2h_score_chart ~p1_name ~p2_name (games: Domain.h2h_game list) =
         <div class="space-y-2">
           %s
 	        </div>
-	        <div class="mt-3 text-center text-[10px] text-slate-400 dark:text-slate-500">
+	        <div class="mt-3 text-center text-[10px] text-slate-400 dark:text-slate-400">
 	          테두리는 이긴 쪽 선수를 표시합니다.
 	        </div>
 	      </div>|html}

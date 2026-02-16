@@ -426,7 +426,7 @@ let player_name_cell ?(show_player_id=false) player_id name =
 let points_total_cell ?(extra_classes="") ?(width_style="") avg total =
   let classes = String.concat " " ["px-3 py-2 text-right"; extra_classes] in
   Printf.sprintf
-    {html|<td class="%s" style="%s"><div class="flex flex-col items-end leading-tight"><span class="text-orange-700 dark:text-orange-400 font-bold font-mono">%.1f</span><span class="text-slate-400 dark:text-slate-500 text-[9px] font-mono whitespace-nowrap" title="누적">누적%s</span></div></td>|html}
+    {html|<td class="%s" style="%s"><div class="flex flex-col items-end leading-tight"><span class="text-orange-700 dark:text-orange-400 font-bold font-mono">%.1f</span><span class="text-slate-400 dark:text-slate-400 text-[9px] font-mono whitespace-nowrap" title="누적">누적%s</span></div></td>|html}
     classes
     width_style
     avg
@@ -435,7 +435,7 @@ let points_total_cell ?(extra_classes="") ?(width_style="") avg total =
 let stat_total_cell ?(extra_classes="") ?(width_style="") avg total =
   let classes = String.concat " " ["px-3 py-2 text-right"; extra_classes] in
   Printf.sprintf
-    {html|<td class="%s" style="%s"><div class="flex flex-col items-end leading-tight"><span class="text-slate-700 dark:text-slate-300 font-mono">%.1f</span><span class="text-slate-400 dark:text-slate-500 text-[9px] font-mono whitespace-nowrap" title="누적">누적%s</span></div></td>|html}
+    {html|<td class="%s" style="%s"><div class="flex flex-col items-end leading-tight"><span class="text-slate-700 dark:text-slate-300 font-mono">%.1f</span><span class="text-slate-400 dark:text-slate-400 text-[9px] font-mono whitespace-nowrap" title="누적">누적%s</span></div></td>|html}
     classes
     width_style
     avg
@@ -463,7 +463,7 @@ let empty_state ?icon title desc =
   let _ = icon in
   Printf.sprintf {html|<div class="text-center py-12 px-4"><div class="text-4xl mb-4">🏀</div><h3 class="text-lg font-bold text-slate-900 dark:text-slate-200">%s</h3><p class="text-slate-500 dark:text-slate-400">%s</p></div>|html} title desc
 
-let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json_ld="") ?og_title ?og_description ?og_image ?data_freshness ~content () =
+let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json_ld="") ?og_title ?og_description ?og_image ?data_freshness ?(has_charts=false) ~content () =
   let json_ld_html = if json_ld = "" then "" else
     Printf.sprintf {|<script type="application/ld+json">%s</script>|} json_ld
   in
@@ -557,6 +557,15 @@ let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json
     sentry_html ^ clarity_html
   in
 
+  let chart_js_html = if has_charts then
+    {|<script src="/static/js/chart.min.js"></script>
+  <script>
+    Chart.defaults.font.family = 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace';
+    Chart.defaults.color = '#94a3b8';
+    Chart.defaults.scale.grid.color = '#334155';
+  </script>|}
+  else "" in
+
   let nav_players = tr { ko = "선수"; en = "Players" } in
   let nav_teams = tr { ko = "팀"; en = "Teams" } in
   let nav_standings = tr { ko = "순위"; en = "Standings" } in
@@ -606,113 +615,8 @@ let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json
   %s
   %s
   <link rel="manifest" href="/manifest.json">
-  <link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin>
-  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script>
-    tailwind.config = {
-      darkMode: 'class'
-    }
-    // Global Chart.js defaults
-    Chart.defaults.font.family = 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace';
-    Chart.defaults.color = '#94a3b8';
-    Chart.defaults.scale.grid.color = '#334155';
-  </script>
-  <style>
-    /* Accessibility: Screen reader only utility */
-    .sr-only {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      padding: 0;
-      margin: -1px;
-      overflow: hidden;
-      clip: rect(0, 0, 0, 0);
-      white-space: nowrap;
-      border: 0;
-    }
-    /* Accessibility: Enhanced focus styles */
-    :focus-visible {
-      outline: 2px solid #f97316;
-      outline-offset: 2px;
-    }
-    /* Skip link styles */
-    .skip-link {
-      position: absolute;
-      top: -40px;
-      left: 0;
-      background: #f97316;
-      color: white;
-      padding: 8px 16px;
-      z-index: 100;
-      border-radius: 0 0 8px 0;
-      font-weight: bold;
-      transition: top 0.2s ease-in-out;
-    }
-    .skip-link:focus {
-      top: 0;
-    }
-    /* Remove default focus outline for non-keyboard users */
-    :focus:not(:focus-visible) {
-      outline: none;
-    }
-    /* Smooth transitions for interactive elements */
-    a, button, select, input {
-      transition: outline-offset 0.1s ease-in-out, box-shadow 0.15s ease-in-out;
-    }
-    a:focus-visible, button:focus-visible, select:focus-visible, input:focus-visible {
-      box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.3);
-    }
-    /* Reduced motion preference */
-    @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after {
-        animation-duration: 0.01ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: 0.01ms !important;
-      }
-    }
-    /* Spinner animation */
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .animate-spin { animation: spin 1s linear infinite; }
-    .border-3 { border-width: 3px; }
-    /* HTMX loading indicator */
-    .htmx-indicator { opacity: 0; transition: opacity 200ms ease-in; }
-    .htmx-request .htmx-indicator, .htmx-request.htmx-indicator { opacity: 1; }
-    /* Skeleton pulse animation */
-    @keyframes pulse {
-      from { opacity: 1; }
-      to { opacity: 0.5; }
-    }
-    .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
-
-    /* Live Badge Animations */
-    @keyframes live-pulse {
-      from { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-      to { transform: scale(1); box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
-    }
-    .live-dot {
-      display: inline-block;
-      width: 8px;
-      height: 8px;
-      background-color: #ef4444;
-      border-radius: 50%%;
-      margin-right: 6px;
-    }
-    .live-badge {
-      display: inline-flex;
-      items-center: center;
-      padding: 2px 8px;
-      background-color: rgba(239, 68, 68, 0.1);
-      color: #ef4444;
-      border: 1px solid rgba(239, 68, 68, 0.2);
-      border-radius: 9999px;
-      font-size: 10px;
-      font-weight: 800;
-      letter-spacing: 0.05em;
-      animation: live-pulse 2s infinite;
-    }
-	  </style>
+  <link rel="stylesheet" href="/static/css/tailwind.css?v=20260216">
+  <link rel="stylesheet" href="/static/css/styles.css?v=20260216">
 	  %s
 </head>
 <body class="bg-slate-50 dark:bg-[#0b0e14] text-slate-900 dark:text-slate-200">
@@ -814,6 +718,7 @@ let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json
 			  <script src="/static/js/data-freshness.js?v=20260214"></script>
 			  <script src="/static/js/search-modal.js?v=20260214"></script>
 			  <script>if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js')}</script>
+  %s
 				</body>
 			</html>|html}
 	    (escape_html html_lang)
@@ -847,6 +752,7 @@ let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json
 	    (escape_html nav_predict)
 	    (escape_html nav_search)
 	    content
+	    chart_js_html
   in
   (* CSP nonce injection: generate per-request nonce, inject into all opening
      <script tags, and prepend a CSP meta tag in <head>. *)
@@ -863,7 +769,7 @@ let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json
   in
   let csp_policy = Printf.sprintf
     "default-src 'self'; \
-     script-src 'self' 'nonce-%s' https://cdn.tailwindcss.com https://cdn.jsdelivr.net%s; \
+     script-src 'self' 'nonce-%s'%s; \
      style-src 'self' 'unsafe-inline'; \
      img-src 'self' data: https:; \
      connect-src 'self'%s; \
@@ -1110,7 +1016,7 @@ let player_summary_comparison (seasons: season_stats list) =
         <h2 class="font-bold text-slate-900 dark:text-slate-200 text-sm mb-3">시즌 요약</h2>
         <div class="overflow-x-auto">
           <table class="w-full text-xs tabular-nums">
-            <thead class="text-slate-500 dark:text-slate-500">
+            <thead class="text-slate-500 dark:text-slate-400">
               <tr>
                 <th scope="col" class="px-2 py-1.5 text-left text-[10px] uppercase tracking-wider font-sans w-32"></th>
                 %s %s %s %s %s %s %s %s %s %s
@@ -1405,7 +1311,7 @@ let player_season_stats_component ~(player_id: string) ~scope (seasons: season_s
           <div class="flex gap-1 border-b border-slate-200 dark:border-slate-700 mb-4">
             %s
           </div>
-          <div class="text-[11px] text-slate-500 dark:text-slate-500 leading-relaxed mb-3">시즌명 → 순위표 | GL → 경기 기록 | 팀명 → 팀 페이지</div>
+          <div class="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed mb-3">시즌명 → 순위표 | GL → 경기 기록 | 팀명 → 팀 페이지</div>
           <div class="overflow-x-auto">
             <table class="%s w-full text-sm table-fixed tabular-nums" aria-label="%s">
               %s
@@ -1482,7 +1388,7 @@ let career_trajectory_chart (seasons: season_stats list) =
           <div class="flex items-end justify-between gap-3">
             <div>
               <h3 class="text-slate-900 dark:text-slate-200 font-bold">커리어 스탯 추이</h3>
-              <div class="text-[11px] text-slate-500 dark:text-slate-500">%s → %s</div>
+              <div class="text-[11px] text-slate-500 dark:text-slate-400">%s → %s</div>
             </div>
             <div class="flex items-center gap-3 text-[11px]">
               <span class="flex items-center gap-1"><span class="w-3 h-0.5 bg-orange-500 rounded"></span><span class="text-slate-500 dark:text-slate-400">PPG</span></span>
@@ -1528,7 +1434,7 @@ let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2") ?(include_
   in
   Printf.sprintf
     {html|<tr class="group border-b border-slate-200 dark:border-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors font-mono tabular-nums">
-      <td class="px-2 py-2 text-slate-500 dark:text-slate-500 text-sm text-center font-bold whitespace-nowrap" style="width: 50px; min-width: 50px;">%d</td>
+      <td class="px-2 py-2 text-slate-500 dark:text-slate-400 text-sm text-center font-bold whitespace-nowrap" style="width: 50px; min-width: 50px;">%d</td>
       <td class="px-3 py-2 font-medium text-slate-900 dark:text-white font-sans whitespace-nowrap" style="width: 200px; min-width: 200px;">
         <div class="flex items-center gap-3 min-w-0">
           %s
@@ -1589,11 +1495,11 @@ let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2") ?(include_
 	          {html|<a href="%s" class="block bg-slate-100 dark:bg-slate-800/40 border border-slate-300 dark:border-slate-700/50 rounded-lg p-4 hover:border-orange-400 dark:hover:border-orange-600 transition-colors">
 	            <div class="flex items-start justify-between gap-3">
 	              <div class="min-w-0">
-	                <div class="text-[11px] text-slate-500 dark:text-slate-500 font-mono uppercase tracking-wider">%s</div>
+	                <div class="text-[11px] text-slate-500 dark:text-slate-400 font-mono uppercase tracking-wider">%s</div>
 	                <div class="mt-1 flex items-center gap-1.5 text-sm text-slate-700 dark:text-slate-300">
-	                  <span class="font-mono text-[11px] text-slate-500 dark:text-slate-500">%s</span>
+	                  <span class="font-mono text-[11px] text-slate-500 dark:text-slate-400">%s</span>
 	                  <span class="text-slate-400 dark:text-slate-600">·</span>
-	                  <span class="text-[11px] text-slate-500 dark:text-slate-500">%s</span>
+	                  <span class="text-[11px] text-slate-500 dark:text-slate-400">%s</span>
 	                  <span class="text-slate-400 dark:text-slate-600">·</span>
 	                  %s
 	                  <span class="truncate">%s</span>
@@ -1615,7 +1521,7 @@ let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2") ?(include_
 	        {html|<div class="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 p-5 shadow-lg">
 	          <div class="flex items-center justify-between gap-3">
 	            <h3 class="text-slate-900 dark:text-slate-200 font-bold">커리어 하이</h3>
-	            <div class="text-[11px] text-slate-500 dark:text-slate-500 font-mono">%d개</div>
+	            <div class="text-[11px] text-slate-500 dark:text-slate-400 font-mono">%d개</div>
 	          </div>
 	          <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">%s</div>
 	        </div>|html}

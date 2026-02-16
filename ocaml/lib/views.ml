@@ -182,16 +182,16 @@ let players_table ?(lang=I18n.Ko) ?(player_info_map=None) (players: player_aggre
         
         (* Complex cells constructed as strings *)
         let pts_cell = 
-          Printf.sprintf {html|<div class="flex flex-col items-end leading-tight"><span class="text-orange-700 dark:text-orange-400 font-bold font-mono">%.1f</span><span class="text-slate-400 dark:text-slate-500 text-[9px] font-mono whitespace-nowrap max-w-[60px] overflow-hidden text-ellipsis" title="%s">%s%s</span></div>|html}
+          Printf.sprintf {html|<div class="flex flex-col items-end leading-tight"><span class="text-orange-700 dark:text-orange-400 font-bold font-mono">%.1f</span><span class="text-slate-400 dark:text-slate-400 text-[9px] font-mono whitespace-nowrap max-w-[60px] overflow-hidden text-ellipsis" title="%s">%s%s</span></div>|html}
           p.avg_points (escape_html label_total) (escape_html label_total) (format_int_compact p.total_points)
         in
         let stat_cell v total =
-          Printf.sprintf {html|<div class="flex flex-col items-end leading-tight"><span class="text-slate-700 dark:text-slate-300 font-mono">%.1f</span><span class="text-slate-400 dark:text-slate-500 text-[9px] font-mono whitespace-nowrap max-w-[60px] overflow-hidden text-ellipsis" title="%s">%s%s</span></div>|html}
+          Printf.sprintf {html|<div class="flex flex-col items-end leading-tight"><span class="text-slate-700 dark:text-slate-300 font-mono">%.1f</span><span class="text-slate-400 dark:text-slate-400 text-[9px] font-mono whitespace-nowrap max-w-[60px] overflow-hidden text-ellipsis" title="%s">%s%s</span></div>|html}
           v (escape_html label_total) (escape_html label_total) (format_int_compact total)
         in
         
         [
-          Printf.sprintf {html|<span class="text-slate-500 dark:text-slate-500 font-bold">%d</span>|html} (i + 1);
+          Printf.sprintf {html|<span class="text-slate-500 dark:text-slate-400 font-bold">%d</span>|html} (i + 1);
           player_cell;
           team_badge p.team_name;
           Printf.sprintf {html|<span class="text-slate-500 dark:text-slate-400 font-mono">%d</span>|html} p.games_played;
@@ -250,7 +250,7 @@ let home_page ?(lang=I18n.Ko) ?(player_info_map=None) ?(live_games=Live.get_curr
 	       <span class="text-xs font-bold text-orange-700 dark:text-orange-300 uppercase tracking-wider">%s</span>
 	      </div>
 	      <div class="flex items-center gap-3">
-	       <span class="text-xs text-slate-400 dark:text-slate-500">📅 %s: %s</span>
+	       <span class="text-xs text-slate-400 dark:text-slate-400">📅 %s: %s</span>
 	       <a href="/games" class="text-xs text-orange-700 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300">%s</a>
 	      </div>
 	     </div>
@@ -259,7 +259,7 @@ let home_page ?(lang=I18n.Ko) ?(player_info_map=None) ?(live_games=Live.get_curr
 	       %s
 	     </div>
 	    </div>
-		    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"><h2 class="text-xl font-bold text-slate-900 dark:text-slate-200">%s</h2><form class="flex gap-2 items-center" hx-get="/home/table" hx-target="#players-table-inner tbody" hx-trigger="change" hx-indicator="#table-loading"><select name="season" aria-label="%s" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-1.5 text-sm focus:border-orange-500 focus:outline-none">%s</select><input type="text" placeholder="%s" aria-label="%s" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-1.5 text-sm focus:border-orange-500 focus:outline-none" hx-get="/home/table" hx-trigger="keyup changed delay:300ms" hx-target="#players-table-inner tbody" hx-indicator="#table-loading" name="search"><span id="table-loading" class="htmx-indicator"><span class="w-4 h-4 border-2 border-slate-300 border-t-orange-500 rounded-full animate-spin inline-block"></span></span></form></div><div id="players-table" class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 scroll-shadow overflow-y-hidden" data-skeleton="table" data-skeleton-count="10" data-skeleton-cols="8">%s</div></div>|html}
+		    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"><h2 class="text-xl font-bold text-slate-900 dark:text-slate-200">%s</h2><form class="flex gap-2 items-center" hx-get="/home/table" hx-target="#players-table" hx-trigger="change" hx-indicator="#table-loading"><select name="season" aria-label="%s" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-1.5 text-sm focus:border-orange-500 focus:outline-none">%s</select><input type="text" placeholder="%s" aria-label="%s" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-1.5 text-sm focus:border-orange-500 focus:outline-none" hx-get="/home/table" hx-trigger="keyup changed delay:300ms" hx-target="#players-table" hx-indicator="#table-loading" name="search"><span id="table-loading" class="htmx-indicator"><span class="w-4 h-4 border-2 border-slate-300 border-t-orange-500 rounded-full animate-spin inline-block"></span></span></form></div><div id="players-table" class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 scroll-shadow overflow-y-hidden" data-skeleton="table" data-skeleton-count="10" data-skeleton-cols="8">%s</div></div>|html}
 		   (escape_html label_today_games)
 		   (escape_html label_latest_game_date)
 		   (escape_html data_as_of)
@@ -980,9 +980,9 @@ let boxscore_player_table (title: string) (players: boxscore_player_stat list) =
     let pm_str, pm_cls = match p.bs_plus_minus with
      | Some v when v > 0 -> (Printf.sprintf "+%.0d" v, "text-sky-600 dark:text-sky-400 font-bold")
      | Some v when v < 0 -> (Printf.sprintf "%+.0d" v, "text-rose-600 dark:text-rose-400 font-bold")
-     | Some 0 -> ("0", "text-slate-500 dark:text-slate-500")
+     | Some 0 -> ("0", "text-slate-500 dark:text-slate-400")
      | None -> ("-", "text-slate-400 dark:text-slate-600")
-     | _ -> ("0", "text-slate-500 dark:text-slate-500")
+     | _ -> ("0", "text-slate-500 dark:text-slate-400")
     in
     
     let player_cell = Printf.sprintf {html|<div class="flex items-center gap-3 min-w-0 font-sans font-medium text-slate-900 dark:text-slate-200">%s<div class="flex flex-col min-w-0 overflow-hidden"><a href="%s" class="hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300 transition-colors truncate block">%s</a><span class="text-[10px] text-slate-500 dark:text-slate-400 font-normal truncate block">%s</span></div></div>|html}
@@ -1058,7 +1058,7 @@ let quarter_flow_section ?(lang=I18n.Ko) ~home_name ~away_name (quarters: quarte
         let diff_cls =
           if diff > 0 then "text-sky-600 dark:text-sky-400 font-bold"
           else if diff < 0 then "text-orange-700 dark:text-orange-400 font-bold"
-          else "text-slate-400 dark:text-slate-500"
+          else "text-slate-400 dark:text-slate-400"
         in
         let flow_indicator =
           Printf.sprintf {html|<span class="%s font-mono">%s</span>|html} diff_cls diff_str
@@ -1136,7 +1136,7 @@ let boxscore_disabled_chip_html ?(text_short=None) text_full =
           (escape_html text_full)
   in
   Printf.sprintf
-    {html|<span class="px-2 py-1 rounded-full bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 text-[10px] font-mono tracking-wider text-slate-500 dark:text-slate-500 cursor-default whitespace-nowrap">%s</span>|html}
+    {html|<span class="px-2 py-1 rounded-full bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 text-[10px] font-mono tracking-wider text-slate-500 dark:text-slate-400 cursor-default whitespace-nowrap">%s</span>|html}
     content_html
 
 let boxscore_pbp_chip_html ?(lang=I18n.Ko) ~has_pbp game_id =
@@ -1931,7 +1931,7 @@ let compare_page
         {html|<div class="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 p-6 mt-6">
          <div class="text-center mb-4">
           <h3 class="text-slate-600 dark:text-slate-400 text-sm font-bold uppercase">시즌 추이 (PTS)</h3>
-          <p class="text-[10px] text-slate-400 dark:text-slate-500 mt-1">시즌별 평균 득점 추이</p>
+          <p class="text-[10px] text-slate-400 dark:text-slate-400 mt-1">시즌별 평균 득점 추이</p>
          </div>
          <div class="flex justify-center">
           <svg viewBox="0 0 %d %d" class="w-full max-w-md">
@@ -1977,6 +1977,7 @@ let compare_page
  in
  layout ~lang ~title:"WKBL 비교" ~canonical_path:"/compare"
   ~description:"WKBL 여자농구 선수 비교 - 두 선수의 스탯을 레이더 차트로 비교하세요."
+  ~has_charts:true
   ~content:(Printf.sprintf
    {html|<div class="space-y-8">%s
     <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
@@ -2676,7 +2677,7 @@ let leader_card ?(player_info_map=None) ?(value_fmt=(fun v -> Printf.sprintf "%.
      in
      Printf.sprintf {html|<a href="%s" class="flex items-center justify-between py-1.5 border-b border-slate-200/50 dark:border-slate-800/40 last:border-0 hover:bg-slate-100 dark:hover:bg-slate-800/50 -mx-2 px-2 rounded transition-colors group">
       <div class="flex items-center gap-2 min-w-0">
-       <span class="text-slate-500 dark:text-slate-500 font-mono text-xs w-4 group-hover:text-orange-500 transition-colors">%d</span>
+       <span class="text-slate-500 dark:text-slate-400 font-mono text-xs w-4 group-hover:text-orange-500 transition-colors">%d</span>
        %s
        <div class="flex flex-col min-w-0">
         <span class="text-xs text-slate-700 dark:text-slate-300 group-hover:text-orange-500 transition-colors truncate">%s</span>
@@ -2989,7 +2990,7 @@ let leader_card ?(player_info_map=None) ?(value_fmt=(fun v -> Printf.sprintf "%.
      in
      Printf.sprintf {html|<a href="%s" class="flex items-center justify-between py-1.5 border-b border-slate-200/50 dark:border-slate-800/40 last:border-0 hover:bg-slate-100 dark:hover:bg-slate-800/50 -mx-2 px-2 rounded transition-colors group">
       <div class="flex items-center gap-2 min-w-0">
-       <span class="text-slate-500 dark:text-slate-500 font-mono text-xs w-4 group-hover:text-orange-500 transition-colors">%d</span>
+       <span class="text-slate-500 dark:text-slate-400 font-mono text-xs w-4 group-hover:text-orange-500 transition-colors">%d</span>
        %s
        <div class="flex flex-col min-w-0">
         <span class="text-xs text-slate-700 dark:text-slate-300 group-hover:text-orange-500 transition-colors truncate">%s</span>
