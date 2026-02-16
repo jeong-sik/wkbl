@@ -426,7 +426,7 @@ let player_name_cell ?(show_player_id=false) player_id name =
 let points_total_cell ?(extra_classes="") ?(width_style="") avg total =
   let classes = String.concat " " ["px-3 py-2 text-right"; extra_classes] in
   Printf.sprintf
-    {html|<td class="%s" style="%s"><div class="flex flex-col items-end leading-tight"><span class="text-orange-700 dark:text-orange-400 font-bold font-mono">%.1f</span><span class="text-slate-400 dark:text-slate-500 text-[9px] font-mono whitespace-nowrap" title="누적">누적%s</span></div></td>|html}
+    {html|<td class="%s" style="%s"><div class="flex flex-col items-end leading-tight"><span class="text-orange-700 dark:text-orange-400 font-bold font-mono">%.1f</span><span class="text-slate-400 dark:text-slate-400 text-[9px] font-mono whitespace-nowrap" title="누적">누적%s</span></div></td>|html}
     classes
     width_style
     avg
@@ -435,7 +435,7 @@ let points_total_cell ?(extra_classes="") ?(width_style="") avg total =
 let stat_total_cell ?(extra_classes="") ?(width_style="") avg total =
   let classes = String.concat " " ["px-3 py-2 text-right"; extra_classes] in
   Printf.sprintf
-    {html|<td class="%s" style="%s"><div class="flex flex-col items-end leading-tight"><span class="text-slate-700 dark:text-slate-300 font-mono">%.1f</span><span class="text-slate-400 dark:text-slate-500 text-[9px] font-mono whitespace-nowrap" title="누적">누적%s</span></div></td>|html}
+    {html|<td class="%s" style="%s"><div class="flex flex-col items-end leading-tight"><span class="text-slate-700 dark:text-slate-300 font-mono">%.1f</span><span class="text-slate-400 dark:text-slate-400 text-[9px] font-mono whitespace-nowrap" title="누적">누적%s</span></div></td>|html}
     classes
     width_style
     avg
@@ -1016,7 +1016,7 @@ let player_summary_comparison (seasons: season_stats list) =
         <h2 class="font-bold text-slate-900 dark:text-slate-200 text-sm mb-3">시즌 요약</h2>
         <div class="overflow-x-auto">
           <table class="w-full text-xs tabular-nums">
-            <thead class="text-slate-500 dark:text-slate-500">
+            <thead class="text-slate-500 dark:text-slate-400">
               <tr>
                 <th scope="col" class="px-2 py-1.5 text-left text-[10px] uppercase tracking-wider font-sans w-32"></th>
                 %s %s %s %s %s %s %s %s %s %s
@@ -1311,7 +1311,7 @@ let player_season_stats_component ~(player_id: string) ~scope (seasons: season_s
           <div class="flex gap-1 border-b border-slate-200 dark:border-slate-700 mb-4">
             %s
           </div>
-          <div class="text-[11px] text-slate-500 dark:text-slate-500 leading-relaxed mb-3">시즌명 → 순위표 | GL → 경기 기록 | 팀명 → 팀 페이지</div>
+          <div class="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed mb-3">시즌명 → 순위표 | GL → 경기 기록 | 팀명 → 팀 페이지</div>
           <div class="overflow-x-auto">
             <table class="%s w-full text-sm table-fixed tabular-nums" aria-label="%s">
               %s
@@ -1388,7 +1388,7 @@ let career_trajectory_chart (seasons: season_stats list) =
           <div class="flex items-end justify-between gap-3">
             <div>
               <h3 class="text-slate-900 dark:text-slate-200 font-bold">커리어 스탯 추이</h3>
-              <div class="text-[11px] text-slate-500 dark:text-slate-500">%s → %s</div>
+              <div class="text-[11px] text-slate-500 dark:text-slate-400">%s → %s</div>
             </div>
             <div class="flex items-center gap-3 text-[11px]">
               <span class="flex items-center gap-1"><span class="w-3 h-0.5 bg-orange-500 rounded"></span><span class="text-slate-500 dark:text-slate-400">PPG</span></span>
@@ -1434,7 +1434,7 @@ let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2") ?(include_
   in
   Printf.sprintf
     {html|<tr class="group border-b border-slate-200 dark:border-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors font-mono tabular-nums">
-      <td class="px-2 py-2 text-slate-500 dark:text-slate-500 text-sm text-center font-bold whitespace-nowrap" style="width: 50px; min-width: 50px;">%d</td>
+      <td class="px-2 py-2 text-slate-500 dark:text-slate-400 text-sm text-center font-bold whitespace-nowrap" style="width: 50px; min-width: 50px;">%d</td>
       <td class="px-3 py-2 font-medium text-slate-900 dark:text-white font-sans whitespace-nowrap" style="width: 200px; min-width: 200px;">
         <div class="flex items-center gap-3 min-w-0">
           %s
@@ -1495,11 +1495,11 @@ let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2") ?(include_
 	          {html|<a href="%s" class="block bg-slate-100 dark:bg-slate-800/40 border border-slate-300 dark:border-slate-700/50 rounded-lg p-4 hover:border-orange-400 dark:hover:border-orange-600 transition-colors">
 	            <div class="flex items-start justify-between gap-3">
 	              <div class="min-w-0">
-	                <div class="text-[11px] text-slate-500 dark:text-slate-500 font-mono uppercase tracking-wider">%s</div>
+	                <div class="text-[11px] text-slate-500 dark:text-slate-400 font-mono uppercase tracking-wider">%s</div>
 	                <div class="mt-1 flex items-center gap-1.5 text-sm text-slate-700 dark:text-slate-300">
-	                  <span class="font-mono text-[11px] text-slate-500 dark:text-slate-500">%s</span>
+	                  <span class="font-mono text-[11px] text-slate-500 dark:text-slate-400">%s</span>
 	                  <span class="text-slate-400 dark:text-slate-600">·</span>
-	                  <span class="text-[11px] text-slate-500 dark:text-slate-500">%s</span>
+	                  <span class="text-[11px] text-slate-500 dark:text-slate-400">%s</span>
 	                  <span class="text-slate-400 dark:text-slate-600">·</span>
 	                  %s
 	                  <span class="truncate">%s</span>
@@ -1521,7 +1521,7 @@ let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2") ?(include_
 	        {html|<div class="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 p-5 shadow-lg">
 	          <div class="flex items-center justify-between gap-3">
 	            <h3 class="text-slate-900 dark:text-slate-200 font-bold">커리어 하이</h3>
-	            <div class="text-[11px] text-slate-500 dark:text-slate-500 font-mono">%d개</div>
+	            <div class="text-[11px] text-slate-500 dark:text-slate-400 font-mono">%d개</div>
 	          </div>
 	          <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">%s</div>
 	        </div>|html}
