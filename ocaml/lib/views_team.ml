@@ -55,7 +55,7 @@ let team_profile_page ?(lang=I18n.Ko) ?(player_info_map=None) (detail: team_full
   let rank_label = function
    | Some r ->
     let n = List.length detail.tfd_standings in
-    Printf.sprintf {html|<span class="text-[10px] text-slate-400 dark:text-slate-500 font-mono">%d/%d</span>|html} r n
+    Printf.sprintf {html|<span class="text-[10px] text-slate-400 dark:text-slate-400 font-mono">%d/%d</span>|html} r n
    | None -> ""
   in
   let efg_pct_str, pace_str =
@@ -307,7 +307,7 @@ let team_profile_page ?(lang=I18n.Ko) ?(player_info_map=None) (detail: team_full
     let ft_att = p.total_ft_att in
     Printf.sprintf
      {html|<tr class="group border-b border-slate-200 dark:border-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors font-mono tabular-nums">
-       <td class="px-2 py-2 text-slate-500 dark:text-slate-500 text-sm text-center font-bold" style="width: 50px;">%d</td>
+       <td class="px-2 py-2 text-slate-500 dark:text-slate-400 text-sm text-center font-bold" style="width: 50px;">%d</td>
        <td class="px-3 py-2 font-medium text-slate-900 dark:text-white font-sans whitespace-nowrap" style="width: 180px;">
          <div class="flex items-center gap-3 min-w-0">
            %s
@@ -432,7 +432,7 @@ let team_profile_page ?(lang=I18n.Ko) ?(player_info_map=None) (detail: team_full
     let mpg = if p.games_played = 0 then 0.0 else p.total_minutes /. float_of_int p.games_played in
     Printf.sprintf
      {html|<tr class="group border-b border-slate-200 dark:border-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors font-mono tabular-nums">
-       <td class="px-2 py-2 text-slate-500 dark:text-slate-500 text-sm text-center font-bold" style="width: 50px;">%d</td>
+       <td class="px-2 py-2 text-slate-500 dark:text-slate-400 text-sm text-center font-bold" style="width: 50px;">%d</td>
        <td class="px-3 py-2 font-medium text-slate-900 dark:text-white font-sans whitespace-nowrap" style="width: 180px;">
          <div class="flex items-center gap-3 min-w-0">
            %s
@@ -705,7 +705,7 @@ let team_profile_page ?(lang=I18n.Ko) ?(player_info_map=None) (detail: team_full
 			      g.tgr_game_date
 			    in
 			    let row = Printf.sprintf
-			     {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors"><td class="px-3 py-2 text-slate-500 dark:text-slate-400 text-sm font-mono whitespace-nowrap w-24"><a href="%s" class="hover:text-orange-600 dark:hover:text-orange-400 transition-colors" title="%s"><span class="sm:hidden">%s</span><span class="hidden sm:inline">%s</span></a></td><td class="px-3 py-2 text-slate-900 dark:text-slate-200"><a class="block truncate hover:text-orange-600 dark:hover:text-orange-400 transition-colors" href="%s" title="%s">%s</a></td><td class="px-3 py-2 text-center font-bold %s whitespace-nowrap w-14"><span class="inline-flex items-center justify-center w-7">%s</span></td><td class="px-3 py-2 text-right font-mono text-slate-900 dark:text-slate-200 whitespace-nowrap w-36">%s</td><td class="px-2 py-2 text-right text-[10px] font-mono text-slate-400 dark:text-slate-500 whitespace-nowrap hidden sm:table-cell">%s</td></tr>|html}
+			     {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors"><td class="px-3 py-2 text-slate-500 dark:text-slate-400 text-sm font-mono whitespace-nowrap w-24"><a href="%s" class="hover:text-orange-600 dark:hover:text-orange-400 transition-colors" title="%s"><span class="sm:hidden">%s</span><span class="hidden sm:inline">%s</span></a></td><td class="px-3 py-2 text-slate-900 dark:text-slate-200"><a class="block truncate hover:text-orange-600 dark:hover:text-orange-400 transition-colors" href="%s" title="%s">%s</a></td><td class="px-3 py-2 text-center font-bold %s whitespace-nowrap w-14"><span class="inline-flex items-center justify-center w-7">%s</span></td><td class="px-3 py-2 text-right font-mono text-slate-900 dark:text-slate-200 whitespace-nowrap w-36">%s</td><td class="px-2 py-2 text-right text-[10px] font-mono text-slate-400 dark:text-slate-400 whitespace-nowrap hidden sm:table-cell">%s</td></tr>|html}
 			     (boxscore_href g.tgr_game_id)
 			     (escape_html g.tgr_game_date)
 			     (escape_html date_short)
@@ -744,7 +744,7 @@ let team_profile_page ?(lang=I18n.Ko) ?(player_info_map=None) (detail: team_full
     in
     let rank_badge = function
      | Some r ->
-      Printf.sprintf {html|<span class="text-[10px] text-slate-400 dark:text-slate-500 font-mono">%d/%d</span>|html} r n
+      Printf.sprintf {html|<span class="text-[10px] text-slate-400 dark:text-slate-400 font-mono">%d/%d</span>|html} r n
      | None -> ""
     in
     let efg_rank = ff_rank_of ~extract:(fun f -> f.Stats.efg_pct) ~higher_is_better:true in
