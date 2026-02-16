@@ -463,7 +463,7 @@ let empty_state ?icon title desc =
   let _ = icon in
   Printf.sprintf {html|<div class="text-center py-12 px-4"><div class="text-4xl mb-4">🏀</div><h3 class="text-lg font-bold text-slate-900 dark:text-slate-200">%s</h3><p class="text-slate-500 dark:text-slate-400">%s</p></div>|html} title desc
 
-let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json_ld="") ?og_title ?og_description ?og_image ?data_freshness ~content () =
+let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json_ld="") ?og_title ?og_description ?og_image ?data_freshness ?(has_charts=false) ~content () =
   let json_ld_html = if json_ld = "" then "" else
     Printf.sprintf {|<script type="application/ld+json">%s</script>|} json_ld
   in
@@ -557,6 +557,15 @@ let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json
     sentry_html ^ clarity_html
   in
 
+  let chart_js_html = if has_charts then
+    {|<script src="/static/js/chart.min.js"></script>
+  <script>
+    Chart.defaults.font.family = 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace';
+    Chart.defaults.color = '#94a3b8';
+    Chart.defaults.scale.grid.color = '#334155';
+  </script>|}
+  else "" in
+
   let nav_players = tr { ko = "선수"; en = "Players" } in
   let nav_teams = tr { ko = "팀"; en = "Teams" } in
   let nav_standings = tr { ko = "순위"; en = "Standings" } in
@@ -608,13 +617,6 @@ let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json
   <link rel="manifest" href="/manifest.json">
   <link rel="stylesheet" href="/static/css/tailwind.css?v=20260216">
   <link rel="stylesheet" href="/static/css/styles.css?v=20260216">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script>
-    // Global Chart.js defaults
-    Chart.defaults.font.family = 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace';
-    Chart.defaults.color = '#94a3b8';
-    Chart.defaults.scale.grid.color = '#334155';
-  </script>
 	  %s
 </head>
 <body class="bg-slate-50 dark:bg-[#0b0e14] text-slate-900 dark:text-slate-200">
@@ -716,6 +718,7 @@ let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json
 			  <script src="/static/js/data-freshness.js?v=20260214"></script>
 			  <script src="/static/js/search-modal.js?v=20260214"></script>
 			  <script>if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js')}</script>
+  %s
 				</body>
 			</html>|html}
 	    (escape_html html_lang)
@@ -749,6 +752,7 @@ let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json
 	    (escape_html nav_predict)
 	    (escape_html nav_search)
 	    content
+	    chart_js_html
   in
   (* CSP nonce injection: generate per-request nonce, inject into all opening
      <script tags, and prepend a CSP meta tag in <head>. *)
@@ -765,7 +769,7 @@ let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json
   in
   let csp_policy = Printf.sprintf
     "default-src 'self'; \
-     script-src 'self' 'nonce-%s' https://cdn.jsdelivr.net%s; \
+     script-src 'self' 'nonce-%s'%s; \
      style-src 'self' 'unsafe-inline'; \
      img-src 'self' data: https:; \
      connect-src 'self'%s; \
