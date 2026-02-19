@@ -32,3 +32,8 @@ ocaml/static/images/originals/
 
 # OCaml opam switch (top-level)
 _opam/
+
+# Agent runtime artifacts
+.masc/
+.gemini/
+.claude/
