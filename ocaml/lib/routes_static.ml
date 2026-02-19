@@ -25,6 +25,39 @@ let routes ~static_path =
       else
         Kirin.not_found ~body:"service-worker.js not found" ());
 
+    (* Static assets: CSS, JS, images, fonts, etc. - wildcard catch-all *)
+    Kirin.get "/static/*path" (fun request ->
+      let path = Kirin.param "path" request in
+      let file_path = Filename.concat static_path path in
+      
+      (* Security: check file exists and is within static_path *)
+      if Sys.file_exists file_path && not (Sys.is_directory file_path) then
+        let content = In_channel.with_open_bin file_path In_channel.input_all in
+        let content_type = match Filename.extension path with
+          | ".css" -> "text/css; charset=utf-8"
+          | ".js" | ".mjs" -> "application/javascript; charset=utf-8"
+          | ".json" -> "application/json; charset=utf-8"
+          | ".png" -> "image/png"
+          | ".jpg" | ".jpeg" -> "image/jpeg"
+          | ".gif" -> "image/gif"
+          | ".svg" -> "image/svg+xml"
+          | ".webp" -> "image/webp"
+          | ".woff" | ".woff2" -> "font/woff2"
+          | ".ttf" -> "font/ttf"
+          | ".eot" -> "application/vnd.ms-fontobject"
+          | _ -> "application/octet-stream"
+        in
+        let cache_header = if String.starts_with ~prefix:"css/" path || String.starts_with ~prefix:"js/" path then
+          "public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400"
+        else
+          "public, max-age=2592000, immutable"  (* 30 days for images/fonts *)
+        in
+        Kirin.with_header "Content-Type" content_type
+        @@ Kirin.with_header "Cache-Control" cache_header
+        @@ Kirin.Response.make ~status:`OK (`String content)
+      else
+        Kirin.not_found ~body:(Printf.sprintf "Static file not found: /static/%s" path) ());
+
     (* Share Cards: Player card PNG *)
     Kirin.get "/card/player/png/:id" (fun request ->
       let player_id = Kirin.param "id" request in
