@@ -13,9 +13,6 @@ RUN apt-get update && apt-get install -y \
     liburing-dev \
     pkg-config \
     perl \
-    nodejs \
-    npm \
-    && npm install -g tailwindcss \
     && rm -rf /var/lib/apt/lists/*
 
 USER opam
@@ -40,10 +37,6 @@ COPY --chown=opam:opam ocaml/wkbl.opam .
 RUN opam install . --deps-only -y
 COPY --chown=opam:opam ocaml/ .
 
-# Build CSS (Explicitly fix permissions and use global tailwindcss)
-# npx cache permissions issue workaround: use global binary or fix cache owner
-RUN tailwindcss -i input.css -o static/css/tailwind.css --minify
-
 RUN opam exec -- dune build --profile=release bin/main.exe bin/scraper_tool.exe
 
 # 2. Run Stage
@@ -66,7 +59,7 @@ WORKDIR /app
 # Copy binaries from build stage
 COPY --from=build /home/opam/src/ocaml/_build/default/bin/main.exe /app/wkbl-server
 COPY --from=build /home/opam/src/ocaml/_build/default/bin/scraper_tool.exe /app/wkbl-scraper
-# Copy static files (from build stage to include generated CSS)
+# Copy static files (CSS is pre-built and committed to the repo)
 COPY --from=build /home/opam/src/ocaml/static /app/static
 
 # Environment variables
