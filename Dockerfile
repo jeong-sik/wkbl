@@ -13,6 +13,9 @@ RUN apt-get update && apt-get install -y \
     liburing-dev \
     pkg-config \
     perl \
+    nodejs \
+    npm \
+    && npm install -g tailwindcss \
     && rm -rf /var/lib/apt/lists/*
 
 USER opam
@@ -36,6 +39,8 @@ RUN opam install kirin -y
 COPY --chown=opam:opam ocaml/wkbl.opam .
 RUN opam install . --deps-only -y
 COPY --chown=opam:opam ocaml/ .
+# Build CSS
+RUN ./build-css.sh
 RUN opam exec -- dune build --profile=release bin/main.exe bin/scraper_tool.exe
 
 # 2. Run Stage
@@ -58,7 +63,8 @@ WORKDIR /app
 # Copy binaries from build stage
 COPY --from=build /home/opam/src/ocaml/_build/default/bin/main.exe /app/wkbl-server
 COPY --from=build /home/opam/src/ocaml/_build/default/bin/scraper_tool.exe /app/wkbl-scraper
-COPY ocaml/static /app/static
+# Copy static files (from build stage to include generated CSS)
+COPY --from=build /home/opam/src/ocaml/static /app/static
 
 # Environment variables
 ENV PORT=8080
