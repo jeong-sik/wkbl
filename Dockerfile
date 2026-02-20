@@ -39,8 +39,11 @@ RUN opam install kirin -y
 COPY --chown=opam:opam ocaml/wkbl.opam .
 RUN opam install . --deps-only -y
 COPY --chown=opam:opam ocaml/ .
-# Build CSS (Use npx to ensure it finds the command)
-RUN npx tailwindcss -i input.css -o static/css/tailwind.css --minify
+
+# Build CSS (Explicitly fix permissions and use global tailwindcss)
+# npx cache permissions issue workaround: use global binary or fix cache owner
+RUN tailwindcss -i input.css -o static/css/tailwind.css --minify
+
 RUN opam exec -- dune build --profile=release bin/main.exe bin/scraper_tool.exe
 
 # 2. Run Stage
