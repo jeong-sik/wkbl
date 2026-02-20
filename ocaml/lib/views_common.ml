@@ -615,8 +615,8 @@ let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json
   %s
   %s
   <link rel="manifest" href="/manifest.json">
-  <link rel="stylesheet" href="/static/css/tailwind.css?v=20260216">
-  <link rel="stylesheet" href="/static/css/styles.css?v=20260216">
+  <link rel="stylesheet" href="/static/css/tailwind.css?v=20260220">
+  <link rel="stylesheet" href="/static/css/styles.css?v=20260220">
 	  %s
 </head>
 <body class="bg-slate-50 dark:bg-[#0b0e14] text-slate-900 dark:text-slate-200">
@@ -705,18 +705,18 @@ let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json
   <!-- Toast notification container -->
   <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2" aria-live="polite"></div>
 
-  <script src="/static/js/app-init.js?v=20260214"></script>
+  <script src="/static/js/app-init.js?v=20260220"></script>
 		  <script src="/static/js/htmx-1.9.10.min.js"></script>
-			  <script src="/static/js/page-transitions.js?v=20260214"></script>
-			  <script src="/static/js/scroll-shadow.js?v=20260214"></script>
-			  <script src="/static/js/table-sort.js?v=20260214"></script>
-			  <script src="/static/js/table-export.js?v=20260214"></script>
-			  <script src="/static/js/table-row-link.js?v=20260214"></script>
-			  <script src="/static/js/number-format.js?v=20260214"></script>
-			  <script src="/static/js/a11y-utils.js?v=20260214"></script>
-			  <script src="/static/js/skeleton-loader.js?v=20260214"></script>
-			  <script src="/static/js/data-freshness.js?v=20260214"></script>
-			  <script src="/static/js/search-modal.js?v=20260214"></script>
+			  <script src="/static/js/page-transitions.js?v=20260220"></script>
+			  <script src="/static/js/scroll-shadow.js?v=20260220"></script>
+			  <script src="/static/js/table-sort.js?v=20260220"></script>
+			  <script src="/static/js/table-export.js?v=20260220"></script>
+			  <script src="/static/js/table-row-link.js?v=20260220"></script>
+			  <script src="/static/js/number-format.js?v=20260220"></script>
+			  <script src="/static/js/a11y-utils.js?v=20260220"></script>
+			  <script src="/static/js/skeleton-loader.js?v=20260220"></script>
+			  <script src="/static/js/data-freshness.js?v=20260220"></script>
+			  <script src="/static/js/search-modal.js?v=20260220"></script>
 			  <script>if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js')}</script>
   %s
 				</body>
