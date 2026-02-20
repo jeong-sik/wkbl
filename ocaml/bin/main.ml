@@ -48,30 +48,35 @@ let cache_control_middleware : Kirin.middleware = fun next_handler request ->
   match Kirin.response_header "Cache-Control" response with
   | Some _ -> response
   | None ->
-    let path = Kirin.Request.uri request |> Uri.path in
-    (* (max_age, s_maxage, stale_while_revalidate) *)
-    let cache_params =
-      if String.starts_with ~prefix:"/static/" path then
-        Some (86400, 604800, 86400)
-      else if String.starts_with ~prefix:"/api/" path then
-        Some (60, 120, 30)
-      else if String.starts_with ~prefix:"/season/" path then
-        let code = String.sub path 8 (min 3 (String.length path - 8)) in
-        let current = Scraper.current_season_code_auto () |> Scraper.main_to_datalab in
-        if code < current then Some (86400, 604800, 86400)
-        else Some (300, 900, 300)
-      else
-        match Kirin.response_header "Content-Type" response with
-        | Some ct when String.starts_with ~prefix:"text/html" (String.lowercase_ascii ct) ->
-          Some (120, 600, 120)
-        | _ -> None
-    in
-    (match cache_params with
-    | Some (ma, sma, swr) ->
-      Kirin.with_header "Cache-Control"
-        (Printf.sprintf "public, max-age=%d, s-maxage=%d, stale-while-revalidate=%d" ma sma swr)
-        response
-    | None -> response)
+    let status = Kirin.response_status response in
+    (* Never cache error responses in CDN — prevents 404 cache poisoning *)
+    if status >= 400 then
+      Kirin.with_header "Cache-Control" "no-store" response
+    else
+      let path = Kirin.Request.uri request |> Uri.path in
+      (* (max_age, s_maxage, stale_while_revalidate) *)
+      let cache_params =
+        if String.starts_with ~prefix:"/static/" path then
+          Some (86400, 604800, 86400)
+        else if String.starts_with ~prefix:"/api/" path then
+          Some (60, 120, 30)
+        else if String.starts_with ~prefix:"/season/" path then
+          let code = String.sub path 8 (min 3 (String.length path - 8)) in
+          let current = Scraper.current_season_code_auto () |> Scraper.main_to_datalab in
+          if code < current then Some (86400, 604800, 86400)
+          else Some (300, 900, 300)
+        else
+          match Kirin.response_header "Content-Type" response with
+          | Some ct when String.starts_with ~prefix:"text/html" (String.lowercase_ascii ct) ->
+            Some (120, 600, 120)
+          | _ -> None
+      in
+      (match cache_params with
+      | Some (ma, sma, swr) ->
+        Kirin.with_header "Cache-Control"
+          (Printf.sprintf "public, max-age=%d, s-maxage=%d, stale-while-revalidate=%d" ma sma swr)
+          response
+      | None -> response)
 
 let security_headers_middleware : Kirin.middleware = fun next_handler request ->
   let response = next_handler request in
