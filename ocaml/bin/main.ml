@@ -377,7 +377,8 @@ let () =
 
   Kirin.run ~config:{ Kirin.default_config with port } ~sw ~env
   @@ Kirin.logger
-  @@ Kirin.compress
+  (* Kirin.compress disabled: causes infinite hang on certain JS files.
+     Cloudflare handles gzip compression at the edge instead. *)
   @@ security_headers_middleware
   @@ woman_win_redirect_middleware
   @@ cache_control_middleware
