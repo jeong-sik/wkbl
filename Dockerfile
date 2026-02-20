@@ -25,7 +25,7 @@ WORKDIR /home/opam/src/ocaml
 RUN opam update
 
 # Cache bust for kirin installation
-ARG CACHEBUST=2026021921
+ARG CACHEBUST=2026022001
 
 # Pin private dependencies from GitHub
 RUN opam pin add grpc-direct-core https://github.com/jeong-sik/grpc-direct.git#main -y --no-action
