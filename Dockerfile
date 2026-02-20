@@ -25,7 +25,7 @@ WORKDIR /home/opam/src/ocaml
 RUN opam update
 
 # Cache bust for kirin installation
-ARG CACHEBUST=2026022001
+ARG CACHEBUST=2026021921
 
 # Pin private dependencies from GitHub
 RUN opam pin add grpc-direct-core https://github.com/jeong-sik/grpc-direct.git#main -y --no-action
@@ -39,8 +39,8 @@ RUN opam install kirin -y
 COPY --chown=opam:opam ocaml/wkbl.opam .
 RUN opam install . --deps-only -y
 COPY --chown=opam:opam ocaml/ .
-# Build CSS
-RUN ./build-css.sh
+# Build CSS (Explicitly use bash to avoid permission issues)
+RUN bash ./build-css.sh
 RUN opam exec -- dune build --profile=release bin/main.exe bin/scraper_tool.exe
 
 # 2. Run Stage
