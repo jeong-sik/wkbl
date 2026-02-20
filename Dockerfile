@@ -39,8 +39,8 @@ RUN opam install kirin -y
 COPY --chown=opam:opam ocaml/wkbl.opam .
 RUN opam install . --deps-only -y
 COPY --chown=opam:opam ocaml/ .
-# Build CSS
-RUN ./build-css.sh
+# Build CSS (Explicitly use bash to avoid permission issues)
+RUN bash ./build-css.sh
 RUN opam exec -- dune build --profile=release bin/main.exe bin/scraper_tool.exe
 
 # 2. Run Stage
