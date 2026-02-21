@@ -1091,15 +1091,29 @@ th[data-sortable][aria-sort] {
   text-underline-offset: 2px;
 }
 
-/* Skip to content link (already in HTML, styling enhancement) */
+/* Skip to content link — hidden by default, visible on keyboard focus */
+.skip-link {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .skip-link:focus {
-  position: fixed !important;
+  position: fixed;
   top: 1rem;
   left: 1rem;
   z-index: 9999;
   width: auto;
   height: auto;
   padding: 1rem 1.5rem;
+  margin: 0;
+  overflow: visible;
   clip: auto;
   white-space: normal;
   background: #f97316;
