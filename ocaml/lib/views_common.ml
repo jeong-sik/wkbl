@@ -436,20 +436,20 @@ let player_name_cell ?(show_player_id=false) player_id name =
 let points_total_cell ?(extra_classes="") ?(width_style="") avg total =
   let classes = String.concat " " ["px-3 py-2 text-right"; extra_classes] in
   Printf.sprintf
-    {html|<td class="%s" style="%s"><div class="flex flex-col items-end leading-tight"><span class="text-orange-700 dark:text-orange-400 font-bold font-mono">%.1f</span><span class="text-slate-400 dark:text-slate-400 text-[9px] font-mono whitespace-nowrap" title="누적">누적%s</span></div></td>|html}
+    {html|<td class="%s" style="%s"><div class="flex flex-col items-end leading-tight"><span class="text-orange-700 dark:text-orange-400 font-bold font-mono">%.1f</span><span class="text-slate-400 dark:text-slate-400 text-[9px] font-mono whitespace-nowrap" title="누적">누적 %s</span></div></td>|html}
     classes
     width_style
     avg
-    (format_int_compact total)
+    (format_int_commas total)
 
 let stat_total_cell ?(extra_classes="") ?(width_style="") avg total =
   let classes = String.concat " " ["px-3 py-2 text-right"; extra_classes] in
   Printf.sprintf
-    {html|<td class="%s" style="%s"><div class="flex flex-col items-end leading-tight"><span class="text-slate-700 dark:text-slate-300 font-mono">%.1f</span><span class="text-slate-400 dark:text-slate-400 text-[9px] font-mono whitespace-nowrap" title="누적">누적%s</span></div></td>|html}
+    {html|<td class="%s" style="%s"><div class="flex flex-col items-end leading-tight"><span class="text-slate-700 dark:text-slate-300 font-mono">%.1f</span><span class="text-slate-400 dark:text-slate-400 text-[9px] font-mono whitespace-nowrap" title="누적">누적 %s</span></div></td>|html}
     classes
     width_style
     avg
-    (format_int_compact total)
+    (format_int_commas total)
 
 let margin_cell ?(extra_classes="") ?(width_style="") value =
   let cls =

@@ -927,12 +927,12 @@ let win_rate_trend_chart (points: win_rate_point list) =
 
 (** Player Performance Trend Chart - Recent N games line chart *)
 let player_trend_chart ?(num_games=10) ~title ~get_value ~color (games: player_game_stat list) =
-  let width = 560.0 in
-  let height = 220.0 in
+  let width = 640.0 in
+  let height = 260.0 in
   let padding_left = 50.0 in
   let padding_right = 24.0 in
   let padding_top = 32.0 in
-  let padding_bottom = 52.0 in
+  let padding_bottom = 56.0 in
   let plot_width = width -. padding_left -. padding_right in
   let plot_height = height -. padding_top -. padding_bottom in
 
@@ -1090,10 +1090,10 @@ let player_trends_panel (games: player_game_stat list) =
         <span class="text-[10px] text-slate-500 dark:text-slate-400">X축: 경기일 · 클릭하면 확대</span>
       </div>
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <button type="button" class="trend-chart-cell text-left border border-slate-200 dark:border-slate-700 rounded-lg p-4 min-h-[240px] cursor-pointer hover:border-sky-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40 transition-colors" data-trend-expand="1">%s</button>
-        <button type="button" class="trend-chart-cell text-left border border-slate-200 dark:border-slate-700 rounded-lg p-4 min-h-[240px] cursor-pointer hover:border-sky-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40 transition-colors" data-trend-expand="1">%s</button>
-        <button type="button" class="trend-chart-cell text-left border border-slate-200 dark:border-slate-700 rounded-lg p-4 min-h-[240px] cursor-pointer hover:border-sky-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40 transition-colors" data-trend-expand="1">%s</button>
-        <button type="button" class="trend-chart-cell text-left border border-slate-200 dark:border-slate-700 rounded-lg p-4 min-h-[240px] cursor-pointer hover:border-sky-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40 transition-colors" data-trend-expand="1">%s</button>
+        <button type="button" class="trend-chart-cell text-left border border-slate-200 dark:border-slate-700 rounded-lg p-4 min-h-[260px] cursor-pointer hover:border-sky-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40 transition-colors" style="min-height: 260px" data-trend-expand="1" aria-label="득점 (PTS) 트렌드 차트 확대">%s</button>
+        <button type="button" class="trend-chart-cell text-left border border-slate-200 dark:border-slate-700 rounded-lg p-4 min-h-[260px] cursor-pointer hover:border-sky-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40 transition-colors" style="min-height: 260px" data-trend-expand="1" aria-label="리바운드 (REB) 트렌드 차트 확대">%s</button>
+        <button type="button" class="trend-chart-cell text-left border border-slate-200 dark:border-slate-700 rounded-lg p-4 min-h-[260px] cursor-pointer hover:border-sky-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40 transition-colors" style="min-height: 260px" data-trend-expand="1" aria-label="어시스트 (AST) 트렌드 차트 확대">%s</button>
+        <button type="button" class="trend-chart-cell text-left border border-slate-200 dark:border-slate-700 rounded-lg p-4 min-h-[260px] cursor-pointer hover:border-sky-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40 transition-colors" style="min-height: 260px" data-trend-expand="1" aria-label="효율 (EFF) 트렌드 차트 확대">%s</button>
       </div>
     </div>
     <div id="trend-overlay" data-trend-overlay="1" class="hidden fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
