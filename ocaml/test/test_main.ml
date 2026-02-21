@@ -2764,7 +2764,7 @@ let test_pbp_page_passes_lang_to_layout () =
       ~events:[]
       ()
   in
-  Alcotest.(check bool) "html lang is en" true (contains_substring html {|<html lang="en">|});
+  Alcotest.(check bool) "html lang is en" true (contains_substring html {|<html lang="en"|});
   Alcotest.(check bool) "has English heading" true (contains_substring html "Play by play")
 
 let test_game_flow_page_no_scoring_hides_chart () =
@@ -3122,7 +3122,8 @@ let test_team_profile_page_hides_0_0_and_has_roster_toggle () =
   in
   let html = Wkbl.Views_team.team_profile_page detail ~season:"046" ~seasons in
   Alcotest.(check bool) "roster cards id exists" true (contains_substring html "id=\"roster-cards\"");
-  Alcotest.(check bool) "details ontoggle exists" true (contains_substring html "ontoggle=");
+  Alcotest.(check bool) "details toggle target exists" true
+    (contains_substring html {|data-toggle-target="roster-cards"|});
   Alcotest.(check bool) "shows scheduled label" true (contains_substring html "예정");
   Alcotest.(check bool) "shows missing-score label" true (contains_substring html "점수 없음");
   Alcotest.(check bool) "does not show 0-0" false (contains_substring html "0 - 0")
