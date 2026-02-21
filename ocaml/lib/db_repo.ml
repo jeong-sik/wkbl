@@ -67,6 +67,7 @@ open Db_queries
       let* () = Db.exec ensure_games_calc_matview () in
       let* () = Db.exec ensure_games_calc_index () in
       let* () = Db.exec ensure_games_calc_season_index () in
+      let* () = Db.exec ensure_games_calc_compat_view () in
       (* Awards table for scraped WKBL award data *)
       let* () = Db.exec ensure_awards_table () in
       let* () = Db.exec ensure_awards_index_season () in
