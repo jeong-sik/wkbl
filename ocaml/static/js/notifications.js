@@ -92,6 +92,14 @@ const WKBLNotifications = {
       }
     });
 
+    document.addEventListener('change', (event) => {
+      const prefInput = event.target && event.target.closest ? event.target.closest('[data-notify-pref]') : null;
+      if (!prefInput) return;
+      const key = prefInput.getAttribute('data-notify-pref');
+      if (!key) return;
+      this.setPref(key, !!prefInput.checked);
+    });
+
     return true;
   },
 
@@ -337,7 +345,7 @@ const WKBLNotifications = {
       <div class="space-y-3">
         <label class="flex items-center gap-3 cursor-pointer ${!enabled || !granted ? 'opacity-50' : ''}">
           <input type="checkbox" ${prefs.gameStart ? 'checked' : ''} ${!enabled || !granted ? 'disabled' : ''}
-            onchange="WKBLNotifications.setPref('gameStart', this.checked)"
+            data-notify-pref="gameStart"
             class="w-4 h-4 rounded border-slate-300 text-orange-500 focus:ring-orange-500">
           <div>
             <div class="font-medium text-sm">경기 시작 알림</div>
@@ -346,7 +354,7 @@ const WKBLNotifications = {
         </label>
         <label class="flex items-center gap-3 cursor-pointer ${!enabled || !granted ? 'opacity-50' : ''}">
           <input type="checkbox" ${prefs.gameEnd ? 'checked' : ''} ${!enabled || !granted ? 'disabled' : ''}
-            onchange="WKBLNotifications.setPref('gameEnd', this.checked)"
+            data-notify-pref="gameEnd"
             class="w-4 h-4 rounded border-slate-300 text-orange-500 focus:ring-orange-500">
           <div>
             <div class="font-medium text-sm">경기 종료 알림</div>
@@ -355,7 +363,7 @@ const WKBLNotifications = {
         </label>
         <label class="flex items-center gap-3 cursor-pointer ${!enabled || !granted ? 'opacity-50' : ''}">
           <input type="checkbox" ${prefs.liveScore ? 'checked' : ''} ${!enabled || !granted ? 'disabled' : ''}
-            onchange="WKBLNotifications.setPref('liveScore', this.checked)"
+            data-notify-pref="liveScore"
             class="w-4 h-4 rounded border-slate-300 text-orange-500 focus:ring-orange-500">
           <div>
             <div class="font-medium text-sm">실시간 스코어</div>

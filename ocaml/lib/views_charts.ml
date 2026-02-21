@@ -821,11 +821,11 @@ type win_rate_point = {
 
 let win_rate_trend_chart (points: win_rate_point list) =
   let width = 500.0 in
-  let height = 200.0 in
+  let height = 240.0 in
   let padding_left = 50.0 in
   let padding_right = 20.0 in
   let padding_top = 30.0 in
-  let padding_bottom = 40.0 in
+  let padding_bottom = 48.0 in
   let plot_width = width -. padding_left -. padding_right in
   let plot_height = height -. padding_top -. padding_bottom in
 
@@ -868,7 +868,7 @@ let win_rate_trend_chart (points: win_rate_point list) =
             then String.sub p.wrp_date (String.length p.wrp_date - 5) 5
             else p.wrp_date in
           Printf.sprintf {|<text x="%.2f" y="%.2f" class="fill-slate-500 dark:fill-slate-400 text-xs" text-anchor="middle">%s</text>|}
-            x (height -. 10.0) short_date)
+            x (height -. 18.0) short_date)
       |> String.concat "\n" in
 
     Printf.sprintf {|
@@ -907,6 +907,9 @@ let win_rate_trend_chart (points: win_rate_point list) =
 
   <!-- X-axis labels -->
   %s
+
+  <!-- Axis hint -->
+  <text x="%.2f" y="%.2f" class="fill-slate-400 dark:fill-slate-500" style="font-size: 10px">X축: 경기일 (MM-DD)</text>
 </svg>
     |} width height
     (* Grid lines: 100%, 50%, 0% *)
@@ -920,15 +923,16 @@ let win_rate_trend_chart (points: win_rate_point list) =
     (* Title *)
     padding_left
     path_d circles x_labels
+    padding_left (height -. 2.0)
 
 (** Player Performance Trend Chart - Recent N games line chart *)
 let player_trend_chart ?(num_games=10) ~title ~get_value ~color (games: player_game_stat list) =
-  let width = 500.0 in
-  let height = 180.0 in
+  let width = 560.0 in
+  let height = 220.0 in
   let padding_left = 50.0 in
-  let padding_right = 20.0 in
-  let padding_top = 30.0 in
-  let padding_bottom = 40.0 in
+  let padding_right = 24.0 in
+  let padding_top = 32.0 in
+  let padding_bottom = 52.0 in
   let plot_width = width -. padding_left -. padding_right in
   let plot_height = height -. padding_top -. padding_bottom in
 
@@ -1012,7 +1016,7 @@ let player_trend_chart ?(num_games=10) ~title ~get_value ~color (games: player_g
             then String.sub g.game_date (String.length g.game_date - 5) 5
             else g.game_date in
           Printf.sprintf {|<text x="%.2f" y="%.2f" class="fill-slate-500 dark:fill-slate-400" style="font-size: 10px" text-anchor="middle">%s</text>|}
-            x (height -. 8.0) short_date)
+            x (height -. 18.0) short_date)
       |> String.concat "\n"
     in
 
@@ -1051,6 +1055,9 @@ let player_trend_chart ?(num_games=10) ~title ~get_value ~color (games: player_g
 
   <!-- X-axis labels -->
   %s
+
+  <!-- Axis hint -->
+  <text x="%.2f" y="%.2f" class="fill-slate-400 dark:fill-slate-500" style="font-size: 10px">X축: 경기일 (MM-DD) · Y축: %s</text>
 </svg>
     |} width height color
     (* Grid lines *)
@@ -1064,6 +1071,7 @@ let player_trend_chart ?(num_games=10) ~title ~get_value ~color (games: player_g
     (* Title *)
     padding_left title trend_icon
     path_d color color circles x_labels
+    padding_left (height -. 3.0) title
 
 (** Multi-stat trend panel - Shows PTS, REB, AST, EFF in a grid *)
 let player_trends_panel (games: player_game_stat list) =
@@ -1079,45 +1087,22 @@ let player_trends_panel (games: player_game_stat list) =
     {|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-lg font-bold text-slate-900 dark:text-slate-200">📊 최근 경기 트렌드</h3>
-        <span class="text-[10px] text-slate-400">클릭하여 확대</span>
+        <span class="text-[10px] text-slate-500 dark:text-slate-400">X축: 경기일 · 클릭하면 확대</span>
       </div>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div class="trend-chart-cell border border-slate-200 dark:border-slate-700 rounded-lg p-3 cursor-pointer hover:border-sky-400 transition-colors" onclick="expandTrendChart(this)">%s</div>
-        <div class="trend-chart-cell border border-slate-200 dark:border-slate-700 rounded-lg p-3 cursor-pointer hover:border-sky-400 transition-colors" onclick="expandTrendChart(this)">%s</div>
-        <div class="trend-chart-cell border border-slate-200 dark:border-slate-700 rounded-lg p-3 cursor-pointer hover:border-sky-400 transition-colors" onclick="expandTrendChart(this)">%s</div>
-        <div class="trend-chart-cell border border-slate-200 dark:border-slate-700 rounded-lg p-3 cursor-pointer hover:border-sky-400 transition-colors" onclick="expandTrendChart(this)">%s</div>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <button type="button" class="trend-chart-cell text-left border border-slate-200 dark:border-slate-700 rounded-lg p-4 min-h-[240px] cursor-pointer hover:border-sky-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40 transition-colors" data-trend-expand="1">%s</button>
+        <button type="button" class="trend-chart-cell text-left border border-slate-200 dark:border-slate-700 rounded-lg p-4 min-h-[240px] cursor-pointer hover:border-sky-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40 transition-colors" data-trend-expand="1">%s</button>
+        <button type="button" class="trend-chart-cell text-left border border-slate-200 dark:border-slate-700 rounded-lg p-4 min-h-[240px] cursor-pointer hover:border-sky-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40 transition-colors" data-trend-expand="1">%s</button>
+        <button type="button" class="trend-chart-cell text-left border border-slate-200 dark:border-slate-700 rounded-lg p-4 min-h-[240px] cursor-pointer hover:border-sky-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40 transition-colors" data-trend-expand="1">%s</button>
       </div>
     </div>
-    <div id="trend-overlay" class="hidden fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onclick="closeTrendOverlay(event)">
-      <div class="bg-white dark:bg-slate-900 rounded-2xl p-6 max-w-3xl w-full border border-slate-200 dark:border-slate-700 shadow-2xl" onclick="event.stopPropagation()">
+    <div id="trend-overlay" data-trend-overlay="1" class="hidden fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
+      <div data-trend-overlay-panel="1" class="bg-white dark:bg-slate-900 rounded-2xl p-6 max-w-5xl w-full max-h-[90vh] overflow-auto border border-slate-200 dark:border-slate-700 shadow-2xl">
         <div class="flex justify-between items-center mb-2">
-          <span class="text-sm text-slate-400">트렌드 상세</span>
-          <button onclick="closeTrendOverlay()" class="text-slate-400 hover:text-white text-xl leading-none">&times;</button>
+          <span class="text-sm text-slate-500 dark:text-slate-400">트렌드 상세</span>
+          <button type="button" data-trend-close="1" class="text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white text-xl leading-none">&times;</button>
         </div>
-        <div id="trend-overlay-content" class="w-full"></div>
+        <div id="trend-overlay-content" class="w-full overflow-x-auto"></div>
       </div>
-    </div>
-    <script>
-    function expandTrendChart(el) {
-      var svg = el.querySelector('svg');
-      if (!svg) return;
-      var clone = svg.cloneNode(true);
-      clone.setAttribute('width', '100%%');
-      clone.setAttribute('height', '300');
-      clone.style.maxWidth = '100%%';
-      var container = document.getElementById('trend-overlay-content');
-      container.innerHTML = '';
-      container.appendChild(clone);
-      document.getElementById('trend-overlay').classList.remove('hidden');
-      document.body.style.overflow = 'hidden';
-    }
-    function closeTrendOverlay(e) {
-      if (e && e.target !== e.currentTarget) return;
-      document.getElementById('trend-overlay').classList.add('hidden');
-      document.body.style.overflow = '';
-    }
-    document.addEventListener('keydown', function(e) {
-      if (e.key === 'Escape') closeTrendOverlay();
-    });
-    </script>|}
+    </div>|}
     pts_chart reb_chart ast_chart eff_chart

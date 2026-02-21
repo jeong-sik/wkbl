@@ -619,10 +619,8 @@ let games_table ?(lang=I18n.Ko) (games : game_summary list) =
           Printf.sprintf
             {|
 role="link" tabindex="0" aria-label="%s"
-onclick="window.location='/boxscore/%s'"
-onkeydown="if(event.key==='Enter'||event.key===' ') { event.preventDefault(); window.location='/boxscore/%s'; }"|} (* keep as a raw attribute fragment *)
+data-card-link="/boxscore/%s"|}
             (escape_html aria)
-            (escape_html g.game_id)
             (escape_html g.game_id)
 	        else
 	          Printf.sprintf {|role="group" aria-label="%s"|} (escape_html (status_label_for_game g))
@@ -764,7 +762,7 @@ onkeydown="if(event.key==='Enter'||event.key===' ') { event.preventDefault(); wi
 	        <div class="flex items-center justify-between">
 		          <h2 class="text-2xl font-black text-slate-900 dark:text-white tracking-tight">%s</h2>
 			          <form action="/games" method="get" class="flex items-center gap-2">
-			            <select name="season" aria-label="시즌 선택" onchange="this.form.submit()" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/40 transition-colors">
+			            <select name="season" aria-label="시즌 선택" data-auto-submit="change" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/40 transition-colors">
 			              %s
 			            </select>
 			          </form>
@@ -1986,7 +1984,7 @@ let compare_page
       <p class="text-slate-600 dark:text-slate-400 text-sm">동명이인/표기 차이를 피하려면 <span class="font-mono text-slate-900 dark:text-slate-200">선수 고유번호</span>를 선택해 비교합니다.</p>
       <p class="text-slate-600 dark:text-slate-400 text-xs mt-1">선수 1/2는 시즌을 각각 선택할 수 있습니다. 시즌이 다르면 맞대결 기록은 표시하지 않습니다.</p>
      </div>
-     <button id="share-compare-btn" type="button" onclick="shareCompareUrl()" class="hidden md:flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition text-sm font-medium" aria-label="비교 링크 복사">
+     <button id="share-compare-btn" type="button" data-share-compare="1" class="hidden md:flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition text-sm font-medium" aria-label="비교 링크 복사">
       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path></svg>
       <span>공유</span>
      </button>
@@ -1997,9 +1995,9 @@ let compare_page
      <input type="hidden" id="p2_id" name="p2_id" value="%s">
      <div class="grid grid-cols-1 md:grid-cols-6 gap-3">
       <select name="p1_season" aria-label="선수 1 시즌" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none md:col-span-2">%s</select>
-      <input name="p1" value="%s" placeholder="선수 1 (이름 검색)" oninput="document.getElementById('p1_id').value='';" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none md:col-span-4">
+      <input name="p1" value="%s" placeholder="선수 1 (이름 검색)" data-clear-target="p1_id" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none md:col-span-4">
       <select name="p2_season" aria-label="선수 2 시즌" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-sky-500 focus:outline-none md:col-span-2">%s</select>
-      <input name="p2" value="%s" placeholder="선수 2 (이름 검색)" oninput="document.getElementById('p2_id').value='';" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-sky-500 focus:outline-none md:col-span-4">
+      <input name="p2" value="%s" placeholder="선수 2 (이름 검색)" data-clear-target="p2_id" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-sky-500 focus:outline-none md:col-span-4">
       <div class="md:col-span-6 flex justify-end">
 	       <button type="submit" class="px-4 py-2 rounded-lg bg-orange-500 text-slate-900 dark:text-slate-200 font-bold hover:bg-orange-400 transition">검색</button>
       </div>
@@ -2822,7 +2820,7 @@ let leaders_page ?(lang=I18n.Ko) ?(player_info_map=None) ~season ~seasons ~scope
   ~canonical_path:"/leaders"
   ~description:"WKBL 여자농구 리더보드 - 득점, 리바운드, 어시스트, 슛 퍼센트 등 부문별 선두 선수 순위"
   ~content:(Printf.sprintf
-	   {html|<div class="space-y-8 animate-fade-in">%s<div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3"><div><h2 class="text-3xl font-black text-slate-900 dark:text-slate-200">부문별 1위</h2><p class="text-slate-600 dark:text-slate-400">부문별 선두 선수 기록입니다.</p></div><form action="/leaders" method="get" class="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full md:w-auto"><select name="season" aria-label="시즌 선택" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none w-full sm:w-48" onchange="this.form.submit()">%s</select><select name="scope" aria-label="기준 선택" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none w-full sm:w-48" onchange="this.form.submit()">%s</select></form></div>%s</div>|html}
+	   {html|<div class="space-y-8 animate-fade-in">%s<div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3"><div><h2 class="text-3xl font-black text-slate-900 dark:text-slate-200">부문별 1위</h2><p class="text-slate-600 dark:text-slate-400">부문별 선두 선수 기록입니다.</p></div><form action="/leaders" method="get" class="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full md:w-auto"><select name="season" aria-label="시즌 선택" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none w-full sm:w-48" data-auto-submit="change">%s</select><select name="scope" aria-label="기준 선택" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none w-full sm:w-48" data-auto-submit="change">%s</select></form></div>%s</div>|html}
 	   (breadcrumb [("홈", "/"); ("리더", "")])
 	   season_options scope_options content)
 	  ()
@@ -2911,7 +2909,7 @@ let awards_page ?(lang=I18n.Ko) ~player_info_map ~season ~seasons ~include_misma
   ~canonical_path:"/awards"
   ~description:"WKBL 여자농구 시상 - MVP, MIP 등 시즌별 통계 기반 어워드 추정 순위"
   ~content:(Printf.sprintf
-	   {html|<div class="space-y-8 animate-fade-in">%s<div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3"><div><h2 class="text-3xl font-black text-slate-900 dark:text-slate-200">수상</h2><p class="text-slate-600 dark:text-slate-400">시즌별 수상 기록과 통계 기반 추정입니다.</p></div><form action="/awards" method="get" class="flex flex-wrap items-center gap-3"><select name="season" aria-label="시즌 선택" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none w-40" onchange="this.form.submit()">%s</select><label class="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400"><input type="checkbox" name="include_mismatch" value="1" %s class="h-4 w-4 rounded border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 accent-orange-500" onchange="this.form.submit()" title="최종 스코어와 득점 합계가 다른 경기 포함"><span>불일치 포함</span></label></form></div>%s<div class="grid grid-cols-1 md:grid-cols-2 gap-6">%s%s</div>%s</div>|html}
+	   {html|<div class="space-y-8 animate-fade-in">%s<div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3"><div><h2 class="text-3xl font-black text-slate-900 dark:text-slate-200">수상</h2><p class="text-slate-600 dark:text-slate-400">시즌별 수상 기록과 통계 기반 추정입니다.</p></div><form action="/awards" method="get" class="flex flex-wrap items-center gap-3"><select name="season" aria-label="시즌 선택" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none w-40" data-auto-submit="change">%s</select><label class="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400"><input type="checkbox" name="include_mismatch" value="1" %s class="h-4 w-4 rounded border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 accent-orange-500" data-auto-submit="change" title="최종 스코어와 득점 합계가 다른 경기 포함"><span>불일치 포함</span></label></form></div>%s<div class="grid grid-cols-1 md:grid-cols-2 gap-6">%s%s</div>%s</div>|html}
 	   (breadcrumb [("홈", "/"); ("수상", "")])
 	   season_options
 	   include_checked
@@ -3139,7 +3137,7 @@ let clutch_page ?(lang=I18n.Ko) ~season ~seasons (stats: clutch_stats list) =
 		     </p>
 		    </div>
 	    <form action="/clutch" method="get" class="flex items-center gap-3">
-     <select name="season" aria-label="시즌 선택" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none w-48" onchange="this.form.submit()">
+     <select name="season" aria-label="시즌 선택" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none w-48" data-auto-submit="change">
       %s
      </select>
     </form>
@@ -3415,7 +3413,7 @@ let position_leaders_page ?(lang=I18n.Ko) ?(player_info_map=None) ~season ~seaso
           <!-- Season Filter -->
           <form action="/leaders/by-position" method="get" class="flex items-center gap-2">
             <input type="hidden" name="position" value="%s" />
-            <select name="season" aria-label="시즌 선택" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm" onchange="this.form.submit()">
+            <select name="season" aria-label="시즌 선택" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm" data-auto-submit="change">
               %s
             </select>
           </form>
