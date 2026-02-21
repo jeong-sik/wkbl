@@ -965,6 +965,15 @@ body.menu-open {
   z-index: 10;
 }
 
+/* Home EFF table readability: align 2-line stat cells with single-line cells */
+#players-table-inner th {
+  vertical-align: bottom;
+}
+
+#players-table-inner td {
+  vertical-align: top;
+}
+
 /* Sortable column header */
 th[data-sortable] {
   cursor: pointer;
