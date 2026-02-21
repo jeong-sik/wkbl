@@ -468,6 +468,12 @@ let drop_games_calc_view = (unit ->. unit) {|
     CREATE INDEX IF NOT EXISTS idx_games_calc_v3_season ON games_calc_v3(season_code)
   |}
 
+  (* Backward compatibility: some stale workers still reference games_calc. *)
+  let ensure_games_calc_compat_view = (unit ->. unit) {|
+    CREATE OR REPLACE VIEW games_calc AS
+    SELECT * FROM games_calc_v3
+  |}
+
   let refresh_games_calc = (unit ->. unit) {|
     REFRESH MATERIALIZED VIEW CONCURRENTLY games_calc_v3
   |}
