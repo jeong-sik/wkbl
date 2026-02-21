@@ -830,7 +830,7 @@ let parse_fa_year_table year_tab =
       (* Header row for round: "1차 협상결과 (2025.04.04)" *)
       | [cell] when Soup.attribute "colspan" cell |> Option.is_some ->
           let text = get_all_text cell in
-          let new_round = if String.length text > 0 && (String.sub text 0 2 = "1차" || String.sub text 0 2 = "2차") then String.sub text 0 2 else current_round in
+          let new_round = if String.length text >= 6 && (String.sub text 0 2 = "1차" || String.sub text 0 2 = "2차") then String.sub text 0 2 else current_round in
           (new_round, acc)
       (* Data row: round, original_team, acquiring_team, name, period, salary, bonus, total *)
       | round_cell :: orig :: acq :: name :: period :: salary :: bonus :: total :: _ ->
