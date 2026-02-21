@@ -9,7 +9,7 @@ let routes ~static_path =
         let content = In_channel.with_open_text manifest_path In_channel.input_all in
         Kirin.with_header "Content-Type" "application/manifest+json"
         @@ Kirin.with_header "Cache-Control" "public, max-age=86400, s-maxage=604800"
-        @@ Kirin.text content
+        @@ Kirin.Response.make ~status:`OK (`String content)
       else
         Kirin.not_found ~body:"manifest.json not found" ());
 
@@ -21,7 +21,7 @@ let routes ~static_path =
         Kirin.with_header "Content-Type" "application/javascript; charset=utf-8"
         @@ Kirin.with_header "Cache-Control" "no-cache"
         @@ Kirin.with_header "Service-Worker-Allowed" "/"
-        @@ Kirin.text content
+        @@ Kirin.Response.make ~status:`OK (`String content)
       else
         Kirin.not_found ~body:"service-worker.js not found" ());
 

@@ -3,29 +3,70 @@
  * Strategy: Cache-first for static, Network-first for API
  */
 
-const CACHE_VERSION = 'wkbl-v1';
+const FALLBACK_SW_VERSION = '20260220';
+const SW_VERSION = (() => {
+  try {
+    return new URL(self.location.href).searchParams.get('v') || FALLBACK_SW_VERSION;
+  } catch (_) {
+    return FALLBACK_SW_VERSION;
+  }
+})();
+const CACHE_VERSION = `wkbl-${SW_VERSION}`;
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const DYNAMIC_CACHE = `${CACHE_VERSION}-dynamic`;
 
-// Static assets to cache immediately
-const STATIC_ASSETS = [
-  '/',
+const VERSIONED_ASSET_PATHS = [
   '/static/css/styles.css',
+  '/static/css/tailwind.css',
+  '/static/js/app-init.js',
   '/static/js/htmx-1.9.10.min.js',
-  '/static/js/mobile-nav.js',
-  '/static/js/search-modal.js',
-  '/static/js/skeleton-loader.js',
   '/static/js/page-transitions.js',
+  '/static/js/scroll-shadow.js',
+  '/static/js/table-sort.js',
+  '/static/js/table-export.js',
+  '/static/js/table-row-link.js',
+  '/static/js/number-format.js',
+  '/static/js/a11y-utils.js',
+  '/static/js/skeleton-loader.js',
+  '/static/js/data-freshness.js',
+  '/static/js/search-modal.js',
+  '/static/js/back-to-top.js',
+  '/static/js/chart-tooltip.js',
+  '/static/js/chart.min.js',
+  '/static/js/confetti.js',
+  '/static/js/keyboard-nav.js',
+  '/static/js/notifications.js',
+  '/static/js/player-photo-fallback.js',
+  '/static/js/pull-to-refresh.js',
+  '/static/js/search-autocomplete.js',
   '/static/js/theme-toggle.js',
   '/static/js/share-utils.js',
-  '/static/js/table-sort.js',
-  '/static/js/a11y-utils.js',
+  '/static/js/mobile-nav.js',
+  '/static/js/touch-ripple.js',
+  '/sw.js',
   '/static/images/favicon-32.png',
   '/static/images/favicon-512.png',
   '/static/images/apple-touch-icon.png',
   '/static/images/og-image.jpeg',
-  '/manifest.json'
 ];
+
+const isStaticRequest = (url) =>
+  url.pathname === '/manifest.json' || url.pathname === '/sw.js' || url.pathname.startsWith('/static/');
+
+const STATIC_ASSETS = [
+  '/',
+  '/manifest.json',
+  ...VERSIONED_ASSET_PATHS.map((path) => `${path}?v=${SW_VERSION}`),
+];
+
+const withVersion = (requestUrl) => {
+  if (requestUrl.pathname.startsWith('/static/') && !requestUrl.searchParams.has('v')) {
+    const withV = new URL(requestUrl.href);
+    withV.searchParams.set('v', SW_VERSION);
+    return withV;
+  }
+  return requestUrl;
+};
 
 // Routes that should use network-first (data/API endpoints)
 const NETWORK_FIRST_PATHS = [
@@ -80,7 +121,7 @@ self.addEventListener('fetch', (event) => {
   }
 
   // Cache-first for static assets
-  if (url.pathname.startsWith('/static/') || url.pathname === '/manifest.json') {
+  if (isStaticRequest(url)) {
     event.respondWith(cacheFirst(request));
     return;
   }
@@ -91,14 +132,25 @@ self.addEventListener('fetch', (event) => {
 
 // Cache-first strategy
 async function cacheFirst(request) {
+  const requestUrl = new URL(request.url);
+  const versionedRequestUrl = withVersion(requestUrl);
+  const versionedRequest =
+    versionedRequestUrl.toString() === request.url
+      ? request
+      : new Request(versionedRequestUrl.toString(), request);
+
   const cached = await caches.match(request);
   if (cached) return cached;
+  if (versionedRequest !== request) {
+    const versionedCached = await caches.match(versionedRequest);
+    if (versionedCached) return versionedCached;
+  }
 
   try {
     const response = await fetch(request);
     if (response.ok) {
       const cache = await caches.open(STATIC_CACHE);
-      cache.put(request, response.clone());
+      await cache.put(versionedRequest, response.clone());
     }
     return response;
   } catch (err) {
@@ -239,7 +291,12 @@ function offlineHTML() {
     <h1>🏀</h1>
     <h2>오프라인 상태입니다</h2>
     <p>인터넷 연결을 확인해 주세요.</p>
-    <button onclick="location.reload()">다시 시도</button>
+    <button id="offline-retry-btn" type="button">다시 시도</button>
+    <script>
+      document.getElementById('offline-retry-btn')?.addEventListener('click', function() {
+        location.reload();
+      });
+    </script>
   </div>
 </body>
 </html>`;
