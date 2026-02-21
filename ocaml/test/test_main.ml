@@ -2510,9 +2510,23 @@ let test_layout_observability_on () =
   Alcotest.(check bool) "clarity snippet base url" true (contains_substring html "clarity.ms/tag/");
   Alcotest.(check bool) "clarity snippet includes id" true (contains_substring html "clarity123")
 
+let test_layout_language_menu_integrity () =
+  let html =
+    Wkbl.Views_common.layout
+      ~title:"WKBL"
+      ~content:{html|<main id="main-content">hi</main>|html}
+      ()
+  in
+  Alcotest.(check bool) "language details exists" true (contains_substring html {|<details class="relative">|});
+  Alcotest.(check bool) "theme toggle label is valid" true (contains_substring html {|id="theme-toggle" type="button" aria-label="다크모드 전환"|});
+  Alcotest.(check bool) "theme sr-on" true (contains_substring html {|data-sr-on="다크 모드 활성화"|});
+  Alcotest.(check bool) "language links exist" true (contains_substring html {|href="/lang/ko"|});
+  Alcotest.(check bool) "broken injected details label absent" false (contains_substring html {|aria-label="<details class="|})
+
 let observability_tests = [
   Alcotest.test_case "layout without scripts" `Quick test_layout_observability_off;
   Alcotest.test_case "layout with scripts" `Quick test_layout_observability_on;
+  Alcotest.test_case "layout language menu integrity" `Quick test_layout_language_menu_integrity;
 ]
 
 (* ============================================= *)
