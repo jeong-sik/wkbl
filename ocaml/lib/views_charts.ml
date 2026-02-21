@@ -343,15 +343,19 @@ let team_shooting_comparison (teams: team_stats list) =
 let team_radar_chart ?(selected_teams = []) (teams: team_stats list) =
   if teams = [] then ""
   else
-    (* WKBL team colors *)
-    let team_color name = match name with
-      | "KB스타즈" -> ("#FFCC00", "rgba(255,204,0,0.2)")  (* Yellow *)
-      | "삼성생명" -> ("#004098", "rgba(0,64,152,0.2)")  (* Blue *)
-      | "우리은행" -> ("#003366", "rgba(0,51,102,0.2)")  (* Navy *)
-      | "하나원큐" -> ("#00B8A9", "rgba(0,184,169,0.2)")  (* Teal *)
-      | "신한은행" -> ("#004AAD", "rgba(0,74,173,0.2)")  (* Blue *)
-      | "OK저축은행" -> ("#EE3338", "rgba(238,51,56,0.2)")  (* Red *)
-      | _ -> ("#F97316", "rgba(249,115,22,0.2)")  (* Default orange *)
+    (* Derive chart colors from Domain.team_code_to_color (single source) *)
+    let hex_to_rgba hex alpha =
+      let r = int_of_string ("0x" ^ String.sub hex 1 2) in
+      let g = int_of_string ("0x" ^ String.sub hex 3 2) in
+      let b = int_of_string ("0x" ^ String.sub hex 5 2) in
+      Printf.sprintf "rgba(%d,%d,%d,%g)" r g b alpha
+    in
+    let team_color name =
+      let hex = Domain.team_code_of_string name
+        |> Option.map Domain.team_code_to_color
+        |> Option.value ~default:"#F97316"
+      in
+      (hex, hex_to_rgba hex 0.2)
     in
 
     (* Filter teams if selection provided, otherwise use top 3 by EFF *)

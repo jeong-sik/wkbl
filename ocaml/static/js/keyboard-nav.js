@@ -21,25 +21,8 @@
   let keyTimer = null;
   let previousFocusEl = null;
 
-  // Create skip link for keyboard users
-  function createSkipLink() {
-    if (document.getElementById('skip-to-content')) return;
-
-    const skipLink = document.createElement('a');
-    skipLink.id = 'skip-to-content';
-    skipLink.href = '#main-content';
-    skipLink.className = [
-      'sr-only focus:not-sr-only',
-      'fixed top-2 left-2 z-[300]',
-      'bg-orange-500 text-white',
-      'px-4 py-2 rounded-lg',
-      'focus:outline-none focus:ring-2 focus:ring-white'
-    ].join(' ');
-    skipLink.textContent = '본문으로 건너뛰기';
-
-    // Insert at the very beginning of body
-    document.body.insertBefore(skipLink, document.body.firstChild);
-  }
+  // Skip link is rendered server-side in views_common.ml with .skip-link class.
+  // No JS creation needed — CSS handles visibility on :focus.
 
   function showHelp() {
     // Check if help modal already exists
@@ -185,9 +168,6 @@
   }
 
   function init() {
-    // Create skip link for accessibility
-    createSkipLink();
-
     document.addEventListener('keydown', handleKeyDown);
 
     // Add CSS for kbd elements and accessibility
