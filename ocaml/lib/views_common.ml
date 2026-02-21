@@ -1,8 +1,5 @@
 open Domain
 
-(** Cache-busting version for static JS assets. Update on each deploy. *)
-let static_version = "20260214"
-
 (* Seed PRNG at module load for CSP nonce generation *)
 let () = Random.self_init ()
 
@@ -106,6 +103,19 @@ let env_nonempty name =
   | Some v ->
       let t = String.trim v in
       if t = "" then None else Some t
+
+let static_version =
+  let fallback = "20260220" in
+  match env_nonempty "WKBL_STATIC_VERSION" with
+  | Some v -> v
+  | None -> (
+      match env_nonempty "RAILWAY_GIT_COMMIT_SHA" with
+      | Some sha when String.length sha >= 8 -> String.sub sha 0 8
+      | Some sha -> sha
+      | None -> fallback
+    )
+
+let static_asset path = path ^ "?v=" ^ static_version
 
 let sentry_public_key_of_dsn dsn =
   match Uri.userinfo (Uri.of_string dsn) with
@@ -387,7 +397,7 @@ let player_img_tag ?(class_name="w-12 h-12") player_id name =
     | Some (w, h) -> Printf.sprintf " width=\"%d\" height=\"%d\"" w h
     | None -> ""
   in
-  Printf.sprintf {html|<img src="%s" alt="%s" class="%s rounded-full object-cover bg-slate-100 border border-slate-300" loading="lazy" onerror="this.src='/static/images/player_placeholder.svg'"%s>|html}
+  Printf.sprintf {html|<img src="%s" alt="%s" class="%s rounded-full object-cover bg-slate-100 border border-slate-300" loading="lazy" data-placeholder="/static/images/player_placeholder.svg"%s>|html}
     remote_src
     (escape_html name)
     class_name
@@ -463,7 +473,20 @@ let empty_state ?icon title desc =
   let _ = icon in
   Printf.sprintf {html|<div class="text-center py-12 px-4"><div class="text-4xl mb-4">🏀</div><h3 class="text-lg font-bold text-slate-900 dark:text-slate-200">%s</h3><p class="text-slate-500 dark:text-slate-400">%s</p></div>|html} title desc
 
-let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json_ld="") ?og_title ?og_description ?og_image ?data_freshness ?(has_charts=false) ~content () =
+let layout
+    ?(lang = I18n.Ko)
+    ~title
+    ?(canonical_path = "/")
+    ?(description = "")
+    ?(json_ld = "")
+    ?og_title
+    ?og_description
+    ?og_image
+    ?data_freshness
+    ?(has_charts = false)
+    ?(show_header = true)
+    ?(show_footer = true)
+    ~content () =
   let json_ld_html = if json_ld = "" then "" else
     Printf.sprintf {|<script type="application/ld+json">%s</script>|} json_ld
   in
@@ -558,13 +581,35 @@ let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json
   in
 
   let chart_js_html = if has_charts then
-    {|<script src="/static/js/chart.min.js"></script>
+    let chart_js = static_asset "/static/js/chart.min.js" in
+    Printf.sprintf {html|<script src="%s"></script>
   <script>
     Chart.defaults.font.family = 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace';
     Chart.defaults.color = '#94a3b8';
     Chart.defaults.scale.grid.color = '#334155';
-  </script>|}
+  </script>|html} chart_js
   else "" in
+
+  let tailwind_css = static_asset "/static/css/tailwind.css" in
+  let styles_css = static_asset "/static/css/styles.css" in
+  let app_init_js = static_asset "/static/js/app-init.js" in
+  let htmx_js = static_asset "/static/js/htmx-1.9.10.min.js" in
+  let page_transitions_js = static_asset "/static/js/page-transitions.js" in
+  let scroll_shadow_js = static_asset "/static/js/scroll-shadow.js" in
+  let table_sort_js = static_asset "/static/js/table-sort.js" in
+  let table_export_js = static_asset "/static/js/table-export.js" in
+  let table_row_link_js = static_asset "/static/js/table-row-link.js" in
+  let number_format_js = static_asset "/static/js/number-format.js" in
+  let a11y_utils_js = static_asset "/static/js/a11y-utils.js" in
+  let skeleton_loader_js = static_asset "/static/js/skeleton-loader.js" in
+  let data_freshness_js = static_asset "/static/js/data-freshness.js" in
+  let search_modal_js = static_asset "/static/js/search-modal.js" in
+  let sw_register_js = static_asset "/static/js/sw-register.js" in
+  let mobile_nav_js = static_asset "/static/js/mobile-nav.js" in
+  let team_roster_js = static_asset "/static/js/team-roster.js" in
+  let player_trends_js = static_asset "/static/js/player-trends.js" in
+  let notifications_js = static_asset "/static/js/notifications.js" in
+  let share_utils_js = static_asset "/static/js/share-utils.js" in
 
   let nav_players = tr { ko = "선수"; en = "Players" } in
   let nav_teams = tr { ko = "팀"; en = "Teams" } in
@@ -576,6 +621,7 @@ let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json
   let skip_to_content = tr { ko = "본문으로 건너뛰기"; en = "Skip to content" } in
   let aria_toggle_theme = tr { ko = "다크모드 전환"; en = "Toggle theme" } in
   let aria_open_menu = tr { ko = "메뉴 열기"; en = "Open menu" } in
+  let aria_close_menu = tr { ko = "메뉴 닫기"; en = "Close menu" } in
 
   let sr_dark_on = tr { ko = "다크 모드 활성화"; en = "Dark mode on" } in
   let sr_dark_off = tr { ko = "라이트 모드 활성화"; en = "Light mode on" } in
@@ -606,85 +652,95 @@ let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json
       (item_cls (lang = I18n.En))
   in
 
-  let html = Printf.sprintf {html|<!DOCTYPE html>
-<html lang="%s">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>%s</title>
-  %s
-  %s
-  <link rel="manifest" href="/manifest.json">
-  <link rel="stylesheet" href="/static/css/tailwind.css?v=20260220">
-  <link rel="stylesheet" href="/static/css/styles.css?v=20260220">
-	  %s
-</head>
-<body class="bg-slate-50 dark:bg-[#0b0e14] text-slate-900 dark:text-slate-200">
-  <!-- Skip to main content link for keyboard users -->
-  <a href="#main-content" class="skip-link">%s</a>
-
-  <!-- ARIA live region for dynamic content announcements -->
-  <div id="aria-live" aria-live="polite" aria-atomic="true" class="sr-only"></div>
-
-  <!-- Header with navigation and dark mode toggle -->
-  <header class="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-40">
-	    <nav class="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
-		      <div class="flex items-center gap-4">
-	        <a href="/" class="flex items-center gap-2 font-bold text-lg text-orange-700 dark:text-orange-400">
-	          <span>🏀</span>
-	          <span>WKBL</span>
-	        </a>
-		        <div class="hidden md:flex items-center gap-4 text-sm">
-		          <a href="/players" class="text-slate-600 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors">%s</a>
-		          <a href="/teams" class="text-slate-600 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors">%s</a>
-		          <a href="/standings" class="text-slate-600 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors">%s</a>
-		          <a href="/games" class="text-slate-600 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors">%s</a>
-		          <a href="/compare" class="text-slate-600 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors">%s</a>
-		          <a href="/predict" class="text-slate-600 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors">%s</a>
-	      </div>
+  let header_html =
+    if not show_header then ""
+    else
+      Printf.sprintf
+        {html|  <header class="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-40">
+    <nav class="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between" aria-label="메인 내비게이션">
+      <div class="flex items-center gap-4">
+        <a href="/" class="flex items-center gap-2 font-bold text-lg text-orange-700 dark:text-orange-400">
+          <span>🏀</span>
+          <span>WKBL</span>
+        </a>
+        <div class="hidden md:flex items-center gap-4 text-sm">
+          <a href="/players" class="text-slate-600 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors">%s</a>
+          <a href="/teams" class="text-slate-600 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors">%s</a>
+          <a href="/standings" class="text-slate-600 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors">%s</a>
+          <a href="/games" class="text-slate-600 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors">%s</a>
+          <a href="/compare" class="text-slate-600 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors">%s</a>
+          <a href="/predict" class="text-slate-600 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors">%s</a>
+        </div>
       </div>
       <div class="flex items-center gap-2">
-        <button type="button" onclick="window.SearchModal&&SearchModal.open()" aria-label="%s (Cmd+K)" class="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition-colors group text-sm">
+        <button type="button" data-search-trigger aria-label="%s (Cmd+K)" class="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition-colors group text-sm">
           <svg class="w-4 h-4 text-slate-400 group-hover:text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
           <span class="text-slate-400">%s</span>
           <kbd class="ml-1 px-1.5 py-0.5 text-[10px] font-mono text-slate-400 bg-white dark:bg-slate-700 rounded border border-slate-200 dark:border-slate-600">⌘K</kbd>
         </button>
-        <button type="button" onclick="window.SearchModal&&SearchModal.open()" aria-label="%s" class="md:hidden p-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors group">
-          <svg class="w-5 h-5 text-slate-500 dark:text-slate-400 group-hover:text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-        </button>
-        %s
         %s
         <button id="theme-toggle" type="button" aria-label="%s" aria-pressed="false" data-sr-on="%s" data-sr-off="%s" class="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
-	          <svg id="theme-icon-light" class="w-5 h-5 hidden dark:block text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"/></svg>
-	          <svg id="theme-icon-dark" class="w-5 h-5 block dark:hidden text-slate-600" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>
-	        </button>
-	        <button id="mobile-menu-toggle" type="button" aria-label="%s" data-sr-open="%s" data-sr-close="%s" class="md:hidden p-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+          <svg id="theme-icon-light" class="w-5 h-5 hidden dark:block text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"/></svg>
+          <svg id="theme-icon-dark" class="w-5 h-5 block dark:hidden text-slate-600" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>
+        </button>
+        <button id="mobile-menu-btn" type="button" aria-label="%s" aria-expanded="false" data-sr-open="%s" data-sr-close="%s" class="md:hidden p-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
           <svg class="w-5 h-5 text-slate-600 dark:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
         </button>
       </div>
     </nav>
-    <!-- Mobile menu -->
-		    <div id="mobile-menu" class="hidden md:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-		      <div class="px-4 py-3 space-y-2">
-		        <a href="/players" class="block py-3 px-4 rounded-lg text-base font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">%s</a>
-		        <a href="/teams" class="block py-3 px-4 rounded-lg text-base font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">%s</a>
-		        <a href="/standings" class="block py-3 px-4 rounded-lg text-base font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">%s</a>
-		        <a href="/games" class="block py-3 px-4 rounded-lg text-base font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">%s</a>
-		        <a href="/compare" class="block py-3 px-4 rounded-lg text-base font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">%s</a>
-		        <a href="/predict" class="block py-3 px-4 rounded-lg text-base font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">%s</a>
-		        <button type="button" onclick="window.SearchModal&&SearchModal.open();document.getElementById('mobile-menu').classList.add('hidden')" class="w-full text-left py-3 px-4 rounded-lg text-base font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center gap-2">
-		          <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-		          %s
-		        </button>
-		      </div>
-		    </div>
-		  </header>
+    <div id="mobile-menu-overlay" class="fixed inset-0 z-50 hidden md:hidden bg-black/50">
+      <aside id="mobile-menu-panel" class="ml-auto w-72 sm:w-80 h-full bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 translate-x-full transform transition-transform duration-300 shadow-2xl flex flex-col">
+        <div class="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-800">
+          <span class="font-bold text-lg text-orange-700 dark:text-orange-400">WKBL</span>
+          <button id="mobile-menu-close" type="button" class="p-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors" aria-label="%s">
+            <svg class="w-5 h-5 text-slate-600 dark:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div class="px-4 py-3 space-y-2 overflow-y-auto">
+          <a href="/players" class="block py-3 px-4 rounded-lg text-base font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">%s</a>
+          <a href="/teams" class="block py-3 px-4 rounded-lg text-base font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">%s</a>
+          <a href="/standings" class="block py-3 px-4 rounded-lg text-base font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">%s</a>
+          <a href="/games" class="block py-3 px-4 rounded-lg text-base font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">%s</a>
+          <a href="/compare" class="block py-3 px-4 rounded-lg text-base font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">%s</a>
+          <a href="/predict" class="block py-3 px-4 rounded-lg text-base font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">%s</a>
+          <button type="button" data-search-trigger aria-label="%s" class="w-full text-left py-3 px-4 rounded-lg text-base font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center gap-2">
+            <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            %s
+          </button>
+        </div>
+      </aside>
+    </div>
+  </header>|html}
+        (escape_html nav_players)
+        (escape_html nav_teams)
+        (escape_html nav_standings)
+        (escape_html nav_games)
+        (escape_html nav_compare)
+        (escape_html nav_predict)
+        (escape_html nav_search)
+        (escape_html nav_search_placeholder)
+        freshness_html
+        lang_menu
+        (escape_html aria_toggle_theme)
+        (escape_html sr_dark_on)
+        (escape_html sr_dark_off)
+        (escape_html aria_open_menu)
+        (escape_html sr_menu_open)
+        (escape_html sr_menu_close)
+        (escape_html aria_close_menu)
+        (escape_html nav_players)
+        (escape_html nav_teams)
+        (escape_html nav_standings)
+        (escape_html nav_games)
+        (escape_html nav_compare)
+        (escape_html nav_predict)
+        (escape_html nav_search)
+  in
 
-  <main id="main-content" role="main" tabindex="-1" class="max-w-7xl mx-auto px-4 py-6">
-    %s
-  </main>
-
-  <footer class="mt-auto border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/50 py-8">
+  let footer_html =
+    if not show_footer then ""
+    else
+      {html|  <footer class="mt-auto border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/50 py-8">
     <div class="max-w-7xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-4">
       <div class="flex items-center gap-2 font-bold text-slate-400 dark:text-slate-600">
         <span>🏀</span>
@@ -700,59 +756,86 @@ let layout ?(lang=I18n.Ko) ~title ?(canonical_path="/") ?(description="") ?(json
         &copy; 2026 WKBL.win
       </div>
     </div>
-  </footer>
+  </footer>|html}
+  in
 
-  <!-- Toast notification container -->
+  let html = Printf.sprintf {html|<!DOCTYPE html>
+<html lang="%s" data-static-version="%s">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>%s</title>
+  %s
+  %s
+  <link rel="manifest" href="/manifest.json">
+  <link rel="stylesheet" href="%s">
+  <link rel="stylesheet" href="%s">
+  %s
+</head>
+<body class="bg-slate-50 dark:bg-[#0b0e14] text-slate-900 dark:text-slate-200">
+  <a href="#main-content" class="skip-link">%s</a>
+  <div id="aria-live" aria-live="polite" aria-atomic="true" class="sr-only"></div>
+
+  %s
+  <main id="main-content" role="main" tabindex="-1" class="max-w-7xl mx-auto px-4 py-6">
+    %s
+  </main>
+  %s
+
   <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2" aria-live="polite"></div>
 
-  <script src="/static/js/app-init.js?v=20260220"></script>
-		  <script src="/static/js/htmx-1.9.10.min.js"></script>
-			  <script src="/static/js/page-transitions.js?v=20260220"></script>
-			  <script src="/static/js/scroll-shadow.js?v=20260220"></script>
-			  <script src="/static/js/table-sort.js?v=20260220"></script>
-			  <script src="/static/js/table-export.js?v=20260220"></script>
-			  <script src="/static/js/table-row-link.js?v=20260220"></script>
-			  <script src="/static/js/number-format.js?v=20260220"></script>
-			  <script src="/static/js/a11y-utils.js?v=20260220"></script>
-			  <script src="/static/js/skeleton-loader.js?v=20260220"></script>
-			  <script src="/static/js/data-freshness.js?v=20260220"></script>
-			  <script src="/static/js/search-modal.js?v=20260220"></script>
-			  <script>if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js')}</script>
   %s
-				</body>
-			</html>|html}
-	    (escape_html html_lang)
-	    title
-	    seo_html
-	    og_img_html
-	    (observability_html ^ json_ld_html)
-	    (escape_html skip_to_content)
-	    (escape_html nav_players)
-	    (escape_html nav_teams)
-	    (escape_html nav_standings)
-	    (escape_html nav_games)
-	    (escape_html nav_compare)
-		    (escape_html nav_predict)
-		    (escape_html nav_search)
-		    (escape_html nav_search_placeholder)
-		    (escape_html nav_search)
-		    freshness_html
-		    lang_menu
-		    (escape_html aria_toggle_theme)
-		    (escape_html sr_dark_on)
-		    (escape_html sr_dark_off)
-		    (escape_html aria_open_menu)
-		    (escape_html sr_menu_open)
-		    (escape_html sr_menu_close)
-		    (escape_html nav_players)
-		    (escape_html nav_teams)
-	    (escape_html nav_standings)
-	    (escape_html nav_games)
-	    (escape_html nav_compare)
-	    (escape_html nav_predict)
-	    (escape_html nav_search)
-	    content
-	    chart_js_html
+  <script defer src="%s"></script>
+  <script defer src="%s"></script>
+  <script defer src="%s"></script>
+  <script defer src="%s"></script>
+  <script defer src="%s"></script>
+  <script defer src="%s"></script>
+  <script defer src="%s"></script>
+  <script defer src="%s"></script>
+  <script defer src="%s"></script>
+  <script defer src="%s"></script>
+  <script defer src="%s"></script>
+  <script defer src="%s"></script>
+  <script defer src="%s"></script>
+  <script defer src="%s"></script>
+  <script defer src="%s"></script>
+  <script defer src="%s"></script>
+  <script defer src="%s"></script>
+  <script defer src="%s"></script>
+</body>
+</html>|html}
+    (escape_html html_lang)
+    (escape_html static_version)
+    title
+    seo_html
+    og_img_html
+    tailwind_css
+    styles_css
+    (observability_html ^ json_ld_html)
+    (escape_html skip_to_content)
+    header_html
+    content
+    footer_html
+    chart_js_html
+    app_init_js
+    htmx_js
+    page_transitions_js
+    scroll_shadow_js
+    table_sort_js
+    table_export_js
+    table_row_link_js
+    number_format_js
+    a11y_utils_js
+    skeleton_loader_js
+    data_freshness_js
+    search_modal_js
+    mobile_nav_js
+    team_roster_js
+    player_trends_js
+    notifications_js
+    share_utils_js
+    sw_register_js
   in
   (* CSP nonce injection: generate per-request nonce, inject into all opening
      <script tags, and prepend a CSP meta tag in <head>. *)
@@ -1724,17 +1807,20 @@ let loading_placeholder ?(message="데이터를 불러오는 중...") () =
     @param retry_url URL to reload (optional, uses JS reload if not provided)
 *)
 let error_with_retry ?(retry_url="") ~message () =
-  let retry_action = if retry_url = "" then "location.reload()" else Printf.sprintf "location.href='%s'" retry_url in
+  let retry_attr =
+    if retry_url = "" then {|data-retry-action="reload"|}
+    else Printf.sprintf {|data-retry-url="%s"|} (escape_html retry_url)
+  in
   Printf.sprintf {html|<div class="flex flex-col items-center justify-center py-12 gap-4 text-center">
     <div class="text-5xl">😵</div>
     <div class="space-y-2">
       <h3 class="text-lg font-bold text-slate-900 dark:text-slate-200">문제가 발생했습니다</h3>
       <p class="text-slate-500 dark:text-slate-400 text-sm max-w-md">%s</p>
     </div>
-    <button onclick="%s" class="mt-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/50">
+    <button %s class="mt-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/50">
       🔄 다시 시도
     </button>
-  </div>|html} (escape_html message) retry_action
+  </div>|html} (escape_html message) retry_attr
 
 (** Toast notification container (add to layout)
     JavaScript functions:

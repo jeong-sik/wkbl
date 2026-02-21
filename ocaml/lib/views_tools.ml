@@ -48,7 +48,9 @@ let qa_dashboard_page ?(lang=I18n.Ko) (report: Db.qa_db_report) ?(markdown=None)
   let flag_missing_team = tr { ko = "팀 정보 누락"; en = "Missing team info" } in
 
   let int_chip v =
-    Printf.sprintf {html|<div class="text-2xl font-black text-slate-900 dark:text-slate-200 font-mono tabular-nums">%d</div>|html} v
+    Printf.sprintf
+      {html|<div class="text-2xl font-black text-slate-900 dark:text-slate-200 font-mono tabular-nums">%s</div>|html}
+      (format_int_commas v)
   in
   let pct_chip v =
     Printf.sprintf {html|<div class="text-2xl font-black text-slate-900 dark:text-slate-200 font-mono tabular-nums">%.1f<span class="text-base text-slate-500 dark:text-slate-400">%%</span></div>|html} v
@@ -621,7 +623,9 @@ let qa_pbp_missing_page
   in
 
   let int_chip v =
-    Printf.sprintf {html|<div class="text-2xl font-black text-slate-900 dark:text-slate-200 font-mono tabular-nums">%d</div>|html} v
+    Printf.sprintf
+      {html|<div class="text-2xl font-black text-slate-900 dark:text-slate-200 font-mono tabular-nums">%s</div>|html}
+      (format_int_commas v)
   in
   let pct_chip v =
     Printf.sprintf {html|<div class="text-2xl font-black text-slate-900 dark:text-slate-200 font-mono tabular-nums">%.1f%%</div>|html} v
@@ -715,7 +719,7 @@ let qa_pbp_missing_page
       <div class="mt-1 text-sm text-slate-600 dark:text-slate-400">%s</div>
     </div>
     <form action="/qa/pbp-missing" method="get" class="flex items-center gap-2">
-      <select name="season" aria-label="시즌 선택" onchange="this.form.submit()" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/40 transition-colors">
+      <select name="season" aria-label="시즌 선택" data-auto-submit="change" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/40 transition-colors">
         %s
       </select>
     </form>
@@ -759,7 +763,9 @@ let qa_schedule_missing_page ?(lang=I18n.Ko) (report: Db.qa_schedule_missing_rep
   in
 
   let int_chip v =
-    Printf.sprintf {html|<div class="text-2xl font-black text-slate-900 dark:text-slate-200 font-mono tabular-nums">%d</div>|html} v
+    Printf.sprintf
+      {html|<div class="text-2xl font-black text-slate-900 dark:text-slate-200 font-mono tabular-nums">%s</div>|html}
+      (format_int_commas v)
   in
   let kpi_card ~label ~value_html ~hint_html =
     Printf.sprintf
@@ -773,7 +779,7 @@ let qa_schedule_missing_page ?(lang=I18n.Ko) (report: Db.qa_schedule_missing_rep
     | "games_UNKNOWN_team_code" -> tr { ko = "팀 정보 누락"; en = "Missing team info" }
     | "team_code_mismatch" -> tr { ko = "팀 정보 불일치(같은 날짜)"; en = "Team mismatch (same date)" }
     | "schedule_alpha_code" -> tr { ko = "일정 팀 코드 형식 이상"; en = "Unexpected team code format" }
-    | "schedule_allstar_AS" -> tr { ko = "올스타(AS) 임시 표기"; en = "All-star (AS) marker" }
+    | "schedule_allstar_AS" -> tr { ko = "올스타(AS) 표기"; en = "All-star (AS) marker" }
     | "no_game_on_date" -> tr { ko = "해당 날짜 경기 없음"; en = "No game on that date" }
     | "home_away_swapped" -> tr { ko = "홈/원정 뒤바뀜"; en = "Home/away swapped" }
     | other -> other |> String.map (fun c -> if c = '_' then ' ' else c)
@@ -1275,7 +1281,7 @@ let rec fantasy_calculator_page
   </div>
   <input type="range" id="%s" name="%s" value="%.1f" min="%.1f" max="%.1f" step="%.1f"
          class="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-orange-500"
-         oninput="document.getElementById('%s-value').textContent = this.value">
+         data-fantasy-slider="1" data-sync-target="%s-value">
 </div>|html}
       id label id value id id value min_val max_val step id
   in
@@ -1285,7 +1291,7 @@ let rec fantasy_calculator_page
             class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-lg space-y-5">
   <div class="flex items-center justify-between">
     <h3 class="text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-xs">점수 설정</h3>
-    <button type="button" onclick="resetRules()" class="text-[11px] text-slate-500 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400">기본값</button>
+    <button type="button" data-fantasy-reset="1" class="text-[11px] text-slate-500 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400">기본값</button>
   </div>
   <input type="hidden" name="season" value="%s">
   <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -1299,21 +1305,7 @@ let rec fantasy_calculator_page
   <div class="pt-2 text-[11px] text-slate-500 dark:text-slate-400">
     점수는 득점, 리바운드, 어시스트, 스틸, 블록, 턴오버에 가중치를 곱해 합산합니다.
   </div>
-</form>
-<script>
-function resetRules() {
-  document.getElementById('pts').value = 1.0;
-  document.getElementById('reb').value = 1.2;
-  document.getElementById('ast').value = 1.5;
-  document.getElementById('stl').value = 2.0;
-  document.getElementById('blk').value = 2.0;
-  document.getElementById('tov').value = -1.0;
-  ['pts', 'reb', 'ast', 'stl', 'blk', 'tov'].forEach(id => {
-    document.getElementById(id + '-value').textContent = document.getElementById(id).value;
-  });
-  htmx.trigger('#fantasy-form', 'change');
-}
-</script>|html}
+</form>|html}
       (escape_html season)
       (slider_input ~id:"pts" ~label:"득점" ~value:rules.fsr_points ~min_val:0.0 ~max_val:3.0 ~step:0.1)
       (slider_input ~id:"reb" ~label:"리바운드" ~value:rules.fsr_rebounds ~min_val:0.0 ~max_val:3.0 ~step:0.1)
@@ -1334,8 +1326,7 @@ function resetRules() {
 	  </div>
 	  <div class="flex items-center gap-3">
 	    <label for="season-select" class="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest">시즌</label>
-	    <select id="season-select" class="bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700/60 rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-slate-200 focus:border-orange-500 focus:outline-none"
-	            onchange="window.location.href='/fantasy?season=' + this.value">
+    <select id="season-select" data-season-redirect="/fantasy?season=" class="bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700/60 rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-slate-200 focus:border-orange-500 focus:outline-none">
 	      %s
 	    </select>
 	  </div>
@@ -2556,7 +2547,7 @@ let qa_anomalies_page
       <div class="mt-1 text-sm text-slate-600 dark:text-slate-400">%s</div>
     </div>
     <form action="/qa/anomalies" method="get" class="flex items-center gap-2">
-      <select name="season" aria-label="시즌 선택" onchange="this.form.submit()" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/40 transition-colors">
+      <select name="season" aria-label="시즌 선택" data-auto-submit="change" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/40 transition-colors">
         %s
       </select>
     </form>
