@@ -24,8 +24,8 @@ python3 -c "
 import psycopg2
 conn = psycopg2.connect('$DB_URL')
 conn.autocommit = True
-conn.cursor().execute('REFRESH MATERIALIZED VIEW games_calc')
-print('✅ games_calc 리프레시 완료')
+conn.cursor().execute('REFRESH MATERIALIZED VIEW games_calc_v3')
+print('✅ games_calc_v3 리프레시 완료')
 conn.close()
 "
 
