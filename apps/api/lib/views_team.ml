@@ -30,16 +30,20 @@ let team_profile_page ?(lang=I18n.Ko) ?(player_info_map=None) (detail: team_full
    | Some i ->
     let prev_link =
      if i > 0 then
-      let prev = List.nth seasons (i - 1) in
-      Printf.sprintf {html|<a href="%s?season=%s" class="text-sm text-slate-500 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors" title="%s">&larr; %s</a>|html}
-       (team_href t) prev.code (escape_html prev.name) (escape_html prev.name)
+      match List.nth_opt seasons (i - 1) with
+      | Some prev ->
+        Printf.sprintf {html|<a href="%s?season=%s" class="text-sm text-slate-500 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors" title="%s">&larr; %s</a>|html}
+         (team_href t) prev.code (escape_html prev.name) (escape_html prev.name)
+      | None -> ""
      else ""
     in
     let next_link =
      if i < List.length seasons - 1 then
-      let next = List.nth seasons (i + 1) in
-      Printf.sprintf {html|<a href="%s?season=%s" class="text-sm text-slate-500 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors" title="%s">%s &rarr;</a>|html}
-       (team_href t) next.code (escape_html next.name) (escape_html next.name)
+      match List.nth_opt seasons (i + 1) with
+      | Some next ->
+        Printf.sprintf {html|<a href="%s?season=%s" class="text-sm text-slate-500 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors" title="%s">%s &rarr;</a>|html}
+         (team_href t) next.code (escape_html next.name) (escape_html next.name)
+      | None -> ""
      else ""
     in
     Printf.sprintf {html|<div class="flex items-center justify-between">%s%s</div>|html} prev_link next_link
@@ -219,7 +223,7 @@ let team_profile_page ?(lang=I18n.Ko) ?(player_info_map=None) (detail: team_full
  in
 	                    let roster_table_inner =
 	                     Printf.sprintf
-	                      {html|<table class="roster-table min-w-[980px] w-full text-xs sm:text-sm font-mono table-fixed tabular-nums" aria-label="팀 로스터">
+	                      {html|<table class="roster-table min-w-[980px] w-full text-xs sm:text-sm font-mono table-auto tabular-nums" aria-label="팀 로스터">
 	                       <colgroup>
 	                         <col style="width: 50px;">  <!-- # -->
 	                         <col style="width: 200px;"> <!-- Player -->
@@ -364,7 +368,7 @@ let team_profile_page ?(lang=I18n.Ko) ?(player_info_map=None) (detail: team_full
    team_sum_ftm team_sum_fta (pct team_sum_ftm team_sum_fta)
   in
   Printf.sprintf
-   {html|<table class="roster-table min-w-[850px] w-full text-xs sm:text-sm font-mono table-fixed tabular-nums" aria-label="팀 로스터 (슈팅)">
+   {html|<table class="roster-table min-w-[850px] w-full text-xs sm:text-sm font-mono table-auto tabular-nums" aria-label="팀 로스터 (슈팅)">
     <colgroup>
       <col style="width: 50px;">
       <col style="width: 180px;">
@@ -486,7 +490,7 @@ let team_profile_page ?(lang=I18n.Ko) ?(player_info_map=None) (detail: team_full
    | None -> ""
   in
   Printf.sprintf
-   {html|<table class="roster-table min-w-[700px] w-full text-xs sm:text-sm font-mono table-fixed tabular-nums" aria-label="팀 로스터 (어드밴스드)">
+   {html|<table class="roster-table min-w-[700px] w-full text-xs sm:text-sm font-mono table-auto tabular-nums" aria-label="팀 로스터 (어드밴스드)">
     <colgroup>
       <col style="width: 50px;">
       <col style="width: 180px;">
@@ -778,8 +782,7 @@ let team_profile_page ?(lang=I18n.Ko) ?(player_info_map=None) (detail: team_full
 				  ~canonical_path:(team_href t)
 				  ~description:(Printf.sprintf "%s WKBL 여자농구 팀 프로필 - 로스터, 경기 결과, 시즌 기록" (escape_html t))
 				  ~json_ld:json_ld_data
-				  ~scripts:With_player_features
-				  ~content:(Printf.sprintf {html|<div class="space-y-6 sm:space-y-8 animate-fade-in">%s<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 sm:p-8 shadow-2xl flex flex-col md:flex-row items-center md:items-start gap-6 sm:gap-8"><div class="w-24 h-24 sm:w-32 sm:h-32 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center p-3 sm:p-4 border-2 border-slate-300 dark:border-slate-700 shadow-inner">%s</div><div class="text-center md:text-left space-y-4 w-full"><div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3"><h1 class="text-3xl sm:text-4xl font-black text-slate-900 dark:text-slate-200">%s</h1><form action="%s" method="get" class="flex flex-col sm:flex-row items-stretch sm:items-center justify-center sm:justify-end gap-2 w-full sm:w-auto"><span class="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-widest font-bold">시즌</span><select name="season" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none w-full sm:w-48" data-auto-submit="change">%s</select></form></div>%s</div></div>%s%s<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8"><div class="space-y-4 lg:col-span-2"><h2 class="text-xl font-bold text-slate-900 dark:text-slate-200">로스터</h2><div id="roster-cards" class="sm:hidden space-y-3">%s</div><details id="roster-table-details" class="sm:hidden bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 p-4" data-toggle-target="roster-cards"><summary class="cursor-pointer font-bold text-slate-700 dark:text-slate-300 select-none">표로 보기</summary><div class="mt-3 overflow-x-auto">%s</div></details><div class="hidden sm:block">%s</div></div><div class="space-y-6 lg:col-span-1"><h2 class="text-xl font-bold text-slate-900 dark:text-slate-200">경기 결과</h2>%s%s<h2 class="text-xl font-bold text-slate-900 dark:text-slate-200">전체 경기</h2><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto max-h-[600px] overflow-y-auto shadow-lg"><table class="min-w-[480px] w-full text-xs sm:text-sm font-mono tabular-nums table-fixed" aria-label="시즌 전체 경기">
+				  ~content:(Printf.sprintf {html|<div class="space-y-6 sm:space-y-8 animate-fade-in">%s<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 sm:p-8 shadow-2xl flex flex-col md:flex-row items-center md:items-start gap-6 sm:gap-8"><div class="w-24 h-24 sm:w-32 sm:h-32 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center p-3 sm:p-4 border-2 border-slate-300 dark:border-slate-700 shadow-inner">%s</div><div class="text-center md:text-left space-y-4 w-full"><div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3"><h1 class="text-3xl sm:text-4xl font-black text-slate-900 dark:text-slate-200">%s</h1><form action="%s" method="get" class="flex flex-col sm:flex-row items-stretch sm:items-center justify-center sm:justify-end gap-2 w-full sm:w-auto"><span class="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-widest font-bold">시즌</span><select name="season" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none w-full sm:w-48" data-auto-submit="change">%s</select></form></div>%s</div></div>%s%s<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8"><div class="space-y-4 lg:col-span-2"><h2 class="text-xl font-bold text-slate-900 dark:text-slate-200">로스터</h2><div id="roster-cards" class="sm:hidden space-y-3">%s</div><details id="roster-table-details" class="sm:hidden bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 p-4" data-toggle-target="roster-cards"><summary class="cursor-pointer font-bold text-slate-700 dark:text-slate-300 select-none">표로 보기</summary><div class="mt-3 overflow-x-auto">%s</div></details><div class="hidden sm:block">%s</div></div><div class="space-y-6 lg:col-span-1"><h2 class="text-xl font-bold text-slate-900 dark:text-slate-200">경기 결과</h2>%s%s<h2 class="text-xl font-bold text-slate-900 dark:text-slate-200">전체 경기</h2><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto max-h-[600px] overflow-y-auto shadow-lg"><table class="min-w-[480px] w-full text-xs sm:text-sm font-mono tabular-nums table-auto" aria-label="시즌 전체 경기">
   	          <colgroup>
   	            <col style="width: 96px;"> <!-- Date -->
   	            <col style="width: auto;"> <!-- Opponent -->

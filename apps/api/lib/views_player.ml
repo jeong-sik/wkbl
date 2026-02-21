@@ -476,7 +476,6 @@ let player_profile_page ?(lang=I18n.Ko) ?(leaderboards=None) ?(show_ops=false) (
   in
   (* Achievement badges derived from profile data + career award history *)
   let achievement_badges_html =
-    let badges = ref [] in
     (* --- Tier 1: Individual Awards from career_entries (gold/silver/bronze) --- *)
     let str_has needle hay =
       let n = String.length needle and h = String.length hay in
@@ -493,90 +492,64 @@ let player_profile_page ?(lang=I18n.Ko) ?(leaderboards=None) ?(show_ops=false) (
       let s_lower = String.lowercase_ascii s in
       List.exists (fun n -> str_has n s_lower) needles
     in
-    let mvp_count = ref 0 in
-    let finals_mvp_count = ref 0 in
-    let scoring_leader_count = ref 0 in
-    let rebound_leader_count = ref 0 in
-    let assist_leader_count = ref 0 in
-    let rookie_award = ref false in
-    List.iter (fun (e: player_career_entry) ->
-      match e.pce_awards with
-      | None -> ()
-      | Some awards ->
-        if contains_any ["mvp"; "정규시즌mvp"; "정규시즌 mvp"] awards
-           && not (contains_any ["파이널"; "final"; "챔프"] awards) then
-          incr mvp_count;
-        if contains_any ["파이널mvp"; "파이널스mvp"; "파이널 mvp"; "파이널스 mvp"; "finals mvp"; "챔프mvp"; "챔프 mvp"] awards then
-          incr finals_mvp_count;
-        if contains_any ["득점왕"; "scoring leader"; "scoring"] awards then
-          incr scoring_leader_count;
-        if contains_any ["리바운드왕"; "rebound leader"] awards then
-          incr rebound_leader_count;
-        if contains_any ["어시스트왕"; "assist leader"] awards then
-          incr assist_leader_count;
-        if contains_any ["신인왕"; "rookie"] awards then
-          rookie_award := true;
-    ) profile.career_entries;
-    if !mvp_count > 0 then
-      badges := Printf.sprintf
-        {html|<span class="inline-flex items-center gap-1 bg-yellow-400/25 text-yellow-600 dark:text-yellow-300 border border-yellow-400/40 px-2.5 py-1 rounded-full text-xs font-bold shadow-sm">MVP x%d</span>|html}
-        !mvp_count :: !badges;
-    if !finals_mvp_count > 0 then
-      badges := Printf.sprintf
-        {html|<span class="inline-flex items-center gap-1 bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 border border-yellow-500/30 px-2.5 py-1 rounded-full text-xs font-bold shadow-sm">Finals MVP x%d</span>|html}
-        !finals_mvp_count :: !badges;
-    if !scoring_leader_count > 0 then
-      badges := Printf.sprintf
-        {html|<span class="inline-flex items-center gap-1 bg-slate-300/30 text-slate-700 dark:text-slate-300 border border-slate-400/40 px-2.5 py-1 rounded-full text-xs font-semibold shadow-sm">득점왕 x%d</span>|html}
-        !scoring_leader_count :: !badges;
-    if !rebound_leader_count > 0 then
-      badges := Printf.sprintf
-        {html|<span class="inline-flex items-center gap-1 bg-slate-300/30 text-slate-700 dark:text-slate-300 border border-slate-400/40 px-2.5 py-1 rounded-full text-xs font-semibold shadow-sm">리바운드왕 x%d</span>|html}
-        !rebound_leader_count :: !badges;
-    if !assist_leader_count > 0 then
-      badges := Printf.sprintf
-        {html|<span class="inline-flex items-center gap-1 bg-slate-300/30 text-slate-700 dark:text-slate-300 border border-slate-400/40 px-2.5 py-1 rounded-full text-xs font-semibold shadow-sm">어시스트왕 x%d</span>|html}
-        !assist_leader_count :: !badges;
-    if !rookie_award then
-      badges := {html|<span class="inline-flex items-center gap-1 bg-orange-800/20 text-orange-800 dark:text-orange-400 border border-orange-700/30 px-2.5 py-1 rounded-full text-xs font-semibold shadow-sm">신인왕</span>|html} :: !badges;
+    
+    let (mvp_count, finals_mvp_count, scoring_leader_count, rebound_leader_count, assist_leader_count, rookie_award) =
+      List.fold_left (fun (m, f, s, r, a, ro) (e: player_career_entry) ->
+        match e.pce_awards with
+        | None -> (m, f, s, r, a, ro)
+        | Some awards ->
+            let m' = if contains_any ["mvp"; "정규시즌mvp"; "정규시즌 mvp"] awards && not (contains_any ["파이널"; "final"; "챔프"] awards) then m + 1 else m in
+            let f' = if contains_any ["파이널mvp"; "파이널스mvp"; "파이널 mvp"; "파이널스 mvp"; "finals mvp"; "챔프mvp"; "챔프 mvp"] awards then f + 1 else f in
+            let s' = if contains_any ["득점왕"; "scoring leader"; "scoring"] awards then s + 1 else s in
+            let r' = if contains_any ["리바운드왕"; "rebound leader"] awards then r + 1 else r in
+            let a' = if contains_any ["어시스트왕"; "assist leader"] awards then a + 1 else a in
+            let ro' = ro || contains_any ["신인왕"; "rookie"] awards in
+            (m', f', s', r', a', ro')
+      ) (0, 0, 0, 0, 0, false) profile.career_entries
+    in
+
+    let badges = [] in
+    let badges = if mvp_count > 0 then
+      (Printf.sprintf {html|<span class="inline-flex items-center gap-1 bg-yellow-400/25 text-yellow-600 dark:text-yellow-300 border border-yellow-400/40 px-2.5 py-1 rounded-full text-xs font-bold shadow-sm">MVP x%d</span>|html} mvp_count) :: badges else badges in
+    let badges = if finals_mvp_count > 0 then
+      (Printf.sprintf {html|<span class="inline-flex items-center gap-1 bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 border border-yellow-500/30 px-2.5 py-1 rounded-full text-xs font-bold shadow-sm">Finals MVP x%d</span>|html} finals_mvp_count) :: badges else badges in
+    let badges = if scoring_leader_count > 0 then
+      (Printf.sprintf {html|<span class="inline-flex items-center gap-1 bg-slate-300/30 text-slate-700 dark:text-slate-300 border border-slate-400/40 px-2.5 py-1 rounded-full text-xs font-semibold shadow-sm">득점왕 x%d</span>|html} scoring_leader_count) :: badges else badges in
+    let badges = if rebound_leader_count > 0 then
+      (Printf.sprintf {html|<span class="inline-flex items-center gap-1 bg-slate-300/30 text-slate-700 dark:text-slate-300 border border-slate-400/40 px-2.5 py-1 rounded-full text-xs font-semibold shadow-sm">리바운드왕 x%d</span>|html} rebound_leader_count) :: badges else badges in
+    let badges = if assist_leader_count > 0 then
+      (Printf.sprintf {html|<span class="inline-flex items-center gap-1 bg-slate-300/30 text-slate-700 dark:text-slate-300 border border-slate-400/40 px-2.5 py-1 rounded-full text-xs font-semibold shadow-sm">어시스트왕 x%d</span>|html} assist_leader_count) :: badges else badges in
+    let badges = if rookie_award then
+      {html|<span class="inline-flex items-center gap-1 bg-orange-800/20 text-orange-800 dark:text-orange-400 border border-orange-700/30 px-2.5 py-1 rounded-full text-xs font-semibold shadow-sm">신인왕</span>|html} :: badges else badges in
+
     (* --- Tier 2: All-Star & Draft --- *)
     let all_star_count = List.length profile.all_star_games in
-    if all_star_count > 0 then
-      badges := Printf.sprintf
-        {html|<span class="inline-flex items-center gap-1 bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-500/30 px-2.5 py-1 rounded-full text-xs font-semibold shadow-sm">All-Star x%d</span>|html}
-        all_star_count :: !badges;
-    (match profile.draft with
+    let badges = if all_star_count > 0 then
+      (Printf.sprintf {html|<span class="inline-flex items-center gap-1 bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-500/30 px-2.5 py-1 rounded-full text-xs font-semibold shadow-sm">All-Star x%d</span>|html} all_star_count) :: badges else badges in
+    let badges = match profile.draft with
      | Some d ->
        (match d.pd_draft_round, d.pd_overall_pick with
         | Some 1, Some pick ->
-          badges := Printf.sprintf
-            {html|<span class="inline-flex items-center gap-1 bg-purple-500/20 text-purple-700 dark:text-purple-400 border border-purple-500/30 px-2.5 py-1 rounded-full text-xs font-semibold shadow-sm">1R #%d Pick</span>|html}
-            pick :: !badges
-        | _ -> ())
-     | None -> ());
+          (Printf.sprintf {html|<span class="inline-flex items-center gap-1 bg-purple-500/20 text-purple-700 dark:text-purple-400 border border-purple-500/30 px-2.5 py-1 rounded-full text-xs font-semibold shadow-sm">1R #%d Pick</span>|html} pick) :: badges
+        | _ -> badges)
+     | None -> badges
+    in
     (* --- Tier 3: Career milestones --- *)
     let season_count = List.length profile.season_breakdown in
-    if season_count >= 10 then
-      badges := Printf.sprintf
-        {html|<span class="inline-flex items-center gap-1 bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 px-2.5 py-1 rounded-full text-xs font-semibold shadow-sm">%d시즌</span>|html}
-        season_count :: !badges;
-    if avg.total_points >= 3000 then
-      badges := Printf.sprintf
-        {html|<span class="inline-flex items-center gap-1 bg-rose-500/20 text-rose-700 dark:text-rose-400 border border-rose-500/30 px-2.5 py-1 rounded-full text-xs font-semibold shadow-sm">%s득점</span>|html}
-        (format_int_commas avg.total_points) :: !badges
+    let badges = if season_count >= 10 then
+      (Printf.sprintf {html|<span class="inline-flex items-center gap-1 bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 px-2.5 py-1 rounded-full text-xs font-semibold shadow-sm">%d시즌</span>|html} season_count) :: badges else badges in
+    let badges = if avg.total_points >= 3000 then
+      (Printf.sprintf {html|<span class="inline-flex items-center gap-1 bg-rose-500/20 text-rose-700 dark:text-rose-400 border border-rose-500/30 px-2.5 py-1 rounded-full text-xs font-semibold shadow-sm">%s득점</span>|html} (format_int_commas avg.total_points)) :: badges
     else if avg.total_points >= 1000 then
-      badges := Printf.sprintf
-        {html|<span class="inline-flex items-center gap-1 bg-orange-500/20 text-orange-700 dark:text-orange-400 border border-orange-500/30 px-2.5 py-1 rounded-full text-xs font-semibold shadow-sm">%s득점</span>|html}
-        (format_int_commas avg.total_points) :: !badges;
-    if avg.total_rebounds >= 2000 then
-      badges := Printf.sprintf
-        {html|<span class="inline-flex items-center gap-1 bg-sky-500/20 text-sky-700 dark:text-sky-400 border border-sky-500/30 px-2.5 py-1 rounded-full text-xs font-semibold shadow-sm">%s리바운드</span>|html}
-        (format_int_commas avg.total_rebounds) :: !badges;
-    if avg.avg_points >= 15.0 && avg.games_played >= 50 then
-      badges := {html|<span class="inline-flex items-center gap-1 bg-orange-600/20 text-orange-700 dark:text-orange-300 border border-orange-600/30 px-2.5 py-1 rounded-full text-xs font-semibold shadow-sm">PPG 15+</span>|html} :: !badges;
-    if avg.efficiency >= 20.0 && avg.games_played >= 50 then
-      badges := {html|<span class="inline-flex items-center gap-1 bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 border border-yellow-500/30 px-2.5 py-1 rounded-full text-xs font-semibold shadow-sm">EFF 20+</span>|html} :: !badges;
-    match !badges with
+      (Printf.sprintf {html|<span class="inline-flex items-center gap-1 bg-orange-500/20 text-orange-700 dark:text-orange-400 border border-orange-500/30 px-2.5 py-1 rounded-full text-xs font-semibold shadow-sm">%s득점</span>|html} (format_int_commas avg.total_points)) :: badges
+    else badges in
+    let badges = if avg.total_rebounds >= 2000 then
+      (Printf.sprintf {html|<span class="inline-flex items-center gap-1 bg-sky-500/20 text-sky-700 dark:text-sky-400 border border-sky-500/30 px-2.5 py-1 rounded-full text-xs font-semibold shadow-sm">%s리바운드</span>|html} (format_int_commas avg.total_rebounds)) :: badges else badges in
+    let badges = if avg.avg_points >= 15.0 && avg.games_played >= 50 then
+      {html|<span class="inline-flex items-center gap-1 bg-orange-600/20 text-orange-700 dark:text-orange-300 border border-orange-600/30 px-2.5 py-1 rounded-full text-xs font-semibold shadow-sm">PPG 15+</span>|html} :: badges else badges in
+    let badges = if avg.efficiency >= 20.0 && avg.games_played >= 50 then
+      {html|<span class="inline-flex items-center gap-1 bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 border border-yellow-500/30 px-2.5 py-1 rounded-full text-xs font-semibold shadow-sm">EFF 20+</span>|html} :: badges else badges in
+    match badges with
     | [] -> ""
     | bs -> Printf.sprintf
         {html|<div class="flex flex-wrap gap-1.5 justify-center md:justify-start">%s</div>|html}
@@ -718,7 +691,7 @@ let player_profile_page ?(lang=I18n.Ko) ?(leaderboards=None) ?(show_ops=false) (
       ""
     else
       Printf.sprintf
-        {html|<div class="space-y-4"><div class="flex flex-col gap-1"><h2 class="text-xl font-bold text-slate-900 dark:text-white">올스타전</h2><p class="text-[11px] text-slate-500 dark:text-slate-400">올스타전 기록은 시즌/커리어 테이블에서 제외하고, 여기에서만 보여줍니다.</p></div><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-lg scroll-shadow"><table class="min-w-[680px] sm:min-w-[920px] w-full text-sm font-mono table-fixed" aria-label="올스타전 기록">
+        {html|<div class="space-y-4"><div class="flex flex-col gap-1"><h2 class="text-xl font-bold text-slate-900 dark:text-white">올스타전</h2><p class="text-[11px] text-slate-500 dark:text-slate-400">올스타전 기록은 시즌/커리어 테이블에서 제외하고, 여기에서만 보여줍니다.</p></div><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-lg scroll-shadow"><table class="min-w-[680px] sm:min-w-[920px] w-full text-sm font-mono table-auto" aria-label="올스타전 기록">
                 <colgroup>
                   <col style="width: 110px;"> <!-- Date -->
                   <col style="width: 240px;"> <!-- Opponent -->
@@ -1204,7 +1177,7 @@ let player_profile_page ?(lang=I18n.Ko) ?(leaderboards=None) ?(show_ops=false) (
           <div class="space-y-4">
             %s
             <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-lg scroll-shadow">
-              <table class="min-w-[680px] md:min-w-[1100px] w-full text-xs sm:text-sm font-mono table-fixed tabular-nums" aria-label="최근 경기 기록">
+              <table class="min-w-[680px] md:min-w-[1100px] w-full text-xs sm:text-sm font-mono table-auto tabular-nums" aria-label="최근 경기 기록">
                 <colgroup>
                   <col style="width: 110px;"> <!-- Date -->
                   <col style="width: 240px;"> <!-- Opponent -->
@@ -1448,7 +1421,7 @@ let player_game_logs_page ?(lang=I18n.Ko) (profile: player_profile) ~(season: st
     ~description:seo_desc
     ~json_ld:json_ld_data
     ~content:(Printf.sprintf
-      {html|<div class="space-y-8 animate-fade-in">%s<div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4"><div class="flex items-center gap-4"><div class="shrink-0">%s</div><div class="min-w-0"><div class="text-sm text-slate-600 dark:text-slate-400"><a href="%s" class="hover:text-slate-900 dark:hover:text-white dark:text-slate-200 transition">← 프로필</a></div><h2 class="text-3xl font-black text-slate-900 dark:text-slate-200 truncate">%s <span class="text-slate-600 dark:text-slate-400 text-lg font-mono">경기 로그</span></h2><div class="mt-1 text-slate-600 dark:text-slate-400 text-sm">총 %d경기</div></div></div><div class="flex flex-col items-start sm:items-end gap-3"><form action="%s/games" method="get" class="flex flex-wrap items-center justify-end gap-2"><select name="season" aria-label="시즌 선택" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none" data-auto-submit="change">%s</select><label class="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 whitespace-nowrap"><input type="checkbox" name="include_mismatch" value="1" %s class="h-4 w-4 rounded border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 accent-orange-500" data-auto-submit="change"><span>불일치 포함</span></label></form><a href="%s/splits?season=%s" class="text-xs bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-3 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all shadow-sm whitespace-nowrap border border-slate-200 dark:border-slate-700">스플릿 분석</a><a href="%s/shots?season=%s" class="text-xs bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-3 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all shadow-sm whitespace-nowrap border border-slate-200 dark:border-slate-700">샷 차트</a>%s</div></div><p class="text-[11px] text-slate-600 dark:text-slate-400">개인 <span class="font-mono text-slate-700 dark:text-slate-300">+/-</span>는 문자중계 기반입니다. 문자중계가 없으면 <span class="font-mono text-slate-700 dark:text-slate-300">M</span>으로 팀 득실마진(경기 최종 점수)을 대신 표시합니다. (데이터가 없거나 품질 문제면 <span class="font-mono text-slate-700 dark:text-slate-300">-</span>)</p><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-lg scroll-shadow"><table class="min-w-[680px] sm:min-w-[920px] w-full text-sm font-mono table-fixed tabular-nums" aria-label="선수별 게임 로그">
+      {html|<div class="space-y-8 animate-fade-in">%s<div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4"><div class="flex items-center gap-4"><div class="shrink-0">%s</div><div class="min-w-0"><div class="text-sm text-slate-600 dark:text-slate-400"><a href="%s" class="hover:text-slate-900 dark:hover:text-white dark:text-slate-200 transition">← 프로필</a></div><h2 class="text-3xl font-black text-slate-900 dark:text-slate-200 truncate">%s <span class="text-slate-600 dark:text-slate-400 text-lg font-mono">경기 로그</span></h2><div class="mt-1 text-slate-600 dark:text-slate-400 text-sm">총 %d경기</div></div></div><div class="flex flex-col items-start sm:items-end gap-3"><form action="%s/games" method="get" class="flex flex-wrap items-center justify-end gap-2"><select name="season" aria-label="시즌 선택" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none" data-auto-submit="change">%s</select><label class="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 whitespace-nowrap"><input type="checkbox" name="include_mismatch" value="1" %s class="h-4 w-4 rounded border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 accent-orange-500" data-auto-submit="change"><span>불일치 포함</span></label></form><a href="%s/splits?season=%s" class="text-xs bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-3 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all shadow-sm whitespace-nowrap border border-slate-200 dark:border-slate-700">스플릿 분석</a><a href="%s/shots?season=%s" class="text-xs bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-3 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all shadow-sm whitespace-nowrap border border-slate-200 dark:border-slate-700">샷 차트</a>%s</div></div><p class="text-[11px] text-slate-600 dark:text-slate-400">개인 <span class="font-mono text-slate-700 dark:text-slate-300">+/-</span>는 문자중계 기반입니다. 문자중계가 없으면 <span class="font-mono text-slate-700 dark:text-slate-300">M</span>으로 팀 득실마진(경기 최종 점수)을 대신 표시합니다. (데이터가 없거나 품질 문제면 <span class="font-mono text-slate-700 dark:text-slate-300">-</span>)</p><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-lg scroll-shadow"><table class="min-w-[680px] sm:min-w-[920px] w-full text-sm font-mono table-auto tabular-nums" aria-label="선수별 게임 로그">
           <colgroup>
             <col style="width: 110px;"> <!-- Date -->
             <col style="width: auto;">  <!-- Opponent -->

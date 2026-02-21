@@ -1068,8 +1068,8 @@ module LineupAnalysis = struct
       if team_name = "ALL" || team_code = team_name then begin
         let top5 = get_starting_five players in
         if List.length top5 >= 5 then begin
+          let team = match top5 with p :: _ -> p.lgd_team_name | [] -> "Unknown" in
           let key = players_to_key top5 in
-          let team = (List.hd top5).lgd_team_name in
           let total_min = List.fold_left (fun acc p -> acc +. p.lgd_minutes) 0.0 top5 in
           let total_pts = List.fold_left (fun acc p -> acc + p.lgd_pts) 0 top5 in
           let total_pm = List.fold_left (fun acc p ->

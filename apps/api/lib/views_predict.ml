@@ -1,7 +1,3 @@
-(** Predict view functions for WKBL Analytics *)
-(** This module contains prediction page rendering functions. *)
-(** Extracted from Views module. *)
-
 open Domain
 open Views_common
 
@@ -17,7 +13,7 @@ let prediction_result_card ~(home: string) ~(away: string) (output: prediction_o
  let pyth_away_pct = pct (1.0 -. breakdown.pb_pyth_prob) in
  let stats_home_pct = pct breakdown.pb_stats_prob in
  let stats_away_pct = pct (1.0 -. breakdown.pb_stats_prob) in
-
+ 
  (* Margin Logic *)
  let margin = abs_float result.predicted_margin in
  let spread_str = Printf.sprintf "%.1f" margin in
@@ -27,7 +23,7 @@ let prediction_result_card ~(home: string) ~(away: string) (output: prediction_o
    else if margin < 10.5 then "우세"
    else "압승"
  in
- let spread_class =
+ let spread_class = 
    if margin < 1.5 then "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300"
    else if margin < 5.5 then "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
    else "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
@@ -82,27 +78,12 @@ let prediction_result_card ~(home: string) ~(away: string) (output: prediction_o
       form_away_pct
       (escape_html roster_text)
       (escape_html rest_text),
-	     {html|<div>최근 5경기 흐름/주요 선수 출전/휴식일을 조금 반영합니다. (반영 폭은 작게 제한합니다.)</div><div class="text-slate-600 dark:text-slate-400">주요 선수는 "최근 경기 출전" 기준으로 추정합니다. 부상/전술/실시간 상황은 반영하지 못합니다.</div>|html}
+	     {html|<div>최근 5경기 흐름/주요 선수 출전/휴식일을 조금 반영합니다. (반영 폭은 작게 제한합니다.)</div><div class="text-slate-600 dark:text-slate-400">주요 선수는 “최근 경기 출전” 기준으로 추정합니다. 부상/전술/실시간 상황은 반영하지 못합니다.</div>|html}
 	    )
  in
  let winner_class =
   if normalize_label result.winner = normalize_label home then "text-orange-700 dark:text-orange-400"
   else "text-sky-600 dark:text-sky-400"
- in
- let h2h_prob =
-   let raw = (breakdown.pb_base_prob -. 0.55 *. breakdown.pb_elo_prob
-              -. 0.20 *. breakdown.pb_pyth_prob -. 0.15 *. breakdown.pb_stats_prob)
-             /. 0.10 in
-   max 0.0 (min 1.0 raw)
- in
- let island_attrs =
-   Printf.sprintf
-     {|data-island="prediction_gauge" data-home-name="%s" data-away-name="%s" data-home-elo="%.1f" data-away-elo="%.1f" data-pyth-prob="%.6f" data-stats-prob="%.6f" data-h2h-prob="%.6f" data-is-neutral="%s"|}
-     (escape_html home) (escape_html away)
-     breakdown.pb_elo_home breakdown.pb_elo_away
-     breakdown.pb_pyth_prob breakdown.pb_stats_prob
-     h2h_prob
-     (if breakdown.pb_is_neutral then "true" else "false")
  in
  Printf.sprintf
   {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-xl space-y-4">
@@ -130,7 +111,6 @@ let prediction_result_card ~(home: string) ~(away: string) (output: prediction_o
 	     </div>
 	    </div>
 	   </div>
-   <div %s>
    <div class="space-y-3 pt-2">
     <div class="flex justify-between text-[10px] font-black uppercase tracking-widest text-slate-500">
      <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-orange-500"></span>%s</span>
@@ -154,7 +134,6 @@ let prediction_result_card ~(home: string) ~(away: string) (output: prediction_o
 	     </div>
 	    </div>
 	   </div>
-   </div>
    <!-- AI Analysis -->
    <div class="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/30 dark:to-purple-950/30 border border-indigo-200 dark:border-indigo-800/50 rounded-lg p-4">
     <div class="flex items-center gap-2 mb-2">
@@ -220,7 +199,6 @@ let prediction_result_card ~(home: string) ~(away: string) (output: prediction_o
   spread_str
   winner_class
   (escape_html result.winner)
-  island_attrs
   (escape_html home)
   (escape_html away)
   home_pct
@@ -243,7 +221,7 @@ let prediction_result_card ~(home: string) ~(away: string) (output: prediction_o
   context_note_html
 
 let upcoming_games_section (upcoming: Domain.schedule_entry list) =
- if upcoming = [] then ""
+ if upcoming = [] then "" 
  else
   let game_card (g: Domain.schedule_entry) =
    let home_name = Option.value g.sch_home_team_name ~default:g.sch_home_team_code in
@@ -395,3 +373,5 @@ let predict_page ?(lang=I18n.Ko) ~season ~seasons ~teams ~home ~away ~is_neutral
    (if is_neutral then "checked" else "")
    (if include_mismatch then "checked" else "")
    result_html) ()
+
+(** Podium-style leader card (Gemini UX feedback: 1-2-3위 시각적 강조) *)

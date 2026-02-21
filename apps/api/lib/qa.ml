@@ -409,12 +409,13 @@ let quantile q values =
     let pos = (float_of_int (n - 1)) *. q in
     let lower = int_of_float (floor pos) in
     let upper = int_of_float (ceil pos) in
-    let lower_v = List.nth sorted lower in
-    let upper_v = List.nth sorted upper in
-    if lower = upper then Some lower_v
-    else
-      let frac = pos -. float_of_int lower in
-      Some (lower_v +. (upper_v -. lower_v) *. frac)
+    match List.nth_opt sorted lower, List.nth_opt sorted upper with
+    | Some lower_v, Some upper_v ->
+        if lower = upper then Some lower_v
+        else
+          let frac = pos -. float_of_int lower in
+          Some (lower_v +. (upper_v -. lower_v) *. frac)
+    | _ -> None
 
 let build_pts_outliers (team_games: team_game list) =
   let by_season =

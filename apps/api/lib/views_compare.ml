@@ -1,7 +1,3 @@
-(** Compare view functions for WKBL Analytics *)
-(** This module contains compare page rendering functions. *)
-(** Extracted from Views module. *)
-
 open Domain
 open Views_common
 
@@ -393,15 +389,15 @@ let compare_page
        in
        let y_of_pts pts = padding + int_of_float ((1.0 -. pts /. max_pts) *. float_of_int chart_h) in
        let make_line color data =
-        let points =
+        let points = 
          data
          |> List.map (fun (s: season_stats) ->
            let x = x_of_season s.ss_season_code in
            let y = y_of_pts s.ss_avg_points in
-           Printf.sprintf "%d,%d" x y)
+           Printf.sprintf "%d,%d" x y) 
          |> String.concat " "
         in
-        if List.length data < 2 then ""
+        if List.length data < 2 then "" 
         else Printf.sprintf {svg|<polyline points="%s" fill="none" stroke="%s" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>|svg} points color
        in
        let make_dots color data =
@@ -478,7 +474,7 @@ let compare_page
  in
  layout ~lang ~title:"WKBL 비교" ~canonical_path:"/compare"
   ~description:"WKBL 여자농구 선수 비교 - 두 선수의 스탯을 레이더 차트로 비교하세요."
-  ~scripts:With_charts
+  ~has_charts:true
   ~content:(Printf.sprintf
    {html|<div class="space-y-8">%s
     <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
@@ -734,3 +730,4 @@ let compare_seasons_page
   ~canonical_path:(Printf.sprintf "/compare/seasons?player=%s" (Uri.pct_encode player_id))
   ~description:(Printf.sprintf "%s의 시즌별 성적 비교 - WKBL 여자농구 분석" player_name)
   ~content ()
+

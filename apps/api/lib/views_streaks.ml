@@ -128,7 +128,7 @@ let streak_records_table (records: streak_record list) =
   let rows = records |> List.map streak_record_row |> String.concat "\n" in
   Printf.sprintf
     {html|<div class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-lg">
-      <table class="w-full min-w-[640px] text-sm table-fixed font-mono tabular-nums" aria-label="연속 기록 보유자">
+      <table class="w-full min-w-[640px] text-sm table-auto font-mono tabular-nums" aria-label="연속 기록 보유자">
         <colgroup>
           <col style="width: auto;"> <!-- 보유자 -->
           <col style="width: 140px;"> <!-- 기록 종류 -->

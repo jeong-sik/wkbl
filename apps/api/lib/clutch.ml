@@ -39,15 +39,15 @@ let is_clutch_moment (event: pbp_event) (criteria: clutch_criteria) =
 type player_clutch_stats = {
   player_name: string;
   team_side: int; (** 1 or 2, 0 if unknown *)
-  mutable pts: int;
-  mutable reb: int;
-  mutable ast: int;
-  mutable stl: int;
-  mutable blk: int;
-  mutable tov: int;
-  mutable fg3_m: int;
-  mutable fg2_m: int;
-  mutable ft_m: int;
+  pts: int;
+  reb: int;
+  ast: int;
+  stl: int;
+  blk: int;
+  tov: int;
+  fg3_m: int;
+  fg2_m: int;
+  ft_m: int;
 }
 
 let create_empty_stats name side = {
@@ -79,70 +79,53 @@ let contains s sub =
     loop 0
 
 let parse_description desc =
-  (* Simplistic splitting by space. 
-     Assumption: "[Team] [Player] [Action]" or "[Player] [Action]" 
-     Actually, looking at standard logs:
-     "박지수 2점슛 성공"
-     "김단비 리바운드 (공격)"
-     
-     We need to handle the case where player name might have spaces? 
-     Korean names usually don't. Foreign names might.
-  *)
   let parts = String.split_on_char ' ' desc in
   match parts with
-  | [] -> None, fun _ -> ()
+  | [] -> None, fun stats -> stats
   | name :: action_parts ->
       let action = String.concat " " action_parts in
       
-      (* Helper to update stats *)
       let update stats =
-        if contains action "3점" && contains action "성공" then (
-          stats.pts <- stats.pts + 3;
-          stats.fg3_m <- stats.fg3_m + 1
-        ) else if contains action "2점" && contains action "성공" then (
-          stats.pts <- stats.pts + 2;
-          stats.fg2_m <- stats.fg2_m + 1
-        ) else if contains action "자유투" && contains action "성공" then (
-          stats.pts <- stats.pts + 1;
-          stats.ft_m <- stats.ft_m + 1
-        ) else if contains action "리바운드" then (
-          stats.reb <- stats.reb + 1
-        ) else if contains action "어시스트" then (
-          stats.ast <- stats.ast + 1
-        ) else if contains action "스틸" then (
-          stats.stl <- stats.stl + 1
-        ) else if contains action "블록" then (
-          stats.blk <- stats.blk + 1
-        ) else if contains action "턴오버" then (
-          stats.tov <- stats.tov + 1
-        ) else (
-          ()
-        )
+        if contains action "3점" && contains action "성공" then
+          { stats with pts = stats.pts + 3; fg3_m = stats.fg3_m + 1 }
+        else if contains action "2점" && contains action "성공" then
+          { stats with pts = stats.pts + 2; fg2_m = stats.fg2_m + 1 }
+        else if contains action "자유투" && contains action "성공" then
+          { stats with pts = stats.pts + 1; ft_m = stats.ft_m + 1 }
+        else if contains action "리바운드" then
+          { stats with reb = stats.reb + 1 }
+        else if contains action "어시스트" then
+          { stats with ast = stats.ast + 1 }
+        else if contains action "스틸" then
+          { stats with stl = stats.stl + 1 }
+        else if contains action "블록" then
+          { stats with blk = stats.blk + 1 }
+        else if contains action "턴오버" then
+          { stats with tov = stats.tov + 1 }
+        else
+          stats
       in
       Some name, update
 
+module StringMap = Map.Make(String)
+
 (** Aggregate stats from a list of events *)
 let calculate_clutch_stats (events: pbp_event list) =
-  let stats_map = Hashtbl.create 16 in
-  
-  (* We need to filter for clutch moments first *)
   let clutch_events = List.filter (fun e -> is_clutch_moment e default_criteria) events in
   
-  List.iter (fun event ->
-    let name_opt, update_fn = parse_description event.pe_description in
-    match name_opt with
-    | Some name ->
-        let stats = 
-          match Hashtbl.find_opt stats_map name with
-          | Some s -> s
-          | None -> 
-              let s = create_empty_stats name event.pe_team_side in
-              Hashtbl.add stats_map name s;
-              s
-        in
-        update_fn stats
-    | None -> ()
-  ) clutch_events;
+  let final_map = 
+    List.fold_left (fun acc_map event ->
+      let name_opt, update_fn = parse_description event.pe_description in
+      match name_opt with
+      | Some name ->
+          let current_stats = 
+            match StringMap.find_opt name acc_map with
+            | Some s -> s
+            | None -> create_empty_stats name event.pe_team_side
+          in
+          StringMap.add name (update_fn current_stats) acc_map
+      | None -> acc_map
+    ) StringMap.empty clutch_events
+  in
   
-  (* Convert to list *)
-  Hashtbl.fold (fun _ stats acc -> stats :: acc) stats_map []
+  StringMap.bindings final_map |> List.map snd

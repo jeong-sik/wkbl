@@ -273,12 +273,12 @@ let game_summary_cache : (string, string) Hashtbl.t = Hashtbl.create 32
 let find_top_performer (players: boxscore_player_stat list) =
   match players with
   | [] -> None
-  | _ ->
+  | first :: _ ->
       let best = List.fold_left (fun best p ->
         (* Score = PTS + (REB + AST) * 1.5 for MVP calculation *)
         let score p = float_of_int p.bs_pts +. (float_of_int (p.bs_reb + p.bs_ast)) *. 1.5 in
         if score p > score best then p else best
-      ) (List.hd players) players in
+      ) first players in
       Some best
 
 (** Format quarter scores for prompt *)
@@ -347,7 +347,7 @@ let build_game_summary_prompt ?(quarters=[]) ?(lang=Ko) (bs: game_boxscore) =
     |> List.sort (fun a b ->
         let score p = float_of_int p.bs_pts +. (float_of_int (p.bs_reb + p.bs_ast)) *. 1.5 in
         compare (score b) (score a))
-    |> (fun l -> try [List.hd l] with Failure _ -> [])
+    |> (function [] -> [] | x :: _ -> [x])
   in
 
   let mvp_text = match mvp_candidates with

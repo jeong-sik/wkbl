@@ -13,21 +13,21 @@ let routes =
     Kirin.get "/season/:code" (fun request ->
       let lang = Route_helpers.request_lang request in
       let season = Kirin.param "code" request |> Uri.pct_decode in
-      let r_seasons = ref (Error (Db.ConnectionFailed "not computed")) in
-      let r_standings = ref (Error (Db.ConnectionFailed "not computed")) in
-      let r_leaders = ref (Error (Db.ConnectionFailed "not computed")) in
-      let r_histories = ref (Error (Db.ConnectionFailed "not computed")) in
-      let r_tpg = ref (Error (Db.ConnectionFailed "not computed")) in
-      let r_ttot = ref (Error (Db.ConnectionFailed "not computed")) in
+      let p_seasons, res_seasons = Eio.Promise.create () in
+      let p_standings, res_standings = Eio.Promise.create () in
+      let p_leaders, res_leaders = Eio.Promise.create () in
+      let p_histories, res_histories = Eio.Promise.create () in
+      let p_tpg, res_tpg = Eio.Promise.create () in
+      let p_ttot, res_ttot = Eio.Promise.create () in
       Eio.Fiber.all [
-        (fun () -> r_seasons := Db.get_seasons ());
-        (fun () -> r_standings := Db.get_standings ~season ());
-        (fun () -> r_leaders := Db.get_leaders_base ~season ());
-        (fun () -> r_histories := Db.get_historical_seasons ());
-        (fun () -> r_tpg := Db.get_team_stats ~season ~scope:Domain.PerGame ());
-        (fun () -> r_ttot := Db.get_team_stats ~season ~scope:Domain.Totals ());
+        (fun () -> Eio.Promise.resolve res_seasons (Db.get_seasons ()));
+        (fun () -> Eio.Promise.resolve res_standings (Db.get_standings ~season ()));
+        (fun () -> Eio.Promise.resolve res_leaders (Db.get_leaders_base ~season ()));
+        (fun () -> Eio.Promise.resolve res_histories (Db.get_historical_seasons ()));
+        (fun () -> Eio.Promise.resolve res_tpg (Db.get_team_stats ~season ~scope:Domain.PerGame ()));
+        (fun () -> Eio.Promise.resolve res_ttot (Db.get_team_stats ~season ~scope:Domain.Totals ()));
       ];
-      match !r_seasons, !r_standings, !r_leaders, !r_histories, !r_tpg, !r_ttot with
+      match Eio.Promise.await p_seasons, Eio.Promise.await p_standings, Eio.Promise.await p_leaders, Eio.Promise.await p_histories, Eio.Promise.await p_tpg, Eio.Promise.await p_ttot with
       | Ok seasons, Ok standings, Ok leaders, Ok histories, Ok tpg, Ok ttot ->
           Kirin.html (Views_season.season_summary_page ~lang ~season ~seasons
             ~standings ~leaders ~histories ~team_per_game:tpg ~team_totals:ttot ())
