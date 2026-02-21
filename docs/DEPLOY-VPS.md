@@ -1,6 +1,6 @@
 # VPS 배포 (월 ~$5) + Cloudflare Tunnel
 
-OCaml(Dream) 서버를 **VPS에 상시 실행**하고, Cloudflare Tunnel로 `wkbl.crying.pictures` 같은 도메인을 붙이는 “가장 싸고 덜 귀찮은” 배포 루트입니다.
+OCaml(Dream) 서버를 **VPS에 상시 실행**하고, Cloudflare Tunnel로 `wkbl.win` 도메인을 붙이는 “가장 싸고 덜 귀찮은” 배포 루트입니다.
 
 - 서버: Dream(OCaml) + SQLite(`wkbl.db`)
 - 배포: Docker Compose
@@ -38,7 +38,7 @@ Zero Trust Dashboard에서:
 1. `Networks` → `Tunnels` → `Create a tunnel`
 2. Connector는 `Docker` 선택 후 **token** 복사
 3. `Public Hostnames` 추가:
-   - `wkbl.crying.pictures` → `http://wkbl:8000`
+   - `wkbl.win` → `http://wkbl:8000`
    - (docker-compose에서 컨테이너 이름이 `wkbl`입니다)
 
 ## 4) 실행 (docker-compose)
@@ -64,7 +64,7 @@ curl -fsSL http://127.0.0.1:8000/health
 
 브라우저에서:
 
-- `https://wkbl.crying.pictures/health`
+- `https://wkbl.win/health`
 
 ## 5) 업데이트/데이터 갱신
 
