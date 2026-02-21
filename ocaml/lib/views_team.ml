@@ -97,7 +97,7 @@ let team_profile_page ?(lang=I18n.Ko) ?(player_info_map=None) (detail: team_full
     (metric_card "PTS/G" (Printf.sprintf "%.1f" st.avg_pts) (rank_label pts_rank) "text-orange-700 dark:text-orange-400")
     (metric_card "OPP" (Printf.sprintf "%.1f" st.avg_opp_pts) (rank_label opp_rank) "text-slate-700 dark:text-slate-300")
     (metric_card "DIFF" (Printf.sprintf "%+.1f" st.diff) "" diff_cls)
-    (metric_card "eFG%%" efg_pct_str "" "text-emerald-600 dark:text-emerald-400")
+    (metric_card "eFG%" efg_pct_str "" "text-emerald-600 dark:text-emerald-400")
     (metric_card "Pace" pace_str "" "text-sky-600 dark:text-sky-400")
  in
  let roster_name_counts : (string, int) Hashtbl.t = Hashtbl.create 32 in
@@ -760,9 +760,9 @@ let team_profile_page ?(lang=I18n.Ko) ?(player_info_map=None) (detail: team_full
        </div>
       </div>
      </div>|html}
-     (stat_card "eFG%%" ff.efg_pct "슈팅 효율" "text-emerald-600 dark:text-emerald-400" (rank_badge efg_rank))
-     (stat_card "TOV%%" ff.tov_pct "턴오버율 (낮을수록 좋음)" "text-rose-500 dark:text-rose-400" (rank_badge tov_rank))
-     (stat_card "ORB%%" ff.orb_pct "공격 리바운드율" "text-sky-600 dark:text-sky-400" (rank_badge orb_rank))
+     (stat_card "eFG%" ff.efg_pct "슈팅 효율" "text-emerald-600 dark:text-emerald-400" (rank_badge efg_rank))
+     (stat_card "TOV%" ff.tov_pct "턴오버율 (낮을수록 좋음)" "text-rose-500 dark:text-rose-400" (rank_badge tov_rank))
+     (stat_card "ORB%" ff.orb_pct "공격 리바운드율" "text-sky-600 dark:text-sky-400" (rank_badge orb_rank))
      (stat_card "FTR" ff.ftr "자유투 시도율" "text-orange-700 dark:text-orange-400" (rank_badge ftr_rank))
  in
  (* JSON-LD structured data for SportsTeam schema *)
