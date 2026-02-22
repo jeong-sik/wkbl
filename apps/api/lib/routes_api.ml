@@ -258,4 +258,71 @@ let routes ~sw ~env =
       let lang = Route_helpers.request_lang request in
       Kirin.html (Views.live_page ~lang ())
     );
+
+    (* GraphQL API endpoint *)
+    Kirin.post "/graphql" (fun request ->
+      let body = Kirin.Request.body request in
+      let respond_json str =
+        Kirin.json_string str
+        |> Kirin.with_header "Access-Control-Allow-Origin" "*"
+      in
+      match Yojson.Basic.from_string body with
+      | exception Yojson.Json_error msg ->
+          respond_json
+            (Printf.sprintf {|{"errors":[{"message":"Invalid JSON: %s"}]}|}
+              (String.escaped msg))
+      | json ->
+          let query = match json with
+            | `Assoc fields ->
+                (match List.assoc_opt "query" fields with
+                 | Some (`String q) -> Some q
+                 | _ -> None)
+            | _ -> None
+          in
+          let operation_name = match json with
+            | `Assoc fields ->
+                (match List.assoc_opt "operationName" fields with
+                 | Some (`String n) -> Some n
+                 | Some `Null -> None
+                 | _ -> None)
+            | _ -> None
+          in
+          let variables = match json with
+            | `Assoc fields ->
+                (match List.assoc_opt "variables" fields with
+                 | Some (`Assoc vars) ->
+                     let rec yojson_to_const : Yojson.Basic.t -> Graphql_parser.const_value = function
+                       | `Null -> `Null
+                       | `Bool b -> `Bool b
+                       | `Int i -> `Int i
+                       | `Float f -> `Float f
+                       | `String s -> `String s
+                       | `List l -> `List (List.map yojson_to_const l)
+                       | `Assoc a -> `Assoc (List.map (fun (k, v) -> (k, yojson_to_const v)) a)
+                     in
+                     Some (List.map (fun (k, v) -> (k, yojson_to_const v)) vars)
+                 | _ -> None)
+            | _ -> None
+          in
+          match query with
+          | None ->
+              respond_json {|{"errors":[{"message":"Missing 'query' field"}]}|}
+          | Some query_str ->
+              match Graphql_schema.execute_query ?variables ?operation_name query_str with
+              | Ok result ->
+                  respond_json (Yojson.Basic.to_string result)
+              | Error err ->
+                  respond_json
+                    (Printf.sprintf {|{"errors":[{"message":%s}]}|}
+                      (Yojson.Basic.to_string err))
+    );
+
+    (* GraphQL CORS preflight *)
+    Kirin.options "/graphql" (fun _request ->
+      Kirin.text ""
+      |> Kirin.with_header "Access-Control-Allow-Origin" "*"
+      |> Kirin.with_header "Access-Control-Allow-Methods" "POST, OPTIONS"
+      |> Kirin.with_header "Access-Control-Allow-Headers" "Content-Type"
+      |> Kirin.with_header "Access-Control-Max-Age" "86400"
+    );
   ]
