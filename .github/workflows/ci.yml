@@ -35,13 +35,13 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.opam
-          key: ${{ runner.os }}-opam-${{ hashFiles('ocaml/dune-project', 'ocaml/*.opam') }}
+          key: ${{ runner.os }}-opam-${{ hashFiles('apps/api/dune-project', 'apps/api/*.opam') }}
           restore-keys: |
             ${{ runner.os }}-opam-
 
       - name: Install dependencies
         run: |
-          cd ocaml
+          cd apps/api
           opam pin add -n -y grpc-direct https://github.com/jeong-sik/grpc-direct.git
           opam pin add -n -y grpc-direct-core https://github.com/jeong-sik/grpc-direct.git
           opam pin add -n -y ocaml-webrtc https://github.com/jeong-sik/ocaml-webrtc.git
@@ -50,11 +50,10 @@ jobs:
 
       - name: Build (release)
         run: |
-          cd ocaml
+          cd apps/api
           opam exec -- dune build --profile=release bin/main.exe bin/scraper_tool.exe
 
       - name: Test
         run: |
-          cd ocaml
+          cd apps/api
           opam exec -- dune test
-
