@@ -1,4 +1,9 @@
-open Graphql_eio
-open Domain
+(** GraphQL schema and query execution for WKBL Analytics. *)
 
-module Schema : Graphql_server.Schema.S with module Future := Graphql_eio.Future and type 'a Io.Stream.t = 'a Eio_stream.t
+val schema : unit Graphql.Schema.schema
+
+val execute_query :
+  ?variables:Graphql.Schema.variables ->
+  ?operation_name:string ->
+  string ->
+  (Yojson.Basic.t, Yojson.Basic.t) result

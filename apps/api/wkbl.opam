@@ -24,6 +24,8 @@ depends: [
   "ppx_deriving_yojson" {>= "3.7"}
   "cohttp-eio" {>= "6.0"}
   "lambdasoup" {>= "1.0"}
+  "graphql" {>= "0.14"}
+  "graphql_parser" {>= "0.14"}
   "alcotest" {>= "1.7.0"}
   "bisect_ppx" {>= "2.8" & with-dev-setup}
   "odoc" {with-doc}
