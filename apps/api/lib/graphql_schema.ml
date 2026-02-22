@@ -229,6 +229,176 @@ let game_summary_type : (unit, game_summary option) S.typ =
         ~resolve:(fun _info (g : game_summary) -> g.game_type);
     ])
 
+(* --- Phase 2: Leaders, MVP Race, Clutch Stats, Awards --- *)
+
+let leader_entry_type : (unit, leader_entry option) S.typ =
+  S.(obj "LeaderEntry"
+    ~doc:"Statistical category leader"
+    ~fields:[
+      field "playerId" ~typ:(non_null string)
+        ~args:Arg.[]
+        ~resolve:(fun _info (e : leader_entry) -> e.le_player_id);
+      field "playerName" ~typ:(non_null string)
+        ~args:Arg.[]
+        ~resolve:(fun _info (e : leader_entry) -> e.le_player_name);
+      field "teamName" ~typ:(non_null string)
+        ~args:Arg.[]
+        ~resolve:(fun _info (e : leader_entry) -> e.le_team_name);
+      field "statValue" ~typ:(non_null float)
+        ~args:Arg.[]
+        ~resolve:(fun _info (e : leader_entry) -> e.le_stat_value);
+    ])
+
+let mvp_candidate_type : (unit, mvp_candidate option) S.typ =
+  S.(obj "MvpCandidate"
+    ~doc:"MVP race candidate with scoring formula"
+    ~fields:[
+      field "rank" ~typ:(non_null int)
+        ~args:Arg.[]
+        ~resolve:(fun _info (m : mvp_candidate) -> m.mvp_rank);
+      field "playerId" ~typ:(non_null string)
+        ~args:Arg.[]
+        ~resolve:(fun _info (m : mvp_candidate) -> m.mvp_player_id);
+      field "playerName" ~typ:(non_null string)
+        ~args:Arg.[]
+        ~resolve:(fun _info (m : mvp_candidate) -> m.mvp_player_name);
+      field "teamName" ~typ:(non_null string)
+        ~args:Arg.[]
+        ~resolve:(fun _info (m : mvp_candidate) -> m.mvp_team_name);
+      field "teamCode" ~typ:string
+        ~args:Arg.[]
+        ~resolve:(fun _info (m : mvp_candidate) -> m.mvp_team_code);
+      field "gamesPlayed" ~typ:(non_null int)
+        ~args:Arg.[]
+        ~resolve:(fun _info (m : mvp_candidate) -> m.mvp_games_played);
+      field "ppg" ~typ:(non_null float)
+        ~args:Arg.[]
+        ~resolve:(fun _info (m : mvp_candidate) -> m.mvp_ppg);
+      field "rpg" ~typ:(non_null float)
+        ~args:Arg.[]
+        ~resolve:(fun _info (m : mvp_candidate) -> m.mvp_rpg);
+      field "apg" ~typ:(non_null float)
+        ~args:Arg.[]
+        ~resolve:(fun _info (m : mvp_candidate) -> m.mvp_apg);
+      field "spg" ~typ:(non_null float)
+        ~args:Arg.[]
+        ~resolve:(fun _info (m : mvp_candidate) -> m.mvp_spg);
+      field "bpg" ~typ:(non_null float)
+        ~args:Arg.[]
+        ~resolve:(fun _info (m : mvp_candidate) -> m.mvp_bpg);
+      field "efficiency" ~typ:(non_null float)
+        ~args:Arg.[]
+        ~resolve:(fun _info (m : mvp_candidate) -> m.mvp_efficiency);
+      field "teamWins" ~typ:(non_null int)
+        ~args:Arg.[]
+        ~resolve:(fun _info (m : mvp_candidate) -> m.mvp_team_wins);
+      field "teamLosses" ~typ:(non_null int)
+        ~args:Arg.[]
+        ~resolve:(fun _info (m : mvp_candidate) -> m.mvp_team_losses);
+      field "teamWinPct" ~typ:(non_null float)
+        ~args:Arg.[]
+        ~resolve:(fun _info (m : mvp_candidate) -> m.mvp_team_win_pct);
+      field "baseScore" ~typ:(non_null float)
+        ~args:Arg.[]
+        ~resolve:(fun _info (m : mvp_candidate) -> m.mvp_base_score);
+      field "winBonus" ~typ:(non_null float)
+        ~args:Arg.[]
+        ~resolve:(fun _info (m : mvp_candidate) -> m.mvp_win_bonus);
+      field "finalScore" ~typ:(non_null float)
+        ~args:Arg.[]
+        ~resolve:(fun _info (m : mvp_candidate) -> m.mvp_final_score);
+    ])
+
+let clutch_stats_type : (unit, clutch_stats option) S.typ =
+  S.(obj "ClutchStats"
+    ~doc:"Player clutch game performance"
+    ~fields:[
+      field "playerId" ~typ:(non_null string)
+        ~args:Arg.[]
+        ~resolve:(fun _info (c : clutch_stats) -> c.cs_player_id);
+      field "playerName" ~typ:(non_null string)
+        ~args:Arg.[]
+        ~resolve:(fun _info (c : clutch_stats) -> c.cs_player_name);
+      field "teamName" ~typ:(non_null string)
+        ~args:Arg.[]
+        ~resolve:(fun _info (c : clutch_stats) -> c.cs_team_name);
+      field "clutchGames" ~typ:(non_null int)
+        ~args:Arg.[]
+        ~resolve:(fun _info (c : clutch_stats) -> c.cs_clutch_games);
+      field "clutchPoints" ~typ:(non_null int)
+        ~args:Arg.[]
+        ~resolve:(fun _info (c : clutch_stats) -> c.cs_clutch_points);
+      field "clutchFgMade" ~typ:(non_null int)
+        ~args:Arg.[]
+        ~resolve:(fun _info (c : clutch_stats) -> c.cs_clutch_fg_made);
+      field "clutchFgAtt" ~typ:(non_null int)
+        ~args:Arg.[]
+        ~resolve:(fun _info (c : clutch_stats) -> c.cs_clutch_fg_att);
+      field "clutchFgPct" ~typ:(non_null float)
+        ~args:Arg.[]
+        ~resolve:(fun _info (c : clutch_stats) -> c.cs_clutch_fg_pct);
+      field "clutchFtMade" ~typ:(non_null int)
+        ~args:Arg.[]
+        ~resolve:(fun _info (c : clutch_stats) -> c.cs_clutch_ft_made);
+      field "clutchFtAtt" ~typ:(non_null int)
+        ~args:Arg.[]
+        ~resolve:(fun _info (c : clutch_stats) -> c.cs_clutch_ft_att);
+      field "clutch3pMade" ~typ:(non_null int)
+        ~args:Arg.[]
+        ~resolve:(fun _info (c : clutch_stats) -> c.cs_clutch_3p_made);
+    ])
+
+(* Award records: Caqti returns raw tuples, convert to GraphQL-friendly type *)
+type award_record = {
+  ar_season_name: string;
+  ar_category: string;
+  ar_player_name: string;
+  ar_stat_value: string option;
+  ar_votes: string option;
+}
+
+let award_of_tuple (sn, (cat, (pn, (sv, votes)))) =
+  { ar_season_name = sn; ar_category = cat; ar_player_name = pn;
+    ar_stat_value = sv; ar_votes = votes }
+
+let award_record_type : (unit, award_record option) S.typ =
+  S.(obj "AwardRecord"
+    ~doc:"WKBL award entry"
+    ~fields:[
+      field "seasonName" ~typ:(non_null string)
+        ~args:Arg.[]
+        ~resolve:(fun _info a -> a.ar_season_name);
+      field "category" ~typ:(non_null string)
+        ~args:Arg.[]
+        ~resolve:(fun _info a -> a.ar_category);
+      field "playerName" ~typ:(non_null string)
+        ~args:Arg.[]
+        ~resolve:(fun _info a -> a.ar_player_name);
+      field "statValue" ~typ:string
+        ~args:Arg.[]
+        ~resolve:(fun _info a -> a.ar_stat_value);
+      field "votes" ~typ:string
+        ~args:Arg.[]
+        ~resolve:(fun _info a -> a.ar_votes);
+    ])
+
+type award_leader = {
+  al_player_name: string;
+  al_count: int;
+}
+
+let award_leader_type : (unit, award_leader option) S.typ =
+  S.(obj "AwardLeader"
+    ~doc:"Player with most awards in a category"
+    ~fields:[
+      field "playerName" ~typ:(non_null string)
+        ~args:Arg.[]
+        ~resolve:(fun _info a -> a.al_player_name);
+      field "count" ~typ:(non_null int)
+        ~args:Arg.[]
+        ~resolve:(fun _info a -> a.al_count);
+    ])
+
 (* --- Enum types for arguments --- *)
 
 let player_sort_enum =
@@ -340,6 +510,93 @@ let query_fields : (unit, unit) S.field list =
         let page = match page with Some p -> p | None -> 1 in
         let page_size = match page_size with Some ps -> ps | None -> 50 in
         Db.get_games ~page ~page_size ~season () |> resolve_db);
+
+    (* --- Phase 2: Leaders, MVP Race, Clutch Stats, Awards --- *)
+
+    field "leaders"
+      ~doc:"Statistical category leaders (pts, reb, ast, stl, blk, etc.)"
+      ~typ:(non_null (list (non_null leader_entry_type)))
+      ~args:Arg.[
+        arg "category" ~typ:(non_null string) ~doc:"Stat category (pts, reb, ast, stl, blk, tov, min, fg_pct, etc.)";
+        arg "season" ~typ:string ~doc:"Season code (default: ALL)";
+        arg "scope" ~typ:string ~doc:"per_game, totals, or per_36 (default: per_game)";
+      ]
+      ~resolve:(fun _info () category season scope ->
+        let season = match season with Some s -> s | None -> "ALL" in
+        let scope = match scope with Some s -> s | None -> "per_game" in
+        Db.get_leaders ~season ~scope category |> resolve_db);
+
+    field "mvpRace"
+      ~doc:"MVP race rankings with scoring formula"
+      ~typ:(non_null (list (non_null mvp_candidate_type)))
+      ~args:Arg.[
+        arg "season" ~typ:string ~doc:"Season code (default: ALL)";
+        arg "minGames" ~typ:int ~doc:"Minimum games played (default: 5)";
+      ]
+      ~resolve:(fun _info () season min_games ->
+        let season = match season with Some s -> s | None -> "ALL" in
+        let min_games = match min_games with Some m -> m | None -> 5 in
+        Db.get_mvp_race ~season ~min_games () |> resolve_db);
+
+    field "clutchStats"
+      ~doc:"Player clutch game performance"
+      ~typ:(non_null (list (non_null clutch_stats_type)))
+      ~args:Arg.[
+        arg "season" ~typ:(non_null string) ~doc:"Season code";
+      ]
+      ~resolve:(fun _info () season ->
+        Db.get_clutch_stats ~season () |> resolve_db);
+
+    field "awardsByCategory"
+      ~doc:"Awards filtered by category"
+      ~typ:(non_null (list (non_null award_record_type)))
+      ~args:Arg.[
+        arg "category" ~typ:(non_null string) ~doc:"Award category (e.g. Scoring, Rebounding, Best5)";
+      ]
+      ~resolve:(fun _info () category ->
+        Db.get_awards_by_category ~category ()
+        |> resolve_db
+        |> List.map award_of_tuple);
+
+    field "awardsBySeason"
+      ~doc:"Awards filtered by season"
+      ~typ:(non_null (list (non_null award_record_type)))
+      ~args:Arg.[
+        arg "seasonName" ~typ:(non_null string) ~doc:"Season name";
+      ]
+      ~resolve:(fun _info () season_name ->
+        Db.get_awards_by_season ~season_name ()
+        |> resolve_db
+        |> List.map award_of_tuple);
+
+    field "awardsByPlayer"
+      ~doc:"Awards filtered by player name (partial match)"
+      ~typ:(non_null (list (non_null award_record_type)))
+      ~args:Arg.[
+        arg "playerName" ~typ:(non_null string) ~doc:"Player name (partial match)";
+      ]
+      ~resolve:(fun _info () player_name ->
+        Db.get_awards_by_player ~player_name ()
+        |> resolve_db
+        |> List.map award_of_tuple);
+
+    field "awardLeaders"
+      ~doc:"Players with most awards in a category"
+      ~typ:(non_null (list (non_null award_leader_type)))
+      ~args:Arg.[
+        arg "category" ~typ:(non_null string) ~doc:"Award category";
+      ]
+      ~resolve:(fun _info () category ->
+        Db.get_award_leaders ~category ()
+        |> resolve_db
+        |> List.map (fun (name, count) -> { al_player_name = name; al_count = count }));
+
+    field "awardCount"
+      ~doc:"Total number of awards in database"
+      ~typ:int
+      ~args:Arg.[]
+      ~resolve:(fun _info () ->
+        Db.get_award_count () |> resolve_db);
   ]
 
 let schema : unit S.schema =
