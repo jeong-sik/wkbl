@@ -39,6 +39,19 @@ COPY --chown=opam:opam apps/api/ .
 
 RUN opam exec -- dune build --profile=release bin/main.exe bin/scraper_tool.exe
 
+# Build Wasm islands and copy outputs to static/wasm/ for serving
+RUN opam exec -- dune build islands/ && \
+    for d in _build/default/islands/*/; do \
+      n="$(basename "$d")"; \
+      if [ -f "$d/main.bc.wasm.js" ]; then \
+        mkdir -p "static/wasm/$n" && \
+        cp "$d/main.bc.wasm.js" "static/wasm/$n/" && \
+        if [ -d "$d/main.bc.wasm.assets" ]; then \
+          cp -r "$d/main.bc.wasm.assets" "static/wasm/$n/"; \
+        fi; \
+      fi; \
+    done
+
 # 2. Run Stage
 FROM debian:12-slim
 
