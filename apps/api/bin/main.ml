@@ -78,6 +78,14 @@ let cache_control_middleware : Kirin.middleware = fun next_handler request ->
           response
       | None -> response)
 
+(* Fix Content-Type for .wasm files (kirin defaults to application/octet-stream) *)
+let wasm_mime_middleware : Kirin.middleware = fun next_handler request ->
+  let response = next_handler request in
+  let path = Kirin.Request.uri request |> Uri.path in
+  if Filename.check_suffix path ".wasm" then
+    Kirin.with_header "Content-Type" "application/wasm" response
+  else response
+
 let security_headers_middleware : Kirin.middleware = fun next_handler request ->
   let response = next_handler request in
   response
@@ -380,6 +388,7 @@ let () =
   (* Kirin.compress disabled: causes infinite hang on certain JS files.
      Cloudflare handles gzip compression at the edge instead. *)
   @@ security_headers_middleware
+  @@ wasm_mime_middleware
   @@ woman_win_redirect_middleware
   @@ cache_control_middleware
   @@ utf8_middleware

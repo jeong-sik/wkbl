@@ -136,7 +136,7 @@ type empty_state_icon = BasketballIcon | SearchIcon | ChartIcon | UsersIcon | Ta
     Use the appropriate variant to add feature-specific scripts. *)
 type page_scripts =
   | Core_only                    (** Essential scripts only *)
-  | With_tables                  (** + table-sort, table-export, table-row-link, number-format *)
+  | With_tables                  (** + table-export, table-row-link (sort/format via Wasm islands) *)
   | With_charts                  (** + Chart.js CDN + chart defaults *)
   | With_tables_and_charts       (** Both table and chart scripts *)
   | With_player_features         (** team-roster.js + player-trends.js *)
@@ -286,9 +286,12 @@ let render_fixed_table ?(table_attrs="") ?(aria_label="Data Table") ?(striped=tr
   <button class="csv-export-btn text-xs text-slate-500 hover:text-orange-500 cursor-pointer transition-colors" data-table-id="%s" aria-label="Download CSV">CSV</button>
 </div>|html} id
   in
-  (* Assemble *)
+  (* Assemble — sortable tables get data-island="table_sort" for Wasm hydration *)
+  let island_attr = if has_sortable
+    then {| data-island="table_sort" data-island-fallback="/static/js/table-sort.js"|}
+    else "" in
   Printf.sprintf
-    {html|<div class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto overflow-y-hidden shadow-2xl scroll-shadow">
+    {html|<div class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto overflow-y-hidden shadow-2xl scroll-shadow"%s>
   %s
   <table id="%s"%s class="w-full %s text-xs sm:text-sm font-mono tabular-nums table-fixed" style="border-collapse: separate; border-spacing: 0;" aria-label="%s">
     %s
@@ -296,7 +299,7 @@ let render_fixed_table ?(table_attrs="") ?(aria_label="Data Table") ?(striped=tr
     %s
   </table>
 </div>|html}
-    csv_btn id extra_table_attrs min_width (escape_html aria_label) thead tbody tfoot
+    island_attr csv_btn id extra_table_attrs min_width (escape_html aria_label) thead tbody tfoot
 
 let normalize_name s = Domain.normalize_label s
 let format_float ?(digits=1) value = Printf.sprintf "%.*f" digits value
@@ -630,19 +633,19 @@ let layout
   let mobile_nav_js = static_asset "/static/js/mobile-nav.js" in
   let notifications_js = static_asset "/static/js/notifications.js" in
   let share_utils_js = static_asset "/static/js/share-utils.js" in
+  let island_loader_js = static_asset "/static/js/island-loader.js" in
 
-  (* Table scripts: loaded only when needed *)
+  (* Table scripts: table-sort and number-format are now Wasm islands
+     loaded by island-loader.js with JS fallback via data-island-fallback.
+     Only table-export and table-row-link remain as direct script tags. *)
   let table_scripts_html = if needs_tables then
-    let table_sort_js = static_asset "/static/js/table-sort.js" in
     let table_export_js = static_asset "/static/js/table-export.js" in
     let table_row_link_js = static_asset "/static/js/table-row-link.js" in
-    let number_format_js = static_asset "/static/js/number-format.js" in
     Printf.sprintf
       {html|  <script defer src="%s"></script>
   <script defer src="%s"></script>
-  <script defer src="%s"></script>
-  <script defer src="%s"></script>|html}
-      table_sort_js table_export_js table_row_link_js number_format_js
+  <div data-island="number_format" data-island-fallback="/static/js/number-format.js" hidden></div>|html}
+      table_export_js table_row_link_js
   else "" in
 
   let needs_features = match scripts with
@@ -855,6 +858,7 @@ let layout
   <script defer src="%s"></script>
   <script defer src="%s"></script>
   <script defer src="%s"></script>
+  <script defer src="%s"></script>
 %s
 %s
 %s
@@ -884,6 +888,7 @@ let layout
     mobile_nav_js
     notifications_js
     share_utils_js
+    island_loader_js
     sw_register_js
     table_scripts_html
     feature_scripts_html

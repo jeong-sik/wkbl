@@ -53,6 +53,11 @@ jobs:
           cd apps/api
           opam exec -- dune build --profile=release bin/main.exe bin/scraper_tool.exe
 
+      - name: Build Wasm islands
+        run: |
+          cd apps/api
+          opam exec -- dune build islands/
+
       - name: Test
         run: |
           cd apps/api

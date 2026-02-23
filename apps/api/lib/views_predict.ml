@@ -89,6 +89,21 @@ let prediction_result_card ~(home: string) ~(away: string) (output: prediction_o
   if normalize_label result.winner = normalize_label home then "text-orange-700 dark:text-orange-400"
   else "text-sky-600 dark:text-sky-400"
  in
+ let h2h_prob =
+   let raw = (breakdown.pb_base_prob -. 0.55 *. breakdown.pb_elo_prob
+              -. 0.20 *. breakdown.pb_pyth_prob -. 0.15 *. breakdown.pb_stats_prob)
+             /. 0.10 in
+   max 0.0 (min 1.0 raw)
+ in
+ let island_attrs =
+   Printf.sprintf
+     {|data-island="prediction_gauge" data-home-name="%s" data-away-name="%s" data-home-elo="%.1f" data-away-elo="%.1f" data-pyth-prob="%.6f" data-stats-prob="%.6f" data-h2h-prob="%.6f" data-is-neutral="%s"|}
+     (escape_html home) (escape_html away)
+     breakdown.pb_elo_home breakdown.pb_elo_away
+     breakdown.pb_pyth_prob breakdown.pb_stats_prob
+     h2h_prob
+     (if breakdown.pb_is_neutral then "true" else "false")
+ in
  Printf.sprintf
   {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-xl space-y-4">
    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
@@ -115,6 +130,7 @@ let prediction_result_card ~(home: string) ~(away: string) (output: prediction_o
 	     </div>
 	    </div>
 	   </div>
+   <div %s>
    <div class="space-y-3 pt-2">
     <div class="flex justify-between text-[10px] font-black uppercase tracking-widest text-slate-500">
      <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-orange-500"></span>%s</span>
@@ -138,6 +154,7 @@ let prediction_result_card ~(home: string) ~(away: string) (output: prediction_o
 	     </div>
 	    </div>
 	   </div>
+   </div>
    <!-- AI Analysis -->
    <div class="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/30 dark:to-purple-950/30 border border-indigo-200 dark:border-indigo-800/50 rounded-lg p-4">
     <div class="flex items-center gap-2 mb-2">
@@ -203,6 +220,7 @@ let prediction_result_card ~(home: string) ~(away: string) (output: prediction_o
   spread_str
   winner_class
   (escape_html result.winner)
+  island_attrs
   (escape_html home)
   (escape_html away)
   home_pct

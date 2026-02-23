@@ -1,0 +1,5 @@
+(executable
+ (name main)
+ (modes wasm)
+ (libraries wkbl_island_core js_of_ocaml)
+ (preprocess (pps js_of_ocaml-ppx)))
