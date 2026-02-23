@@ -286,9 +286,12 @@ let render_fixed_table ?(table_attrs="") ?(aria_label="Data Table") ?(striped=tr
   <button class="csv-export-btn text-xs text-slate-500 hover:text-orange-500 cursor-pointer transition-colors" data-table-id="%s" aria-label="Download CSV">CSV</button>
 </div>|html} id
   in
-  (* Assemble *)
+  (* Assemble — sortable tables get data-island="table_sort" for Wasm hydration *)
+  let island_attr = if has_sortable
+    then {| data-island="table_sort" data-island-fallback="/static/js/table-sort.js"|}
+    else "" in
   Printf.sprintf
-    {html|<div class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto overflow-y-hidden shadow-2xl scroll-shadow">
+    {html|<div class="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto overflow-y-hidden shadow-2xl scroll-shadow"%s>
   %s
   <table id="%s"%s class="w-full %s text-xs sm:text-sm font-mono tabular-nums table-fixed" style="border-collapse: separate; border-spacing: 0;" aria-label="%s">
     %s
@@ -296,7 +299,7 @@ let render_fixed_table ?(table_attrs="") ?(aria_label="Data Table") ?(striped=tr
     %s
   </table>
 </div>|html}
-    csv_btn id extra_table_attrs min_width (escape_html aria_label) thead tbody tfoot
+    island_attr csv_btn id extra_table_attrs min_width (escape_html aria_label) thead tbody tfoot
 
 let normalize_name s = Domain.normalize_label s
 let format_float ?(digits=1) value = Printf.sprintf "%.*f" digits value
