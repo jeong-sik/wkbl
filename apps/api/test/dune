@@ -7,6 +7,10 @@
  (libraries alcotest wkbl))
 
 (test
+ (name test_island_core)
+ (libraries alcotest fmt wkbl_island_core))
+
+(test
  (name no_shell_cards_test)
  (libraries unix)
  (deps ../lib/cards.ml)
