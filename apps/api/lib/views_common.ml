@@ -645,7 +645,8 @@ let layout
       {html|  <script defer src="%s"></script>
   <script defer src="%s"></script>
   <script defer src="%s"></script>
-  <script defer src="%s"></script>|html}
+  <script defer src="%s"></script>
+  <div data-island="number_format" data-island-fallback="/static/js/number-format.js" hidden></div>|html}
       table_sort_js table_export_js table_row_link_js number_format_js
   else "" in
 
