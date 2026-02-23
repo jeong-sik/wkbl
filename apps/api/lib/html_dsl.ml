@@ -125,7 +125,7 @@ let hx_vals value = attr "hx-vals" value
 let hx_select value = attr "hx-select" value
 let hx_confirm value = attr "hx-confirm" value
 
-(* ── Phase 5 island marker (inert in Phase 4) ────── *)
+(* ── Phase 5 island marker ────────────────────────── *)
 
 let island name = data "island" name
 
