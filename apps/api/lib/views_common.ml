@@ -131,6 +131,16 @@ let sentry_public_key_of_dsn dsn =
 
 type empty_state_icon = BasketballIcon | SearchIcon | ChartIcon | UsersIcon | TableIcon
 
+(** Controls which JS bundles are included in the page.
+    Core_only loads only essential scripts (theme, htmx, mobile-nav, etc.).
+    Use the appropriate variant to add feature-specific scripts. *)
+type page_scripts =
+  | Core_only                    (** Essential scripts only *)
+  | With_tables                  (** + table-sort, table-export, table-row-link, number-format *)
+  | With_charts                  (** + Chart.js CDN + chart defaults *)
+  | With_tables_and_charts       (** Both table and chart scripts *)
+  | Custom of string list        (** Explicit list of script paths *)
+
 type col_spec = {
   header : string;
   width : int option;
@@ -484,6 +494,7 @@ let layout
     ?og_image
     ?data_freshness
     ?(has_charts = false)
+    ?(scripts = Core_only)
     ?(show_header = true)
     ?(show_footer = true)
     ~content () =
@@ -580,7 +591,26 @@ let layout
     sentry_html ^ clarity_html
   in
 
-  let chart_js_html = if has_charts then
+  (* Determine effective script set: has_charts (legacy) merges with scripts param *)
+  let effective_scripts = match scripts, has_charts with
+    | Core_only, true -> With_charts
+    | With_tables, true -> With_tables_and_charts
+    | s, _ -> s
+  in
+
+  let needs_charts = match effective_scripts with
+    | With_charts | With_tables_and_charts -> true
+    | Custom paths -> List.exists (fun p -> String.length p > 0 && (
+        let base = Filename.basename p in
+        base = "chart.min.js" || base = "chart.js")) paths
+    | _ -> false
+  in
+  let needs_tables = match effective_scripts with
+    | With_tables | With_tables_and_charts -> true
+    | _ -> false
+  in
+
+  let chart_js_html = if needs_charts then
     let chart_js = static_asset "/static/js/chart.min.js" in
     Printf.sprintf {html|<script src="%s"></script>
   <script>
@@ -592,24 +622,54 @@ let layout
 
   let tailwind_css = static_asset "/static/css/tailwind.css" in
   let styles_css = static_asset "/static/css/styles.css" in
+
+  (* Core scripts: always loaded *)
   let app_init_js = static_asset "/static/js/app-init.js" in
   let htmx_js = static_asset "/static/js/htmx-1.9.10.min.js" in
   let page_transitions_js = static_asset "/static/js/page-transitions.js" in
   let scroll_shadow_js = static_asset "/static/js/scroll-shadow.js" in
-  let table_sort_js = static_asset "/static/js/table-sort.js" in
-  let table_export_js = static_asset "/static/js/table-export.js" in
-  let table_row_link_js = static_asset "/static/js/table-row-link.js" in
-  let number_format_js = static_asset "/static/js/number-format.js" in
   let a11y_utils_js = static_asset "/static/js/a11y-utils.js" in
   let skeleton_loader_js = static_asset "/static/js/skeleton-loader.js" in
   let data_freshness_js = static_asset "/static/js/data-freshness.js" in
   let search_modal_js = static_asset "/static/js/search-modal.js" in
   let sw_register_js = static_asset "/static/js/sw-register.js" in
   let mobile_nav_js = static_asset "/static/js/mobile-nav.js" in
-  let team_roster_js = static_asset "/static/js/team-roster.js" in
-  let player_trends_js = static_asset "/static/js/player-trends.js" in
   let notifications_js = static_asset "/static/js/notifications.js" in
   let share_utils_js = static_asset "/static/js/share-utils.js" in
+
+  (* Table scripts: loaded only when needed *)
+  let table_scripts_html = if needs_tables then
+    let table_sort_js = static_asset "/static/js/table-sort.js" in
+    let table_export_js = static_asset "/static/js/table-export.js" in
+    let table_row_link_js = static_asset "/static/js/table-row-link.js" in
+    let number_format_js = static_asset "/static/js/number-format.js" in
+    Printf.sprintf
+      {html|  <script defer src="%s"></script>
+  <script defer src="%s"></script>
+  <script defer src="%s"></script>
+  <script defer src="%s"></script>|html}
+      table_sort_js table_export_js table_row_link_js number_format_js
+  else "" in
+
+  (* Feature scripts: loaded only when needed *)
+  let feature_scripts_html =
+    let team_roster_js = static_asset "/static/js/team-roster.js" in
+    let player_trends_js = static_asset "/static/js/player-trends.js" in
+    Printf.sprintf
+      {html|  <script defer src="%s"></script>
+  <script defer src="%s"></script>|html}
+      team_roster_js player_trends_js
+  in
+
+  (* Custom script paths *)
+  let custom_scripts_html = match effective_scripts with
+    | Custom paths ->
+        paths
+        |> List.map (fun p ->
+          Printf.sprintf {html|  <script defer src="%s"></script>|html} (static_asset p))
+        |> String.concat "\n"
+    | _ -> ""
+  in
 
   let nav_players = tr { ko = "선수"; en = "Players" } in
   let nav_teams = tr { ko = "팀"; en = "Teams" } in
@@ -799,12 +859,9 @@ let layout
   <script defer src="%s"></script>
   <script defer src="%s"></script>
   <script defer src="%s"></script>
-  <script defer src="%s"></script>
-  <script defer src="%s"></script>
-  <script defer src="%s"></script>
-  <script defer src="%s"></script>
-  <script defer src="%s"></script>
-  <script defer src="%s"></script>
+%s
+%s
+%s
 </body>
 </html>|html}
     (escape_html html_lang)
@@ -824,20 +881,17 @@ let layout
     htmx_js
     page_transitions_js
     scroll_shadow_js
-    table_sort_js
-    table_export_js
-    table_row_link_js
-    number_format_js
     a11y_utils_js
     skeleton_loader_js
     data_freshness_js
     search_modal_js
     mobile_nav_js
-    team_roster_js
-    player_trends_js
     notifications_js
     share_utils_js
     sw_register_js
+    table_scripts_html
+    feature_scripts_html
+    custom_scripts_html
   in
   (* CSP nonce injection: generate per-request nonce, inject into all opening
      <script tags, and prepend a CSP meta tag in <head>. *)

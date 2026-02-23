@@ -3,6 +3,7 @@
 module Admin = Admin
 module Backfill = Backfill
 module Domain = Domain
+module Html_dsl = Html_dsl
 module Db = Db
 module Db_common = Db_common
 module Db_types = Db_types
@@ -46,5 +47,6 @@ module Scraper = Scraper
 module Seasons_catalog = Seasons_catalog
 module Cards = Cards
 module Views_charts = Views_charts
+module Views_components = Views_components
 module Ai = Ai
 module Live = Live
