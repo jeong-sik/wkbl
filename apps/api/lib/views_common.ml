@@ -630,6 +630,7 @@ let layout
   let mobile_nav_js = static_asset "/static/js/mobile-nav.js" in
   let notifications_js = static_asset "/static/js/notifications.js" in
   let share_utils_js = static_asset "/static/js/share-utils.js" in
+  let island_loader_js = static_asset "/static/js/island-loader.js" in
 
   (* Table scripts: loaded only when needed *)
   let table_scripts_html = if needs_tables then
@@ -855,6 +856,7 @@ let layout
   <script defer src="%s"></script>
   <script defer src="%s"></script>
   <script defer src="%s"></script>
+  <script defer src="%s"></script>
 %s
 %s
 %s
@@ -884,6 +886,7 @@ let layout
     mobile_nav_js
     notifications_js
     share_utils_js
+    island_loader_js
     sw_register_js
     table_scripts_html
     feature_scripts_html

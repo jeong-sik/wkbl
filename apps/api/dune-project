@@ -1,4 +1,4 @@
-(lang dune 3.16)
+(lang dune 3.17)
 (name wkbl)
 (version 0.5.1)
 
@@ -15,7 +15,7 @@
  (description "Web application for analyzing WKBL player and team statistics using Kirin framework")
  (depends
   (ocaml (>= 5.1))
-  (dune (>= 3.16))
+  (dune (>= 3.17))
   (kirin (>= 0.4.1))
   (caqti (>= 2.1))
   (caqti-driver-sqlite3 (>= 2.1))
@@ -30,6 +30,7 @@
   (lambdasoup (>= 1.0))
   (graphql (>= 0.14))
   (graphql_parser (>= 0.14))
+  (wasm_of_ocaml-compiler (>= 6.3))
   (alcotest (>= 1.7.0))
   (bisect_ppx
    (and
