@@ -15,23 +15,32 @@ venv/
 data/wkbl/
 data/wkbl.db*
 
-# OCaml
-ocaml/_opam/
-ocaml/_build/
+# OCaml (apps/api)
+apps/api/_opam/
+apps/api/_build/
+_build/
+_opam/
 *.byte
 *.native
 *.install
 .merlin
 
 # Assets
-ocaml/static/images/originals/
+apps/api/static/images/originals/
+
+# Node / JS
+node_modules/
+.turbo/
+dist/
+
+# ReScript
+lib/bs/
+lib/ocaml/
+.bsb.lock
 
 # Git worktrees (managed separately)
 .worktree/
 .worktrees/
-
-# OCaml opam switch (top-level)
-_opam/
 
 # Agent runtime artifacts
 .masc/

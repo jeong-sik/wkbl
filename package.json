@@ -1,0 +1,20 @@
+{
+  "name": "wkbl",
+  "version": "0.6.0",
+  "private": true,
+  "description": "WKBL Analytics - Korean Women's Basketball Stats & Prediction Platform",
+  "packageManager": "pnpm@9.15.4",
+  "scripts": {
+    "build": "turbo build",
+    "dev": "turbo dev",
+    "lint": "turbo lint",
+    "test": "turbo test",
+    "typecheck": "turbo typecheck",
+    "api:build": "cd apps/api && dune build",
+    "api:test": "cd apps/api && dune test",
+    "api:dev": "cd apps/api && dune exec bin/main.exe"
+  },
+  "devDependencies": {
+    "turbo": "^2.4.0"
+  }
+}
