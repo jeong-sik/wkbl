@@ -33,7 +33,7 @@ const VERSIONED_ASSET_PATHS = [
   '/static/js/back-to-top.js',
   '/static/js/chart-tooltip.js',
   '/static/js/chart.min.js',
-  '/static/js/confetti.js',
+  '/static/js/island-loader.js',
   '/static/js/keyboard-nav.js',
   '/static/js/notifications.js',
   '/static/js/player-photo-fallback.js',

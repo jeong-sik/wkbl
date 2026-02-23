@@ -95,7 +95,9 @@ val hx_confirm : string -> attr
 (** {1 Phase 5 Island Marker} *)
 
 val island : string -> attr
-(** [island name] renders [data-island="name"]. Inert in Phase 4. *)
+(** [island name] renders [data-island="name"].
+    island-loader.js discovers these markers and loads
+    the corresponding Wasm module from /static/wasm/{name}/. *)
 
 (** {1 Elements} *)
 
