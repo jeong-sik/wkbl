@@ -23,6 +23,8 @@ for island_dir in "$BUILD"/*/; do
 
   target="${DEST}/${name}"
   mkdir -p "$target"
+  # Remove existing (dune _build files are read-only)
+  rm -f "$target/main.bc.wasm.js"
   cp "$js_glue" "$target/"
 
   if [ -d "$assets" ]; then
