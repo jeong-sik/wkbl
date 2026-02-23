@@ -139,6 +139,8 @@ type page_scripts =
   | With_tables                  (** + table-sort, table-export, table-row-link, number-format *)
   | With_charts                  (** + Chart.js CDN + chart defaults *)
   | With_tables_and_charts       (** Both table and chart scripts *)
+  | With_player_features         (** team-roster.js + player-trends.js *)
+  | With_tables_and_features     (** tables + features *)
   | Custom of string list        (** Explicit list of script paths *)
 
 type col_spec = {
@@ -493,7 +495,6 @@ let layout
     ?og_description
     ?og_image
     ?data_freshness
-    ?(has_charts = false)
     ?(scripts = Core_only)
     ?(show_header = true)
     ?(show_footer = true)
@@ -591,22 +592,15 @@ let layout
     sentry_html ^ clarity_html
   in
 
-  (* Determine effective script set: has_charts (legacy) merges with scripts param *)
-  let effective_scripts = match scripts, has_charts with
-    | Core_only, true -> With_charts
-    | With_tables, true -> With_tables_and_charts
-    | s, _ -> s
-  in
-
-  let needs_charts = match effective_scripts with
+  let needs_charts = match scripts with
     | With_charts | With_tables_and_charts -> true
     | Custom paths -> List.exists (fun p -> String.length p > 0 && (
         let base = Filename.basename p in
         base = "chart.min.js" || base = "chart.js")) paths
     | _ -> false
   in
-  let needs_tables = match effective_scripts with
-    | With_tables | With_tables_and_charts -> true
+  let needs_tables = match scripts with
+    | With_tables | With_tables_and_charts | With_tables_and_features -> true
     | _ -> false
   in
 
@@ -651,18 +645,20 @@ let layout
       table_sort_js table_export_js table_row_link_js number_format_js
   else "" in
 
-  (* Feature scripts: loaded only when needed *)
-  let feature_scripts_html =
+  let needs_features = match scripts with
+    | With_player_features | With_tables_and_features -> true
+    | _ -> false
+  in
+  let feature_scripts_html = if needs_features then
     let team_roster_js = static_asset "/static/js/team-roster.js" in
     let player_trends_js = static_asset "/static/js/player-trends.js" in
     Printf.sprintf
       {html|  <script defer src="%s"></script>
   <script defer src="%s"></script>|html}
       team_roster_js player_trends_js
-  in
+  else "" in
 
-  (* Custom script paths *)
-  let custom_scripts_html = match effective_scripts with
+  let custom_scripts_html = match scripts with
     | Custom paths ->
         paths
         |> List.map (fun p ->
@@ -1969,3 +1965,67 @@ let skeleton_table_row ~cols =
     {html|<td class="px-3 py-2"><div class="h-4 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div></td>|html}
   ) |> String.concat "" in
   Printf.sprintf {html|<tr class="border-b border-slate-200 dark:border-slate-800">%s</tr>|html} cells
+
+let error_page ?(lang=I18n.Ko) message =
+  let tr = I18n.t lang in
+  let title = tr { ko = "오류"; en = "Error" } in
+  let heading = tr { ko = "문제가 발생했습니다"; en = "Something went wrong" } in
+  let body = tr { ko = "잠시 후 다시 시도해주세요."; en = "Please try again later." } in
+  let back = tr { ko = "홈으로"; en = "Back to home" } in
+  let details_label = tr { ko = "자세히"; en = "Details" } in
+  let details_html =
+    if String.trim message = "" then
+      ""
+    else
+      Printf.sprintf
+        {html|<details class="mt-4 w-full max-w-xl">
+          <summary class="cursor-pointer select-none text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200">%s</summary>
+          <pre class="mt-2 p-3 rounded-lg bg-slate-100 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 text-[11px] leading-relaxed text-slate-700 dark:text-slate-200 overflow-auto">%s</pre>
+        </details>|html}
+        (escape_html details_label)
+        (escape_html message)
+  in
+  layout
+    ~lang
+    ~title
+    ~content:
+      (Printf.sprintf
+         {html|<div class="flex flex-col items-center justify-center py-20 text-center">
+           <h2 class="text-xl font-bold text-slate-900 dark:text-slate-200 mb-2">%s</h2>
+           <p class="text-slate-600 dark:text-slate-400">%s</p>
+           %s
+           <a href="/" class="mt-6 inline-flex items-center text-orange-700 dark:text-orange-400 hover:underline">%s</a>
+         </div>|html}
+         (escape_html heading)
+         (escape_html body)
+         details_html
+         (escape_html back))
+    ()
+
+let not_found_page ?(lang=I18n.Ko) ?(what="페이지") () =
+  let tr = I18n.t lang in
+  let title = tr { ko = "찾을 수 없음"; en = "Not Found" } in
+  let heading = tr { ko = Printf.sprintf "%s를 찾을 수 없습니다" what;
+                     en = Printf.sprintf "%s not found" what } in
+  let body = tr { ko = "요청하신 항목이 존재하지 않거나 삭제되었을 수 있습니다.";
+                  en = "The requested item may not exist or has been removed." } in
+  let back = tr { ko = "홈으로"; en = "Back to home" } in
+  layout
+    ~lang
+    ~title
+    ~description:(Printf.sprintf "WKBL - %s" title)
+    ~content:
+      (Printf.sprintf
+         {html|<div class="flex flex-col items-center justify-center py-20 text-center">
+           <div class="text-6xl mb-4" aria-hidden="true">🏀</div>
+           <h2 class="text-xl font-bold text-slate-900 dark:text-slate-200 mb-2">%s</h2>
+           <p class="text-slate-600 dark:text-slate-400 mb-6">%s</p>
+           <a href="/" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-orange-500 text-white hover:bg-orange-600 transition">
+             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+             %s
+           </a>
+         </div>|html}
+         (escape_html heading)
+         (escape_html body)
+         (escape_html back))
+    ()

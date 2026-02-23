@@ -33,6 +33,7 @@ module Views = Views
 module Views_common = Views_common
 module Views_games = Views_games
 module Views_player = Views_player
+module Views_players = Views_players
 module Views_team = Views_team
 module Views_history = Views_history
 module Views_season = Views_season

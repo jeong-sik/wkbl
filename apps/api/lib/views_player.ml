@@ -1133,6 +1133,7 @@ let player_profile_page ?(lang=I18n.Ko) ?(leaderboards=None) ?(show_ops=false) (
     ~description:seo_desc
     ~og_image:og_card_url
     ~json_ld:json_ld_data
+    ~scripts:With_player_features
     ~content:(Printf.sprintf {html|<div class="space-y-6 sm:space-y-8 animate-fade-in">
       %s
       <!-- 히어로 섹션 개편 -->
