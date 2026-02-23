@@ -3,6 +3,10 @@
  (libraries alcotest fmt wkbl))
 
 (test
+ (name test_html_dsl)
+ (libraries alcotest wkbl))
+
+(test
  (name no_shell_cards_test)
  (libraries unix)
  (deps ../lib/cards.ml)
