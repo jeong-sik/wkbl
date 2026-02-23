@@ -1,21 +1,30 @@
 .git
 .github
 .masc
+.gemini
+.claude
 .venv
 .pytest_cache
 .worktrees
+.worktree
 __pycache__
 *.pyc
 *.log
 .DS_Store
+.turbo
+node_modules
 
-# Local data outputs (generated in Docker build)
+# Local data outputs
 data/wkbl/
 data/wkbl.db
 data/wkbl.db-*
 wkbl.db
-ocaml/wkbl.db
 
 # OCaml build outputs
-ocaml/_build/
+apps/api/_build/
+_build/
 
+# JS/ReScript apps (not needed for API Docker build)
+apps/web/
+apps/mobile/
+packages/

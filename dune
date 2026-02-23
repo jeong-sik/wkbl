@@ -1,0 +1,4 @@
+; Root dune file for WKBL monorepo.
+; Only scan apps/ (OCaml API) and data/ directories.
+; JS packages (apps/web, apps/mobile, packages/*) are managed by pnpm/turbo.
+(dirs apps data)
