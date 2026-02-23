@@ -136,7 +136,7 @@ type empty_state_icon = BasketballIcon | SearchIcon | ChartIcon | UsersIcon | Ta
     Use the appropriate variant to add feature-specific scripts. *)
 type page_scripts =
   | Core_only                    (** Essential scripts only *)
-  | With_tables                  (** + table-sort, table-export, table-row-link, number-format *)
+  | With_tables                  (** + table-export, table-row-link (sort/format via Wasm islands) *)
   | With_charts                  (** + Chart.js CDN + chart defaults *)
   | With_tables_and_charts       (** Both table and chart scripts *)
   | With_player_features         (** team-roster.js + player-trends.js *)
@@ -635,19 +635,17 @@ let layout
   let share_utils_js = static_asset "/static/js/share-utils.js" in
   let island_loader_js = static_asset "/static/js/island-loader.js" in
 
-  (* Table scripts: loaded only when needed *)
+  (* Table scripts: table-sort and number-format are now Wasm islands
+     loaded by island-loader.js with JS fallback via data-island-fallback.
+     Only table-export and table-row-link remain as direct script tags. *)
   let table_scripts_html = if needs_tables then
-    let table_sort_js = static_asset "/static/js/table-sort.js" in
     let table_export_js = static_asset "/static/js/table-export.js" in
     let table_row_link_js = static_asset "/static/js/table-row-link.js" in
-    let number_format_js = static_asset "/static/js/number-format.js" in
     Printf.sprintf
       {html|  <script defer src="%s"></script>
   <script defer src="%s"></script>
-  <script defer src="%s"></script>
-  <script defer src="%s"></script>
   <div data-island="number_format" data-island-fallback="/static/js/number-format.js" hidden></div>|html}
-      table_sort_js table_export_js table_row_link_js number_format_js
+      table_export_js table_row_link_js
   else "" in
 
   let needs_features = match scripts with
