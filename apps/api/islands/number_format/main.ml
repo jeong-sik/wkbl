@@ -95,11 +95,10 @@ let process_all (root : Dom.node Js.t) : unit =
 let hydrate_subtree (root : Dom.node Js.t) =
   (* Process all data-format-number elements in subtree *)
   process_all root;
-  (* Find island containers and mark hydrated *)
+  (* Mark island containers as hydrated (elements already processed above) *)
   let containers = query_all root "[data-island='number_format']:not([data-island-hydrated])" in
   List.iter (fun container_node ->
     let container = to_element container_node in
-    process_all (container :> Dom.node Js.t);
     container##setAttribute (Js.string "data-island-hydrated") (Js.string "true")
   ) containers
 
