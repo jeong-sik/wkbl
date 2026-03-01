@@ -30,6 +30,8 @@
   (lambdasoup (>= 1.0))
   (graphql (>= 0.14))
   (graphql_parser (>= 0.14))
+  (js_of_ocaml (>= 6.0))
+  (js_of_ocaml-ppx (>= 6.0))
   (wasm_of_ocaml-compiler (>= 6.0))
   (alcotest (>= 1.7.0))
   (bisect_ppx
