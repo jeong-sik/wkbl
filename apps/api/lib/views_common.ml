@@ -186,6 +186,13 @@ let render_fixed_table ?(table_attrs="") ?(aria_label="Data Table") ?(striped=tr
     | `Center -> "text-center"
     | `Right -> "text-right"
   in
+  let resolved_width c =
+    match c.width with
+    | Some w -> Some w
+    (* Sticky columns need stable width to compute cumulative left offset. *)
+    | None when c.sticky -> Some 160
+    | None -> None
+  in
   (* Sticky columns use cumulative left offset so multiple sticky columns
      do not overlap (e.g. # + player columns). *)
   let sticky_left_by_index =
@@ -194,7 +201,7 @@ let render_fixed_table ?(table_attrs="") ?(aria_label="Data Table") ?(striped=tr
       | c :: rest ->
           let left = if c.sticky then Some acc_left else None in
           let next_left =
-            if c.sticky then acc_left + Option.value c.width ~default:0 else acc_left
+            if c.sticky then acc_left + Option.value (resolved_width c) ~default:0 else acc_left
           in
           build next_left (left :: acc) rest
     in
@@ -205,7 +212,7 @@ let render_fixed_table ?(table_attrs="") ?(aria_label="Data Table") ?(striped=tr
     cols
     |> List.mapi (fun i c ->
         let width_style =
-          match c.width with
+          match resolved_width c with
           | Some w -> Printf.sprintf "width: %dpx;" w
           | None -> "width: auto;"
         in
@@ -246,7 +253,7 @@ let render_fixed_table ?(table_attrs="") ?(aria_label="Data Table") ?(striped=tr
         |> List.mapi (fun i c ->
           let data = row_arr.(i) in
           let width_style =
-            match c.width with
+            match resolved_width c with
             | Some w -> Printf.sprintf "width: %dpx;" w
             | None -> "width: auto;"
           in
