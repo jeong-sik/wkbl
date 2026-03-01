@@ -628,6 +628,28 @@ let player_profile_page ?(lang=I18n.Ko) ?(leaderboards=None) ?(show_ops=false) (
   let season_stats_component = player_season_stats_component ~player_id:p.id ~scope profile.season_breakdown in
   let summary_comparison_html = player_summary_comparison profile.season_breakdown in
   let career_trajectory_html = career_trajectory_chart profile.season_breakdown in
+
+  let player_radar_chart_html =
+    if avg.games_played <= 0 then "" else
+    let n_pts = min 100.0 (avg.avg_points /. 25.0 *. 100.0) in
+    let n_reb = min 100.0 (avg.avg_rebounds /. 15.0 *. 100.0) in
+    let n_ast = min 100.0 (avg.avg_assists /. 10.0 *. 100.0) in
+    let n_stl = min 100.0 (avg.avg_steals /. 3.0 *. 100.0) in
+    let n_blk = min 100.0 (avg.avg_blocks /. 2.0 *. 100.0) in
+    let chart_data_json = Printf.sprintf
+      {|{"labels":["PTS","REB","AST","STL","BLK"], "datasetLabel":"%s", "data":[%.1f, %.1f, %.1f, %.1f, %.1f], "maxScale": 100}|}
+      (escape_js_string p.name) n_pts n_reb n_ast n_stl n_blk
+    in
+    Printf.sprintf
+      {html|<div class="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-lg mb-6">
+        <h3 class="font-bold text-slate-900 dark:text-slate-200 text-sm mb-2">선수 밸런스 (최근 시즌 Top 수준 대비)</h3>
+        <div class="relative w-full h-[250px] sm:h-[300px]">
+          <canvas id="playerRadarChart" data-chart-data='%s'></canvas>
+        </div>
+      </div>|html}
+      (escape_html chart_data_json)
+  in
+
   let rec take n xs =
     match n, xs with
     | n, _ when n <= 0 -> []
@@ -1133,7 +1155,7 @@ let player_profile_page ?(lang=I18n.Ko) ?(leaderboards=None) ?(show_ops=false) (
     ~description:seo_desc
     ~og_image:og_card_url
     ~json_ld:json_ld_data
-    ~scripts:With_player_features
+    ~scripts:With_player_features_and_charts
     ~content:(Printf.sprintf {html|<div class="space-y-6 sm:space-y-8 animate-fade-in">
       %s
       <!-- 히어로 섹션 개편 -->
@@ -1175,6 +1197,7 @@ let player_profile_page ?(lang=I18n.Ko) ?(leaderboards=None) ?(show_ops=false) (
 
       <div class="grid grid-cols-1 lg:grid-cols-6 gap-6 sm:gap-8">
         <div class="lg:col-span-4 space-y-6 sm:space-y-8">
+          %s
           %s
           %s
           %s
@@ -1251,6 +1274,7 @@ let player_profile_page ?(lang=I18n.Ko) ?(leaderboards=None) ?(show_ops=false) (
           summary_comparison_html
           season_stats_component
           career_trajectory_html
+          player_radar_chart_html
           recent_games_header_html
           recent_rows
           recent_tfoot

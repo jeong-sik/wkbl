@@ -14,18 +14,18 @@ let players_table ?(lang=I18n.Ko) ?(player_info_map=None) (players: player_aggre
   (* 1. Define Columns *)
   let cols = [
     col "#" ~w:(px 50) ~align:`Center;
-    col label_player ~w:(px 200);
+    col label_player ~w:(px 200) ~sticky:true;
     col label_team ~w:(px 130);
-    col "GP" ~w:(px 60) ~align:`Right ~resp:`Hidden_sm;
+    col "GP" ~w:(px 60) ~align:`Right;
     col "PTS" ~w:(px 90) ~align:`Right ~sort:"pts";
-    col "MG" ~w:(px 80) ~align:`Right ~resp:`Hidden_md ~sort:"mg";
+    col "MG" ~w:(px 80) ~align:`Right ~sort:"mg";
     col "REB" ~w:(px 85) ~align:`Right ~sort:"reb";
-    col "AST" ~w:(px 85) ~align:`Right ~resp:`Hidden_md ~sort:"ast";
-    col "STL" ~w:(px 80) ~align:`Right ~resp:`Hidden_lg;
-    col "BLK" ~w:(px 80) ~align:`Right ~resp:`Hidden_lg;
-    col "TO" ~w:(px 80) ~align:`Right ~resp:`Hidden_lg;
+    col "AST" ~w:(px 85) ~align:`Right ~sort:"ast";
+    col "STL" ~w:(px 80) ~align:`Right;
+    col "BLK" ~w:(px 80) ~align:`Right;
+    col "TO" ~w:(px 80) ~align:`Right;
     col "EFF ↓" ~w:(px 80) ~align:`Right ~sort:"eff" ~highlight:true;
-    col "PER" ~w:(px 80) ~align:`Right ~resp:`Hidden_sm;
+    col "PER" ~w:(px 80) ~align:`Right;
   ] in
 
   (* 2. Prepare Data (Dedupe logic preserved) *)
