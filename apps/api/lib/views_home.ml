@@ -13,7 +13,7 @@ let players_table ?(lang=I18n.Ko) ?(player_info_map=None) (players: player_aggre
   let label_total = tr { ko = "누적"; en = "Total" } in
   (* 1. Define Columns *)
   let cols = [
-    col "#" ~w:(px 50) ~align:`Center;
+    col "#" ~w:(px 50) ~align:`Center ~sticky:true;
     col label_player ~w:(px 200) ~sticky:true;
     col label_team ~w:(px 130);
     col "GP" ~w:(px 60) ~align:`Right;

@@ -186,20 +186,47 @@ let render_fixed_table ?(table_attrs="") ?(aria_label="Data Table") ?(striped=tr
     | `Center -> "text-center"
     | `Right -> "text-right"
   in
+  let resolved_width c =
+    match c.width with
+    | Some w -> Some w
+    (* Sticky columns need stable width to compute cumulative left offset. *)
+    | None when c.sticky -> Some 160
+    | None -> None
+  in
+  (* Sticky columns use cumulative left offset so multiple sticky columns
+     do not overlap (e.g. # + player columns). *)
+  let sticky_left_by_index =
+    let rec build acc_left acc = function
+      | [] -> Array.of_list (List.rev acc)
+      | c :: rest ->
+          let left = if c.sticky then Some acc_left else None in
+          let next_left =
+            if c.sticky then acc_left + Option.value (resolved_width c) ~default:0 else acc_left
+          in
+          build next_left (left :: acc) rest
+    in
+    build 0 [] cols
+  in
   (* 1. Render <thead> - Header determines column widths in table-fixed *)
   let thead =
     cols
-    |> List.map (fun c ->
+    |> List.mapi (fun i c ->
         let width_style =
-          match c.width with
+          match resolved_width c with
           | Some w -> Printf.sprintf "width: %dpx;" w
           | None -> "width: auto;"
         in
+        let sticky_style =
+          match sticky_left_by_index.(i) with
+          | Some left -> Printf.sprintf "left: %dpx;" left
+          | None -> ""
+        in
+        let full_style = width_style ^ sticky_style in
         let base_cls = "px-3 py-2 font-sans whitespace-nowrap" in
         let align_cls = align_class c.align in
         let resp_cls = resp_class c.resp in
         let highlight_cls = if c.highlight then "text-orange-700 dark:text-orange-400" else "" in
-        let sticky_cls = if c.sticky then "sticky left-0 z-20 bg-slate-100 dark:bg-slate-800/80" else "" in
+        let sticky_cls = if c.sticky then "sticky z-20 bg-slate-100 dark:bg-slate-800/80" else "" in
         let full_cls = String.concat " " [base_cls; align_cls; resp_cls; highlight_cls; sticky_cls] in
         let sort_attr =
           match c.sort with
@@ -212,7 +239,7 @@ let render_fixed_table ?(table_attrs="") ?(aria_label="Data Table") ?(striped=tr
           | None -> ""
         in
         Printf.sprintf {html|<th scope="col" class="%s" style="%s"%s%s>%s</th>|html}
-          full_cls width_style sort_attr title_attr (escape_html c.header))
+          full_cls full_style sort_attr title_attr (escape_html c.header))
     |> String.concat "\n"
     |> fun s -> Printf.sprintf {html|<thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider whitespace-nowrap"><tr>%s</tr></thead>|html} s
   in
@@ -220,13 +247,22 @@ let render_fixed_table ?(table_attrs="") ?(aria_label="Data Table") ?(striped=tr
     if List.length row <> List.length cols then
       "<!-- Row column count mismatch -->"
     else
+      let row_arr = Array.of_list row in
       let cells =
-        List.map2 (fun c data ->
+        cols
+        |> List.mapi (fun i c ->
+          let data = row_arr.(i) in
           let width_style =
-            match c.width with
+            match resolved_width c with
             | Some w -> Printf.sprintf "width: %dpx;" w
             | None -> "width: auto;"
           in
+          let sticky_style =
+            match sticky_left_by_index.(i) with
+            | Some left -> Printf.sprintf "left: %dpx;" left
+            | None -> ""
+          in
+          let full_style = width_style ^ sticky_style in
           let base_cls = "px-3 py-2 whitespace-nowrap overflow-hidden truncate" in
           let align_cls = align_class c.align in
           let resp_cls = resp_class c.resp in
@@ -237,13 +273,13 @@ let render_fixed_table ?(table_attrs="") ?(aria_label="Data Table") ?(striped=tr
           in
           let sticky_cls =
             if c.sticky then
-              "sticky left-0 z-10 bg-white dark:bg-slate-900 group-hover:bg-slate-100 dark:group-hover:bg-slate-800/50"
+              "sticky z-10 bg-white dark:bg-slate-900 group-hover:bg-slate-100 dark:group-hover:bg-slate-800/50"
             else ""
           in
           let numeric_cls = if c.numeric then "tabular-nums font-mono" else "" in
           let full_cls = String.concat " " [base_cls; align_cls; resp_cls; color_cls; sticky_cls; numeric_cls] in
-          Printf.sprintf {html|<td class="%s" style="%s">%s</td>|html} full_cls width_style data
-        ) cols row
+          Printf.sprintf {html|<td class="%s" style="%s">%s</td>|html} full_cls full_style data
+        )
         |> String.concat ""
       in
       let stripe_cls =
