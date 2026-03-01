@@ -439,7 +439,18 @@ let refresh_score_mismatch = (unit ->. unit) {|
   REFRESH MATERIALIZED VIEW CONCURRENTLY score_mismatch_games
 |}
 let drop_games_calc_view = (unit ->. unit) {|
-  DROP VIEW IF EXISTS games_calc CASCADE
+  DO $$
+  DECLARE v_relkind char;
+  BEGIN
+    SELECT relkind INTO v_relkind FROM pg_class
+    WHERE relname = 'games_calc'
+      AND relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public');
+    IF v_relkind = 'v' THEN
+      EXECUTE 'DROP VIEW games_calc CASCADE';
+    ELSIF v_relkind = 'm' THEN
+      EXECUTE 'DROP MATERIALIZED VIEW games_calc CASCADE';
+    END IF;
+  END $$
 |}
   (* Materialized View: games_calc_v3 - fixed zero score issue *)
   let ensure_games_calc_matview = (unit ->. unit) {|
@@ -466,6 +477,12 @@ let drop_games_calc_view = (unit ->. unit) {|
 
   let ensure_games_calc_season_index = (unit ->. unit) {|
     CREATE INDEX IF NOT EXISTS idx_games_calc_v3_season ON games_calc_v3(season_code)
+  |}
+
+  (* Backward compatibility: some stale workers still reference games_calc. *)
+  let ensure_games_calc_compat_view = (unit ->. unit) {|
+    CREATE OR REPLACE VIEW games_calc AS
+    SELECT * FROM games_calc_v3
   |}
 
   let refresh_games_calc = (unit ->. unit) {|

@@ -474,7 +474,7 @@ let compare_page
  in
  layout ~lang ~title:"WKBL 비교" ~canonical_path:"/compare"
   ~description:"WKBL 여자농구 선수 비교 - 두 선수의 스탯을 레이더 차트로 비교하세요."
-  ~has_charts:true
+  ~scripts:With_charts
   ~content:(Printf.sprintf
    {html|<div class="space-y-8">%s
     <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
@@ -730,4 +730,3 @@ let compare_seasons_page
   ~canonical_path:(Printf.sprintf "/compare/seasons?player=%s" (Uri.pct_encode player_id))
   ~description:(Printf.sprintf "%s의 시즌별 성적 비교 - WKBL 여자농구 분석" player_name)
   ~content ()
-
