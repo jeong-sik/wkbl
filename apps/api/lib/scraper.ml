@@ -823,36 +823,37 @@ let parse_fa_year_table year_tab =
     |> Option.value ~default:"unknown"
   in
   let rows = year_tab |> Soup.select "tbody tr" |> Soup.to_list in
-  let current_round = ref "" in
-  rows |> List.filter_map (fun row ->
-    let cells = row |> Soup.select "td" |> Soup.to_list in
-    match cells with
-    (* Header row for round: "1차 협상결과 (2025.04.04)" *)
-    | [cell] when Soup.attribute "colspan" cell |> Option.is_some ->
-        let text = get_all_text cell in
-        if String.length text > 0 && (String.sub text 0 2 = "1차" || String.sub text 0 2 = "2차") then
-          current_round := String.sub text 0 2;
-        None
-    (* Data row: round, original_team, acquiring_team, name, period, salary, bonus, total *)
-    | round_cell :: orig :: acq :: name :: period :: salary :: bonus :: total :: _ ->
-        let round_text = get_all_text round_cell in
-        let round = if String.length round_text > 0 then round_text else !current_round in
-        let player_name = get_all_text name in
-        if String.length player_name > 0 then
-          Some {
-            year;
-            round;
-            original_team = get_all_text orig;
-            acquiring_team = get_all_text acq;
-            fa_player_name = player_name;
-            contract_period = get_all_text period;
-            salary = get_all_text salary;
-            bonus = (let b = get_all_text bonus in if b = "" then None else Some b);
-            total_salary = get_all_text total;
-          }
-        else None
-    | _ -> None
-  )
+  let _, results =
+    List.fold_left (fun (current_round, acc) row ->
+      let cells = row |> Soup.select "td" |> Soup.to_list in
+      match cells with
+      (* Header row for round: "1차 협상결과 (2025.04.04)" *)
+      | [cell] when Soup.attribute "colspan" cell |> Option.is_some ->
+          let text = get_all_text cell in
+          let new_round = if String.length text >= 6 && (String.sub text 0 2 = "1차" || String.sub text 0 2 = "2차") then String.sub text 0 2 else current_round in
+          (new_round, acc)
+      (* Data row: round, original_team, acquiring_team, name, period, salary, bonus, total *)
+      | round_cell :: orig :: acq :: name :: period :: salary :: bonus :: total :: _ ->
+          let round_text = get_all_text round_cell in
+          let round = if String.length round_text > 0 then round_text else current_round in
+          let player_name = get_all_text name in
+          if String.length player_name > 0 then
+            (round, {
+              year;
+              round;
+              original_team = get_all_text orig;
+              acquiring_team = get_all_text acq;
+              fa_player_name = player_name;
+              contract_period = get_all_text period;
+              salary = get_all_text salary;
+              bonus = (let b = get_all_text bonus in if b = "" then None else Some b);
+              total_salary = get_all_text total;
+            } :: acc)
+          else (current_round, acc)
+      | _ -> (current_round, acc)
+    ) ("", []) rows
+  in
+  List.rev results
 
 (** Parse all FA results from the page *)
 let parse_fa_html html =
@@ -2307,7 +2308,7 @@ let season_date_range season_name =
      (start_year + 1, 1); (start_year + 1, 2); (start_year + 1, 3)]
   else if String.length season_name >= 6 then
     let year_str = String.sub season_name 0 4 in
-    let year = try int_of_string year_str with Failure _ -> 2000 in
+    let year = Option.value (int_of_string_opt year_str) ~default:2000 in
     if String.length season_name > 4 then
       let suffix = String.sub season_name 4 (String.length season_name - 4) in
       if suffix = "여름" then
@@ -2521,7 +2522,7 @@ let normalize_schedule_date ~season_code date_str =
   in
   let base_year =
     if String.length season_name >= 4 then
-      try int_of_string (String.sub season_name 0 4) with Failure _ -> current_year
+      Option.value (int_of_string_opt (String.sub season_name 0 4)) ~default:current_year
     else current_year
   in
   (* Parse "M/D(day)" format *)
@@ -2579,11 +2580,11 @@ let normalize_placeholder_scores home_score away_score =
   | hs, as_ -> (hs, as_)
 
 (** Last successful sync timestamp (Unix time) *)
-let last_sync_time : float option ref = ref None
+let last_sync_time : float option Atomic.t = Atomic.make None
 
 (** Get last sync time as formatted string *)
 let get_last_sync_time_str () =
-  match !last_sync_time with
+  match Atomic.get last_sync_time with
   | None -> "동기화 기록 없음"
   | Some t ->
     let tm = Unix.localtime t in
@@ -2842,7 +2843,7 @@ let sync_current_season_schedule ~sw ~env () =
       !synced !synced_games !errors;
     (* Update last sync time on success *)
     if schedule_sync_success ~schedule_synced:!synced ~games_upserted:!synced_games ~errors:!errors then
-      last_sync_time := Some (Unix.time ());
+      Atomic.set last_sync_time (Some (Unix.time ()));
     (!synced, !synced_games, !errors)
   with exn ->
     Printf.eprintf "[Sync] Fatal error: %s\n%s\n%!"

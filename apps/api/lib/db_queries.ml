@@ -403,7 +403,7 @@ let refresh_leaders_base_cache = (unit ->. unit) {|
 |}
 (* Migration: Drop old VIEWs before creating MATERIALIZED VIEWs *)
 let drop_score_mismatch_view = (unit ->. unit) {|
-  DROP MATERIALIZED VIEW IF EXISTS score_mismatch_games CASCADE
+  DROP VIEW IF EXISTS score_mismatch_games CASCADE
 |}
 (* Materialized View: score_mismatch_games - cached for performance *)
 let ensure_score_mismatch_matview = (unit ->. unit) {|

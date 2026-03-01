@@ -292,9 +292,9 @@ let predict_match_nerd ~(context : prediction_context_input option) ~(season: st
         relevant
         |> List.filter (fun g ->
             let gh = normalize_label g.home_team in
-            let hs = Option.get g.home_score in
-            let as_ = Option.get g.away_score in
-            if gh = h_key then hs > as_ else as_ > hs)
+            match g.home_score, g.away_score with
+            | Some hs, Some as_ -> if gh = h_key then hs > as_ else as_ > hs
+            | _ -> false)
         |> List.length
       in
       float_of_int h_wins /. float_of_int (List.length relevant)
