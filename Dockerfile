@@ -12,6 +12,8 @@ RUN apt-get update && apt-get install -y \
     libsqlite3-dev \
     liburing-dev \
     pkg-config \
+            ninja-build \
+            cmake \
     perl \
     && rm -rf /var/lib/apt/lists/*
 
