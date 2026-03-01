@@ -31,13 +31,28 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.opam
-          key: ${{ runner.os }}-opam-${{ hashFiles('ocaml/dune-project', 'ocaml/*.opam') }}
+          key: ${{ runner.os }}-opam-${{ hashFiles('apps/api/dune-project', 'apps/api/*.opam') }}
           restore-keys: |
             ${{ runner.os }}-opam-
 
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libev-dev \
+            libssl-dev \
+            libpq-dev \
+            libgmp-dev \
+            libffi-dev \
+            libsqlite3-dev \
+            liburing-dev \
+            pkg-config \
+            perl
+
       - name: Install dependencies
         run: |
-          cd ocaml
+          cd apps/api
+          opam update
           opam pin add -n -y grpc-direct https://github.com/jeong-sik/grpc-direct.git
           opam pin add -n -y grpc-direct-core https://github.com/jeong-sik/grpc-direct.git
           opam pin add -n -y ocaml-webrtc https://github.com/jeong-sik/ocaml-webrtc.git
@@ -46,14 +61,14 @@ jobs:
 
       - name: Build scraper tool
         run: |
-          cd ocaml
+          cd apps/api
           opam exec -- dune build bin/scraper_tool.exe
 
       - name: Sync schedule
         env:
           WKBL_DATABASE_URL: ${{ secrets.WKBL_DATABASE_URL }}
         run: |
-          cd ocaml
+          cd apps/api
           opam exec -- dune exec bin/scraper_tool.exe -- sync schedule
 
       - name: Sync games (DataLab results)
@@ -61,7 +76,7 @@ jobs:
           WKBL_DATABASE_URL: ${{ secrets.WKBL_DATABASE_URL }}
           SEASON: ${{ inputs.season }}
         run: |
-          cd ocaml
+          cd apps/api
           if [ -n "${SEASON}" ]; then
             opam exec -- dune exec bin/scraper_tool.exe -- sync games --season="${SEASON}"
           else
@@ -74,7 +89,7 @@ jobs:
           WKBL_DATABASE_URL: ${{ secrets.WKBL_DATABASE_URL }}
           SEASON: ${{ inputs.season }}
         run: |
-          cd ocaml
+          cd apps/api
           if [ -n "${SEASON}" ]; then
             opam exec -- dune exec bin/scraper_tool.exe -- sync boxscore --season="${SEASON}"
           else
@@ -86,7 +101,7 @@ jobs:
           WKBL_DATABASE_URL: ${{ secrets.WKBL_DATABASE_URL }}
           SEASON: ${{ inputs.season }}
         run: |
-          cd ocaml
+          cd apps/api
           if [ -n "${SEASON}" ]; then
             opam exec -- dune exec bin/scraper_tool.exe -- sync pbp --season="${SEASON}"
           else
