@@ -141,6 +141,7 @@ type page_scripts =
   | With_tables_and_charts       (** Both table and chart scripts *)
   | With_player_features         (** team-roster.js + player-trends.js *)
   | With_tables_and_features     (** tables + features *)
+  | With_player_features_and_charts (** player features + charts + player-radar-chart.js *)
   | Custom of string list        (** Explicit list of script paths *)
 
 type col_spec = {
@@ -596,7 +597,7 @@ let layout
   in
 
   let needs_charts = match scripts with
-    | With_charts | With_tables_and_charts -> true
+    | With_charts | With_tables_and_charts | With_player_features_and_charts -> true
     | Custom paths -> List.exists (fun p -> String.length p > 0 && (
         let base = Filename.basename p in
         base = "chart.min.js" || base = "chart.js")) paths
@@ -649,16 +650,22 @@ let layout
   else "" in
 
   let needs_features = match scripts with
-    | With_player_features | With_tables_and_features -> true
+    | With_player_features | With_tables_and_features | With_player_features_and_charts -> true
     | _ -> false
   in
   let feature_scripts_html = if needs_features then
     let team_roster_js = static_asset "/static/js/team-roster.js" in
     let player_trends_js = static_asset "/static/js/player-trends.js" in
+    let radar_script =
+      if scripts = With_player_features_and_charts then
+        let player_radar_js = static_asset "/static/js/player-radar-chart.js" in
+        Printf.sprintf "\n  <script defer src=\"%s\"></script>" player_radar_js
+      else ""
+    in
     Printf.sprintf
       {html|  <script defer src="%s"></script>
-  <script defer src="%s"></script>|html}
-      team_roster_js player_trends_js
+  <script defer src="%s"></script>%s|html}
+      team_roster_js player_trends_js radar_script
   else "" in
 
   let custom_scripts_html = match scripts with
@@ -824,6 +831,13 @@ let layout
 <html lang="%s" data-static-version="%s">
 <head>
   <meta charset="UTF-8">
+  <script>
+    if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>%s</title>
   %s
