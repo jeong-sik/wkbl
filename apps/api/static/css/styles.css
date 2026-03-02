@@ -171,13 +171,15 @@ html.dark body {
   transition: opacity 150ms ease-out, transform 150ms ease-out;
 }
 
-/* Table row hover enhancement with left accent bar */
+/* Table row hover enhancement.
+ * Keep transition/striping globally, but scope the pseudo-element accent bar
+ * to opt-in tables to avoid column shifts in native table layout. */
 tbody tr {
   transition: background-color 150ms ease, box-shadow 150ms ease;
   position: relative;
 }
 
-tbody tr::before {
+.data-table tbody tr::before {
   content: '';
   position: absolute;
   left: 0;
@@ -188,7 +190,7 @@ tbody tr::before {
   transition: background-color 150ms ease;
 }
 
-tbody tr:hover::before {
+.data-table tbody tr:hover::before {
   background: #f97316;
 }
 
