@@ -403,7 +403,18 @@ let refresh_leaders_base_cache = (unit ->. unit) {|
 |}
 (* Migration: Drop old VIEWs before creating MATERIALIZED VIEWs *)
 let drop_score_mismatch_view = (unit ->. unit) {|
-  DROP VIEW IF EXISTS score_mismatch_games CASCADE
+  DO $$
+  DECLARE v_relkind char;
+  BEGIN
+    SELECT relkind INTO v_relkind FROM pg_class
+    WHERE relname = 'score_mismatch_games'
+      AND relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public');
+    IF v_relkind = 'v' THEN
+      EXECUTE 'DROP VIEW score_mismatch_games CASCADE';
+    ELSIF v_relkind = 'm' THEN
+      EXECUTE 'DROP MATERIALIZED VIEW score_mismatch_games CASCADE';
+    END IF;
+  END $$
 |}
 (* Materialized View: score_mismatch_games - cached for performance *)
 let ensure_score_mismatch_matview = (unit ->. unit) {|
