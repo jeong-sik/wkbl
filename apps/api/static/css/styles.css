@@ -171,13 +171,15 @@ html.dark body {
   transition: opacity 150ms ease-out, transform 150ms ease-out;
 }
 
-/* Table row hover enhancement with left accent bar */
-tbody tr {
+/* Table row hover enhancement with left accent bar
+ * Scoped to opt-in tables only. Global tbody rules create anonymous table
+ * cells in some browsers and can shift column layout. */
+.data-table tbody tr {
   transition: background-color 150ms ease, box-shadow 150ms ease;
   position: relative;
 }
 
-tbody tr::before {
+.data-table tbody tr::before {
   content: '';
   position: absolute;
   left: 0;
@@ -188,7 +190,7 @@ tbody tr::before {
   transition: background-color 150ms ease;
 }
 
-tbody tr:hover::before {
+.data-table tbody tr:hover::before {
   background: #f97316;
 }
 
@@ -204,20 +206,20 @@ tbody tr:hover::before {
 }
 
 /* Zebra stripes for better readability */
-tbody tr:nth-child(even) {
+.data-table tbody tr:nth-child(even) {
   background-color: rgba(100, 116, 139, 0.03);
 }
 
-.dark tbody tr:nth-child(even) {
+.dark .data-table tbody tr:nth-child(even) {
   background-color: rgba(100, 116, 139, 0.05);
 }
 
 /* Zebra + hover combined */
-tbody tr:nth-child(even):hover {
+.data-table tbody tr:nth-child(even):hover {
   background-color: rgba(249, 115, 22, 0.1);
 }
 
-.dark tbody tr:nth-child(even):hover {
+.dark .data-table tbody tr:nth-child(even):hover {
   background-color: rgba(249, 115, 22, 0.14);
 }
 
