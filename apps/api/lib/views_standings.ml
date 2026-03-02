@@ -245,7 +245,7 @@ let standings_table ?(lang=I18n.Ko) ?(team_stats = []) ~season (standings : team
     )
   in
 
-  render_fixed_table ~table_attrs:{|data-row-link="team"|} ~id:"standings-table-inner" ~min_width:"min-w-[900px]" ~cols rows_data
+  render_fixed_table ~table_attrs:{|data-row-link="team"|} ~id:"standings-table-inner" ~min_width:"min-w-[1200px]" ~cols rows_data
 
 let standings_page ?(lang=I18n.Ko) ~season ~seasons ~team_stats standings =
  let tr = I18n.t lang in

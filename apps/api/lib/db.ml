@@ -508,7 +508,26 @@ let get_team_stats ?(season="ALL") ?(scope=PerGame) ?(sort=TeamByPoints) ?(inclu
       |> dedupe_team_stats
     in
     Ok stats)
-let calculate_gb (standings : team_standing list) = match standings with | [] -> [] | leader :: others -> let calc s = let wins_diff = Stdlib.float (leader.wins - s.wins) in let losses_diff = Stdlib.float (s.losses - leader.losses) in (wins_diff +. losses_diff) /. 2.0 in leader :: List.map (fun s -> { s with gb = calc s }) others
+let calculate_gb (standings : team_standing list) =
+  let sorted =
+    standings
+    |> List.sort (fun a b ->
+        match Float.compare b.win_pct a.win_pct with
+        | 0 -> (
+            match Int.compare b.wins a.wins with
+            | 0 -> Float.compare b.diff a.diff
+            | c -> c)
+        | c -> c)
+  in
+  match sorted with
+  | [] -> []
+  | leader :: others ->
+      let calc s =
+        let wins_diff = Stdlib.float (leader.wins - s.wins) in
+        let losses_diff = Stdlib.float (s.losses - leader.losses) in
+        (wins_diff +. losses_diff) /. 2.0
+      in
+      leader :: List.map (fun s -> { s with gb = calc s }) others
 let get_standings ?(season = "ALL") () =
   let key = Printf.sprintf "season=%s" season in
   cached standings_cache key (fun () ->

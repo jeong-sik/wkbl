@@ -1110,7 +1110,10 @@ let team_standings_by_season = (string ->* team_standing) {|
   FROM results r
   JOIN teams t ON t.team_code = r.team_code
   GROUP BY t.team_code
-  ORDER BY wins DESC
+  ORDER BY
+    (SUM(CASE WHEN pts_for > pts_against THEN 1 ELSE 0 END)::float / NULLIF(COUNT(*), 0)) DESC,
+    SUM(CASE WHEN pts_for > pts_against THEN 1 ELSE 0 END) DESC,
+    (AVG(pts_for) - AVG(pts_against)) DESC
 |}
 
 let all_games_paginated = (t2 (t2 string string) (t2 int int) ->* game_summary) {|
