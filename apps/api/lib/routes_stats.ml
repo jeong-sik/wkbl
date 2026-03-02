@@ -11,17 +11,19 @@ let routes =
       | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
       | Ok seasons ->
           let season = Route_helpers.query_season_or_latest request seasons in
-          (match Db.get_standings ~season () with
-          | Ok standings -> Kirin.html (Views.standings_page ~lang ~season ~seasons standings)
-          | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e)))
+          (match Db.get_standings ~season (), Db.get_team_stats ~season ~scope:PerGame ~sort:TeamByPoints () with
+          | Error e, _ | _, Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
+          | Ok standings, Ok team_stats ->
+              Kirin.html (Views.standings_page ~lang ~season ~seasons ~team_stats standings))
     );
 
     Kirin.get "/standings/table" (fun request ->
       let lang = Route_helpers.request_lang request in
       let season = Kirin.query_opt "season" request |> Option.value ~default:"ALL" in
-      match Db.get_standings ~season () with
-      | Ok standings -> Kirin.html (Views.standings_table ~lang ~season standings)
-      | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
+      match Db.get_standings ~season (), Db.get_team_stats ~season ~scope:PerGame ~sort:TeamByPoints () with
+      | Error e, _ | _, Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
+      | Ok standings, Ok team_stats ->
+          Kirin.html (Views.standings_table ~lang ~season ~team_stats standings)
     );
 
     (* Leaders *)
@@ -300,9 +302,13 @@ let routes =
         | Some s -> (match int_of_string_opt s with Some i -> i | None -> 0)
       in
       let q = Kirin.query_opt "q" request |> Option.value ~default:"" in
-      match Db.get_draft_years (), Db.get_official_trade_years () with
-      | Error e, _ | _, Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
-      | Ok draft_years, Ok trade_years ->
+      match Db.get_draft_years (), Db.get_official_trade_years (), Db.get_draft_dataset_status (), Db.get_trade_dataset_status () with
+      | Error e, _, _, _
+      | _, Error e, _, _
+      | _, _, Error e, _
+      | _, _, _, Error e ->
+          Kirin.html (Views.error_page ~lang (Db.show_db_error e))
+      | Ok draft_years, Ok trade_years, Ok draft_status, Ok trade_status ->
           if tab = "trade" then (
             match Db.get_official_trade_events ~year ~search:q () with
             | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
@@ -316,6 +322,8 @@ let routes =
                      ~q
                      ~draft_years
                      ~trade_years
+                     ~draft_status
+                     ~trade_status
                      ~draft_picks:[]
                      ~trade_events:events
                      ())
@@ -332,6 +340,8 @@ let routes =
                      ~q
                      ~draft_years
                      ~trade_years
+                     ~draft_status
+                     ~trade_status
                      ~draft_picks:picks
                      ~trade_events:[]
                      ())

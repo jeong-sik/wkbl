@@ -4,9 +4,10 @@
 open Domain
 open Views_common
 
-let team_profile_page ?(lang=I18n.Ko) ?(player_info_map=None) (detail: team_full_detail) ~season ~seasons =
+let team_profile_page ?(lang=I18n.Ko) ?(player_info_map=None) ?(coaches=[]) (detail: team_full_detail) ~season ~seasons =
  let t = detail.tfd_team_name in
  let s = detail.tfd_standing in
+ let tr = I18n.t lang in
  let season_options =
   let base =
    seasons
@@ -765,9 +766,91 @@ let team_profile_page ?(lang=I18n.Ko) ?(player_info_map=None) (detail: team_full
       </div>
      </div>|html}
      (stat_card "eFG%" ff.efg_pct "슈팅 효율" "text-emerald-600 dark:text-emerald-400" (rank_badge efg_rank))
-     (stat_card "TOV%" ff.tov_pct "턴오버율 (낮을수록 좋음)" "text-rose-500 dark:text-rose-400" (rank_badge tov_rank))
-     (stat_card "ORB%" ff.orb_pct "공격 리바운드율" "text-sky-600 dark:text-sky-400" (rank_badge orb_rank))
-     (stat_card "FTR" ff.ftr "자유투 시도율" "text-orange-700 dark:text-orange-400" (rank_badge ftr_rank))
+	    (stat_card "TOV%" ff.tov_pct "턴오버율 (낮을수록 좋음)" "text-rose-500 dark:text-rose-400" (rank_badge tov_rank))
+	    (stat_card "ORB%" ff.orb_pct "공격 리바운드율" "text-sky-600 dark:text-sky-400" (rank_badge orb_rank))
+	    (stat_card "FTR" ff.ftr "자유투 시도율" "text-orange-700 dark:text-orange-400" (rank_badge ftr_rank))
+ in
+ let coaches_section =
+  let has_word ~needle hay =
+   let hay = String.lowercase_ascii hay in
+   let needle = String.lowercase_ascii needle in
+   String.contains hay needle.[0] &&
+   (try ignore (Str.search_forward (Str.regexp_string needle) hay 0); true with Not_found -> false)
+  in
+  let coach_name (c: coach) = normalize_label c.c_coach_name in
+  let role_text (c: coach) =
+   match c.c_notable_achievements with
+   | Some note when has_word ~needle:"head coach" note || has_word ~needle:"감독" note -> "head"
+   | _ -> "assistant"
+  in
+  let uniq_names names =
+   let seen : (string, unit) Hashtbl.t = Hashtbl.create 8 in
+   names
+   |> List.filter (fun name ->
+     let key = String.uppercase_ascii (normalize_label name) in
+     if Hashtbl.mem seen key then false
+     else (Hashtbl.add seen key (); true))
+  in
+  let head_coaches =
+   coaches
+   |> List.filter (fun c -> role_text c = "head")
+   |> List.map coach_name
+   |> uniq_names
+  in
+  let assistant_coaches =
+   coaches
+   |> List.filter (fun c -> role_text c <> "head")
+   |> List.map coach_name
+   |> uniq_names
+  in
+  let render_names names =
+   match names with
+   | [] -> {html|<span class="text-slate-500 dark:text-slate-400">-</span>|html}
+   | xs ->
+       xs
+       |> List.map (fun n ->
+          Printf.sprintf
+            {html|<span class="inline-flex px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700/60 text-sm text-slate-700 dark:text-slate-300">%s</span>|html}
+            (escape_html n))
+       |> String.concat " "
+  in
+  let info_msg =
+   if coaches = [] then
+     tr
+       { ko = "코치진 정보가 아직 수집되지 않았습니다. `wkbl-scraper sync coaches` 실행 후 반영됩니다."
+       ; en = "Coach data is not ingested yet. Run `wkbl-scraper sync coaches`."
+       }
+   else
+     tr
+       { ko = "WKBL 팀 페이지 기준 최신 수집 결과입니다."
+       ; en = "Latest snapshot based on WKBL team pages."
+       }
+  in
+  Printf.sprintf
+   {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-lg">
+  <div class="flex items-center justify-between gap-2">
+    <h2 class="text-lg font-bold text-slate-900 dark:text-slate-200">%s</h2>
+    <span class="text-[10px] text-slate-500 dark:text-slate-400 font-mono">%d</span>
+  </div>
+  <div class="mt-3 space-y-3">
+    <div>
+      <div class="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-widest font-bold">%s</div>
+      <div class="mt-1 flex flex-wrap gap-2">%s</div>
+    </div>
+    <div>
+      <div class="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-widest font-bold">%s</div>
+      <div class="mt-1 flex flex-wrap gap-2">%s</div>
+    </div>
+    <div class="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">%s</div>
+  </div>
+</div>|html}
+   (escape_html (tr { ko = "코치진"; en = "Coaching Staff" }))
+   (List.length coaches)
+   (escape_html (tr { ko = "감독"; en = "Head Coach" }))
+   (render_names head_coaches)
+   (escape_html (tr { ko = "코치"; en = "Assistant Coaches" }))
+   (render_names assistant_coaches)
+   (escape_html info_msg)
  in
  (* JSON-LD structured data for SportsTeam schema *)
  let json_ld_data =
@@ -782,7 +865,8 @@ let team_profile_page ?(lang=I18n.Ko) ?(player_info_map=None) (detail: team_full
 				  ~canonical_path:(team_href t)
 				  ~description:(Printf.sprintf "%s WKBL 여자농구 팀 프로필 - 로스터, 경기 결과, 시즌 기록" (escape_html t))
 				  ~json_ld:json_ld_data
-				  ~content:(Printf.sprintf {html|<div class="space-y-6 sm:space-y-8 animate-fade-in">%s<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 sm:p-8 shadow-2xl flex flex-col md:flex-row items-center md:items-start gap-6 sm:gap-8"><div class="w-24 h-24 sm:w-32 sm:h-32 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center p-3 sm:p-4 border-2 border-slate-300 dark:border-slate-700 shadow-inner">%s</div><div class="text-center md:text-left space-y-4 w-full"><div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3"><h1 class="text-3xl sm:text-4xl font-black text-slate-900 dark:text-slate-200">%s</h1><form action="%s" method="get" class="flex flex-col sm:flex-row items-stretch sm:items-center justify-center sm:justify-end gap-2 w-full sm:w-auto"><span class="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-widest font-bold">시즌</span><select name="season" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none w-full sm:w-48" data-auto-submit="change">%s</select></form></div>%s</div></div>%s%s<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8"><div class="space-y-4 lg:col-span-2"><h2 class="text-xl font-bold text-slate-900 dark:text-slate-200">로스터</h2><div id="roster-cards" class="sm:hidden space-y-3">%s</div><details id="roster-table-details" class="sm:hidden bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 p-4" data-toggle-target="roster-cards"><summary class="cursor-pointer font-bold text-slate-700 dark:text-slate-300 select-none">표로 보기</summary><div class="mt-3 overflow-x-auto">%s</div></details><div class="hidden sm:block">%s</div></div><div class="space-y-6 lg:col-span-1"><h2 class="text-xl font-bold text-slate-900 dark:text-slate-200">경기 결과</h2>%s%s<h2 class="text-xl font-bold text-slate-900 dark:text-slate-200">전체 경기</h2><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto max-h-[600px] overflow-y-auto shadow-lg"><table class="min-w-[480px] w-full text-xs sm:text-sm font-mono tabular-nums table-auto" aria-label="시즌 전체 경기">
+          ~scripts:With_player_features
+          ~content:(Printf.sprintf {html|<div class="space-y-6 sm:space-y-8 animate-fade-in">%s<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 sm:p-8 shadow-2xl flex flex-col md:flex-row items-center md:items-start gap-6 sm:gap-8"><div class="w-24 h-24 sm:w-32 sm:h-32 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center p-3 sm:p-4 border-2 border-slate-300 dark:border-slate-700 shadow-inner">%s</div><div class="text-center md:text-left space-y-4 w-full"><div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3"><h1 class="text-3xl sm:text-4xl font-black text-slate-900 dark:text-slate-200">%s</h1><form action="%s" method="get" class="flex flex-col sm:flex-row items-stretch sm:items-center justify-center sm:justify-end gap-2 w-full sm:w-auto"><span class="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-widest font-bold">시즌</span><select name="season" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none w-full sm:w-48" data-auto-submit="change">%s</select></form></div>%s</div></div>%s%s<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8"><div class="space-y-4 lg:col-span-2"><h2 class="text-xl font-bold text-slate-900 dark:text-slate-200">로스터</h2><div id="roster-cards" class="sm:hidden space-y-3">%s</div><details id="roster-table-details" class="sm:hidden bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 p-4" data-toggle-target="roster-cards"><summary class="cursor-pointer font-bold text-slate-700 dark:text-slate-300 select-none">표로 보기</summary><div class="mt-3 overflow-x-auto">%s</div></details><div class="hidden sm:block">%s</div></div><div class="space-y-6 lg:col-span-1"><h2 class="text-xl font-bold text-slate-900 dark:text-slate-200">경기 결과</h2>%s%s%s<h2 class="text-xl font-bold text-slate-900 dark:text-slate-200">전체 경기</h2><div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto max-h-[600px] overflow-y-auto shadow-lg"><table class="min-w-[480px] w-full text-xs sm:text-sm font-mono tabular-nums table-auto" aria-label="시즌 전체 경기">
   	          <colgroup>
   	            <col style="width: 96px;"> <!-- Date -->
   	            <col style="width: auto;"> <!-- Opponent -->
@@ -801,10 +885,11 @@ let team_profile_page ?(lang=I18n.Ko) ?(player_info_map=None) (detail: team_full
 	     team_metrics_section
 	     roster_cards
 	     roster_table_inner
-	     roster_desktop_section
-	     game_results_chart
-	     four_factors_section
-	     game_rows) ()
+		     roster_desktop_section
+		     game_results_chart
+		     four_factors_section
+		     coaches_section
+		     game_rows) ()
 
 (** Team H2H comparison page *)
 let team_h2h_page ?(lang=I18n.Ko) ~team1 ~team2 ~season ~seasons (games : Domain.game_info list) =

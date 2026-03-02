@@ -145,6 +145,28 @@ let ensure_player_external_links_table = (unit ->. unit) {|
 let ensure_player_external_links_index_player = (unit ->. unit) {|
   CREATE INDEX IF NOT EXISTS idx_player_external_links_player_id ON player_external_links(player_id)
 |}
+let ensure_coaches_table = (unit ->. unit) {|
+  CREATE TABLE IF NOT EXISTS coaches (
+    coach_id SERIAL PRIMARY KEY,
+    coach_name VARCHAR(50) NOT NULL,
+    team VARCHAR(50),
+    tenure_start INTEGER,
+    tenure_end INTEGER,
+    championships INTEGER DEFAULT 0,
+    regular_season_wins INTEGER DEFAULT 0,
+    playoff_wins INTEGER DEFAULT 0,
+    former_player BOOLEAN DEFAULT FALSE,
+    player_career_years VARCHAR(50),
+    notable_achievements TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+  )
+|}
+let ensure_coaches_index_team = (unit ->. unit) {|
+  CREATE INDEX IF NOT EXISTS idx_coaches_team ON coaches(team)
+|}
+let ensure_coaches_index_name = (unit ->. unit) {|
+  CREATE INDEX IF NOT EXISTS idx_coaches_name ON coaches(coach_name)
+|}
 let ensure_game_stats_index_game = (unit ->. unit) {|
   CREATE INDEX IF NOT EXISTS idx_game_stats_game_id ON game_stats(game_id)
 |}
@@ -542,6 +564,22 @@ let all_seasons = (unit ->* season_info) {|
   LEFT JOIN seasons s ON s.season_code = g.season_code
   WHERE g.season_code IS NOT NULL
   ORDER BY g.season_code
+|}
+
+let team_available_seasons = (t4 string string string string ->* season_info) {|
+  SELECT DISTINCT
+    g.season_code,
+    COALESCE(s.season_name, g.season_code) as season_name
+  FROM games_calc_v3 g
+  LEFT JOIN seasons s ON s.season_code = g.season_code
+  WHERE g.game_type != '10'
+    AND (
+      g.home_team_code = ?
+      OR g.away_team_code = ?
+      OR g.home_team_name = ?
+      OR g.away_team_name = ?
+    )
+  ORDER BY g.season_code DESC
 |}
 
 (** Latest game date for data freshness display *)
@@ -1072,7 +1110,10 @@ let team_standings_by_season = (string ->* team_standing) {|
   FROM results r
   JOIN teams t ON t.team_code = r.team_code
   GROUP BY t.team_code
-  ORDER BY wins DESC
+  ORDER BY
+    (SUM(CASE WHEN pts_for > pts_against THEN 1 ELSE 0 END)::float / NULLIF(COUNT(*), 0)) DESC,
+    SUM(CASE WHEN pts_for > pts_against THEN 1 ELSE 0 END) DESC,
+    (AVG(pts_for) - AVG(pts_against)) DESC
 |}
 
 let all_games_paginated = (t2 (t2 string string) (t2 int int) ->* game_summary) {|
@@ -2356,6 +2397,28 @@ let official_trade_events_filtered = (t2 (t2 int int) string ->* official_trade_
     AND event_text_norm LIKE ?
   ORDER BY event_date DESC, id DESC
   LIMIT 300
+|}
+
+let draft_dataset_status = (unit ->? t3 int (option string) (option string)) {|
+  SELECT
+    COUNT(*)::int AS row_count,
+    MAX(scraped_at) AS last_scraped_at,
+    CASE
+      WHEN COUNT(*) = 0 THEN 'missing_data'
+      ELSE NULL
+    END AS reason
+  FROM player_drafts
+|}
+
+let trade_dataset_status = (unit ->? t3 int (option string) (option string)) {|
+  SELECT
+    COUNT(*)::int AS row_count,
+    MAX(scraped_at) AS last_scraped_at,
+    CASE
+      WHEN COUNT(*) = 0 THEN 'missing_data'
+      ELSE NULL
+    END AS reason
+  FROM official_trade_events
 |}
 
 let player_external_links_by_player_id = (string ->* player_external_link) {|

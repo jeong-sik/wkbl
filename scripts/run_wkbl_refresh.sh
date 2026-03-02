@@ -46,7 +46,7 @@ run_refresh() {
     log "=== WKBL refresh START ==="
     log "Working directory: $ROOT_DIR"
 
-    cd "$ROOT_DIR/ocaml"
+    cd "$ROOT_DIR/apps/api"
 
     log "Building scraper tool..."
     dune build bin/scraper_tool.exe
@@ -58,7 +58,13 @@ run_refresh() {
        && log "Syncing boxscores..." \
        && dune exec bin/scraper_tool.exe sync boxscore \
        && log "Syncing play-by-play..." \
-       && dune exec bin/scraper_tool.exe sync pbp; then
+       && dune exec bin/scraper_tool.exe sync pbp \
+       && log "Syncing draft records..." \
+       && dune exec bin/scraper_tool.exe sync draft \
+       && log "Syncing trade events..." \
+       && dune exec bin/scraper_tool.exe sync trade \
+       && log "Syncing team coaches..." \
+       && dune exec bin/scraper_tool.exe sync coaches; then
         local end_time duration
         end_time=$(date +%s)
         duration=$((end_time - start_time))

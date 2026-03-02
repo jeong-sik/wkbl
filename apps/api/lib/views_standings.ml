@@ -78,6 +78,9 @@ let teams_table ?(lang=I18n.Ko) ~season ~scope (stats: Domain.team_stats list) =
     col "FT%" ~w:(px 80) ~align:`Right ~resp:`Hidden_lg ~sort:"ft";
     col "eFG%" ~w:(px 80) ~align:`Right ~resp:`Hidden_lg ~sort:"efg";
     col "TS%" ~w:(px 80) ~align:`Right ~resp:`Hidden_lg ~sort:"ts" ~title:title_ts ~highlight:true;
+    col "TOV%" ~w:(px 80) ~align:`Right ~resp:`Hidden_lg ~sort:"tov";
+    col "ORB%" ~w:(px 80) ~align:`Right ~resp:`Hidden_lg ~sort:"orb";
+    col "FTR" ~w:(px 80) ~align:`Right ~resp:`Hidden_lg ~sort:"ftr";
     col "EFF" ~w:(px 80) ~align:`Right ~sort:"eff" ~highlight:true;
   ] in
 
@@ -119,32 +122,60 @@ let teams_table ?(lang=I18n.Ko) ~season ~scope (stats: Domain.team_stats list) =
           format_float s.ft_pct;
           format_float s.efg_pct;
           format_float s.ts_pct;
+          format_float s.tov_pct;
+          format_float s.orb_pct;
+          format_float s.ftr;
           format_float s.eff;
         ]
       )
   in
 
   (* 3. Render Table *)
-  render_fixed_table ~table_attrs:{|data-row-link="team"|} ~id:"teams-table-inner" ~min_width:"min-w-[1040px]" ~cols rows_data
+  render_fixed_table ~table_attrs:{|data-row-link="team"|} ~id:"teams-table-inner" ~min_width:"min-w-[1240px]" ~cols rows_data
 
 let teams_page ?(lang=I18n.Ko) ~season ~seasons ~scope ~sort ~include_mismatch stats =
  let scope_value = team_scope_to_string scope in
  let scope_option value label = let selected = if scope_value = value then "selected" else "" in Printf.sprintf {html|<option value="%s" %s>%s</option>|html} value selected label in
  let sort_option value label = let selected = if String.lowercase_ascii sort = value then "selected" else "" in Printf.sprintf {html|<option value="%s" %s>%s</option>|html} value selected label in
  let season_options = let base = seasons |> List.map (fun s -> let selected = if s.code = season then "selected" else "" in Printf.sprintf {html|<option value="%s" %s>%s</option>|html} s.code selected (escape_html s.name)) |> String.concat "\n" in Printf.sprintf {html|<option value="ALL" %s>전체 시즌</option>%s|html} (if season = "ALL" then "selected" else "") base in
+ let sort_options =
+   [ sort_option "pts" "PTS";
+     sort_option "reb" "REB";
+     sort_option "ast" "AST";
+     sort_option "stl" "STL";
+     sort_option "blk" "BLK";
+     sort_option "eff" "EFF";
+     sort_option "efg" "eFG%";
+     sort_option "ts_pct" "TS%";
+     sort_option "tov" "TOV%";
+     sort_option "orb" "ORB%";
+     sort_option "ftr" "FTR";
+     sort_option "fg3_pct" "3P%";
+     sort_option "min_total" "MIN"; ]
+   |> String.concat ""
+ in
  let table = teams_table ~lang ~season ~scope stats in
  let include_checked = if include_mismatch then "checked" else "" in
  layout ~lang ~title:"WKBL 팀" ~canonical_path:"/teams"
   ~description:"WKBL 여자농구 팀 통계 - 6개 구단의 득점, 리바운드, 어시스트 등 시즌별 성적을 비교하세요."
   ~content:(Printf.sprintf
-		   {html|<div class="space-y-6">%s<div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3"><div><h2 class="text-2xl font-bold text-slate-900 dark:text-slate-200">팀</h2><p class="text-slate-600 dark:text-slate-400 text-sm">시즌과 기준(경기당/누적)으로 팀 기록을 봅니다.</p></div><a class="text-orange-700 dark:text-orange-400 hover:text-orange-700 text-sm" href="/teams">초기화</a></div><form id="teams-filter" class="grid grid-cols-1 md:grid-cols-3 gap-3" hx-get="/teams/table" hx-target="#teams-table-container" hx-trigger="change"><select name="season" aria-label="시즌 선택" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none">%s</select><select name="scope" aria-label="기준 선택" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none">%s%s</select><select name="sort" aria-label="정렬 기준" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none">%s%s%s%s%s%s%s%s%s</select><label class="md:col-span-3 flex items-center justify-end gap-2 text-xs text-slate-600 dark:text-slate-400"><input type="checkbox" name="include_mismatch" value="1" %s class="h-4 w-4 rounded border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 accent-orange-500" title="최종 스코어와 득점 합계가 다른 경기 포함"><span>불일치 포함</span></label></form><div id="teams-table-container" data-skeleton="table" data-skeleton-count="6" data-skeleton-cols="12">%s</div><div class="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6"><div id="teams-shooting-chart" hx-get="/teams/shooting-chart?season=%s" hx-trigger="load" hx-swap="innerHTML" class="htmx-indicator-wrapper"><div class="text-center py-4 text-slate-400"><span class="htmx-indicator">차트 로딩 중...</span></div></div><div id="teams-radar-chart" hx-get="/teams/radar-chart?season=%s" hx-trigger="load" hx-swap="innerHTML" class="htmx-indicator-wrapper"><div class="text-center py-4 text-slate-400"><span class="htmx-indicator">차트 로딩 중...</span></div></div></div></div>|html}
+		   {html|<div class="space-y-6">%s<div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3"><div><h2 class="text-2xl font-bold text-slate-900 dark:text-slate-200">팀</h2><p class="text-slate-600 dark:text-slate-400 text-sm">시즌과 기준(경기당/누적)으로 팀 기록을 봅니다.</p></div><a class="text-orange-700 dark:text-orange-400 hover:text-orange-700 text-sm" href="/teams">초기화</a></div><form id="teams-filter" class="grid grid-cols-1 md:grid-cols-3 gap-3" hx-get="/teams/table" hx-target="#teams-table-container" hx-trigger="change"><select name="season" aria-label="시즌 선택" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none">%s</select><select name="scope" aria-label="기준 선택" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none">%s%s</select><select name="sort" aria-label="정렬 기준" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-2 text-sm focus:border-orange-500 focus:outline-none">%s</select><label class="md:col-span-3 flex items-center justify-end gap-2 text-xs text-slate-600 dark:text-slate-400"><input type="checkbox" name="include_mismatch" value="1" %s class="h-4 w-4 rounded border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 accent-orange-500" title="최종 스코어와 득점 합계가 다른 경기 포함"><span>불일치 포함</span></label></form><div id="teams-table-container" data-skeleton="table" data-skeleton-count="6" data-skeleton-cols="12">%s</div><div class="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6"><div id="teams-shooting-chart" hx-get="/teams/shooting-chart?season=%s" hx-trigger="load" hx-swap="innerHTML" class="htmx-indicator-wrapper"><div class="text-center py-4 text-slate-400"><span class="htmx-indicator">차트 로딩 중...</span></div></div><div id="teams-radar-chart" hx-get="/teams/radar-chart?season=%s" hx-trigger="load" hx-swap="innerHTML" class="htmx-indicator-wrapper"><div class="text-center py-4 text-slate-400"><span class="htmx-indicator">차트 로딩 중...</span></div></div></div></div>|html}
 	   (breadcrumb [("홈", "/"); ("팀", "")])
-	   season_options (scope_option "per_game" "경기당") (scope_option "totals" "누적") (sort_option "pts" "PTS") (sort_option "reb" "REB") (sort_option "ast" "AST") (sort_option "stl" "STL") (sort_option "blk" "BLK") (sort_option "eff" "EFF") (sort_option "ts_pct" "TS%") (sort_option "fg3_pct" "3P%") (sort_option "min_total" "MIN") include_checked table season season) ()
+	   season_options (scope_option "per_game" "경기당") (scope_option "totals" "누적") sort_options include_checked table season season) ()
 
-let standings_table ?(lang=I18n.Ko) ~season (standings : team_standing list) =
+let standings_table ?(lang=I18n.Ko) ?(team_stats = []) ~season (standings : team_standing list) =
   let tr = I18n.t lang in
   let label_team = tr { ko = "팀"; en = "Team" } in
   let label_diff = tr { ko = "득실"; en = "Diff" } in
+  let ff_map : (string, team_stats) Hashtbl.t = Hashtbl.create 16 in
+  let team_key name =
+    match team_code_of_string name with
+    | Some code -> "CODE:" ^ code
+    | None -> "NAME:" ^ (normalize_label name |> String.uppercase_ascii)
+  in
+  team_stats
+  |> List.iter (fun (row: team_stats) ->
+      Hashtbl.replace ff_map (team_key row.team) row);
   let cols = [
     col ~w:(px 150) label_team;
     col "GP" ~w:(px 60) ~align:`Right ~sort:"gp";
@@ -155,6 +186,10 @@ let standings_table ?(lang=I18n.Ko) ~season (standings : team_standing list) =
     col "PS/G" ~w:(px 80) ~align:`Right ~sort:"ps" ~resp:`Hidden_md;
     col "PA/G" ~w:(px 80) ~align:`Right ~sort:"pa" ~resp:`Hidden_md;
     col label_diff ~w:(px 80) ~align:`Right ~sort:"diff" ~resp:`Hidden_sm;
+    col "eFG%" ~w:(px 80) ~align:`Right ~sort:"efg" ~resp:`Hidden_lg;
+    col "TOV%" ~w:(px 80) ~align:`Right ~sort:"tov" ~resp:`Hidden_lg;
+    col "ORB%" ~w:(px 80) ~align:`Right ~sort:"orb" ~resp:`Hidden_lg;
+    col "FTR" ~w:(px 80) ~align:`Right ~sort:"ftr" ~resp:`Hidden_lg;
   ] in
 
   let rows_data =
@@ -185,6 +220,12 @@ let standings_table ?(lang=I18n.Ko) ~season (standings : team_standing list) =
       let diff_color = if s.diff >= 0.0 then "text-emerald-600 dark:text-emerald-400" else "text-rose-600 dark:text-rose-400" in
       let diff_str = if s.diff > 0.0 then Printf.sprintf "+%.1f" s.diff else Printf.sprintf "%.1f" s.diff in
       let diff_cell = Printf.sprintf {html|<span class="%s font-mono font-bold">%s</span>|html} diff_color diff_str in
+      let ff_opt = Hashtbl.find_opt ff_map (team_key s.team_name) in
+      let ff_value extract =
+        match ff_opt with
+        | None -> "-"
+        | Some row -> Printf.sprintf "%.1f" (extract row)
+      in
 
       [
         team_cell;
@@ -196,13 +237,17 @@ let standings_table ?(lang=I18n.Ko) ~season (standings : team_standing list) =
         Printf.sprintf "%.1f" s.avg_pts;
         Printf.sprintf "%.1f" s.avg_opp_pts;
         diff_cell;
+        ff_value (fun row -> row.efg_pct);
+        ff_value (fun row -> row.tov_pct);
+        ff_value (fun row -> row.orb_pct);
+        ff_value (fun row -> row.ftr);
       ]
     )
   in
 
-  render_fixed_table ~table_attrs:{|data-row-link="team"|} ~id:"standings-table-inner" ~min_width:"min-w-[560px]" ~cols rows_data
+  render_fixed_table ~table_attrs:{|data-row-link="team"|} ~id:"standings-table-inner" ~min_width:"min-w-[1200px]" ~cols rows_data
 
-let standings_page ?(lang=I18n.Ko) ~season ~seasons standings =
+let standings_page ?(lang=I18n.Ko) ~season ~seasons ~team_stats standings =
  let tr = I18n.t lang in
  let label_all_seasons = tr { ko = "전체 시즌"; en = "All seasons" } in
  let label_heading = tr { ko = "순위"; en = "Standings" } in
@@ -222,7 +267,7 @@ let standings_page ?(lang=I18n.Ko) ~season ~seasons standings =
      (escape_html label_all_seasons)
      base
  in
- let table = standings_table ~lang ~season standings in
+ let table = standings_table ~lang ~season ~team_stats standings in
  layout ~lang ~title:page_title ~canonical_path:"/standings"
   ~description:"WKBL 여자농구 순위표 - 시즌별 팀 순위, 승률, 승패 기록을 확인하세요."
   ~content:(Printf.sprintf

@@ -35,6 +35,9 @@ open Db_queries
       let* () = Db.exec ensure_official_trade_events_index_year () in
       let* () = Db.exec ensure_player_external_links_table () in
       let* () = Db.exec ensure_player_external_links_index_player () in
+      let* () = Db.exec ensure_coaches_table () in
+      let* () = Db.exec ensure_coaches_index_team () in
+      let* () = Db.exec ensure_coaches_index_name () in
       (* Performance indexes for game_stats - critical for fast queries *)
       let* () = Db.exec ensure_game_stats_index_game () in
       let* () = Db.exec ensure_game_stats_index_player () in
@@ -82,6 +85,14 @@ open Db_queries
       Db.exec refresh_score_mismatch ()
   let get_teams (module Db : Caqti_eio.CONNECTION) = Db.collect_list all_teams ()
   let get_seasons (module Db : Caqti_eio.CONNECTION) = Db.collect_list all_seasons ()
+  let get_team_available_seasons ~team_name (module Db : Caqti_eio.CONNECTION) =
+    let team_name = normalize_label team_name in
+    let team_code =
+      match team_code_of_string team_name with
+      | Some c -> c
+      | None -> "__NO_TEAM_CODE__"
+    in
+    Db.collect_list team_available_seasons (team_code, team_code, team_name, team_name)
   let get_all_player_info (module Db : Caqti_eio.CONNECTION) = Db.collect_list all_player_info ()
   let get_latest_game_date (module Db : Caqti_eio.CONNECTION) = Db.find_opt latest_game_date ()
   let get_historical_seasons (module Db : Caqti_eio.CONNECTION) = Db.collect_list all_historical_seasons ()
@@ -165,12 +176,62 @@ open Db_queries
     let pattern = normalize_search_pattern (normalize_label search) in
     Db.collect_list draft_picks_filtered ((year, year), (pattern, pattern))
 
+  let get_draft_dataset_status (module Db : Caqti_eio.CONNECTION) =
+    let contains_ci haystack needle =
+      let haystack = String.lowercase_ascii haystack in
+      let needle = String.lowercase_ascii needle in
+      let hlen = String.length haystack in
+      let nlen = String.length needle in
+      let rec loop i =
+        if i + nlen > hlen then false
+        else if String.sub haystack i nlen = needle then true
+        else loop (i + 1)
+      in
+      if nlen = 0 then true else loop 0
+    in
+    let default_status = { ds_count = 0; ds_last_scraped_at = None; ds_reason = Some "missing_data" } in
+    match Db.find_opt draft_dataset_status () with
+    | Ok (Some (count, last_scraped_at, reason)) ->
+        Ok { ds_count = count; ds_last_scraped_at = last_scraped_at; ds_reason = reason }
+    | Ok None -> Ok default_status
+    | Error e ->
+        let msg = Caqti_error.show e in
+        if contains_ci msg "undefined_table"
+           || contains_ci msg "relation \"player_drafts\" does not exist"
+        then Ok default_status
+        else Error e
+
   let get_official_trade_years (module Db : Caqti_eio.CONNECTION) =
     Db.collect_list official_trade_years ()
 
   let get_official_trade_events ~year ~search (module Db : Caqti_eio.CONNECTION) =
     let pattern = normalize_search_pattern (normalize_label search) in
     Db.collect_list official_trade_events_filtered ((year, year), pattern)
+
+  let get_trade_dataset_status (module Db : Caqti_eio.CONNECTION) =
+    let contains_ci haystack needle =
+      let haystack = String.lowercase_ascii haystack in
+      let needle = String.lowercase_ascii needle in
+      let hlen = String.length haystack in
+      let nlen = String.length needle in
+      let rec loop i =
+        if i + nlen > hlen then false
+        else if String.sub haystack i nlen = needle then true
+        else loop (i + 1)
+      in
+      if nlen = 0 then true else loop 0
+    in
+    let default_status = { ds_count = 0; ds_last_scraped_at = None; ds_reason = Some "missing_data" } in
+    match Db.find_opt trade_dataset_status () with
+    | Ok (Some (count, last_scraped_at, reason)) ->
+        Ok { ds_count = count; ds_last_scraped_at = last_scraped_at; ds_reason = reason }
+    | Ok None -> Ok default_status
+    | Error e ->
+        let msg = Caqti_error.show e in
+        if contains_ci msg "undefined_table"
+           || contains_ci msg "relation \"official_trade_events\" does not exist"
+        then Ok default_status
+        else Error e
 
   (* Schedule queries *)
   let get_upcoming_schedule ~status ~limit (module Db : Caqti_eio.CONNECTION) =

@@ -976,12 +976,42 @@ let transactions_page
   ~q
   ~draft_years
   ~trade_years
+  ~(draft_status: dataset_status)
+  ~(trade_status: dataset_status)
   ~(draft_picks: draft_pick_row list)
   ~(trade_events: official_trade_event list)
   ()
   =
+  let tr = I18n.t lang in
+  let lbl_tab_draft = tr { ko = "드래프트"; en = "Draft" } in
+  let lbl_tab_trade = tr { ko = "이적"; en = "Trade" } in
+  let lbl_all_years = tr { ko = "전체"; en = "All" } in
+  let lbl_year = tr { ko = "연도"; en = "Year" } in
+  let lbl_search = tr { ko = "검색"; en = "Search" } in
+  let ph_search = tr { ko = "선수 / 팀 / 키워드"; en = "Player / Team / Keyword" } in
+  let lbl_apply = tr { ko = "적용"; en = "Apply" } in
+  let lbl_title = tr { ko = "드래프트 / 이적"; en = "Draft / Trade" } in
+  let lbl_dataset_status = tr { ko = "데이터 상태"; en = "Data Status" } in
+  let lbl_last_sync = tr { ko = "마지막 동기화"; en = "Last sync" } in
+  let lbl_missing_data_reason =
+    tr
+      { ko = "아직 수집된 데이터가 없습니다. `wkbl-scraper sync` 명령으로 동기화가 필요합니다."
+      ; en = "No data has been collected yet. Run `wkbl-scraper sync` to ingest."
+      }
+  in
+  let lbl_ready = tr { ko = "정상"; en = "Ready" } in
+  let lbl_no_data = tr { ko = "데이터 없음"; en = "No Data" } in
+  let title_page = tr { ko = "드래프트 / 이적 | WKBL"; en = "Draft / Trade | WKBL" } in
+  let desc_page =
+    tr
+      { ko = "WKBL 드래프트 및 이적 기록"
+      ; en = "WKBL draft and trade records"
+      }
+  in
   let tab_value = tab |> String.trim |> String.lowercase_ascii in
   let active_tab = if tab_value = "trade" then "trade" else "draft" in
+  let lang_code = I18n.lang_to_code lang in
+  let lang_query = Printf.sprintf "&lang=%s" (escape_html lang_code) in
   let tab_link t label =
     let cls =
       if active_tab = t then
@@ -990,8 +1020,9 @@ let transactions_page
         "bg-white dark:bg-slate-900/40 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/50"
     in
     Printf.sprintf
-      {html|<a href="/transactions?tab=%s" class="px-3 py-2 rounded-lg border text-xs font-bold uppercase tracking-widest transition %s">%s</a>|html}
+      {html|<a href="/transactions?tab=%s%s" class="px-3 py-2 rounded-lg border text-xs font-bold uppercase tracking-widest transition %s">%s</a>|html}
       (escape_html t)
+      lang_query
       cls
       (escape_html label)
   in
@@ -1004,28 +1035,104 @@ let transactions_page
           Printf.sprintf {html|<option value="%d" %s>%d</option>|html} y selected y)
       |> String.concat "\n"
     in
-    Printf.sprintf {html|<option value="0" %s>전체</option>%s|html} all_selected base
+    Printf.sprintf {html|<option value="0" %s>%s</option>%s|html}
+      all_selected
+      (escape_html lbl_all_years)
+      base
   in
   let active_years = if active_tab = "trade" then trade_years else draft_years in
   let filter_form =
     Printf.sprintf
       {html|<form method="get" action="/transactions" class="flex flex-col sm:flex-row sm:items-end gap-3">
   <input type="hidden" name="tab" value="%s">
+  <input type="hidden" name="lang" value="%s">
   <div class="block text-xs text-slate-500 dark:text-slate-400 space-y-1">
-    <label for="filter-year" class="font-bold uppercase tracking-widest text-[10px]">연도</label>
+    <label for="filter-year" class="font-bold uppercase tracking-widest text-[10px]">%s</label>
     <select id="filter-year" name="year" class="bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700/60 rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-slate-200 focus:border-orange-500 focus:outline-none">
       %s
     </select>
   </div>
   <div class="block text-xs text-slate-500 dark:text-slate-400 space-y-1 min-w-0 flex-1">
-    <label for="filter-search" class="font-bold uppercase tracking-widest text-[10px]">검색</label>
-    <input id="filter-search" name="q" value="%s" placeholder="선수 / 팀 / 키워드" class="w-full bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700/60 rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-slate-200 focus:border-orange-500 focus:outline-none">
+    <label for="filter-search" class="font-bold uppercase tracking-widest text-[10px]">%s</label>
+    <input id="filter-search" name="q" value="%s" placeholder="%s" class="w-full bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700/60 rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-slate-200 focus:border-orange-500 focus:outline-none">
   </div>
-  <button class="shrink-0 bg-orange-600 hover:bg-orange-500 text-slate-900 dark:text-slate-200 font-bold rounded-lg px-3 py-2 text-sm transition">적용</button>
+  <button class="shrink-0 bg-orange-600 hover:bg-orange-500 text-slate-900 dark:text-slate-200 font-bold rounded-lg px-3 py-2 text-sm transition">%s</button>
 </form>|html}
       (escape_html active_tab)
+      (escape_html lang_code)
+      (escape_html lbl_year)
       (year_options active_years)
+      (escape_html lbl_search)
       (escape_html q)
+      (escape_html ph_search)
+      (escape_html lbl_apply)
+  in
+  let status_reason_text (status: dataset_status) =
+    match status.ds_reason with
+    | Some "missing_data" -> lbl_missing_data_reason
+    | Some msg when String.trim msg <> "" -> msg
+    | _ -> lbl_ready
+  in
+  let status_count_label (status: dataset_status) =
+    if status.ds_count > 0 then string_of_int status.ds_count else lbl_no_data
+  in
+  let status_card ~label (status: dataset_status) =
+    let reason = status_reason_text status in
+    let reason_cls =
+      if status.ds_count > 0 then
+        "text-emerald-700 dark:text-emerald-400"
+      else
+        "text-amber-700 dark:text-amber-400"
+    in
+    let synced_at =
+      match status.ds_last_scraped_at with
+      | Some ts when String.trim ts <> "" -> pretty_timestamp ts
+      | _ -> "-"
+    in
+    Printf.sprintf
+      {html|<div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm min-w-0">
+  <div class="flex items-center justify-between gap-3">
+    <div class="text-[11px] uppercase tracking-widest font-bold text-slate-500 dark:text-slate-400">%s</div>
+    <div class="font-mono text-sm font-bold text-slate-900 dark:text-slate-200 whitespace-nowrap">%s</div>
+  </div>
+  <div class="mt-2 text-[11px] text-slate-500 dark:text-slate-400">%s: <span class="font-mono text-slate-700 dark:text-slate-300">%s</span></div>
+  <div class="mt-2 text-[11px] leading-relaxed %s">%s</div>
+</div>|html}
+      (escape_html label)
+      (escape_html (status_count_label status))
+      (escape_html lbl_last_sync)
+      (escape_html synced_at)
+      reason_cls
+      (escape_html reason)
+  in
+  let status_block =
+    Printf.sprintf
+      {html|<div class="space-y-2">
+  <div class="text-[11px] uppercase tracking-widest font-bold text-slate-500 dark:text-slate-400">%s</div>
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">%s%s</div>
+</div>|html}
+      (escape_html lbl_dataset_status)
+      (status_card ~label:lbl_tab_draft draft_status)
+      (status_card ~label:lbl_tab_trade trade_status)
+  in
+  let lbl_source = tr { ko = "출처"; en = "Source" } in
+  let msg_no_draft =
+    tr
+      { ko = "드래프트 데이터가 아직 없습니다."
+      ; en = "No draft data yet."
+      }
+  in
+  let msg_no_trade =
+    tr
+      { ko = "이적 데이터가 아직 없습니다."
+      ; en = "No trade data yet."
+      }
+  in
+  let msg_ops_suffix =
+    tr
+      { ko = " (운영자: 수집 설정을 확인해주세요.)"
+      ; en = " (Ops: check scraper sync settings.)"
+      }
   in
   let draft_table =
     let pick_label (row: draft_pick_row) =
@@ -1039,9 +1146,14 @@ let transactions_page
       match draft_picks with
       | [] ->
           if show_ops then
-            {html|<tr><td colspan="6" class="px-4 py-10 text-center text-slate-500 dark:text-slate-400 text-sm">드래프트 데이터가 아직 없습니다. (운영자: 수집 설정을 확인해주세요.)</td></tr>|html}
+            Printf.sprintf
+              {html|<tr><td colspan="6" class="px-4 py-10 text-center text-slate-500 dark:text-slate-400 text-sm">%s%s</td></tr>|html}
+              (escape_html msg_no_draft)
+              (escape_html msg_ops_suffix)
           else
-            {html|<tr><td colspan="6" class="px-4 py-10 text-center text-slate-500 dark:text-slate-400 text-sm">드래프트 데이터가 아직 없습니다.</td></tr>|html}
+            Printf.sprintf
+              {html|<tr><td colspan="6" class="px-4 py-10 text-center text-slate-500 dark:text-slate-400 text-sm">%s</td></tr>|html}
+              (escape_html msg_no_draft)
       | xs ->
           xs
           |> List.map (fun (r: draft_pick_row) ->
@@ -1059,10 +1171,10 @@ let transactions_page
                 {html|<tr class="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors">
   <td class="px-3 py-2 text-slate-500 dark:text-slate-400 font-mono whitespace-nowrap">%s</td>
   <td class="px-3 py-2 text-slate-700 dark:text-slate-300 font-mono whitespace-nowrap">%s</td>
-  <td class="px-3 py-2 min-w-0"><a class="text-slate-900 dark:text-slate-200 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300 font-bold truncate block" href="%s">%s</a><div class="mt-1 text-[11px] text-slate-500 dark:text-slate-400 font-mono">%s</div></td>
+  <td class="px-3 py-2 min-w-0"><a class="text-slate-900 dark:text-slate-200 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300 font-bold break-keep" href="%s">%s</a><div class="mt-1 text-[11px] text-slate-500 dark:text-slate-400 font-mono">%s</div></td>
   <td class="px-3 py-2">%s</td>
   <td class="px-3 py-2 text-[11px] text-slate-700 dark:text-slate-300 font-mono whitespace-pre-line break-words">%s</td>
-  <td class="px-3 py-2 text-[11px]"><a class="text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:text-slate-300 underline font-mono" href="%s" target="_blank" rel="noreferrer">출처</a></td>
+  <td class="px-3 py-2 text-[11px]"><a class="text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:text-slate-300 underline font-mono" href="%s" target="_blank" rel="noreferrer">%s</a></td>
 </tr>|html}
                 (escape_html y)
                 (escape_html (pick_label r))
@@ -1071,12 +1183,13 @@ let transactions_page
                 (escape_html r.dpr_player_id)
                 team_html
                 (escape_html r.dpr_raw_text)
-                (escape_html r.dpr_source_url))
+                (escape_html r.dpr_source_url)
+                (escape_html lbl_source))
           |> String.concat "\n"
     in
     Printf.sprintf
       {html|<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-lg">
-  <table class="min-w-[980px] w-full text-sm table-fixed tabular-nums" aria-label="드래프트 현황">
+  <table class="min-w-[980px] w-full text-sm table-fixed tabular-nums" aria-label="%s">
     <colgroup>
       <col style="width: 72px;"> <!-- Year -->
       <col style="width: 140px;"> <!-- Pick -->
@@ -1087,17 +1200,26 @@ let transactions_page
     </colgroup>
     <thead class="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px] whitespace-nowrap">
       <tr>
-	        <th scope="col" class="px-3 py-2 text-left">연도</th>
-	        <th scope="col" class="px-3 py-2 text-left" title="지명 순번">순번</th>
-	        <th scope="col" class="px-3 py-2 text-left">선수</th>
-	        <th scope="col" class="px-3 py-2 text-left">팀</th>
-	        <th scope="col" class="px-3 py-2 text-left" title="WKBL 원문">원문</th>
-	        <th scope="col" class="px-3 py-2 text-left">링크</th>
-	      </tr>
-    </thead>
-    <tbody>%s</tbody>
-  </table>
+		        <th scope="col" class="px-3 py-2 text-left">%s</th>
+		        <th scope="col" class="px-3 py-2 text-left" title="%s">%s</th>
+		        <th scope="col" class="px-3 py-2 text-left">%s</th>
+		        <th scope="col" class="px-3 py-2 text-left">%s</th>
+		        <th scope="col" class="px-3 py-2 text-left" title="%s">%s</th>
+		        <th scope="col" class="px-3 py-2 text-left">%s</th>
+		      </tr>
+	    </thead>
+	    <tbody>%s</tbody>
+	  </table>
 </div>|html}
+      (escape_html (tr { ko = "드래프트 현황"; en = "Draft status" }))
+      (escape_html (tr { ko = "연도"; en = "Year" }))
+      (escape_html (tr { ko = "지명 순번"; en = "Pick order" }))
+      (escape_html (tr { ko = "순번"; en = "Pick" }))
+      (escape_html (tr { ko = "선수"; en = "Player" }))
+      (escape_html (tr { ko = "팀"; en = "Team" }))
+      (escape_html (tr { ko = "WKBL 원문"; en = "WKBL raw text" }))
+      (escape_html (tr { ko = "원문"; en = "Raw" }))
+      (escape_html (tr { ko = "링크"; en = "Link" }))
       rows
   in
   let trade_list =
@@ -1169,9 +1291,14 @@ let transactions_page
       match trade_events with
       | [] ->
           if show_ops then
-            {html|<div class="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800/50 p-5 text-slate-500 dark:text-slate-400 text-sm">이적 데이터가 아직 없습니다. (운영자: 수집 설정을 확인해주세요.)</div>|html}
+            Printf.sprintf
+              {html|<div class="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800/50 p-5 text-slate-500 dark:text-slate-400 text-sm">%s%s</div>|html}
+              (escape_html msg_no_trade)
+              (escape_html msg_ops_suffix)
           else
-            {html|<div class="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800/50 p-5 text-slate-500 dark:text-slate-400 text-sm">이적 데이터가 아직 없습니다.</div>|html}
+            Printf.sprintf
+              {html|<div class="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800/50 p-5 text-slate-500 dark:text-slate-400 text-sm">%s</div>|html}
+              (escape_html msg_no_trade)
       | xs ->
           let items =
             xs
@@ -1194,14 +1321,15 @@ let transactions_page
     <div class="flex flex-wrap items-center gap-2">%s%s%s</div>
   </div>
   <div class="text-slate-900 dark:text-slate-200 text-sm leading-relaxed break-words">%s</div>
-  <div class="text-[11px]"><a class="text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:text-slate-300 underline font-mono" href="%s" target="_blank" rel="noreferrer">출처</a></div>
+  <div class="text-[11px]"><a class="text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:text-slate-300 underline font-mono" href="%s" target="_blank" rel="noreferrer">%s</a></div>
 </li>|html}
                   (escape_html e.ote_event_date)
                   team_chips_html
                   contract_chip_html
                   salary_chip_html
                   (escape_html e.ote_event_text)
-                  (escape_html e.ote_source_url))
+                  (escape_html e.ote_source_url)
+                  (escape_html lbl_source))
             |> String.concat "\n"
           in
           Printf.sprintf {html|<ol class="space-y-3">%s</ol>|html} items
@@ -1214,44 +1342,60 @@ let transactions_page
     in
     let intro_html =
       if show_ops then
-        {html|WKBL 공식 페이지 원문 기반입니다. 드래프트는 공식 페이지의 선수 고유번호를 사용하고, 이적은 원문을 저장해 검색합니다.|html}
+        tr
+          { ko = "WKBL 공식 페이지 원문 기반입니다. 드래프트는 공식 페이지의 선수 고유번호를 사용하고, 이적은 원문을 저장해 검색합니다."
+          ; en = "Based on official WKBL pages. Draft uses official player IDs, and trade stores raw source text for search."
+          }
       else
-        {html|WKBL 공식 페이지를 기준으로 정리했습니다.|html}
+        tr
+          { ko = "WKBL 공식 페이지를 기준으로 정리했습니다."
+          ; en = "Compiled from official WKBL pages."
+          }
     in
     let sync_build_block =
       if show_ops then
-        {html|<details class="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 p-5 text-xs text-slate-500 dark:text-slate-400">
-  <summary class="cursor-pointer font-bold text-slate-700 dark:text-slate-300 select-none">운영자 안내</summary>
+        Printf.sprintf
+          {html|<details class="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 p-5 text-xs text-slate-500 dark:text-slate-400">
+  <summary class="cursor-pointer font-bold text-slate-700 dark:text-slate-300 select-none">%s</summary>
   <div class="mt-2 space-y-2 leading-relaxed">
-    <div>드래프트/이적 데이터는 별도의 수집 과정이 필요합니다.</div>
+    <div>%s</div>
   </div>
 </details>|html}
+          (escape_html (tr { ko = "운영자 안내"; en = "Ops Notes" }))
+          (escape_html
+             (tr
+                { ko = "드래프트/이적 데이터는 별도의 수집 과정이 필요합니다."
+                ; en = "Draft/trade data requires separate scraper sync runs."
+                }))
       else
         ""
     in
     Printf.sprintf
       {html|<div class="space-y-6 animate-fade-in">%s
   <div class="flex flex-col gap-2">
-	    <h2 class="text-2xl font-black text-slate-900 dark:text-slate-200">드래프트 / 이적</h2>
+		    <h2 class="text-2xl font-black text-slate-900 dark:text-slate-200">%s</h2>
     <div class="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">%s</div>
   </div>
   <div class="flex flex-wrap items-center gap-2">%s%s</div>
   %s
   %s
   %s
+  %s
 </div>|html}
-      (breadcrumb [("홈", "/"); ("드래프트 / 이적", "")])
+      (breadcrumb [(tr { ko = "홈"; en = "Home" }, "/"); (lbl_title, "")])
+      (escape_html lbl_title)
       intro_html
-	      (tab_link "draft" "드래프트")
-	      (tab_link "trade" "이적")
+		      (tab_link "draft" lbl_tab_draft)
+		      (tab_link "trade" lbl_tab_trade)
+      status_block
       filter_form
       section
       sync_build_block
   in
-	  layout ~lang ~title:"드래프트 / 이적 | WKBL"
-	    ~canonical_path:"/tools/draft"
-	    ~description:"WKBL 드래프트 및 이적 기록"
-	    ~content ()
+		  layout ~lang ~title:title_page
+		    ~canonical_path:"/transactions"
+		    ~description:desc_page
+		    ~content ()
 
 (* ===== Fantasy Calculator ===== *)
 
