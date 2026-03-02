@@ -48,8 +48,12 @@ let team_stats_of_totals ~(scope: team_scope) ~(margin: team_margin option) (tot
   in
 
   let orb_pct =
-    if totals.reb <= 0 then 0.0
-    else float totals.reb_off /. float totals.reb *. 100.0
+    let misses = (fg_a - fg_m) + (totals.ft_a - totals.ft_m) in
+    if misses <= 0 then 0.0
+    else
+      let opp_drb_est = max 0 (misses - totals.reb_off) in
+      let denom = totals.reb_off + opp_drb_est in
+      if denom <= 0 then 0.0 else float totals.reb_off /. float denom *. 100.0
   in
 
   let ftr =
@@ -177,11 +181,16 @@ let four_factors_of_totals (t : Domain.team_totals) : four_factors =
   (* TOV% = TOV / Possessions * 100 *)
   let tov_pct = float t.turnovers /. poss *. 100.0 in
 
-  (* ORB% = ORB / (ORB + Opp_DRB) - we don't have opponent DRB, use estimate *)
-  (* Simplified: ORB / REB * 100 as proxy *)
+  (* ORB% ~= ORB / (ORB + Opp_DRB_est).
+     Opponent defensive rebounds are not directly available here, so estimate
+     Opp_DRB using team misses that were not recovered as ORB. *)
   let orb_pct =
-    if t.reb = 0 then 0.0
-    else float t.reb_off /. float t.reb *. 100.0
+    let misses = (fg_a - fg_m) + (t.ft_a - t.ft_m) in
+    if misses <= 0 then 0.0
+    else
+      let opp_drb_est = max 0 (misses - t.reb_off) in
+      let denom = t.reb_off + opp_drb_est in
+      if denom <= 0 then 0.0 else float t.reb_off /. float denom *. 100.0
   in
 
   (* FTR = FTA / FGA *)

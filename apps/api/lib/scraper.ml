@@ -489,26 +489,27 @@ let resolve_draft_player_id ~(players : Domain.player_info list) (entry : draft_
     players
     |> List.filter (fun (p : Domain.player_info) -> normalize_name_key p.name = name_key)
   in
-  let by_birth =
-    match entry.birth_date with
-    | None -> candidates
-    | Some b ->
-        let b_key = digits_only b in
-        if b_key = "" then candidates
-        else
-          candidates
-          |> List.filter (fun (p : Domain.player_info) ->
-              match p.birth_date with
-              | Some d -> digits_only d = b_key
-              | None -> false)
-  in
-  match by_birth with
-  | [p] -> Some p.id
-  | [] ->
+  match entry.birth_date with
+  | Some b ->
+      let b_key = digits_only b in
+      if b_key = "" then
+        (match candidates with
+        | [p] -> Some p.id
+        | _ -> None)
+      else
+        (match
+           candidates
+           |> List.filter (fun (p : Domain.player_info) ->
+               match p.birth_date with
+               | Some d -> digits_only d = b_key
+               | None -> false)
+         with
+        | [p] -> Some p.id
+        | _ -> None)
+  | None ->
       (match candidates with
       | [p] -> Some p.id
       | _ -> None)
-  | _ -> None
 
 let insert_drafts_to_db entries =
   let open Caqti_request.Infix in
@@ -761,22 +762,9 @@ let sync_coaches_to_db ~sw ~env () =
     | Error _ -> []
   in
   let open Caqti_request.Infix in
-  let ensure_query = (Caqti_type.unit ->. Caqti_type.unit) {|
-    CREATE TABLE IF NOT EXISTS coaches (
-      coach_id SERIAL PRIMARY KEY,
-      coach_name VARCHAR(50) NOT NULL,
-      team VARCHAR(50),
-      tenure_start INTEGER,
-      tenure_end INTEGER,
-      championships INTEGER DEFAULT 0,
-      regular_season_wins INTEGER DEFAULT 0,
-      playoff_wins INTEGER DEFAULT 0,
-      former_player BOOLEAN DEFAULT FALSE,
-      player_career_years VARCHAR(50),
-      notable_achievements TEXT,
-      created_at TIMESTAMP DEFAULT NOW()
-    )
-  |} in
+  let begin_tx_query = (Caqti_type.unit ->. Caqti_type.unit) {|BEGIN|} in
+  let commit_tx_query = (Caqti_type.unit ->. Caqti_type.unit) {|COMMIT|} in
+  let rollback_tx_query = (Caqti_type.unit ->. Caqti_type.unit) {|ROLLBACK|} in
   let delete_team_query = (Caqti_type.string ->. Caqti_type.unit) {|
     DELETE FROM coaches WHERE team = $1
   |} in
@@ -784,9 +772,29 @@ let sync_coaches_to_db ~sw ~env () =
     INSERT INTO coaches (coach_name, team, notable_achievements)
     VALUES ($1, $2, $3)
   |} in
-  let _ =
-    Db.with_db (fun (module Db : Caqti_eio.CONNECTION) ->
-      Db.exec ensure_query ())
+  let with_transaction
+      ~(begin_tx : unit -> (unit, 'e) result)
+      ~(commit_tx : unit -> (unit, 'e) result)
+      ~(rollback_tx : unit -> (unit, 'e) result)
+      (f : unit -> ('a, 'e) result) : ('a, 'e) result =
+    match begin_tx () with
+    | Error e -> Error e
+    | Ok () -> (
+        try
+          match f () with
+          | Ok v -> (
+              match commit_tx () with
+              | Ok () -> Ok v
+              | Error e ->
+                  let _ = rollback_tx () in
+                  Error e)
+          | Error e ->
+              let _ = rollback_tx () in
+              Error e
+        with
+        | exn ->
+            let _ = rollback_tx () in
+            raise exn)
   in
   let inserted = ref 0 in
   let teams_with_data = ref 0 in
@@ -795,18 +803,30 @@ let sync_coaches_to_db ~sw ~env () =
       let url = Printf.sprintf "%s/team/teaminfo.asp?team_code=%s" base_url (Uri.pct_encode t.team_code) in
       let html = fetch_url ~sw ~env url in
       let rows = if html = "" then [] else parse_team_coaches_html ~team_name:t.team_name html in
-      (match Db.with_db (fun (module Db : Caqti_eio.CONNECTION) ->
-        Db.exec delete_team_query t.team_name) with
-      | Ok () -> ()
-      | Error _ -> ());
-      if rows <> [] then incr teams_with_data;
-      rows |> List.iter (fun (r : team_coach_entry) ->
-        let role_desc = if r.tce_role = "head" then "Head Coach (scraped)" else "Assistant Coach (scraped)" in
-        match Db.with_db (fun (module Db : Caqti_eio.CONNECTION) ->
-          Db.exec insert_query (r.tce_coach_name, r.tce_team_name, role_desc)
-        ) with
-        | Ok () -> incr inserted
-        | Error _ -> ())
+      match
+        Db.with_db (fun (module Db_conn : Caqti_eio.CONNECTION) ->
+          let (let*) = Result.bind in
+          with_transaction
+            ~begin_tx:(fun () -> Db_conn.exec begin_tx_query ())
+            ~commit_tx:(fun () -> Db_conn.exec commit_tx_query ())
+            ~rollback_tx:(fun () -> Db_conn.exec rollback_tx_query ())
+            (fun () ->
+              let* () = Db_conn.exec delete_team_query t.team_name in
+              let rec insert_rows n = function
+                | [] -> Ok n
+                | r :: rest ->
+                    let role_desc =
+                      if r.tce_role = "head" then "Head Coach (scraped)" else "Assistant Coach (scraped)"
+                    in
+                    let* () = Db_conn.exec insert_query (r.tce_coach_name, r.tce_team_name, role_desc) in
+                    insert_rows (n + 1) rest
+              in
+              insert_rows 0 rows))
+      with
+      | Ok inserted_count ->
+          if rows <> [] then incr teams_with_data;
+          inserted := !inserted + inserted_count
+      | Error _ -> ()
     );
   (List.length teams, !teams_with_data, !inserted)
 

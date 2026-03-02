@@ -145,6 +145,28 @@ let ensure_player_external_links_table = (unit ->. unit) {|
 let ensure_player_external_links_index_player = (unit ->. unit) {|
   CREATE INDEX IF NOT EXISTS idx_player_external_links_player_id ON player_external_links(player_id)
 |}
+let ensure_coaches_table = (unit ->. unit) {|
+  CREATE TABLE IF NOT EXISTS coaches (
+    coach_id SERIAL PRIMARY KEY,
+    coach_name VARCHAR(50) NOT NULL,
+    team VARCHAR(50),
+    tenure_start INTEGER,
+    tenure_end INTEGER,
+    championships INTEGER DEFAULT 0,
+    regular_season_wins INTEGER DEFAULT 0,
+    playoff_wins INTEGER DEFAULT 0,
+    former_player BOOLEAN DEFAULT FALSE,
+    player_career_years VARCHAR(50),
+    notable_achievements TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+  )
+|}
+let ensure_coaches_index_team = (unit ->. unit) {|
+  CREATE INDEX IF NOT EXISTS idx_coaches_team ON coaches(team)
+|}
+let ensure_coaches_index_name = (unit ->. unit) {|
+  CREATE INDEX IF NOT EXISTS idx_coaches_name ON coaches(coach_name)
+|}
 let ensure_game_stats_index_game = (unit ->. unit) {|
   CREATE INDEX IF NOT EXISTS idx_game_stats_game_id ON game_stats(game_id)
 |}
