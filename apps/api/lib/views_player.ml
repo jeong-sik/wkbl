@@ -7,10 +7,10 @@ open Views_common
 (** Milestone Tracker - Career milestones for players *)
 
 (** Milestone thresholds for each stat category *)
-let points_milestones = [1000; 2000; 3000; 5000; 7000; 10000]
-let rebounds_milestones = [500; 1000; 2000; 3000; 5000]
-let assists_milestones = [300; 500; 1000; 2000; 3000]
-let games_milestones = [100; 200; 300; 500]
+let points_milestones = [500; 1000; 1500; 2000; 3000; 4000]
+let rebounds_milestones = [200; 400; 600; 800; 1000; 1500]
+let assists_milestones = [100; 200; 300; 500; 700; 1000]
+let games_milestones = [50; 100; 150; 200; 300]
 
 type milestone_status = {
   ms_category: string;
@@ -148,9 +148,9 @@ let milestone_tracker_card (avg: player_aggregate) =
 	            <h2 class="text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-xs flex items-center gap-2">
 	              <span class="text-lg">🎖️</span> 커리어 기록
 	            </h2>
-            <div class="mt-1 text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
-              커리어 누적 기록 마일스톤 달성 현황
-            </div>
+	            <div class="mt-1 text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
+	              커리어 누적 기록 마일스톤 달성 현황 (개인 누적 구간 기준)
+	            </div>
           </div>
           <div class="flex items-center gap-2">
             <span class="px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 text-[10px] font-mono text-amber-700 dark:text-amber-400 whitespace-nowrap">

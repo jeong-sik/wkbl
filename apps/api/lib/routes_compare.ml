@@ -45,6 +45,10 @@ let routes =
                           ("STL", a.stl, b.stl, false);
                           ("BLK", a.blk, b.blk, false);
                           ("TO", a.turnovers, b.turnovers, false);
+                          ("eFG%", a.efg_pct, b.efg_pct, false);
+                          ("TOV%", a.tov_pct, b.tov_pct, false);
+                          ("ORB%", a.orb_pct, b.orb_pct, false);
+                          ("FTR", a.ftr, b.ftr, false);
                           ("EFF", a.eff, b.eff, false);
                         ] in
                         Kirin.html

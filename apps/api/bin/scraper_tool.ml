@@ -6,6 +6,9 @@
       scraper_tool awards stats [--csv]    Fetch statistical awards
       scraper_tool awards best5 [--csv]    Fetch BEST5 awards
       scraper_tool sync schedule           Sync schedule to database
+      scraper_tool sync draft [--season=X] Sync draft history to database
+      scraper_tool sync trade              Sync official trade events to database
+      scraper_tool sync coaches            Sync team coaches to database
 *)
 
 open Wkbl
@@ -39,6 +42,9 @@ Usage:
   scraper_tool schedule [--csv]        Fetch season schedule (경기 일정)
   scraper_tool schedule --month=YYYYMM Fetch specific month schedule
   scraper_tool sync schedule [--purge] Sync current season schedule to database
+  scraper_tool sync draft [--season=X] Sync draft history to database
+  scraper_tool sync trade              Sync official trade events to database
+  scraper_tool sync coaches            Sync team coaches to database
   scraper_tool sync games              Sync DataLab game results to database
   scraper_tool sync games --season=X   Sync specific season game results
   scraper_tool sync boxscore           Sync missing boxscores to database
@@ -75,6 +81,46 @@ let run_with_rng f =
   Eio_main.run @@ fun env ->
   Eio.Switch.run @@ fun sw ->
   f ~sw ~env
+
+let init_db_or_exit ~sw ~env =
+  let db_url =
+    match get_db_url () with
+    | Some url -> url
+    | None ->
+        Printf.eprintf "Error: DATABASE_URL or WKBL_DATABASE_URL not set\n";
+        exit 1
+  in
+  match Db.init_pool ~sw ~stdenv:(env :> Caqti_eio.stdenv) db_url with
+  | Ok () -> ()
+  | Error e ->
+      Printf.eprintf "Database connection failed: %s\n" (Db.show_db_error e);
+      exit 1
+
+let run_sync_draft ~sw ~env ~season_filter =
+  init_db_or_exit ~sw ~env;
+  let total, inserted, unmatched =
+    Scraper.sync_drafts_to_db ~sw ~env ?season_filter ()
+  in
+  Db.clear_all_caches ();
+  Printf.printf "\n=== Draft Sync Complete ===\n";
+  Printf.printf "Fetched: %d, Inserted/Updated: %d, Unmatched players: %d\n%!"
+    total inserted unmatched
+
+let run_sync_trade ~sw ~env =
+  init_db_or_exit ~sw ~env;
+  let total, inserted = Scraper.sync_trade_events_to_db ~sw ~env () in
+  Db.clear_all_caches ();
+  Printf.printf "\n=== Trade Sync Complete ===\n";
+  Printf.printf "Fetched(unique): %d, Inserted/Updated: %d\n%!"
+    total inserted
+
+let run_sync_coaches ~sw ~env =
+  init_db_or_exit ~sw ~env;
+  let teams, teams_with_data, inserted = Scraper.sync_coaches_to_db ~sw ~env () in
+  Db.clear_all_caches ();
+  Printf.printf "\n=== Coaches Sync Complete ===\n";
+  Printf.printf "Teams checked: %d, Teams with coach rows: %d, Inserted: %d\n%!"
+    teams teams_with_data inserted
 
 (** Sync boxscore data for games that don't have stats yet *)
 let run_sync_boxscore ~sw ~env ~season_filter =
@@ -1077,6 +1123,15 @@ let () =
   | "sync" :: "schedule" :: _ ->
       run_with_rng @@ fun ~sw ~env ->
       run_sync_schedule ~sw ~env ~purge
+  | "sync" :: "draft" :: _ ->
+      run_with_rng @@ fun ~sw ~env ->
+      run_sync_draft ~sw ~env ~season_filter
+  | "sync" :: "trade" :: _ ->
+      run_with_rng @@ fun ~sw ~env ->
+      run_sync_trade ~sw ~env
+  | "sync" :: "coaches" :: _ ->
+      run_with_rng @@ fun ~sw ~env ->
+      run_sync_coaches ~sw ~env
   | "sync" :: "games" :: _ ->
       run_with_rng @@ fun ~sw ~env ->
       run_sync_games ~sw ~env ~season_filter
@@ -1090,7 +1145,7 @@ let () =
       run_with_rng @@ fun ~sw ~env ->
       run_sync_history ~sw ~env ~season_filter ~purge
   | "sync" :: _ ->
-      Printf.eprintf "Unknown sync subcommand. Use 'schedule', 'games', 'boxscore', 'pbp', or 'history'\n%s" usage;
+      Printf.eprintf "Unknown sync subcommand. Use 'schedule', 'draft', 'trade', 'coaches', 'games', 'boxscore', 'pbp', or 'history'\n%s" usage;
       exit 1
   | "history" :: _ ->
       run_with_rng @@ fun ~sw ~env ->

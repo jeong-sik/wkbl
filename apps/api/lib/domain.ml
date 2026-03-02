@@ -100,6 +100,9 @@ type team_stats = {
   ft_pct: float;
   efg_pct: float;
   ts_pct: float;
+  tov_pct: float;
+  orb_pct: float;
+  ftr: float;
   pace: float;
   eff: float;
 }
@@ -123,7 +126,11 @@ type team_sort =
   | TeamBySteals
   | TeamByBlocks
   | TeamByEfficiency
+  | TeamByEfgPct
   | TeamByTsPct
+  | TeamByTovPct
+  | TeamByOrbPct
+  | TeamByFtr
   | TeamByFg3Pct
   | TeamByMinutes
 
@@ -134,7 +141,11 @@ let team_sort_of_string = function
   | "stl" -> TeamBySteals
   | "blk" -> TeamByBlocks
   | "eff" -> TeamByEfficiency
+  | "efg" | "efg_pct" -> TeamByEfgPct
   | "ts_pct" -> TeamByTsPct
+  | "tov" | "tov_pct" -> TeamByTovPct
+  | "orb" | "orb_pct" -> TeamByOrbPct
+  | "ftr" -> TeamByFtr
   | "fg3_pct" -> TeamByFg3Pct
   | "min_total" -> TeamByMinutes
   | _ -> TeamByPoints
@@ -597,6 +608,12 @@ type official_trade_event = {
   ote_event_text: string;
   ote_source_url: string;
   ote_scraped_at: string;
+}
+
+type dataset_status = {
+  ds_count: int;
+  ds_last_scraped_at: string option;
+  ds_reason: string option;
 }
 
 type player_external_link = {

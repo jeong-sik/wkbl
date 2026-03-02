@@ -460,25 +460,355 @@ let print_draft_csv entries =
   )
 
 (** Insert draft entries to database *)
+let now_iso_datetime () =
+  let tm = Unix.gmtime (Unix.time ()) in
+  Printf.sprintf "%04d-%02d-%02dT%02d:%02d:%02dZ"
+    (tm.Unix.tm_year + 1900)
+    (tm.Unix.tm_mon + 1)
+    tm.Unix.tm_mday
+    tm.Unix.tm_hour
+    tm.Unix.tm_min
+    tm.Unix.tm_sec
+
+let digits_only (s : string) =
+  let buf = Buffer.create (String.length s) in
+  String.iter (fun ch -> if ch >= '0' && ch <= '9' then Buffer.add_char buf ch) s;
+  Buffer.contents buf
+
+let draft_year_of_season_name (season_name : string) : int option =
+  match String.split_on_char '-' season_name with
+  | [_start_year; end_year] -> int_of_string_opt (String.trim end_year)
+  | _ -> None
+
+let normalize_name_key (s : string) =
+  Domain.normalize_label s |> String.uppercase_ascii
+
+let resolve_draft_player_id ~(players : Domain.player_info list) (entry : draft_entry) : string option =
+  let name_key = normalize_name_key entry.player_name in
+  let candidates =
+    players
+    |> List.filter (fun (p : Domain.player_info) -> normalize_name_key p.name = name_key)
+  in
+  let by_birth =
+    match entry.birth_date with
+    | None -> candidates
+    | Some b ->
+        let b_key = digits_only b in
+        if b_key = "" then candidates
+        else
+          candidates
+          |> List.filter (fun (p : Domain.player_info) ->
+              match p.birth_date with
+              | Some d -> digits_only d = b_key
+              | None -> false)
+  in
+  match by_birth with
+  | [p] -> Some p.id
+  | [] ->
+      (match candidates with
+      | [p] -> Some p.id
+      | _ -> None)
+  | _ -> None
+
 let insert_drafts_to_db entries =
   let open Caqti_request.Infix in
+  let scraped_at = now_iso_datetime () in
   let insert_query =
-    (Caqti_type.(t6 string string int string string (option string)) ->. Caqti_type.unit)
+    (Caqti_type.(t9 string (option int) (option int) (option int) (option int) (option string) string string string) ->. Caqti_type.unit)
     {|INSERT INTO player_drafts
-      (season_code, season_name, pick_order, team_name, player_name, birth_date)
-      VALUES ($1, $2, $3, $4, $5, $6)
-      ON CONFLICT (season_code, pick_order) DO UPDATE SET
-        team_name = EXCLUDED.team_name,
-        player_name = EXCLUDED.player_name,
-        birth_date = EXCLUDED.birth_date|}
+      (player_id, draft_year, draft_round, pick_in_round, overall_pick, draft_team, raw_text, source_url, scraped_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      ON CONFLICT (player_id) DO UPDATE SET
+        draft_year = EXCLUDED.draft_year,
+        draft_round = EXCLUDED.draft_round,
+        pick_in_round = EXCLUDED.pick_in_round,
+        overall_pick = EXCLUDED.overall_pick,
+        draft_team = EXCLUDED.draft_team,
+        raw_text = EXCLUDED.raw_text,
+        source_url = EXCLUDED.source_url,
+        scraped_at = EXCLUDED.scraped_at|}
   in
-  entries |> List.iter (fun e ->
+  let players =
+    match Db.get_all_player_info () with
+    | Ok xs -> xs
+    | Error _ -> []
+  in
+  let inserted = ref 0 in
+  let unmatched = ref 0 in
+  entries |> List.iter (fun (e : draft_entry) ->
+    match resolve_draft_player_id ~players e with
+    | None -> incr unmatched
+    | Some player_id ->
+        let raw_text =
+          Printf.sprintf "%s | %s | %s"
+            e.season_name
+            e.player_name
+            (Option.value ~default:"-" e.school)
+        in
+        (match Db.with_db (fun (module Db : Caqti_eio.CONNECTION) ->
+          Db.exec insert_query
+            ( player_id,
+              draft_year_of_season_name e.season_name,
+              None,
+              None,
+              Some e.pick_order,
+              Some (Domain.normalize_label e.team_name),
+              raw_text,
+              (Printf.sprintf "%s/history/draft.asp" base_url),
+              scraped_at ))
+        with
+        | Ok () -> incr inserted
+        | Error _ -> ())
+  );
+  (!inserted, !unmatched)
+
+let sync_drafts_to_db ~sw ~env ?season_filter () =
+  let entries =
+    match season_filter with
+    | Some code ->
+        let season_name =
+          List.assoc_opt code (main_season_codes ())
+          |> Option.value ~default:(season_name_of_code code)
+        in
+        fetch_draft_season ~sw ~env ~season_code:code ~season_name
+    | None -> fetch_all_drafts ~sw ~env
+  in
+  let inserted, unmatched = insert_drafts_to_db entries in
+  (List.length entries, inserted, unmatched)
+
+type official_trade_entry = {
+  te_event_date: string;
+  te_event_year: int;
+  te_event_text: string;
+  te_source_url: string;
+}
+
+let parse_month_day (s : string) : (int * int) option =
+  let nums = ref [] in
+  let acc = Buffer.create 4 in
+  let flush () =
+    if Buffer.length acc > 0 then begin
+      let n = Buffer.contents acc |> int_of_string_opt in
+      Buffer.clear acc;
+      match n with Some v -> nums := v :: !nums | None -> ()
+    end
+  in
+  String.iter (fun ch ->
+    if ch >= '0' && ch <= '9' then Buffer.add_char acc ch
+    else flush ()
+  ) s;
+  flush ();
+  match List.rev !nums with
+  | m :: d :: _ when m >= 1 && m <= 12 && d >= 1 && d <= 31 -> Some (m, d)
+  | _ -> None
+
+let parse_trade_ajax_html (html : string) : official_trade_entry list =
+  let soup = Soup.parse html in
+  let wraps = soup |> Soup.select "div.wrap_trade" |> Soup.to_list in
+  wraps
+  |> List.concat_map (fun wrap ->
+      let year_text =
+        wrap
+        |> Soup.select_one "strong.point_year"
+        |> Option.map Soup.leaf_text
+        |> Option.join
+        |> Option.map String.trim
+        |> Option.value ~default:"0"
+      in
+      let year = int_of_string_opt year_text |> Option.value ~default:0 in
+      if year <= 0 then []
+      else
+        wrap
+        |> Soup.select "ul.list_history li"
+        |> Soup.to_list
+        |> List.filter_map (fun li ->
+            let date_text =
+              li
+              |> Soup.select_one "span.txt_date"
+              |> Option.map Soup.leaf_text
+              |> Option.join
+              |> Option.map String.trim
+              |> Option.value ~default:""
+            in
+            let event_text =
+              li
+              |> Soup.select_one "span.txt_history"
+              |> Option.map Soup.leaf_text
+              |> Option.join
+              |> Option.map Domain.normalize_label
+              |> Option.value ~default:""
+            in
+            if event_text = "" then None
+            else
+              let event_date =
+                match parse_month_day date_text with
+                | Some (m, d) -> Printf.sprintf "%04d-%02d-%02d" year m d
+                | None -> Printf.sprintf "%04d-01-01" year
+              in
+              Some {
+                te_event_date = event_date;
+                te_event_year = year;
+                te_event_text = event_text;
+                te_source_url = Printf.sprintf "%s/player/trade_info.asp" base_url;
+              }))
+
+let fetch_trade_events_range ~sw ~env ~(start_year : int) ~(end_year : int) =
+  let url = Printf.sprintf "%s/player/ajax/ajax_trade_info.asp" base_url in
+  let referer = Printf.sprintf "%s/player/trade_info.asp" base_url in
+  let body = [ ("sDate", [ string_of_int start_year ]); ("eDate", [ string_of_int end_year ]) ] in
+  let html = post_url ~sw ~env ~referer url body in
+  if html = "" then [] else parse_trade_ajax_html html
+
+let fetch_all_trade_events ~sw ~env =
+  let ranges = [ (2021, 2030); (2011, 2020); (2001, 2010); (1999, 2000) ] in
+  let clock = Eio.Stdenv.clock env in
+  let rec loop acc = function
+    | [] -> List.rev acc
+    | (s, e) :: tl ->
+        let rows = fetch_trade_events_range ~sw ~env ~start_year:s ~end_year:e in
+        Eio.Time.sleep clock 0.2;
+        loop (rows @ acc) tl
+  in
+  loop [] ranges
+
+let sync_trade_events_to_db ~sw ~env () =
+  let entries = fetch_all_trade_events ~sw ~env in
+  let unique_tbl : (string, official_trade_entry) Hashtbl.t = Hashtbl.create 2048 in
+  entries
+  |> List.iter (fun (e : official_trade_entry) ->
+      let key = e.te_event_date ^ "|" ^ e.te_event_text in
+      if not (Hashtbl.mem unique_tbl key) then Hashtbl.add unique_tbl key e);
+  let deduped = Hashtbl.to_seq_values unique_tbl |> List.of_seq in
+  let open Caqti_request.Infix in
+  let insert_query =
+    (Caqti_type.(t6 string int string string string string) ->. Caqti_type.unit)
+    {|INSERT INTO official_trade_events
+      (event_date, event_year, event_text, event_text_norm, source_url, scraped_at)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      ON CONFLICT (event_date, event_text) DO UPDATE SET
+        event_year = EXCLUDED.event_year,
+        event_text_norm = EXCLUDED.event_text_norm,
+        source_url = EXCLUDED.source_url,
+        scraped_at = EXCLUDED.scraped_at|}
+  in
+  let scraped_at = now_iso_datetime () in
+  let inserted = ref 0 in
+  deduped |> List.iter (fun (e : official_trade_entry) ->
+    let norm = Domain.normalize_label e.te_event_text |> String.lowercase_ascii in
     match Db.with_db (fun (module Db : Caqti_eio.CONNECTION) ->
-      Db.exec insert_query (e.season_code, e.season_name, e.pick_order, e.team_name, e.player_name, e.birth_date)
+      Db.exec insert_query
+        (e.te_event_date, e.te_event_year, e.te_event_text, norm, e.te_source_url, scraped_at)
     ) with
-    | Ok () -> ()
+    | Ok () -> incr inserted
     | Error _ -> ()
-  )
+  );
+  (List.length deduped, !inserted)
+
+type team_coach_entry = {
+  tce_team_name: string;
+  tce_coach_name: string;
+  tce_role: string;  (* "head" or "assistant" *)
+}
+
+let split_coach_names (raw : string) =
+  raw
+  |> Str.global_replace (Str.regexp_string "·") ","
+  |> Str.global_replace (Str.regexp_string "/") ","
+  |> String.split_on_char ','
+  |> List.map Domain.normalize_label
+  |> List.filter (fun s -> s <> "")
+
+let parse_team_coaches_html ~(team_name : string) (html : string) : team_coach_entry list =
+  let soup = Soup.parse html in
+  let rows = soup |> Soup.select "li .utl_flex" |> Soup.to_list in
+  let find_field label =
+    rows
+    |> List.find_map (fun row ->
+        let key =
+          row
+          |> Soup.select_one "strong"
+          |> Option.map Soup.leaf_text
+          |> Option.join
+          |> Option.map Domain.normalize_label
+          |> Option.value ~default:""
+        in
+        if key = label then
+          row
+          |> Soup.select_one "p"
+          |> Option.map Soup.leaf_text
+          |> Option.join
+          |> Option.map Domain.normalize_label
+        else None)
+  in
+  let head =
+    find_field "감독"
+    |> Option.map split_coach_names
+    |> Option.value ~default:[]
+    |> List.map (fun name -> { tce_team_name = team_name; tce_coach_name = name; tce_role = "head" })
+  in
+  let assistants =
+    find_field "코치"
+    |> Option.map split_coach_names
+    |> Option.value ~default:[]
+    |> List.map (fun name -> { tce_team_name = team_name; tce_coach_name = name; tce_role = "assistant" })
+  in
+  head @ assistants
+
+let sync_coaches_to_db ~sw ~env () =
+  let teams =
+    match Db.get_all_teams () with
+    | Ok xs -> xs
+    | Error _ -> []
+  in
+  let open Caqti_request.Infix in
+  let ensure_query = (Caqti_type.unit ->. Caqti_type.unit) {|
+    CREATE TABLE IF NOT EXISTS coaches (
+      coach_id SERIAL PRIMARY KEY,
+      coach_name VARCHAR(50) NOT NULL,
+      team VARCHAR(50),
+      tenure_start INTEGER,
+      tenure_end INTEGER,
+      championships INTEGER DEFAULT 0,
+      regular_season_wins INTEGER DEFAULT 0,
+      playoff_wins INTEGER DEFAULT 0,
+      former_player BOOLEAN DEFAULT FALSE,
+      player_career_years VARCHAR(50),
+      notable_achievements TEXT,
+      created_at TIMESTAMP DEFAULT NOW()
+    )
+  |} in
+  let delete_team_query = (Caqti_type.string ->. Caqti_type.unit) {|
+    DELETE FROM coaches WHERE team = $1
+  |} in
+  let insert_query = (Caqti_type.t3 Caqti_type.string Caqti_type.string Caqti_type.string ->. Caqti_type.unit) {|
+    INSERT INTO coaches (coach_name, team, notable_achievements)
+    VALUES ($1, $2, $3)
+  |} in
+  let _ =
+    Db.with_db (fun (module Db : Caqti_eio.CONNECTION) ->
+      Db.exec ensure_query ())
+  in
+  let inserted = ref 0 in
+  let teams_with_data = ref 0 in
+  teams
+  |> List.iter (fun (t : Domain.team_info) ->
+      let url = Printf.sprintf "%s/team/teaminfo.asp?team_code=%s" base_url (Uri.pct_encode t.team_code) in
+      let html = fetch_url ~sw ~env url in
+      let rows = if html = "" then [] else parse_team_coaches_html ~team_name:t.team_name html in
+      (match Db.with_db (fun (module Db : Caqti_eio.CONNECTION) ->
+        Db.exec delete_team_query t.team_name) with
+      | Ok () -> ()
+      | Error _ -> ());
+      if rows <> [] then incr teams_with_data;
+      rows |> List.iter (fun (r : team_coach_entry) ->
+        let role_desc = if r.tce_role = "head" then "Head Coach (scraped)" else "Assistant Coach (scraped)" in
+        match Db.with_db (fun (module Db : Caqti_eio.CONNECTION) ->
+          Db.exec insert_query (r.tce_coach_name, r.tce_team_name, role_desc)
+        ) with
+        | Ok () -> incr inserted
+        | Error _ -> ())
+    );
+  (List.length teams, !teams_with_data, !inserted)
 
 (* ======== AWARDS SCRAPER ======== *)
 

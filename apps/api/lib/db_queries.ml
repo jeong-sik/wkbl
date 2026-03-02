@@ -544,6 +544,22 @@ let all_seasons = (unit ->* season_info) {|
   ORDER BY g.season_code
 |}
 
+let team_available_seasons = (t4 string string string string ->* season_info) {|
+  SELECT DISTINCT
+    g.season_code,
+    COALESCE(s.season_name, g.season_code) as season_name
+  FROM games_calc_v3 g
+  LEFT JOIN seasons s ON s.season_code = g.season_code
+  WHERE g.game_type != '10'
+    AND (
+      g.home_team_code = ?
+      OR g.away_team_code = ?
+      OR g.home_team_name = ?
+      OR g.away_team_name = ?
+    )
+  ORDER BY g.season_code DESC
+|}
+
 (** Latest game date for data freshness display *)
 let latest_game_date = (unit ->? string)
   "SELECT MAX(game_date) FROM games_calc_v3 WHERE game_type != '10' AND home_score_calc IS NOT NULL AND away_score_calc IS NOT NULL"
@@ -2356,6 +2372,28 @@ let official_trade_events_filtered = (t2 (t2 int int) string ->* official_trade_
     AND event_text_norm LIKE ?
   ORDER BY event_date DESC, id DESC
   LIMIT 300
+|}
+
+let draft_dataset_status = (unit ->? t3 int (option string) (option string)) {|
+  SELECT
+    COUNT(*)::int AS row_count,
+    MAX(scraped_at) AS last_scraped_at,
+    CASE
+      WHEN COUNT(*) = 0 THEN 'missing_data'
+      ELSE NULL
+    END AS reason
+  FROM player_drafts
+|}
+
+let trade_dataset_status = (unit ->? t3 int (option string) (option string)) {|
+  SELECT
+    COUNT(*)::int AS row_count,
+    MAX(scraped_at) AS last_scraped_at,
+    CASE
+      WHEN COUNT(*) = 0 THEN 'missing_data'
+      ELSE NULL
+    END AS reason
+  FROM official_trade_events
 |}
 
 let player_external_links_by_player_id = (string ->* player_external_link) {|

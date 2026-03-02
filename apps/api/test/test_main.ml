@@ -1223,6 +1223,9 @@ let test_teams_table_has_row_link_attr () =
       ft_pct = 75.0;
       efg_pct = 50.0;
       ts_pct = 55.0;
+      tov_pct = 14.0;
+      orb_pct = 31.0;
+      ftr = 20.0;
       pace = 78.0;
       eff = 90.0;
     }
@@ -1252,6 +1255,9 @@ let test_teams_page_uses_container_target_for_partial_table () =
         ft_pct = 75.0;
         efg_pct = 50.0;
         ts_pct = 55.0;
+        tov_pct = 14.0;
+        orb_pct = 31.0;
+        ftr = 20.0;
         pace = 78.0;
         eff = 90.0;
       } ]
@@ -2710,6 +2716,8 @@ let test_ops_copy_hidden_by_default () =
       ~q:""
       ~draft_years:[]
       ~trade_years:[]
+      ~draft_status:{ ds_count = 0; ds_last_scraped_at = None; ds_reason = Some "missing_data" }
+      ~trade_status:{ ds_count = 0; ds_last_scraped_at = None; ds_reason = Some "missing_data" }
       ~draft_picks:[]
       ~trade_events:[]
       ()

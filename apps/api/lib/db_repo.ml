@@ -82,6 +82,14 @@ open Db_queries
       Db.exec refresh_score_mismatch ()
   let get_teams (module Db : Caqti_eio.CONNECTION) = Db.collect_list all_teams ()
   let get_seasons (module Db : Caqti_eio.CONNECTION) = Db.collect_list all_seasons ()
+  let get_team_available_seasons ~team_name (module Db : Caqti_eio.CONNECTION) =
+    let team_name = normalize_label team_name in
+    let team_code =
+      match team_code_of_string team_name with
+      | Some c -> c
+      | None -> "__NO_TEAM_CODE__"
+    in
+    Db.collect_list team_available_seasons (team_code, team_code, team_name, team_name)
   let get_all_player_info (module Db : Caqti_eio.CONNECTION) = Db.collect_list all_player_info ()
   let get_latest_game_date (module Db : Caqti_eio.CONNECTION) = Db.find_opt latest_game_date ()
   let get_historical_seasons (module Db : Caqti_eio.CONNECTION) = Db.collect_list all_historical_seasons ()
@@ -165,12 +173,30 @@ open Db_queries
     let pattern = normalize_search_pattern (normalize_label search) in
     Db.collect_list draft_picks_filtered ((year, year), (pattern, pattern))
 
+  let get_draft_dataset_status (module Db : Caqti_eio.CONNECTION) =
+    let (let*) = Result.bind in
+    let* row = Db.find_opt draft_dataset_status () in
+    match row with
+    | Some (count, last_scraped_at, reason) ->
+        Ok { ds_count = count; ds_last_scraped_at = last_scraped_at; ds_reason = reason }
+    | None ->
+        Ok { ds_count = 0; ds_last_scraped_at = None; ds_reason = Some "missing_data" }
+
   let get_official_trade_years (module Db : Caqti_eio.CONNECTION) =
     Db.collect_list official_trade_years ()
 
   let get_official_trade_events ~year ~search (module Db : Caqti_eio.CONNECTION) =
     let pattern = normalize_search_pattern (normalize_label search) in
     Db.collect_list official_trade_events_filtered ((year, year), pattern)
+
+  let get_trade_dataset_status (module Db : Caqti_eio.CONNECTION) =
+    let (let*) = Result.bind in
+    let* row = Db.find_opt trade_dataset_status () in
+    match row with
+    | Some (count, last_scraped_at, reason) ->
+        Ok { ds_count = count; ds_last_scraped_at = last_scraped_at; ds_reason = reason }
+    | None ->
+        Ok { ds_count = 0; ds_last_scraped_at = None; ds_reason = Some "missing_data" }
 
   (* Schedule queries *)
   let get_upcoming_schedule ~status ~limit (module Db : Caqti_eio.CONNECTION) =

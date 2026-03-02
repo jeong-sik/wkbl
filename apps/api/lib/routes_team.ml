@@ -58,11 +58,33 @@ let routes =
       match Db.get_seasons () with
       | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
       | Ok seasons ->
-          let season = Route_helpers.query_season_or_latest request seasons in
+          let seasons_for_team =
+            match Db.get_team_available_seasons ~team_name () with
+            | Ok [] | Error _ -> seasons
+            | Ok xs -> xs
+          in
+          let season = Route_helpers.query_season_or_latest request seasons_for_team in
           (match Db.get_team_full_detail ~team_name ~season () with
           | Ok detail ->
+              let normalize_team_key raw_team_name =
+                let normalized = Domain.normalize_label raw_team_name in
+                match Domain.team_code_of_string normalized with
+                | Some code -> "code:" ^ code
+                | None -> "name:" ^ (String.uppercase_ascii normalized)
+              in
+              let team_key = normalize_team_key team_name in
+              let coaches =
+                match Db.get_coaches () with
+                | Ok rows ->
+                    rows
+                    |> List.filter (fun (c: Domain.coach) ->
+                        match c.c_team with
+                        | None -> false
+                        | Some coach_team -> normalize_team_key coach_team = team_key)
+                | Error _ -> []
+              in
               let player_info_map = Backfill.get_player_info_map () in
-              Kirin.html (Views_team.team_profile_page ~lang ~player_info_map detail ~season ~seasons)
+              Kirin.html (Views_team.team_profile_page ~lang ~player_info_map ~coaches detail ~season ~seasons:seasons_for_team)
           | Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e)))
     );
 

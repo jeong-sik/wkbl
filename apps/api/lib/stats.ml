@@ -32,7 +32,7 @@ let team_stats_of_totals ~(scope: team_scope) ~(margin: team_margin option) (tot
     let denom = 2.0 *. (float fg_a +. 0.44 *. float totals.ft_a) in
     if denom = 0.0 then 0.0 else float totals.pts /. denom *. 100.0
   in
-  
+
   (* Estimate Pace: 40 * (Poss / Minutes) *)
   (* Poss = FGA + 0.44*FTA + TOV - ORB *)
   let poss = float fg_a +. 0.44 *. float totals.ft_a +. float totals.turnovers -. float totals.reb_off in
@@ -40,6 +40,21 @@ let team_stats_of_totals ~(scope: team_scope) ~(margin: team_margin option) (tot
   let pace =
     if minutes <= 0.0 then 0.0
     else 40.0 *. (poss /. minutes)
+  in
+
+  let tov_pct =
+    if poss <= 0.0 then 0.0
+    else float totals.turnovers /. poss *. 100.0
+  in
+
+  let orb_pct =
+    if totals.reb <= 0 then 0.0
+    else float totals.reb_off /. float totals.reb *. 100.0
+  in
+
+  let ftr =
+    if fg_a = 0 then 0.0
+    else float totals.ft_a /. float fg_a *. 100.0
   in
   
   (* NBA Efficiency Formula *)
@@ -89,6 +104,9 @@ let team_stats_of_totals ~(scope: team_scope) ~(margin: team_margin option) (tot
     ft_pct;
     efg_pct;
     ts_pct;
+    tov_pct;
+    orb_pct;
+    ftr;
     pace;
     eff = transform_total eff_total;
   }

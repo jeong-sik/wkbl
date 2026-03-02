@@ -48,7 +48,11 @@ let team_sort_key = function
   | TeamBySteals -> "stl"
   | TeamByBlocks -> "blk"
   | TeamByEfficiency -> "eff"
+  | TeamByEfgPct -> "efg"
   | TeamByTsPct -> "ts"
+  | TeamByTovPct -> "tov"
+  | TeamByOrbPct -> "orb"
+  | TeamByFtr -> "ftr"
   | TeamByFg3Pct -> "fg3"
   | TeamByMinutes -> "min"
 
@@ -59,6 +63,7 @@ let team_sort_key = function
    - Live data (schedule): 2 min, needs near-real-time *)
 let seasons_cache = Cache.create ~ttl:(60.0 *. 60.0 *. 6.0) ~max_entries:4
 let teams_cache = Cache.create ~ttl:(60.0 *. 60.0 *. 6.0) ~max_entries:4
+let team_available_seasons_cache = Cache.create ~ttl:900.0 ~max_entries:32
 let data_freshness_cache = Cache.create ~ttl:300.0 ~max_entries:1
 let standings_cache = Cache.create ~ttl:600.0 ~max_entries:16
 let games_cache = Cache.create ~ttl:600.0 ~max_entries:16
@@ -81,8 +86,10 @@ let awards_count_cache = Cache.create ~ttl:900.0 ~max_entries:4
 let awards_leaders_cache = Cache.create ~ttl:900.0 ~max_entries:32
 let draft_years_cache = Cache.create ~ttl:900.0 ~max_entries:8
 let draft_picks_cache = Cache.create ~ttl:900.0 ~max_entries:32
+let draft_dataset_status_cache = Cache.create ~ttl:300.0 ~max_entries:4
 let trade_years_cache = Cache.create ~ttl:900.0 ~max_entries:8
 let trade_events_cache = Cache.create ~ttl:900.0 ~max_entries:32
+let trade_dataset_status_cache = Cache.create ~ttl:300.0 ~max_entries:4
 let qa_report_cache = Cache.create ~ttl:300.0 ~max_entries:4
 let qa_schedule_missing_report_cache = Cache.create ~ttl:300.0 ~max_entries:4
 let qa_pbp_missing_report_cache = Cache.create ~ttl:300.0 ~max_entries:16
@@ -357,6 +364,10 @@ let resolve_team_name name =
 
 let get_seasons () =
   cached seasons_cache "all" (fun () -> with_db (fun db -> Repo.get_seasons db))
+let get_team_available_seasons ~team_name () =
+  let key = normalize_label team_name in
+  cached team_available_seasons_cache key (fun () ->
+    with_db (fun db -> Repo.get_team_available_seasons ~team_name db))
 let get_all_player_info () =
   cached player_info_cache "all" (fun () -> with_db (fun db -> Repo.get_all_player_info db))
 let get_latest_game_date () =
@@ -409,6 +420,10 @@ let get_draft_picks ?(year=0) ?(search="") () =
   in
   cached draft_picks_cache key (fun () -> with_db (fun db -> Repo.get_draft_picks ~year ~search db))
 
+let get_draft_dataset_status () =
+  cached draft_dataset_status_cache "status" (fun () ->
+    with_db (fun db -> Repo.get_draft_dataset_status db))
+
 let get_official_trade_years () =
   cached trade_years_cache "years" (fun () -> with_db (fun db -> Repo.get_official_trade_years db))
 
@@ -418,6 +433,10 @@ let get_official_trade_events ?(year=0) ?(search="") () =
   in
   cached trade_events_cache key (fun () ->
     with_db (fun db -> Repo.get_official_trade_events ~year ~search db))
+
+let get_trade_dataset_status () =
+  cached trade_dataset_status_cache "status" (fun () ->
+    with_db (fun db -> Repo.get_trade_dataset_status db))
 let build_margin_map margins : team_margin MarginMap.t =
   List.fold_left
     (fun acc (row: team_margin) ->
@@ -434,7 +453,11 @@ let sort_team_stats sort_field (items : team_stats list) =
     | TeamBySteals -> (fun row -> row.stl)
     | TeamByBlocks -> (fun row -> row.blk)
     | TeamByEfficiency -> (fun row -> row.eff)
+    | TeamByEfgPct -> (fun row -> row.efg_pct)
     | TeamByTsPct -> (fun row -> row.ts_pct)
+    | TeamByTovPct -> (fun row -> -.row.tov_pct)  (* lower is better *)
+    | TeamByOrbPct -> (fun row -> row.orb_pct)
+    | TeamByFtr -> (fun row -> row.ftr)
     | TeamByFg3Pct -> (fun row -> row.fg3_pct)
     | TeamByMinutes -> (fun row -> row.min_total)
   in
@@ -1338,6 +1361,7 @@ let clear_all_caches () =
   let clear_cache (type a) (c : a Cache.t) = Cache.clear c in
   clear_cache seasons_cache;
   clear_cache teams_cache;
+  clear_cache team_available_seasons_cache;
   clear_cache data_freshness_cache;
   clear_cache standings_cache;
   clear_cache games_cache;
@@ -1360,8 +1384,10 @@ let clear_all_caches () =
   clear_cache awards_leaders_cache;
   clear_cache draft_years_cache;
   clear_cache draft_picks_cache;
+  clear_cache draft_dataset_status_cache;
   clear_cache trade_years_cache;
   clear_cache trade_events_cache;
+  clear_cache trade_dataset_status_cache;
   clear_cache qa_report_cache;
   clear_cache qa_schedule_missing_report_cache;
   clear_cache qa_pbp_missing_report_cache;

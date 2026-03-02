@@ -1593,11 +1593,17 @@ let career_trajectory_chart (seasons: season_stats list) =
               %s
             </svg>
           </div>
+          <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-500 dark:text-slate-400">
+            <span><span class="font-mono text-slate-700 dark:text-slate-300">X</span>축: 시즌</span>
+            <span><span class="font-mono text-slate-700 dark:text-slate-300">Y</span>축: 경기당 수치 (PPG/RPG/APG)</span>
+            <span>Y 최대값 <span class="font-mono text-slate-700 dark:text-slate-300">%.1f</span></span>
+          </div>
         </div>|html}
         (escape_html first_season)
         (escape_html last_season)
         width height
         pts_line reb_line ast_line
+        global_max
 let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2") ?(include_team=true) ?(player_info=None) (rank: int) (p: player_aggregate) =
   let id_badge = if show_player_id then player_id_badge p.player_id else "" in
   let display_name = normalize_name p.name in
@@ -1687,12 +1693,12 @@ let player_row ?(show_player_id=false) ?(team_cell_class="px-3 py-2") ?(include_
 	              <div class="min-w-0">
 	                <div class="text-[11px] text-slate-500 dark:text-slate-400 font-mono uppercase tracking-wider">%s</div>
 	                <div class="mt-1 flex items-center gap-1.5 text-sm text-slate-700 dark:text-slate-300">
-	                  <span class="font-mono text-[11px] text-slate-500 dark:text-slate-400">%s</span>
+		                  <span class="font-mono text-[11px] text-slate-500 dark:text-slate-400 whitespace-nowrap">%s</span>
 	                  <span class="text-slate-400 dark:text-slate-600">·</span>
 	                  <span class="text-[11px] text-slate-500 dark:text-slate-400">%s</span>
 	                  <span class="text-slate-400 dark:text-slate-600">·</span>
 	                  %s
-	                  <span class="truncate">%s</span>
+		                  <span class="break-keep">%s</span>
 	                </div>
 	              </div>
 	              <div class="text-2xl font-black text-slate-900 dark:text-slate-200 font-mono tabular-nums">%d</div>

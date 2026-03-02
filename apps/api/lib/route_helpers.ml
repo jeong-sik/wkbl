@@ -25,5 +25,8 @@ let is_safe_redirect_path (s : string) =
   && not (String.contains t '\r')
 
 let request_lang request =
-  Option.bind (Kirin.header "Cookie" request) I18n.lang_of_cookie_header
-  |> Option.value ~default:I18n.Ko
+  match Option.bind (query_nonempty request "lang") I18n.lang_of_code with
+  | Some lang -> lang
+  | None ->
+      Option.bind (Kirin.header "Cookie" request) I18n.lang_of_cookie_header
+      |> Option.value ~default:I18n.Ko
