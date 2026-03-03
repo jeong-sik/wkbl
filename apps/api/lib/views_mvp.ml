@@ -91,16 +91,7 @@ let mvp_race_table (candidates: mvp_candidate list) =
 
 (** MVP Race page *)
 let mvp_race_page ?(lang=I18n.Ko) ~season ~seasons (candidates: mvp_candidate list) =
-  let season_options =
-    let base =
-      seasons
-      |> List.map (fun (s: season_info) ->
-          let selected = if s.code = season then "selected" else "" in
-          Printf.sprintf {html|<option value="%s" %s>%s</option>|html} s.code selected (escape_html s.name))
-      |> String.concat "\n"
-    in
-    Printf.sprintf {html|<option value="ALL" %s>전체 시즌</option>%s|html} (if season = "ALL" then "selected" else "") base
-  in
+  let season_options = season_options ~include_all:true ~selected:season seasons in
   let table = mvp_race_table candidates in
   let formula_section =
     {html|<details class="bg-white dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-800/50 p-4 text-sm text-slate-600 dark:text-slate-400">

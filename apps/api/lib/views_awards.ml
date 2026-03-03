@@ -5,16 +5,7 @@ open Views_common
 open Views_leaders
 
 let awards_page ?(lang=I18n.Ko) ~player_info_map ~season ~seasons ~include_mismatch ~prev_season_name ?(official_awards=[]) ~mvp:mvp_list ~mip:mip_list () =
- let season_options =
-  let base =
-   seasons
-   |> List.map (fun (s: season_info) ->
-     let selected = if s.code = season then "selected" else "" in
-     Printf.sprintf {html|<option value="%s" %s>%s</option>|html} s.code selected (escape_html s.name))
-   |> String.concat "\n"
-  in
-  Printf.sprintf {html|<option value="ALL" %s>전체 시즌</option>%s|html} (if season = "ALL" then "selected" else "") base
- in
+ let season_options = season_options ~include_all:true ~selected:season seasons in
  let include_checked = if include_mismatch then "checked" else "" in
  let mvp_card =
   if mvp_list = [] then

@@ -132,19 +132,7 @@ let compare_page
   (p2_selected: player_aggregate option)
   (h2h: h2h_game list)
  =
- let season_options ~selected =
-  let base =
-   seasons
-   |> List.map (fun (s : season_info) ->
-     let is_selected = if s.code = selected then "selected" else "" in
-     Printf.sprintf {html|<option value="%s" %s>%s</option>|html} s.code is_selected (escape_html s.name))
-   |> String.concat "\n"
-  in
-	  Printf.sprintf
-	   {html|<option value="ALL" %s>전체 시즌</option>%s|html}
-	   (if selected = "ALL" then "selected" else "")
-	   base
- in
+ let season_options ~selected = season_options ~include_all:true ~selected seasons in
  let season_label code =
 	  if code = "ALL" then "전체 시즌"
 	  else

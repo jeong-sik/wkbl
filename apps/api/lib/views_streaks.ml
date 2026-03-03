@@ -159,17 +159,7 @@ let streaks_page
     ~active_team_streaks
     ~all_time_records
     () =
-  let season_options =
-    let base =
-      seasons
-      |> List.map (fun (s: season_info) ->
-          let selected = if s.code = season then "selected" else "" in
-          Printf.sprintf {html|<option value="%s" %s>%s</option>|html} s.code selected (escape_html s.name))
-      |> String.concat "\n"
-    in
-    Printf.sprintf {html|<option value="ALL" %s>전체 시즌</option>%s|html}
-      (if season = "ALL" then "selected" else "") base
-  in
+  let season_options = season_options ~include_all:true ~selected:season seasons in
 
   (* Active player streaks section *)
   let active_player_section =
