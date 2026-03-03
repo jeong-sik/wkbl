@@ -135,6 +135,7 @@ let with_retry ~env ~label do_request =
     | code, _ ->
         Printf.eprintf "[scraper] HTTP %d for %s — not retryable\n%!" code label;
         ""
+    | exception (Eio.Cancel.Cancelled _ as e) -> raise e
     | exception exn ->
         if attempt < max_retries then begin
           let delay = backoff_seconds attempt in
@@ -160,15 +161,17 @@ let fetch_url ~sw ~env url =
   ] in
   let uri = Uri.of_string url in
   let client = Cohttp_eio.Client.make ~https:(Some https_wrapper) net in
-  let result = with_timeout ~env ~seconds:request_timeout_s (fun () ->
-    with_retry ~env ~label:("GET " ^ url) (fun () ->
+  with_retry ~env ~label:("GET " ^ url) (fun () ->
+    let result = with_timeout ~env ~seconds:request_timeout_s (fun () ->
       let resp, body = Cohttp_eio.Client.get ~sw client ~headers uri in
       let code = resp |> Cohttp.Response.status |> Cohttp.Code.code_of_status in
       let body_str = Eio.Buf_read.(parse_exn take_all) body ~max_size:max_int in
       (code, body_str)
-    )
-  ) in
-  Option.value result ~default:""
+    ) in
+    match result with
+    | Some v -> v
+    | None -> raise (Failure (Printf.sprintf "timeout after %.0fs" request_timeout_s))
+  )
 
 (** HTTP/HTTPS POST with retry, timeout, and form data.
     Some WKBL endpoints require an AJAX-style request. *)
@@ -186,15 +189,17 @@ let post_url ~sw ~env ~referer url body_params =
   let uri = Uri.of_string url in
   let body_str = Uri.encoded_of_query body_params in
   let client = Cohttp_eio.Client.make ~https:(Some https_wrapper) net in
-  let result = with_timeout ~env ~seconds:request_timeout_s (fun () ->
-    with_retry ~env ~label:("POST " ^ url) (fun () ->
+  with_retry ~env ~label:("POST " ^ url) (fun () ->
+    let result = with_timeout ~env ~seconds:request_timeout_s (fun () ->
       let resp, body = Cohttp_eio.Client.post ~sw client ~headers ~body:(Cohttp_eio.Body.of_string body_str) uri in
       let code = resp |> Cohttp.Response.status |> Cohttp.Code.code_of_status in
       let body_text = Eio.Buf_read.(parse_exn take_all) body ~max_size:max_int in
       (code, body_text)
-    )
-  ) in
-  Option.value result ~default:""
+    ) in
+    match result with
+    | Some v -> v
+    | None -> raise (Failure (Printf.sprintf "timeout after %.0fs" request_timeout_s))
+  )
 
 (* ======== BOXSCORE SCRAPER ======== *)
 

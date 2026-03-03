@@ -105,7 +105,9 @@ type any_cache = Any : 'a t -> any_cache
 (** Global registry for clear_all. *)
 let registry : any_cache list ref = ref []
 
-(** Create a cache and register it for bulk clear. *)
+(** Create a cache and register it for bulk clear.
+    Must only be called during module initialization, before any Eio fibers
+    are spawned. The [registry] ref mutation is not fiber-safe. *)
 let create_registered ~ttl ~max_entries =
   let c = create ~ttl ~max_entries in
   registry := Any c :: !registry;
