@@ -97,7 +97,60 @@ let https_wrapper uri socket =
   let tls_config = Tls.Config.client ~authenticator () |> Result.get_ok in
   Tls_eio.client_of_flow tls_config ?host socket
 
-(** HTTP/HTTPS fetch with User-Agent - Eio-based with TLS support *)
+(** Whether an HTTP status code is retryable (transient server errors). *)
+let is_retryable_status code =
+  code = 429 || code = 503 || code = 504 || code = 502
+
+(** Request timeout in seconds. *)
+let request_timeout_s = 15.0
+
+(** Maximum retry attempts for transient errors. *)
+let max_retries = 3
+
+(** Exponential backoff: 1s, 2s, 4s. *)
+let backoff_seconds attempt = Float.of_int (1 lsl attempt)
+
+(** Execute [f] with a timeout. Returns [None] on timeout. *)
+let with_timeout ~env ~seconds f =
+  let clock = Eio.Stdenv.clock env in
+  match Eio.Time.with_timeout clock seconds (fun () -> Ok (f ())) with
+  | Ok v -> Some v
+  | Error `Timeout ->
+      Printf.eprintf "[scraper] timeout after %.0fs\n%!" seconds;
+      None
+
+(** Retry loop with exponential backoff for transient HTTP errors.
+    [do_request] should return [(code, body_string)] or raise. *)
+let with_retry ~env ~label do_request =
+  let clock = Eio.Stdenv.clock env in
+  let rec go attempt =
+    match do_request () with
+    | code, body when code >= 200 && code < 300 -> body
+    | code, _ when is_retryable_status code && attempt < max_retries ->
+        let delay = backoff_seconds attempt in
+        Printf.eprintf "[scraper] HTTP %d for %s — retry %d/%d in %.0fs\n%!"
+          code label (attempt + 1) max_retries delay;
+        Eio.Time.sleep clock delay;
+        go (attempt + 1)
+    | code, _ ->
+        Printf.eprintf "[scraper] HTTP %d for %s — not retryable\n%!" code label;
+        ""
+    | exception exn ->
+        if attempt < max_retries then begin
+          let delay = backoff_seconds attempt in
+          Printf.eprintf "[scraper] error for %s: %s — retry %d/%d in %.0fs\n%!"
+            label (Printexc.to_string exn) (attempt + 1) max_retries delay;
+          Eio.Time.sleep clock delay;
+          go (attempt + 1)
+        end else begin
+          Printf.eprintf "[scraper] error for %s: %s — giving up after %d attempts\n%!"
+            label (Printexc.to_string exn) max_retries;
+          ""
+        end
+  in
+  go 0
+
+(** HTTP/HTTPS GET with retry, timeout, and User-Agent. *)
 let fetch_url ~sw ~env url =
   let net = Eio.Stdenv.net env in
   let headers = Cohttp.Header.of_list [
@@ -107,22 +160,18 @@ let fetch_url ~sw ~env url =
   ] in
   let uri = Uri.of_string url in
   let client = Cohttp_eio.Client.make ~https:(Some https_wrapper) net in
-  match Cohttp_eio.Client.get ~sw client ~headers uri with
-  | resp, body ->
+  let result = with_timeout ~env ~seconds:request_timeout_s (fun () ->
+    with_retry ~env ~label:("GET " ^ url) (fun () ->
+      let resp, body = Cohttp_eio.Client.get ~sw client ~headers uri in
       let code = resp |> Cohttp.Response.status |> Cohttp.Code.code_of_status in
-      if code >= 200 && code < 300 then
-        Eio.Buf_read.(parse_exn take_all) body ~max_size:max_int
-      else begin
-        Printf.eprintf "HTTP %d for %s\n" code url;
-        ""
-      end
-  | exception exn ->
-      Printf.eprintf "HTTP error for %s: %s\n" url (Printexc.to_string exn);
-      ""
+      let body_str = Eio.Buf_read.(parse_exn take_all) body ~max_size:max_int in
+      (code, body_str)
+    )
+  ) in
+  Option.value result ~default:""
 
-(** POST request with form data.
-    Some WKBL endpoints require an AJAX-style request (Accept + X-Requested-With)
-    and a game-specific Referer. *)
+(** HTTP/HTTPS POST with retry, timeout, and form data.
+    Some WKBL endpoints require an AJAX-style request. *)
 let post_url ~sw ~env ~referer url body_params =
   let net = Eio.Stdenv.net env in
   let headers = Cohttp.Header.of_list [
@@ -137,18 +186,15 @@ let post_url ~sw ~env ~referer url body_params =
   let uri = Uri.of_string url in
   let body_str = Uri.encoded_of_query body_params in
   let client = Cohttp_eio.Client.make ~https:(Some https_wrapper) net in
-  match Cohttp_eio.Client.post ~sw client ~headers ~body:(Cohttp_eio.Body.of_string body_str) uri with
-  | resp, body ->
+  let result = with_timeout ~env ~seconds:request_timeout_s (fun () ->
+    with_retry ~env ~label:("POST " ^ url) (fun () ->
+      let resp, body = Cohttp_eio.Client.post ~sw client ~headers ~body:(Cohttp_eio.Body.of_string body_str) uri in
       let code = resp |> Cohttp.Response.status |> Cohttp.Code.code_of_status in
-      if code >= 200 && code < 300 then
-        Eio.Buf_read.(parse_exn take_all) body ~max_size:max_int
-      else begin
-        Printf.eprintf "HTTP %d for POST %s\n" code url;
-        ""
-      end
-  | exception exn ->
-      Printf.eprintf "HTTP error for POST %s: %s\n" url (Printexc.to_string exn);
-      ""
+      let body_text = Eio.Buf_read.(parse_exn take_all) body ~max_size:max_int in
+      (code, body_text)
+    )
+  ) in
+  Option.value result ~default:""
 
 (* ======== BOXSCORE SCRAPER ======== *)
 
