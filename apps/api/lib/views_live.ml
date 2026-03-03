@@ -255,16 +255,7 @@ let live_page ?(lang=I18n.Ko) () =
 
 (** Position-based leaderboard page *)
 let position_leaders_page ?(lang=I18n.Ko) ?(player_info_map=None) ~season ~seasons ~position (leaders: (string * leader_entry list) list) =
-  let season_options =
-    let base =
-      seasons
-      |> List.map (fun (s: season_info) ->
-        let selected = if s.code = season then "selected" else "" in
-        Printf.sprintf {html|<option value="%s" %s>%s</option>|html} s.code selected (escape_html s.name))
-      |> String.concat "\n"
-    in
-    Printf.sprintf {html|<option value="ALL" %s>전체 시즌</option>%s|html} (if season = "ALL" then "selected" else "") base
-  in
+  let season_options = season_options ~include_all:true ~selected:season seasons in
   let position_btn pos label emoji =
     let active = if pos = position then "bg-orange-600 text-white" else "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700" in
     Printf.sprintf {html|<a href="/leaders/by-position?position=%s&season=%s" class="px-4 py-2 rounded-lg font-bold transition-colors %s">%s %s</a>|html} pos season active emoji (escape_html label)

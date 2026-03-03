@@ -96,3 +96,40 @@ let cache_key_text value =
   let trimmed = String.trim value in
   let lowered = String.lowercase_ascii trimmed in
   if String.length lowered > 64 then String.sub lowered 0 64 else lowered
+
+(* ── Tier-based cache creation ────────────────────────────── *)
+
+(** Existential wrapper to store heterogeneous caches in a single list. *)
+type any_cache = Any : 'a t -> any_cache
+
+(** Global registry for clear_all. *)
+let registry : any_cache list ref = ref []
+
+(** Create a cache and register it for bulk clear.
+    Must only be called during module initialization, before any Eio fibers
+    are spawned. The [registry] ref mutation is not fiber-safe. *)
+let create_registered ~ttl ~max_entries =
+  let c = create ~ttl ~max_entries in
+  registry := Any c :: !registry;
+  c
+
+(** Clear all registered caches. *)
+let clear_all () =
+  List.iter (fun (Any c) -> clear c) !registry
+
+(** Standardized TTL tiers.
+    Each tier defines a TTL and a default max_entries.
+    Use [~max_entries] to override the default. *)
+module Tier = struct
+  let live_ttl    = 120.0              (* 2 min  — near-real-time *)
+  let status_ttl  = 300.0              (* 5 min  — freshness, dataset status *)
+  let hot_ttl     = 600.0              (* 10 min — most data queries *)
+  let warm_ttl    = 900.0              (* 15 min — boxscores, awards, historical *)
+  let cold_ttl    = 60.0 *. 60.0 *. 6.0  (* 6 hr   — seasons, metadata *)
+
+  let live  ?(max_entries=16) () = create_registered ~ttl:live_ttl   ~max_entries
+  let status ?(max_entries=4)  () = create_registered ~ttl:status_ttl ~max_entries
+  let hot   ?(max_entries=64) () = create_registered ~ttl:hot_ttl    ~max_entries
+  let warm  ?(max_entries=32) () = create_registered ~ttl:warm_ttl   ~max_entries
+  let cold  ?(max_entries=16) () = create_registered ~ttl:cold_ttl   ~max_entries
+end

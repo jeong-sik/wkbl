@@ -69,6 +69,21 @@ let boxscore_pbp_href game_id = "/boxscore/" ^ Uri.pct_encode game_id ^ "/pbp"
 (** URL-safe href for season pages. Always pct-encodes the season code. *)
 let season_href code = "/season/" ^ Uri.pct_encode code
 
+(** Generate [<option>] HTML for season selection dropdowns.
+    @param include_all  prepend an "ALL / 전체 시즌" option (default: false)
+    @param selected     currently selected season code *)
+let season_options ?(include_all=false) ~selected (seasons : season_info list) =
+  let option (s : season_info) =
+    let sel = if s.code = selected then " selected" else "" in
+    Printf.sprintf {|<option value="%s"%s>%s</option>|} s.code sel (escape_html s.name)
+  in
+  let base = List.map option seasons |> String.concat "\n" in
+  if include_all then
+    let all_sel = if selected = "ALL" then " selected" else "" in
+    Printf.sprintf {|<option value="ALL"%s>전체 시즌</option>
+%s|} all_sel base
+  else base
+
 let escape_js_string s =
   (* Defensive escaping for inline <script> blocks. *)
   s

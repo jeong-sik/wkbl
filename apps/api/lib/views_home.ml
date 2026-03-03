@@ -124,13 +124,7 @@ let home_page ?(lang=I18n.Ko) ?(player_info_map=None) ?(live_games=Live.get_curr
        en = "See WKBL efficiency rankings, team standings, and player stats at a glance.";
      }
  in
- let season_options =
-  seasons
-  |> List.map (fun (s: season_info) ->
-    let selected = if s.code = season then "selected" else "" in
-    Printf.sprintf {html|<option value="%s" %s>%s</option>|html} s.code selected (escape_html s.name))
-  |> String.concat "\n"
- in
+ let season_options = season_options ~selected:season seasons in
    let table = players_table ~lang ~player_info_map players in
  let live_widget = Views_live.live_scores_widget ~lang live_games in
  let home_json_ld = {|{"@context":"https://schema.org","@type":"WebSite","name":"WKBL.win","url":"https://wkbl.win","potentialAction":{"@type":"SearchAction","target":{"@type":"EntryPoint","urlTemplate":"https://wkbl.win/players?search={search_term_string}"},"query-input":"required name=search_term_string"}}|} in
