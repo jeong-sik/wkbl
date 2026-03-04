@@ -1,5 +1,5 @@
 # 1. Build Stage
-FROM ocaml/opam:debian-12-ocaml-5.1 AS build
+FROM ocaml/opam:debian-12-ocaml-5.3 AS build
 
 # Install system dependencies for Kirin, Caqti, and TLS
 USER root
