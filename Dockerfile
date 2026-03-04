@@ -12,9 +12,10 @@ RUN apt-get update && apt-get install -y \
     libsqlite3-dev \
     liburing-dev \
     pkg-config \
-            ninja-build \
-            cmake \
+    ninja-build \
+    cmake \
     perl \
+    binaryen \
     && rm -rf /var/lib/apt/lists/*
 
 USER opam
