@@ -1,5 +1,5 @@
 (** Play analysis types — On/Off impact, lineup chemistry, shot chart.
-    Standalone module: no dependencies on other domain modules. *)
+    No inter-domain dependencies. Requires [str] library for shot zone parsing. *)
 
 (* ============================================= *)
 (* On/Off Impact Analysis Types                  *)
