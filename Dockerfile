@@ -19,9 +19,9 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install newer Binaryen (Debian 12 has v108 which lacks wasm-merge)
-RUN curl -L https://github.com/WebAssembly/binaryen/releases/download/version_116/binaryen-version_116-x86_64-linux.tar.gz | tar -xz && \
-    cp binaryen-version_116/bin/* /usr/local/bin/ && \
-    rm -rf binaryen-version_116
+RUN curl -L https://github.com/WebAssembly/binaryen/releases/download/version_126/binaryen-version_126-x86_64-linux.tar.gz | tar -xz && \
+    cp binaryen-version_126/bin/* /usr/local/bin/ && \
+    rm -rf binaryen-version_126
 
 USER opam
 WORKDIR /home/opam/src/api
