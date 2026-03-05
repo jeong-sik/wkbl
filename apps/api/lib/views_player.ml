@@ -1105,7 +1105,7 @@ let player_profile_page ?(lang=I18n.Ko) ?(leaderboards=None) ?(show_ops=false) (
 	  (* Trend analysis panel - requires at least 2 recent games *)
 	  let trends_panel_html =
 	    if List.length profile.recent_games >= 2 then
-	      Views_charts.player_trends_panel profile.recent_games
+	      Views_charts.player_radar_chart ~player:avg ~league_avg:None ^ Views_charts.player_trends_panel profile.recent_games
 	    else
 	      ""
 	  in
