@@ -1106,3 +1106,97 @@ let player_trends_panel (games: player_game_stat list) =
       </div>
     </div>|}
     pts_chart reb_chart ast_chart eff_chart
+let player_radar_chart ~(player: Domain.player_aggregate) ~(league_avg: Domain.player_aggregate option) =
+  let size = 300.0 in
+  let center = size /. 2.0 in
+  let radius = 100.0 in
+
+  let labels = [|"PTS"; "REB"; "AST"; "STL"; "BLK"; "EFF"|] in
+  let n_axes = Array.length labels in
+  let angle_step = 2.0 *. Float.pi /. float_of_int n_axes in
+  
+  let p = player in
+  let la = match league_avg with Some a -> a | None -> p in (* fallback *)
+  
+  (* Basic normalization constants based on good WKBL player stats *)
+  let max_pts = 20.0 in
+  let max_reb = 10.0 in
+  let max_ast = 8.0 in
+  let max_stl = 2.5 in
+  let max_blk = 1.5 in
+  let max_eff = 25.0 in
+
+  let normalize stats i = match i with
+    | 0 -> min 1.0 (stats.Domain.avg_points /. max_pts)
+    | 1 -> min 1.0 (stats.Domain.avg_rebounds /. max_reb)
+    | 2 -> min 1.0 (stats.Domain.avg_assists /. max_ast)
+    | 3 -> min 1.0 (stats.Domain.avg_steals /. max_stl)
+    | 4 -> min 1.0 (stats.Domain.avg_blocks /. max_blk)
+    | 5 -> min 1.0 (stats.Domain.efficiency /. max_eff)
+    | _ -> 0.0
+  in
+
+  let generate_points stats =
+    Array.mapi (fun i _ ->
+      let angle = float_of_int i *. angle_step -. (Float.pi /. 2.0) in
+      let value = normalize stats i in
+      let r = radius *. value in
+      let x = center +. r *. cos angle in
+      let y = center +. r *. sin angle in
+      Printf.sprintf "%.1f,%.1f" x y
+    ) labels |> Array.to_list |> String.concat " "
+  in
+
+  let player_points = generate_points p in
+  let avg_points = generate_points la in
+
+  let grid_circles = [0.2; 0.4; 0.6; 0.8; 1.0] |> List.map (fun level ->
+    Printf.sprintf {|<circle cx="%.1f" cy="%.1f" r="%.1f" fill="none" stroke="#e2e8f0" stroke-width="1" class="dark:stroke-slate-700"/>|}
+      center center (radius *. level)
+  ) |> String.concat "
+" in
+
+  let axes_and_labels = Array.mapi (fun i label ->
+    let angle = float_of_int i *. angle_step -. (Float.pi /. 2.0) in
+    let x_end = center +. radius *. cos angle in
+    let y_end = center +. radius *. sin angle in
+    let x_label = center +. (radius +. 18.0) *. cos angle in
+    let y_label = center +. (radius +. 18.0) *. sin angle in
+    Printf.sprintf {|<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="#e2e8f0" stroke-width="1" class="dark:stroke-slate-700"/>
+<text x="%.1f" y="%.1f" fill="#64748b" font-size="11" text-anchor="middle" dominant-baseline="middle" font-weight="600" class="dark:fill-slate-400">%s</text>|}
+      center center x_end y_end x_label y_label label
+  ) labels |> Array.to_list |> String.concat "
+" in
+
+  Printf.sprintf {|
+<div class="player-radar-chart bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-sm w-full max-w-sm mx-auto">
+  <h3 class="text-sm font-bold text-slate-900 dark:text-white mb-2 text-center">선수 밸런스</h3>
+  <div class="flex justify-center relative">
+    <svg viewBox="0 0 %.0f %.0f" class="w-full h-auto" aria-label="Player stats radar chart">
+      %s
+      %s
+      <!-- League Average Polygon -->
+      <polygon points="%s" fill="rgba(148, 163, 184, 0.15)" stroke="#94a3b8" stroke-width="1" stroke-dasharray="3,3" />
+      <!-- Player Polygon -->
+      <polygon points="%s" fill="rgba(16, 185, 129, 0.25)" stroke="#10b981" stroke-width="2.5" />
+      
+      <!-- Player Data Points -->
+      %s
+    </svg>
+  </div>
+  <div class="flex justify-center gap-4 mt-2 text-xs">
+    <span class="flex items-center gap-1"><span class="w-3 h-1 bg-emerald-500 rounded"></span><span class="text-slate-600 dark:text-slate-400">선수 기록</span></span>
+    <span class="flex items-center gap-1"><span class="w-3 h-1 bg-slate-400 border border-dashed border-slate-400 rounded"></span><span class="text-slate-500 dark:text-slate-500">리그 평균</span></span>
+  </div>
+</div>
+|}
+    size size grid_circles axes_and_labels avg_points player_points
+    (Array.mapi (fun i _ ->
+      let angle = float_of_int i *. angle_step -. (Float.pi /. 2.0) in
+      let value = normalize p i in
+      let r = radius *. value in
+      let x = center +. r *. cos angle in
+      let y = center +. r *. sin angle in
+      Printf.sprintf {|<circle cx="%.1f" cy="%.1f" r="3.5" fill="#10b981" />|} x y
+    ) labels |> Array.to_list |> String.concat "
+")
