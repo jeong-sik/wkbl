@@ -32,7 +32,7 @@ let player_cards ?(lang=I18n.Ko) ?(player_info_map=None) (players: player_aggreg
     let rank = idx + 1 in
     
     Printf.sprintf {|
-    <a href="/players/%s" class="block group relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+    <a href="/players/%s" class="block group relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1" style="view-transition-name: player-hero-%s">
       <!-- Team Color Gradient Header Bar -->
       <div class="h-20 w-full" style="background: linear-gradient(135deg, %scc 0%%, %s 100%%);"></div>
       
@@ -85,7 +85,7 @@ let player_cards ?(lang=I18n.Ko) ?(player_info_map=None) (players: player_aggreg
         </div>
       </div>
     </a>
-    |} p.player_id team_color team_color rank photo_url (escape_html p.name) (escape_html p.team_name) team_color (escape_html p.name) meta_info p.efficiency p.avg_points p.avg_rebounds p.avg_assists
+    |} p.player_id p.player_id team_color team_color rank photo_url (escape_html p.name) (escape_html p.team_name) team_color (escape_html p.name) meta_info p.efficiency p.avg_points p.avg_rebounds p.avg_assists
   ) |> String.concat "\n" in
   
   Printf.sprintf {|

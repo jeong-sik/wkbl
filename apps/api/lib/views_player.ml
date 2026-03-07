@@ -1132,7 +1132,7 @@ let player_profile_page ?(lang=I18n.Ko) ?(leaderboards=None) ?(show_ops=false) (
     ~content:(Printf.sprintf {html|<div class="space-y-6 sm:space-y-8 animate-fade-in">
       %s
       <!-- 히어로 섹션 개편 -->
-      <div class="relative overflow-hidden rounded-3xl shadow-2xl border border-white/20 dark:border-slate-800/50">
+      <div class="relative overflow-hidden rounded-3xl shadow-2xl border border-white/20 dark:border-slate-800/50" style="view-transition-name: player-hero-%s">
         <!-- 팀 컬러 그라데이션 배경 -->
         <div class="absolute inset-0 opacity-80 dark:opacity-60" style="background: linear-gradient(135deg, %s 0%%, #000 150%%)"></div>
         <div class="absolute inset-0 bg-grid-white/[0.05] bg-[center_top_-1px]"></div>
@@ -1233,6 +1233,7 @@ let player_profile_page ?(lang=I18n.Ko) ?(leaderboards=None) ?(show_ops=false) (
       %s
     </div>|html}
           (breadcrumb [("홈", "/"); ("선수", "/players"); (display_name, "")])
+          p.id
           team_color
           (player_img_tag ~class_name:"w-32 h-32 sm:w-48 sm:h-48 border-[6px] border-white/20 dark:border-slate-700/30 shadow-2xl transition-transform duration-500 group-hover:scale-105" p.id p.name)
           (escape_html p.id)

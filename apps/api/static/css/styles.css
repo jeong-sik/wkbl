@@ -1199,3 +1199,40 @@ th[data-sortable][aria-sort] {
     padding: 0.25rem 0;
   }
 }
+
+/* View Transitions for Player Cards to Hero */
+@keyframes fade-in {
+  from { opacity: 0; }
+}
+
+@keyframes fade-out {
+  to { opacity: 0; }
+}
+
+@keyframes slide-up {
+  from { transform: translateY(20px); opacity: 0; }
+}
+
+::view-transition-old(root) {
+  animation: 90ms cubic-bezier(0.4, 0, 1, 1) both fade-out;
+}
+
+::view-transition-new(root) {
+  animation: 210ms cubic-bezier(0, 0, 0.2, 1) 90ms both fade-in,
+             300ms cubic-bezier(0.4, 0, 0.2, 1) both slide-up;
+}
+
+/* Base fade-in used in the DOM */
+.animate-fade-in {
+  animation: fade-in 0.4s ease-out forwards;
+}
+
+/* Hover scales and smooth transitions */
+.hover\:scale-105:hover {
+  transform: scale(1.05);
+}
+.transition-transform {
+  transition-property: transform;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 300ms;
+}
