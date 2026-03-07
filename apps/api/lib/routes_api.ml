@@ -2,9 +2,51 @@
 
 open Domain
 
+let rec yojson_to_graphql_value (y: Yojson.Safe.t) : Graphql_parser.const_value =
+  match y with
+  | `Null -> `Null
+  | `Bool b -> `Bool b
+  | `Int i -> `Int i
+  | `Float f -> `Float f
+  | `String s -> `String s
+  | `List l -> `List (List.map yojson_to_graphql_value l)
+  | `Assoc l -> `Assoc (List.map (fun (k, v) -> (k, yojson_to_graphql_value v)) l)
+  | _ -> `Null
+
 let routes ~sw ~env =
   ignore (sw, env);
   [
+    (* GraphQL Endpoint *)
+    Kirin.post "/api/graphql" (fun request ->
+      let body_str = Kirin.body request in
+      try
+        let json = Yojson.Safe.from_string body_str in
+        let query_str = 
+          match Yojson.Safe.Util.member "query" json with
+          | `String s -> s
+          | _ -> failwith "Missing query field"
+        in
+        let variables = 
+          match Yojson.Safe.Util.member "variables" json with
+          | `Assoc fields -> 
+              let vars = List.map (fun (k, v) -> 
+                (k, yojson_to_graphql_value v)
+              ) fields in
+              Some vars
+          | _ -> None
+        in
+        match Graphql_schema.execute_query ?variables query_str with
+        | Ok result ->
+            Kirin.json_string (Yojson.Basic.to_string result)
+        | Error err ->
+            Kirin.json_string ~status:`Bad_request
+              (Yojson.Basic.to_string (`Assoc [("errors", `List [err])]))
+      with
+      | _ ->
+          Kirin.json_string ~status:`Bad_request
+            {|{"errors":[{"message":"Invalid JSON payload"}]}|}
+    );
+
     (* Player Search API for Command Palette *)
     Kirin.get "/api/search/players" (fun request ->
       let q = Kirin.query_opt "q" request |> Option.value ~default:"" in
