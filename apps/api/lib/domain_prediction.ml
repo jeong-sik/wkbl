@@ -65,6 +65,7 @@ type prediction_context_breakdown = {
   pcb_rest_home_days: int option;
   pcb_rest_away_days: int option;
   pcb_rest_delta: float;
+  pcb_what_if_missing: what_if_missing list;
 }
 
 (** Prediction breakdown (nerd mode) *)

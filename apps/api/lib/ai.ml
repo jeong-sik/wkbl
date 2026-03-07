@@ -33,7 +33,13 @@ let build_prediction_prompt ~(home: string) ~(away: string) (output: prediction_
           | Some h, Some a when a > h + 1 -> Printf.sprintf "휴식: %s가 %d일 더 쉼" away (a - h)
           | _ -> ""
         in
-        Printf.sprintf "\n컨텍스트: %s. %s" form_text rest_text
+        let what_if_text = 
+          match ctx.pcb_what_if_missing with
+          | [] -> ""
+          | wim :: _ -> 
+              Printf.sprintf "\n[WHAT-IF 시나리오 가동 중]: 만약 %s의 핵심 에이스 %s 선수가 결장한다면을 가정한 시뮬레이션입니다! 해설 시 이 가상의 상황을 반드시 극적으로 언급해주세요." wim.wim_team wim.wim_player_name
+        in
+        Printf.sprintf "\n컨텍스트: %s. %s%s" form_text rest_text what_if_text
   in
 
   Printf.sprintf
