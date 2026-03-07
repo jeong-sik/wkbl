@@ -16,7 +16,7 @@ let players_page ?(lang=I18n.Ko) ?(player_info_map=None) ~season ~seasons ~searc
  in
  let sort_value = match String.lowercase_ascii sort with | "pts" | "points" -> "pts" | "mg" | "margin" -> "mg" | "reb" | "rebounds" -> "reb" | "ast" | "assists" -> "ast" | "min" | "minutes" -> "min" | "eff" | "efficiency" -> "eff" | _ -> "eff" in
  let sort_option value label = let selected = if sort_value = value then "selected" else "" in Printf.sprintf {html|<option value="%s" %s>%s</option>|html} value selected label in
- let table = Views_home.players_table ~lang ~player_info_map players in
+ let table = Views_cards.player_cards ~lang ~player_info_map players in
  let include_checked = if include_mismatch then "checked" else "" in
  let mg_note =
   if sort_value = "mg" then
