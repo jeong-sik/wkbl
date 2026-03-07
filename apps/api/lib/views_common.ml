@@ -890,6 +890,7 @@ let layout
     }
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="htmx-config" content='{"globalViewTransitions":true}'>
   <title>%s</title>
   %s
   %s
