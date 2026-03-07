@@ -16,7 +16,7 @@
  (depends
   (ocaml (>= 5.1))
   (dune (>= 3.17))
-  (kirin (= 0.7.0))
+  (kirin (>= 0.7.0))
   (caqti (and (>= 2.2) (< 3.0)))
   (caqti-driver-sqlite3 (and (>= 2.2) (< 3.0)))
   (caqti-driver-postgresql (and (>= 2.2) (< 3.0)))
