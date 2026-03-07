@@ -132,9 +132,9 @@ module Elo = struct
     in
     List.fold_left step (TeamMap.empty, 0) games
 
-  let win_probability (ratings : ratings) ~(home : string) ~(away : string) ~(is_neutral : bool) =
-    let home_rating = rating_of_team ratings home in
-    let away_rating = rating_of_team ratings away in
+  let win_probability (ratings : ratings) ~(home : string) ~(away : string) ~(is_neutral : bool) ?(home_override : float option) ?(away_override : float option) () =
+    let home_rating = match home_override with Some r -> r | None -> rating_of_team ratings home in
+    let away_rating = match away_override with Some r -> r | None -> rating_of_team ratings away in
     let home_adv = if is_neutral then 0.0 else home_advantage in
     expected ~home_rating ~away_rating ~home_adv |> clamp01
 end
@@ -251,20 +251,53 @@ let roster_ratio (r : roster_core_status option) =
       else Some ((float_of_int r.rcs_present) /. float_of_int r.rcs_total)
 
 let predict_match_nerd ~(context : prediction_context_input option) ~(season: string) ~(is_neutral: bool) ~(games: game_summary list) ~(home: team_stats) ~(away: team_stats) ~(home_win_pct: float) ~(away_win_pct: float) ~name_home ~name_away =
+  (* Apply What-If Adjustments *)
+  let adj_home, adj_away = match context with
+    | Some ctx ->
+        let apply_missing (team: team_stats) team_name_key =
+          List.fold_left (fun acc (w: what_if_missing) ->
+            if normalize_label w.wim_team = team_name_key then
+              { (acc: team_stats) with
+                pts = max 0.0 (acc.pts -. w.wim_pts_impact);
+                eff = max 0.0 (acc.eff -. w.wim_eff_impact);
+              }
+            else acc
+          ) team ctx.pci_what_if_missing
+        in
+        (apply_missing home (normalize_label name_home),
+         apply_missing away (normalize_label name_away))
+    | None -> (home, away)
+  in
+
   let ratings, games_used = Elo.ratings_of_games games in
   let elo_home = Elo.rating_of_team ratings name_home in
   let elo_away = Elo.rating_of_team ratings name_away in
-  let elo_prob =
-    if games_used = 0 then 0.5
-    else Elo.win_probability ratings ~home:name_home ~away:name_away ~is_neutral
+  
+  (* Adjust Elo if key players are missing (heuristic: 1 PTS impact ~= 3.0 Elo points drop) *)
+  let elo_home_adj, elo_away_adj = match context with
+    | Some ctx ->
+        let elo_drop team_name_key = 
+          List.fold_left (fun drop (w: what_if_missing) ->
+            if normalize_label w.wim_team = team_name_key then
+              drop +. (w.wim_pts_impact *. 3.0)
+            else drop
+          ) 0.0 ctx.pci_what_if_missing
+        in
+        (elo_home -. elo_drop (normalize_label name_home), elo_away -. elo_drop (normalize_label name_away))
+    | None -> (elo_home, elo_away)
   in
 
-  let pyth_home = pythagorean_expectancy ~pts_for:(int_of_float home.pts) ~pts_against:(int_of_float home.pts_against) in
-  let pyth_away = pythagorean_expectancy ~pts_for:(int_of_float away.pts) ~pts_against:(int_of_float away.pts_against) in
+  let elo_prob =
+    if games_used = 0 then 0.5
+    else Elo.win_probability ratings ~home:name_home ~away:name_away ~is_neutral ~home_override:elo_home_adj ~away_override:elo_away_adj ()
+  in
+
+  let pyth_home = pythagorean_expectancy ~pts_for:(int_of_float adj_home.pts) ~pts_against:(int_of_float adj_home.pts_against) in
+  let pyth_away = pythagorean_expectancy ~pts_for:(int_of_float adj_away.pts) ~pts_against:(int_of_float adj_away.pts_against) in
   let pyth_prob = log5 ~a:pyth_home ~b:pyth_away in
 
-  let home_stats = team_prediction_stats_of_totals ~win_pct:home_win_pct home in
-  let away_stats = team_prediction_stats_of_totals ~win_pct:away_win_pct away in
+  let home_stats = team_prediction_stats_of_totals ~win_pct:home_win_pct adj_home in
+  let away_stats = team_prediction_stats_of_totals ~win_pct:away_win_pct adj_away in
   let stats_prob =
     stats_probability
       ~stats_a:home_stats

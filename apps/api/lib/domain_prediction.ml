@@ -38,9 +38,20 @@ type roster_core_status = {
   rcs_total: int;
 }
 
+type what_if_missing = {
+  wim_player_id: string;
+  wim_player_name: string;
+  wim_team: string;
+  wim_pts_impact: float;
+  wim_reb_impact: float;
+  wim_ast_impact: float;
+  wim_eff_impact: float;
+}
+
 type prediction_context_input = {
   pci_home_roster: roster_core_status option;
   pci_away_roster: roster_core_status option;
+  pci_what_if_missing: what_if_missing list;
 }
 
 type prediction_context_breakdown = {
