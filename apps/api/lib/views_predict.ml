@@ -116,24 +116,8 @@ let prediction_result_card ~(home: string) ~(away: string) (output: prediction_o
      <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-orange-500"></span>%s</span>
      <span class="flex items-center gap-1.5">%s<span class="w-2 h-2 rounded-full bg-sky-500"></span></span>
     </div>
-    <div class="relative h-4 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden shadow-inner border border-slate-200/50 dark:border-slate-700/30">
-     <div class="absolute top-0 left-1/2 -ml-px w-0.5 h-full bg-slate-300 dark:bg-slate-600 z-10 opacity-30"></div>
-     <div class="flex h-full w-full">
-      <div class="h-full transition-all duration-1000 ease-out bg-gradient-to-r from-orange-600 to-orange-400 shadow-[0_0_15px_rgba(249,115,22,0.3)]" style="width: %.1f%%"></div>
-      <div class="h-full transition-all duration-1000 ease-out bg-gradient-to-l from-sky-600 to-sky-400 shadow-[0_0_15px_rgba(14,165,233,0.3)]" style="width: %.1f%%"></div>
-     </div>
-    </div>
-    <div class="flex justify-between font-mono">
-	     <div class="flex flex-col">
-	       <span class="text-2xl font-black text-orange-700 dark:text-orange-400 leading-none">%.1f%%</span>
-	       <span class="text-[9px] text-slate-400 font-bold uppercase mt-1">승리 확률</span>
-	     </div>
-	     <div class="flex flex-col items-end">
-	       <span class="text-2xl font-black text-sky-600 dark:text-sky-400 leading-none">%.1f%%</span>
-	       <span class="text-[9px] text-slate-400 font-bold uppercase mt-1">승리 확률</span>
-	     </div>
-	    </div>
-	   </div>
+    %s
+   </div>
    <!-- AI Analysis -->
    <div class="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/30 dark:to-purple-950/30 border border-indigo-200 dark:border-indigo-800/50 rounded-lg p-4">
     <div class="flex items-center gap-2 mb-2">
@@ -201,10 +185,7 @@ let prediction_result_card ~(home: string) ~(away: string) (output: prediction_o
   (escape_html result.winner)
   (escape_html home)
   (escape_html away)
-  home_pct
-  away_pct
-  home_pct
-  away_pct
+  (Prediction_gauge.gauge_chart ~home_pct ~away_pct)
   (escape_html ai_explanation)
   breakdown.pb_games_used
   breakdown.pb_elo_home
@@ -264,7 +245,7 @@ let upcoming_games_section (upcoming: Domain.schedule_entry list) =
 	   </div>|html}
 	   cards
 
-let predict_page ?(lang=I18n.Ko) ~season ~seasons ~teams ~home ~away ~is_neutral ~context_enabled ~include_mismatch ~upcoming ?(games=[]) (result: prediction_output option) (error: string option) =
+let predict_page ?(lang=I18n.Ko) ~season ~seasons ~teams ~home ~away ~what_if ~is_neutral ~context_enabled ~include_mismatch ~upcoming ?(games=[]) (result: prediction_output option) (error: string option) =
  let season_options =
   let base =
    seasons
@@ -312,7 +293,52 @@ let predict_page ?(lang=I18n.Ko) ~season ~seasons ~teams ~home ~away ~is_neutral
             (Views_common.render_h2h_summary home away games season)
         else ""
       in
-      (prediction_result_card ~home ~away r) ^ insight_html
+      let what_if_html =
+        let is_home_ace_missing = match what_if with Some "home" -> true | _ -> false in
+        let is_away_ace_missing = match what_if with Some "away" -> true | _ -> false in
+        let base_url = Printf.sprintf "/predict?season=%s&home=%s&away=%s%s%s"
+          (Uri.pct_encode season) (Uri.pct_encode home) (Uri.pct_encode away)
+          (if is_neutral then "&neutral=1" else "")
+          (if context_enabled then "&context=1" else "")
+        in
+        Printf.sprintf
+          {html|
+            <div class="mt-8 bg-slate-900 rounded-xl border border-slate-700/80 p-5 shadow-2xl relative overflow-hidden group">
+              <div class="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-purple-600/10 pointer-events-none"></div>
+              <div class="relative z-10 flex flex-col md:flex-row items-center justify-between gap-4">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center border border-slate-700 shadow-inner">
+                    <span class="text-xl">🚑</span>
+                  </div>
+                  <div>
+                    <h3 class="text-sm font-black text-white tracking-wider flex items-center gap-2">
+                      WHAT-IF 시뮬레이터 <span class="px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 text-[9px] uppercase">Beta</span>
+                    </h3>
+                    <p class="text-xs text-slate-400 mt-0.5">만약 각 팀의 에이스(최고 효율 선수)가 갑자기 결장한다면?</p>
+                  </div>
+                </div>
+                <div class="flex flex-wrap gap-2 w-full md:w-auto">
+                  <a href="%s" class="flex-1 md:flex-none text-center px-4 py-2 rounded-lg text-xs font-bold transition-all duration-300 %s">
+                    원래대로
+                  </a>
+                  <a href="%s&what_if=home" class="flex-1 md:flex-none text-center px-4 py-2 rounded-lg text-xs font-bold transition-all duration-300 %s">
+                    홈 에이스 결장
+                  </a>
+                  <a href="%s&what_if=away" class="flex-1 md:flex-none text-center px-4 py-2 rounded-lg text-xs font-bold transition-all duration-300 %s">
+                    원정 에이스 결장
+                  </a>
+                </div>
+              </div>
+            </div>
+          |html}
+          base_url
+          (if not is_home_ace_missing && not is_away_ace_missing then "bg-slate-700 text-white shadow-md border border-slate-600" else "bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white border border-transparent")
+          base_url
+          (if is_home_ace_missing then "bg-orange-600 text-white shadow-md border border-orange-500 shadow-orange-500/20" else "bg-slate-800 text-slate-400 hover:bg-orange-600/80 hover:text-white border border-transparent")
+          base_url
+          (if is_away_ace_missing then "bg-sky-600 text-white shadow-md border border-sky-500 shadow-sky-500/20" else "bg-slate-800 text-slate-400 hover:bg-sky-600/80 hover:text-white border border-transparent")
+      in
+      (prediction_result_card ~home ~away r) ^ what_if_html ^ insight_html
  in
 
  let team_option current name =

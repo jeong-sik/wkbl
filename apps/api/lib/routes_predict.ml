@@ -24,6 +24,7 @@ let routes =
         | Some ("1" | "true" | "yes" | "on") -> true
         | _ -> false
       in
+      let what_if = Kirin.query_opt "what_if" request in
 
       match Db.get_seasons (), Db.get_all_teams () with
       | Error e, _ | _, Error e -> Kirin.html (Views.error_page ~lang (Db.show_db_error e))
@@ -32,7 +33,7 @@ let routes =
           let team_names = List.map (fun (t: team_info) -> t.team_name) teams in
           let season = Route_helpers.query_season_or_latest request seasons in
           let render result error =
-            Kirin.html (Views.predict_page ~lang ~season ~seasons ~teams:team_names ~home ~away ~is_neutral ~context_enabled ~include_mismatch ~upcoming ~games:(match Db.get_scored_games ~season ~include_mismatch () with Ok g -> g | _ -> []) result error)
+            Kirin.html (Views.predict_page ~lang ~season ~seasons ~teams:team_names ~home ~away ~what_if ~is_neutral ~context_enabled ~include_mismatch ~upcoming ~games:(match Db.get_scored_games ~season ~include_mismatch () with Ok g -> g | _ -> []) result error)
           in
 
           if String.trim home = "" || String.trim away = "" then
@@ -86,9 +87,41 @@ let routes =
                 in
                 (match find_team home, find_team away with
                 | Some home_row, Some away_row ->
+                    let context = 
+                      match what_if with
+                      | Some "home" ->
+                          (match Db.get_players_by_team ~team_name:home ~season () with
+                           | Ok (ace :: _) -> 
+                               let wim = {
+                                 wim_player_id = ace.player_id;
+                                 wim_player_name = ace.name;
+                                 wim_team = home;
+                                 wim_pts_impact = ace.avg_points;
+                                 wim_reb_impact = ace.avg_rebounds;
+                                 wim_ast_impact = ace.avg_assists;
+                                 wim_eff_impact = ace.efficiency;
+                               } in
+                               Some { pci_home_roster = None; pci_away_roster = None; pci_what_if_missing = [wim] }
+                           | _ -> None)
+                      | Some "away" ->
+                          (match Db.get_players_by_team ~team_name:away ~season () with
+                           | Ok (ace :: _) -> 
+                               let wim = {
+                                 wim_player_id = ace.player_id;
+                                 wim_player_name = ace.name;
+                                 wim_team = away;
+                                 wim_pts_impact = ace.avg_points;
+                                 wim_reb_impact = ace.avg_rebounds;
+                                 wim_ast_impact = ace.avg_assists;
+                                 wim_eff_impact = ace.efficiency;
+                               } in
+                               Some { pci_home_roster = None; pci_away_roster = None; pci_what_if_missing = [wim] }
+                           | _ -> None)
+                      | _ -> None
+                    in
                     let output =
                       Prediction.predict_match_nerd
-                        ~context:None
+                        ~context
                         ~season
                         ~is_neutral
                         ~games
