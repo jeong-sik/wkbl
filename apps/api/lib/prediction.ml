@@ -398,10 +398,11 @@ let predict_match_nerd ~(context : prediction_context_input option) ~(season: st
               pcb_roster_delta = roster_delta;
               pcb_rest_home_days = rest_home_days;
               pcb_rest_away_days = rest_away_days;
-              pcb_rest_delta = rest_delta
-            },
-          final_prob )
-  in
+              pcb_rest_delta = rest_delta;
+              pcb_what_if_missing = ctx.pci_what_if_missing;
+              },
+              final_prob )
+              in
   
   (* Calculate margin based on Elo difference and final probability *)
   let elo_margin = (elo_home -. elo_away +. (if is_neutral then 0.0 else Elo.home_advantage)) /. 28.0 in
