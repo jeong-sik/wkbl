@@ -58,7 +58,7 @@ let player_cards ?(lang=I18n.Ko) ?(player_info_map=None) (players: player_aggreg
         </div>
         
         <div class="mt-14 text-center">
-          <h3 class="text-xl font-extrabold text-slate-900 dark:text-white group-hover:text-[%s] transition-colors">
+          <h3 class="player-card-name text-xl font-extrabold text-slate-900 dark:text-white transition-colors" style="--team-color: %s">
             %s
           </h3>
           <p class="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1">%s</p>
