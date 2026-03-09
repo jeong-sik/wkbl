@@ -13,13 +13,13 @@ let gauge_chart ~home_pct ~away_pct =
       <path d="M 20 110 A 100 100 0 0 1 220 110" fill="none" stroke="currentColor" stroke-width="%f" stroke-linecap="round" class="text-slate-100 dark:text-slate-800/80" />
       
       <!-- Away Team Arc (Right side) -->
-      <path d="M 220 110 A 100 100 0 0 0 20 110" fill="none" stroke="url(#awayGradient)" stroke-width="%f" stroke-linecap="round" stroke-dasharray="%f %f" stroke-dashoffset="0" class="transition-all duration-1000 ease-out origin-center" style="transform: rotate(180deg);" />
+      <path d="M 220 110 A 100 100 0 0 0 20 110" fill="none" stroke="url(#awayGradient)" stroke-width="%f" stroke-linecap="round" stroke-dasharray="%f %f" stroke-dashoffset="0" class="transition-all duration-1000 ease-out" style="transform: rotate(180deg); transform-origin: center;" />
       
       <!-- Home Team Arc (Left side) -->
       <path d="M 20 110 A 100 100 0 0 1 220 110" fill="none" stroke="url(#homeGradient)" stroke-width="%f" stroke-linecap="round" stroke-dasharray="%f %f" stroke-dashoffset="0" class="transition-all duration-1000 ease-out" />
       
       <!-- Center Needle / Indicator -->
-      <g class="transition-transform duration-1000 ease-out origin-[120px_110px]" style="transform: rotate(%.1fdeg)">
+      <g class="transition-transform duration-1000 ease-out" style="transform: rotate(%.1fdeg); transform-origin: 120px 110px;">
         <polygon points="116,110 124,110 120,20" fill="currentColor" class="text-slate-800 dark:text-slate-200 drop-shadow-md" />
         <circle cx="120" cy="110" r="8" fill="currentColor" class="text-slate-900 dark:text-slate-100 shadow-sm" />
         <circle cx="120" cy="110" r="3" fill="currentColor" class="text-slate-300 dark:text-slate-600" />

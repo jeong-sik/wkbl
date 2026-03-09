@@ -47,11 +47,7 @@ thead.sticky {
   -webkit-backdrop-filter: blur(12px);
 }
 
-/* Subtle row lift effect */
-tbody tr {
-  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
-}
-
+/* Subtle row lift effect (hover only; base transition is in the second tbody tr block below) */
 tbody tr:hover {
   transform: scale(1.002);
   z-index: 10;
@@ -175,7 +171,7 @@ html.dark body {
  * Keep transition/striping globally, but scope the pseudo-element accent bar
  * to opt-in tables to avoid column shifts in native table layout. */
 tbody tr {
-  transition: background-color 150ms ease, box-shadow 150ms ease;
+  transition: background-color 150ms ease, box-shadow 150ms ease, transform 200ms cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
 }
 
@@ -1222,9 +1218,10 @@ th[data-sortable][aria-sort] {
              300ms cubic-bezier(0.4, 0, 0.2, 1) both slide-up;
 }
 
-/* Base fade-in used in the DOM */
-.animate-fade-in {
-  animation: fade-in 0.4s ease-out forwards;
+/* Player card: team color on hover via CSS custom property (Tailwind JIT cannot
+   generate arbitrary-value classes from OCaml Printf.sprintf %s placeholders) */
+.group:hover .player-card-name {
+  color: var(--team-color);
 }
 
 /* Hover scales and smooth transitions */
