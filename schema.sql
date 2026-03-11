@@ -105,11 +105,3 @@ SELECT
   ELSE NULL END as usg_pct
 FROM game_stats gs
 JOIN team_totals tt ON gs.game_id = tt.game_id AND gs.team_code = tt.team_code;
-
-ALTER VIEW player_usg_stats SET (security_invoker = true);
-
-ALTER TABLE seasons ENABLE ROW LEVEL SECURITY;
-ALTER TABLE teams ENABLE ROW LEVEL SECURITY;
-ALTER TABLE players ENABLE ROW LEVEL SECURITY;
-ALTER TABLE games ENABLE ROW LEVEL SECURITY;
-ALTER TABLE game_stats ENABLE ROW LEVEL SECURITY;
