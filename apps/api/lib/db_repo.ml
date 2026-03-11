@@ -75,7 +75,12 @@ open Db_queries
       let* () = Db.exec ensure_awards_table () in
       let* () = Db.exec ensure_awards_index_season () in
       let* () = Db.exec ensure_awards_index_category () in
-      Db.exec ensure_awards_index_player ()
+      let* () = Db.exec ensure_awards_index_player () in
+      match Db_pool.current_backend () with
+      | `Postgres ->
+          let* () = Db.exec enable_public_table_rls () in
+          Db.exec ensure_public_view_security_invoker ()
+      | _ -> Ok ()
 
     (* Refresh materialized views - call after data sync *)
     let refresh_matviews (module Db : Caqti_eio.CONNECTION) =
