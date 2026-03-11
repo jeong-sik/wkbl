@@ -29,6 +29,7 @@ WKBL_DATABASE_URL (same as above)
 | `004_history_tables.sql` | History tables (historical_seasons, legend_players, etc.) |
 | `005_history_data.sql` | History seed data |
 | `006_qa_indexes.sql` | QA performance indexes (schedule ↔ games joins) |
+| `007_security_hardening.sql` | Supabase Security Advisor hardening (RLS + security_invoker) |
 
 ## Main Tables
 
@@ -55,6 +56,9 @@ psql "$WKBL_DATABASE_URL" -c "\dt"
 
 # Backup DDL
 pg_dump "$WKBL_DATABASE_URL" --schema-only > backup.sql
+
+# Apply Security Advisor hardening
+psql "$WKBL_DATABASE_URL" -f sql/007_security_hardening.sql
 ```
 
 ## Last Updated
